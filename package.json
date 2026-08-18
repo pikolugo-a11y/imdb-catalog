@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "worker:test": "node worker/index.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
