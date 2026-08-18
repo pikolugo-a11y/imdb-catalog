@@ -1,4 +1,7 @@
 import { neon } from '@neondatabase/serverless';
+import { createGunzip } from 'node:zlib';
+import { Readable } from 'node:stream';
+import readline from 'node:readline';
 
 const databaseUrl = process.env.DATABASE_URL;
 const tmdbToken = process.env.TMDB_API_TOKEN;
@@ -45,6 +48,46 @@ async function getImdbCandidate(imdbId) {
   return rows[0] || null;
 }
 
+async function resolveImdbRating(imdbId, cached) {
+  if (cached?.imdb_rating != null && cached?.imdb_votes != null) {
+    return {
+      found: true,
+      rating: Number(cached.imdb_rating),
+      votes: Number(cached.imdb_votes),
+      source: 'catalog_candidates'
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
+  try {
+    const response = await fetch('https://datasets.imdbws.com/title.ratings.tsv.gz', {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'PikoFilm/1.0 personal-noncommercial' }
+    });
+    if (!response.ok || !response.body) throw new Error(`IMDb dataset HTTP ${response.status}`);
+
+    const input = Readable.fromWeb(response.body).pipe(createGunzip());
+    const lines = readline.createInterface({ input, crlfDelay: Infinity });
+    for await (const line of lines) {
+      if (!line.startsWith(`${imdbId}\t`)) continue;
+      const [, ratingRaw, votesRaw] = line.split('\t');
+      lines.close();
+      input.destroy();
+      controller.abort();
+      return {
+        found: true,
+        rating: Number(ratingRaw),
+        votes: Number(votesRaw),
+        source: 'title.ratings.tsv.gz'
+      };
+    }
+    return { found: false, rating: null, votes: null, source: 'title.ratings.tsv.gz' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function resolveWikidata(imdbId) {
   const sparql = `SELECT ?item ?fa WHERE { ?item wdt:P345 "${imdbId}". OPTIONAL { ?item wdt:P480 ?fa. } } LIMIT 5`;
   const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparql)}&format=json`;
@@ -75,17 +118,39 @@ function htmlToText(html) {
     .trim();
 }
 
+function parseFilmAffinityJsonLd(html) {
+  const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const match of scripts) {
+    try {
+      const data = JSON.parse(match[1].trim());
+      const nodes = Array.isArray(data) ? data : [data];
+      for (const node of nodes) {
+        const aggregate = node?.aggregateRating;
+        const rating = aggregate?.ratingValue != null ? Number(String(aggregate.ratingValue).replace(',', '.')) : null;
+        const votes = aggregate?.ratingCount != null ? Number(String(aggregate.ratingCount).replace(/[^0-9]/g, '')) : null;
+        if (Number.isFinite(rating) && Number.isFinite(votes)) {
+          return { rating, votes, title: node?.name || null };
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
 async function resolveFilmAffinity(faId) {
   if (!faId) return { found: false, rating: null, votes: null, title: null, url: null };
   const url = `https://www.filmaffinity.com/es/film${faId}.html`;
   const html = await fetchText(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 PikoFilm/1.0 personal-noncommercial',
+      'User-Agent': 'Mozilla/5.0 (compatible; PikoFilm/1.0; personal non-commercial)',
       'Accept-Language': 'es-ES,es;q=0.9'
     }
   });
-  const text = htmlToText(html);
 
+  const structured = parseFilmAffinityJsonLd(html);
+  if (structured) return { found: true, ...structured, url, parse_method: 'json-ld' };
+
+  const text = htmlToText(html);
   const titleMatch = text.match(/(?:copiar la URL\s*)?([^|]{1,160}?)\s+(?:Ficha\s+Créditos|Ficha\s+Creditos)/i);
   const scoreVoteMatch = text.match(/\b([0-9],[0-9])\s+([0-9][0-9\.]{0,12})\s+votos\b/i);
   const rating = scoreVoteMatch ? Number(scoreVoteMatch[1].replace(',', '.')) : null;
@@ -96,7 +161,8 @@ async function resolveFilmAffinity(faId) {
     rating: Number.isFinite(rating) ? rating : null,
     votes: Number.isInteger(votes) ? votes : null,
     title: titleMatch?.[1]?.trim() || null,
-    url
+    url,
+    parse_method: scoreVoteMatch ? 'visible-text' : 'not-found'
   };
 }
 
@@ -145,7 +211,7 @@ async function resolveTmdb(imdbId) {
 
 function computeCandidateScore(imdb, fa, tmdb) {
   const parts = [];
-  if (imdb?.imdb_rating != null && imdb?.imdb_votes > 0) parts.push({ source: 'IMDb', rating: Number(imdb.imdb_rating), votes: Number(imdb.imdb_votes) });
+  if (imdb?.rating != null && imdb?.votes > 0) parts.push({ source: 'IMDb', rating: Number(imdb.rating), votes: Number(imdb.votes) });
   if (fa?.rating != null && fa?.votes > 0) parts.push({ source: 'FilmAffinity', rating: Number(fa.rating), votes: Number(fa.votes) });
   if (tmdb?.vote_average != null && tmdb?.vote_count > 0) parts.push({ source: 'TMDb', rating: Number(tmdb.vote_average), votes: Number(tmdb.vote_count) });
   if (!parts.length) return { score: null, sources: [] };
@@ -157,14 +223,17 @@ function computeCandidateScore(imdb, fa, tmdb) {
 
 async function buildDryRun(imdbId) {
   if (!/^tt\d+$/.test(imdbId)) throw new Error('IMDb ID inválido');
-  const [plex, imdb, wikidata, tmdb] = await Promise.all([
+  const [plex, cachedImdb, wikidata, tmdb] = await Promise.all([
     getPlexSource(imdbId),
     getImdbCandidate(imdbId),
     resolveWikidata(imdbId),
     resolveTmdb(imdbId)
   ]);
 
-  const filmaffinity = await resolveFilmAffinity(wikidata?.filmaffinity_id);
+  const [imdb, filmaffinity] = await Promise.all([
+    resolveImdbRating(imdbId, cachedImdb),
+    resolveFilmAffinity(wikidata?.filmaffinity_id)
+  ]);
   const pikoscore = computeCandidateScore(imdb, filmaffinity, tmdb);
 
   return {
@@ -176,15 +245,17 @@ async function buildDryRun(imdbId) {
       type: tmdb?.media_type === 'tv' ? 'Serie' : 'Película',
       title_es: filmaffinity?.title || tmdb?.title_es || plex.plex_title,
       original_title: tmdb?.original_title || null,
-      year: tmdb?.year || imdb?.year || plex.plex_year || null,
+      year: tmdb?.year || cachedImdb?.year || plex.plex_year || null,
       runtime: tmdb?.runtime || null,
       country: tmdb?.countries?.join(', ') || null,
-      imdb_rating: imdb?.imdb_rating ?? null,
-      imdb_votes: imdb?.imdb_votes ?? null,
+      imdb_rating: imdb?.rating ?? null,
+      imdb_votes: imdb?.votes ?? null,
+      imdb_rating_source: imdb?.source || null,
       imdb_url: `https://www.imdb.com/title/${imdbId}/`,
       fa_id: wikidata?.filmaffinity_id || null,
       fa_rating: filmaffinity?.rating ?? null,
       fa_votes: filmaffinity?.votes ?? null,
+      fa_parse_method: filmaffinity?.parse_method || null,
       fa_url: filmaffinity?.url || null,
       tmdb_id: tmdb?.id || null,
       tmdb_rating: tmdb?.vote_average ?? null,
@@ -204,8 +275,8 @@ async function buildDryRun(imdbId) {
     },
     source_status: {
       plex: true,
-      imdb_candidate: Boolean(imdb),
-      imdb_rating_available: imdb?.imdb_rating != null,
+      imdb_cache_hit: Boolean(cachedImdb?.imdb_rating != null),
+      imdb_rating_available: imdb?.rating != null,
       wikidata: Boolean(wikidata?.found),
       filmaffinity_id_found: Boolean(wikidata?.filmaffinity_id),
       filmaffinity_rating_fetched: filmaffinity?.rating != null,
