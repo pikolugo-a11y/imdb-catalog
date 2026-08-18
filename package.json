@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker:test": "node worker/index.mjs"
+    "worker:test": "node worker/index.mjs",
+    "worker:imdb-ratings": "node worker/update-imdb-ratings.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
