@@ -2,39 +2,11 @@ import { neon } from '@neondatabase/serverless';
 
 const databaseUrl = process.env.DATABASE_URL;
 const tmdbToken = process.env.TMDB_API_TOKEN;
-const pollMs = Math.max(5000, Number(process.env.WORKER_POLL_MS || 15000));
 
 if (!databaseUrl) throw new Error('Falta DATABASE_URL');
 if (!tmdbToken) throw new Error('Falta TMDB_API_TOKEN');
 
 const sql = neon(databaseUrl);
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-async function claimOneJob() {
-  const rows = await sql`
-    WITH candidate AS (
-      SELECT id
-      FROM admin_job_requests
-      WHERE job_type = 'catalog_enrichment_test'
-        AND status = 'pending'
-        AND NOT EXISTS (
-          SELECT 1 FROM admin_job_requests
-          WHERE job_type = 'catalog_enrichment_test' AND status = 'running'
-        )
-      ORDER BY requested_at
-      LIMIT 1
-    )
-    UPDATE admin_job_requests j
-    SET status = 'running',
-        dispatched_at = now(),
-        external_run_id = 'render-dry-run-v1',
-        error = NULL
-    FROM candidate c
-    WHERE j.id = c.id
-    RETURNING j.id, j.payload, j.requested_at
-  `;
-  return rows[0] || null;
-}
 
 async function fetchJson(url, options = {}) {
   const controller = new AbortController();
@@ -48,17 +20,25 @@ async function fetchJson(url, options = {}) {
   }
 }
 
-async function getBaseMovie(imdbId) {
+async function getPlexSource(imdbId) {
   const rows = await sql`
-    SELECT imdb_id, type, title, title_es, original_title, year, runtime,
-           imdb_rating, imdb_votes, fa_rating, fa_votes, fa_url,
-           tmdb_id, tmdb_rating, tmdb_votes, tmdb_url, final_rating
-    FROM movies
+    SELECT rating_key, plex_title, plex_year, imdb_id, catalog_state
+    FROM plex_not_in_catalog
     WHERE imdb_id = ${imdbId}
     LIMIT 1
   `;
-  if (!rows[0]) throw new Error(`No existe ${imdbId} en movies`);
+  if (!rows[0]) throw new Error(`${imdbId} no está en plex_not_in_catalog`);
   return rows[0];
+}
+
+async function getImdbCandidate(imdbId) {
+  const rows = await sql`
+    SELECT imdb_id, candidate_type, year, imdb_rating, imdb_votes, source_snapshot
+    FROM catalog_candidates
+    WHERE imdb_id = ${imdbId}
+    LIMIT 1
+  `;
+  return rows[0] || null;
 }
 
 async function resolveWikidata(imdbId) {
@@ -71,12 +51,11 @@ async function resolveWikidata(imdbId) {
     }
   });
   const binding = data?.results?.bindings?.[0];
-  if (!binding) return { found: false, filmaffinity_id: null, wikidata_item: null };
-  return {
+  return binding ? {
     found: true,
     wikidata_item: binding.item?.value?.split('/').pop() || null,
     filmaffinity_id: binding.fa?.value || null
-  };
+  } : { found: false, wikidata_item: null, filmaffinity_id: null };
 }
 
 async function resolveTmdb(imdbId) {
@@ -86,113 +65,107 @@ async function resolveTmdb(imdbId) {
   const tv = find?.tv_results?.[0];
   const hit = movie || tv;
   if (!hit) return { found: false, media_type: null, id: null };
+
   const mediaType = movie ? 'movie' : 'tv';
   const details = await fetchJson(`https://api.themoviedb.org/3/${mediaType}/${hit.id}?language=es-ES&append_to_response=credits,external_ids`, { headers });
+  const director = (details.credits?.crew || []).find(c => c.job === 'Director') || null;
+
   return {
     found: true,
     media_type: mediaType,
-    id: hit.id,
-    title: details.title || details.name || null,
+    id: String(hit.id),
+    title_es: details.title || details.name || null,
     original_title: details.original_title || details.original_name || null,
     release_date: details.release_date || details.first_air_date || null,
+    year: Number(String(details.release_date || details.first_air_date || '').slice(0, 4)) || null,
     runtime: details.runtime || details.episode_run_time?.[0] || null,
     vote_average: details.vote_average ?? null,
     vote_count: details.vote_count ?? null,
     poster_path: details.poster_path || null,
     backdrop_path: details.backdrop_path || null,
     overview: details.overview || null,
+    original_language: details.original_language || null,
+    countries: (details.production_countries || details.origin_country || []).map(c => c.name || c).filter(Boolean),
     genres: (details.genres || []).map(g => g.name),
-    cast_sample: (details.credits?.cast || []).slice(0, 5).map(c => ({ name: c.name, character: c.character || null }))
+    collection: details.belongs_to_collection ? {
+      id: String(details.belongs_to_collection.id),
+      name: details.belongs_to_collection.name || null,
+      poster_path: details.belongs_to_collection.poster_path || null,
+      backdrop_path: details.belongs_to_collection.backdrop_path || null
+    } : null,
+    director: director ? { id: String(director.id), name: director.name, profile_path: director.profile_path || null } : null,
+    cast: (details.credits?.cast || []).slice(0, 15).map((c, index) => ({
+      id: String(c.id), name: c.name, character: c.character || '', order: c.order ?? index,
+      profile_path: c.profile_path || null, known_for_department: c.known_for_department || null
+    }))
   };
 }
 
-async function processJob(job) {
-  const imdbId = String(job.payload?.imdb_id || '');
-  if (!/^tt\d+$/.test(imdbId)) throw new Error('payload.imdb_id inválido');
+function computeCandidateScore(imdb, tmdb) {
+  const parts = [];
+  if (imdb?.imdb_rating != null && imdb?.imdb_votes > 0) parts.push({ rating: Number(imdb.imdb_rating), weight: Math.log10(Number(imdb.imdb_votes) + 10) });
+  if (tmdb?.vote_average != null && tmdb?.vote_count > 0) parts.push({ rating: Number(tmdb.vote_average), weight: Math.log10(Number(tmdb.vote_count) + 10) });
+  if (!parts.length) return null;
+  return Number((parts.reduce((s, p) => s + p.rating * p.weight, 0) / parts.reduce((s, p) => s + p.weight, 0)).toFixed(2));
+}
 
-  const startedAt = new Date().toISOString();
-  const base = await getBaseMovie(imdbId);
-  const wikidata = await resolveWikidata(imdbId);
-  const tmdb = await resolveTmdb(imdbId);
+async function buildDryRun(imdbId) {
+  if (!/^tt\d+$/.test(imdbId)) throw new Error('IMDb ID inválido');
+  const [plex, imdb, wikidata, tmdb] = await Promise.all([
+    getPlexSource(imdbId),
+    getImdbCandidate(imdbId),
+    resolveWikidata(imdbId),
+    resolveTmdb(imdbId)
+  ]);
 
   return {
     dry_run: true,
     imdb_id: imdbId,
-    started_at: startedAt,
-    finished_at: new Date().toISOString(),
-    sources: {
-      imdb_base: {
-        ok: true,
-        title: base.title_es || base.title || base.original_title,
-        original_title: base.original_title,
-        year: base.year,
-        runtime: base.runtime,
-        rating: base.imdb_rating,
-        votes: base.imdb_votes
-      },
-      wikidata_filmaffinity: {
-        ok: wikidata.found,
-        wikidata_item: wikidata.wikidata_item,
-        filmaffinity_id: wikidata.filmaffinity_id,
-        filmaffinity_url: wikidata.filmaffinity_id ? `https://www.filmaffinity.com/es/film${wikidata.filmaffinity_id}.html` : null
-      },
-      tmdb: { ok: tmdb.found, ...tmdb }
+    writes_to_catalog: 0,
+    plex,
+    candidate: {
+      type: tmdb?.media_type === 'tv' ? 'Serie' : 'Película',
+      title_es: tmdb?.title_es || plex.plex_title,
+      original_title: tmdb?.original_title || null,
+      year: tmdb?.year || imdb?.year || plex.plex_year || null,
+      runtime: tmdb?.runtime || null,
+      country: tmdb?.countries?.join(', ') || null,
+      imdb_rating: imdb?.imdb_rating ?? null,
+      imdb_votes: imdb?.imdb_votes ?? null,
+      imdb_url: `https://www.imdb.com/title/${imdbId}/`,
+      fa_id: wikidata?.filmaffinity_id || null,
+      fa_url: wikidata?.filmaffinity_id ? `https://www.filmaffinity.com/es/film${wikidata.filmaffinity_id}.html` : null,
+      tmdb_id: tmdb?.id || null,
+      tmdb_rating: tmdb?.vote_average ?? null,
+      tmdb_votes: tmdb?.vote_count ?? null,
+      tmdb_url: tmdb?.id ? `https://www.themoviedb.org/${tmdb.media_type}/${tmdb.id}` : null,
+      wikidata_id: wikidata?.wikidata_item || null,
+      final_rating_preview: computeCandidateScore(imdb, tmdb),
+      poster_path: tmdb?.poster_path || null,
+      backdrop_path: tmdb?.backdrop_path || null,
+      overview: tmdb?.overview || null,
+      original_language: tmdb?.original_language || null,
+      genres: tmdb?.genres || [],
+      collection: tmdb?.collection || null,
+      director: tmdb?.director || null,
+      cast: tmdb?.cast || []
     },
-    existing: {
-      fa_rating: base.fa_rating,
-      fa_votes: base.fa_votes,
-      fa_url: base.fa_url,
-      tmdb_id: base.tmdb_id,
-      tmdb_rating: base.tmdb_rating,
-      tmdb_votes: base.tmdb_votes,
-      final_rating: base.final_rating
-    },
-    writes_to_catalog: 0
+    source_status: {
+      plex: true,
+      imdb_candidate: Boolean(imdb),
+      wikidata: Boolean(wikidata?.found),
+      filmaffinity_id_found: Boolean(wikidata?.filmaffinity_id),
+      tmdb: Boolean(tmdb?.found),
+      filmaffinity_rating_fetched: false
+    }
   };
 }
 
-async function finishJob(id, result) {
-  const resultPatch = JSON.stringify({ result });
-  await sql`
-    UPDATE admin_job_requests
-    SET status = 'success',
-        finished_at = now(),
-        payload = payload || ${resultPatch}::jsonb,
-        error = NULL
-    WHERE id = ${id}
-  `;
-}
-
-async function failJob(id, error) {
-  await sql`
-    UPDATE admin_job_requests
-    SET status = 'failed', finished_at = now(), error = ${String(error?.message || error).slice(0, 1000)}
-    WHERE id = ${id}
-  `;
-}
-
 async function main() {
-  console.log(`PikoFilm worker dry-run iniciado. Poll=${pollMs}ms. Máximo 1 job por arranque.`);
-  while (true) {
-    const job = await claimOneJob();
-    if (!job) {
-      await sleep(pollMs);
-      continue;
-    }
-
-    console.log(`Procesando job ${job.id} en modo dry-run`);
-    try {
-      const result = await processJob(job);
-      await finishJob(job.id, result);
-      console.log(`Job ${job.id} completado. writes_to_catalog=0`);
-    } catch (error) {
-      await failJob(job.id, error);
-      console.error(`Job ${job.id} falló:`, error?.message || error);
-    }
-
-    console.log('Límite de seguridad alcanzado: este arranque no procesará más jobs.');
-    await new Promise(() => {});
-  }
+  const imdbId = process.env.TEST_IMDB_ID;
+  if (!imdbId) throw new Error('Falta TEST_IMDB_ID');
+  const result = await buildDryRun(imdbId);
+  console.log(JSON.stringify(result, null, 2));
 }
 
 main().catch(error => {
