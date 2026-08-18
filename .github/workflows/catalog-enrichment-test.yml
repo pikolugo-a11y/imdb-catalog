@@ -7,6 +7,19 @@ on:
         description: 'IMDb ID (ej. tt0133093)'
         required: true
         type: string
+      mode:
+        description: 'Modo de ejecución'
+        required: true
+        default: 'dry-run'
+        type: choice
+        options:
+          - dry-run
+          - commit
+      confirm_imdb_id:
+        description: 'Solo para commit: repetir exactamente el IMDb ID'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -16,19 +29,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  dry-run-one-title:
+  one-title:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
       TEST_IMDB_ID: ${{ inputs.imdb_id }}
+      PERSIST_MODE: ${{ inputs.mode }}
+      CONFIRM_IMDB_ID: ${{ inputs.confirm_imdb_id }}
     steps:
-      - name: Validar IMDb ID
+      - name: Validar entrada
         shell: bash
         run: |
           if [[ ! "$TEST_IMDB_ID" =~ ^tt[0-9]+$ ]]; then
             echo "IMDb ID inválido: $TEST_IMDB_ID"
+            exit 1
+          fi
+          if [[ "$PERSIST_MODE" == "commit" && "$CONFIRM_IMDB_ID" != "$TEST_IMDB_ID" ]]; then
+            echo "Commit bloqueado: debes repetir exactamente $TEST_IMDB_ID en confirm_imdb_id"
             exit 1
           fi
 
@@ -46,5 +65,5 @@ jobs:
       - name: Instalar dependencias
         run: npm install --ignore-scripts
 
-      - name: Ejecutar dry-run de un único título
+      - name: Ejecutar enriquecimiento de un único título
         run: npm run worker:test
