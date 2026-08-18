@@ -1,0 +1,48 @@
+name: Manual maintenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Safe read-only task
+        required: true
+        type: choice
+        options:
+          - database-health
+          - series-sample
+      limit:
+        description: Maximum series for sample (1-10)
+        required: false
+        default: '5'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pikofilm-manual-maintenance
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run bounded read-only check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TASK: ${{ inputs.task }}
+          LIMIT: ${{ inputs.limit }}
+        run: node scripts/manual-check.mjs
