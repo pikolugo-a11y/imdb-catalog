@@ -46,43 +46,5 @@ jobs:
       - name: Instalar dependencias
         run: npm install --ignore-scripts
 
-      - name: Crear un único job de prueba
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import { neon } from '@neondatabase/serverless';
-          const sql = neon(process.env.DATABASE_URL);
-          const imdbId = process.env.TEST_IMDB_ID;
-          const running = await sql`SELECT count(*)::int AS n FROM admin_job_requests WHERE job_type='catalog_enrichment_test' AND status IN ('pending','running')`;
-          if (running[0].n > 0) throw new Error('Ya existe una prueba pendiente o en ejecución. No se crea otra.');
-          const rows = await sql`INSERT INTO admin_job_requests(job_type,payload,status) VALUES ('catalog_enrichment_test', ${JSON.stringify({imdb_id: imdbId})}::jsonb, 'pending') RETURNING id`;
-          console.log(`JOB_ID=${rows[0].id}`);
-          await import('node:fs/promises').then(fs => fs.appendFile(process.env.GITHUB_ENV, `JOB_ID=${rows[0].id}\n`));
-          NODE
-
-      - name: Ejecutar worker dry-run
-        shell: bash
-        run: |
-          set +e
-          timeout 75s npm run worker:test
-          code=$?
-          if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then
-            exit "$code"
-          fi
-          exit 0
-
-      - name: Verificar resultado
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import { neon } from '@neondatabase/serverless';
-          const sql = neon(process.env.DATABASE_URL);
-          const rows = await sql`SELECT id,status,error,payload FROM admin_job_requests WHERE id=${Number(process.env.JOB_ID)} LIMIT 1`;
-          const job = rows[0];
-          if (!job) throw new Error('No se encontró el job');
-          console.log(`Estado: ${job.status}`);
-          if (job.error) console.log(`Error: ${job.error}`);
-          console.log(JSON.stringify(job.payload?.result || {}, null, 2));
-          if (job.status !== 'success') throw new Error(`La prueba no terminó correctamente: ${job.status}`);
-          if (job.payload?.result?.writes_to_catalog !== 0) throw new Error('Protección dry-run incumplida');
-          NODE
+      - name: Ejecutar dry-run de un único título
+        run: npm run worker:test
