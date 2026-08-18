@@ -8,7 +8,7 @@ import {startRun,finishRun,audit,errorInfo} from '@/lib/runlog';
 import {analyzeMovieQuality,setQualityAction} from '@/lib/quality-v2';
 import {refreshSeriesV2,setSeasonAvailability} from '@/lib/series-v2';
 import {refreshSagas} from '@/lib/sagas-v2';
-import {retryIdentity,reanalyzeIdentity,saveIdentity} from '@/lib/identity';
+import {retryIdentity,reanalyzeIdentity,saveIdentity,setPlexImdb} from '@/lib/identity';
 import {captureDashboardSnapshot} from '@/lib/dashboard-v2';
 function idOf(formData){const id=String(formData.get('imdbId')||'');if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id}
 function safeReturn(v,fallback='/catalogo'){const s=String(v||'');return s.startsWith('/')&&!s.startsWith('//')?s:fallback}
@@ -27,3 +27,4 @@ export async function refreshSagasAction(){try{const r=await refreshSagas();reva
 export async function retryIdentityAction(_prevState,formData){try{const id=idOf(formData),r=await retryIdentity(id);revalidatePath('/calidad/identidad');refresh(id);return{ok:true,message:`Identidad actualizada: ${r.title}`}}catch(e){return{ok:false,message:e.message}}}
 export async function reanalyzeIdentityAction(){try{const r=await reanalyzeIdentity();revalidatePath('/calidad/identidad');revalidatePath('/admin');return{ok:true,message:`Identidad: ${r.fixed}/${r.processed} resueltas automáticamente`}}catch(e){return{ok:false,message:e.message}}}
 export async function saveIdentityAction(formData){const old=idOf(formData),newId=await saveIdentity(old,{imdbId:formData.get('newImdbId'),tmdbId:formData.get('tmdbId'),faId:formData.get('faId')});refresh(old);refresh(newId);revalidatePath('/calidad/identidad');redirect(`/catalogo/${newId}?notice=identity_saved`)}
+export async function savePlexImdbAction(formData){const ratingKey=String(formData.get('ratingKey')||''),imdbId=String(formData.get('imdbId')||'').trim();if(!ratingKey)throw new Error('ratingKey vacío');await setPlexImdb(ratingKey,imdbId);revalidatePath('/plex');revalidatePath('/calidad/identidad');redirect('/calidad/identidad?notice=plex_identity_saved')}
