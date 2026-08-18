@@ -25,15 +25,33 @@ async function fetchJson(url, options = {}) {
   return JSON.parse(await fetchText(url, options));
 }
 
-async function getPlexSource(imdbId) {
-  const rows = await sql`
+async function getCatalogSource(imdbId) {
+  const plexRows = await sql`
     SELECT rating_key, plex_title, plex_year, imdb_id, catalog_state
     FROM plex_not_in_catalog
     WHERE imdb_id = ${imdbId}
     LIMIT 1
   `;
-  if (!rows[0]) throw new Error(`${imdbId} no está en plex_not_in_catalog`);
-  return rows[0];
+  if (plexRows[0]) return { ...plexRows[0], source_kind: 'plex_not_in_catalog' };
+
+  const movieRows = await sql`
+    SELECT imdb_id, title_es, title, year
+    FROM movies
+    WHERE imdb_id = ${imdbId}
+    LIMIT 1
+  `;
+  if (movieRows[0]) {
+    return {
+      rating_key: null,
+      plex_title: movieRows[0].title_es || movieRows[0].title,
+      plex_year: movieRows[0].year,
+      imdb_id: movieRows[0].imdb_id,
+      catalog_state: 'in_catalog',
+      source_kind: 'movies'
+    };
+  }
+
+  throw new Error(`${imdbId} no está ni en plex_not_in_catalog ni en movies`);
 }
 
 async function getImdbCandidate(imdbId) {
@@ -43,7 +61,15 @@ async function getImdbCandidate(imdbId) {
     WHERE imdb_id = ${imdbId}
     LIMIT 1
   `;
-  return rows[0] || null;
+  if (rows[0]?.imdb_rating != null && rows[0]?.imdb_votes != null) return rows[0];
+
+  const movieRows = await sql`
+    SELECT imdb_id, type AS candidate_type, year, imdb_rating, imdb_votes, NULL::jsonb AS source_snapshot
+    FROM movies
+    WHERE imdb_id = ${imdbId}
+    LIMIT 1
+  `;
+  return movieRows[0] || rows[0] || null;
 }
 
 function resolveImdbRating(cached) {
@@ -54,7 +80,7 @@ function resolveImdbRating(cached) {
     found: true,
     rating: Number(cached.imdb_rating),
     votes: Number(cached.imdb_votes),
-    source: 'catalog_candidates'
+    source: 'local-cache'
   };
 }
 
@@ -107,37 +133,57 @@ function parseFilmAffinityJsonLd(html) {
   return null;
 }
 
+function parseFilmAffinityVisibleText(html) {
+  const text = htmlToText(html);
+  const title = text.match(/\b([^|]{1,160}?)\s+(?:202[0-9]|19[0-9]{2})\s+(?:España|USA|Francia|Italia|Reino Unido|Alemania)/i)?.[1]?.trim() || null;
+  const patterns = [
+    /\b([0-9],[0-9])\s+([0-9][0-9\.]{0,12})\s+votos\b/i,
+    /\b([0-9],[0-9])\s+([0-9][0-9\.]{1,12})\b/i,
+    /\b([0-9]\.[0-9])\s+([0-9][0-9,\.]{1,12})\s+votes\b/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const rating = Number(match[1].replace(',', '.'));
+    const votes = Number(match[2].replace(/[^0-9]/g, ''));
+    if (Number.isFinite(rating) && Number.isInteger(votes) && votes > 0) return { rating, votes, title };
+  }
+  return null;
+}
+
 async function resolveFilmAffinity(faId) {
   if (!faId) return { found: false, rating: null, votes: null, title: null, url: null, parse_method: 'no-id' };
-  const url = `https://www.filmaffinity.com/es/film${faId}.html`;
-  try {
-    const html = await fetchText(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; PikoFilm/1.0; personal non-commercial)',
-        'Accept-Language': 'es-ES,es;q=0.9'
-      }
-    });
 
-    const structured = parseFilmAffinityJsonLd(html);
-    if (structured) return { found: true, ...structured, url, parse_method: 'json-ld' };
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (compatible; PikoFilm/1.0; personal non-commercial)',
+    'Accept-Language': 'es-ES,es;q=0.9'
+  };
+  const primaryUrl = `https://www.filmaffinity.com/es/film${faId}.html`;
+  const reviewUrl = `https://www.filmaffinity.com/es/reviews/1/${faId}.html`;
 
-    const text = htmlToText(html);
-    const titleMatch = text.match(/(?:copiar la URL\s*)?([^|]{1,160}?)\s+(?:Ficha\s+Créditos|Ficha\s+Creditos)/i);
-    const scoreVoteMatch = text.match(/\b([0-9],[0-9])\s+([0-9][0-9\.]{0,12})\s+votos\b/i);
-    const rating = scoreVoteMatch ? Number(scoreVoteMatch[1].replace(',', '.')) : null;
-    const votes = scoreVoteMatch ? Number(scoreVoteMatch[2].replace(/\./g, '')) : null;
+  let lastError = null;
+  for (const [url, methodPrefix] of [[primaryUrl, 'film'], [reviewUrl, 'reviews']]) {
+    try {
+      const html = await fetchText(url, { headers });
+      const structured = parseFilmAffinityJsonLd(html);
+      if (structured) return { found: true, ...structured, url: primaryUrl, parse_method: `${methodPrefix}-json-ld` };
 
-    return {
-      found: true,
-      rating: Number.isFinite(rating) ? rating : null,
-      votes: Number.isInteger(votes) ? votes : null,
-      title: titleMatch?.[1]?.trim() || null,
-      url,
-      parse_method: scoreVoteMatch ? 'visible-text' : 'not-found'
-    };
-  } catch (error) {
-    return { found: false, rating: null, votes: null, title: null, url, parse_method: 'request-error', error: error.message };
+      const visible = parseFilmAffinityVisibleText(html);
+      if (visible) return { found: true, ...visible, url: primaryUrl, parse_method: `${methodPrefix}-visible-text` };
+    } catch (error) {
+      lastError = error;
+    }
   }
+
+  return {
+    found: false,
+    rating: null,
+    votes: null,
+    title: null,
+    url: primaryUrl,
+    parse_method: 'not-found',
+    error: lastError?.message || null
+  };
 }
 
 async function resolveTmdb(imdbId) {
@@ -197,8 +243,8 @@ function computeCandidateScore(imdb, fa, tmdb) {
 
 async function buildCandidate(imdbId) {
   if (!/^tt\d+$/.test(imdbId)) throw new Error('IMDb ID inválido');
-  const [plex, cachedImdb, wikidata, tmdb] = await Promise.all([
-    getPlexSource(imdbId),
+  const [source, cachedImdb, wikidata, tmdb] = await Promise.all([
+    getCatalogSource(imdbId),
     getImdbCandidate(imdbId),
     resolveWikidata(imdbId),
     resolveTmdb(imdbId)
@@ -210,14 +256,15 @@ async function buildCandidate(imdbId) {
 
   return {
     mode: persistMode,
+    operation: source.source_kind === 'movies' ? 'refresh' : 'add',
     imdb_id: imdbId,
     writes_to_catalog: 0,
-    plex,
+    plex: source,
     candidate: {
       type: tmdb?.media_type === 'tv' ? 'Serie' : 'Película',
-      title_es: filmaffinity?.title || tmdb?.title_es || plex.plex_title,
+      title_es: filmaffinity?.title || tmdb?.title_es || source.plex_title,
       original_title: tmdb?.original_title || null,
-      year: tmdb?.year || cachedImdb?.year || plex.plex_year || null,
+      year: tmdb?.year || cachedImdb?.year || source.plex_year || null,
       runtime: tmdb?.runtime || null,
       country: tmdb?.countries?.join(', ') || null,
       imdb_rating: imdb?.rating ?? null,
@@ -247,7 +294,8 @@ async function buildCandidate(imdbId) {
       cast: tmdb?.cast || []
     },
     source_status: {
-      plex: true,
+      plex_or_catalog: true,
+      source_kind: source.source_kind,
       imdb_cache_hit: Boolean(imdb?.found),
       imdb_rating_available: imdb?.rating != null,
       wikidata: Boolean(wikidata?.found),
@@ -275,7 +323,7 @@ async function persistCandidate(result) {
   });
 
   const lockRows = await sql`SELECT pg_try_advisory_lock(hashtext('pikofilm:catalog-enrichment')) AS acquired`;
-  if (!lockRows[0]?.acquired) throw new Error('Commit bloqueado: ya hay otra inclusión en curso.');
+  if (!lockRows[0]?.acquired) throw new Error('Commit bloqueado: ya hay otra inclusión/actualización en curso.');
 
   try {
     const operations = [
@@ -298,7 +346,7 @@ async function persistCandidate(result) {
           fa_id=EXCLUDED.fa_id,fa_rating=EXCLUDED.fa_rating,fa_votes=EXCLUDED.fa_votes,fa_url=EXCLUDED.fa_url,
           tmdb_id=EXCLUDED.tmdb_id,tmdb_rating=EXCLUDED.tmdb_rating,tmdb_votes=EXCLUDED.tmdb_votes,tmdb_url=EXCLUDED.tmdb_url,
           wikidata_id=EXCLUDED.wikidata_id,source_status=EXCLUDED.source_status,source_generated_at=now(),synced_at=now(),
-          poster_path=EXCLUDED.poster_path,backdrop_path=EXCLUDED.backdrop_path,artwork_synced_at=now(),artwork_source='tmdb',inclusion_origin='plex_manual'
+          poster_path=EXCLUDED.poster_path,backdrop_path=EXCLUDED.backdrop_path,artwork_synced_at=now(),artwork_source='tmdb'
       `,
       sql`
         INSERT INTO movie_metadata (imdb_id,overview,original_language,release_date,metadata_enriched_at,metadata_source)
