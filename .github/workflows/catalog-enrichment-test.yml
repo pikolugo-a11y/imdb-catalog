@@ -41,7 +41,7 @@ jobs:
       - name: Preparar Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Instalar dependencias
         run: npm install --ignore-scripts
