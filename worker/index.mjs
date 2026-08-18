@@ -1,10 +1,8 @@
 import { neon } from '@neondatabase/serverless';
-import { createGunzip } from 'node:zlib';
-import { Readable } from 'node:stream';
-import readline from 'node:readline';
 
 const databaseUrl = process.env.DATABASE_URL;
 const tmdbToken = process.env.TMDB_API_TOKEN;
+const persistMode = process.env.PERSIST_MODE === 'commit' ? 'commit' : 'dry-run';
 
 if (!databaseUrl) throw new Error('Falta DATABASE_URL');
 if (!tmdbToken) throw new Error('Falta TMDB_API_TOKEN');
@@ -48,44 +46,16 @@ async function getImdbCandidate(imdbId) {
   return rows[0] || null;
 }
 
-async function resolveImdbRating(imdbId, cached) {
-  if (cached?.imdb_rating != null && cached?.imdb_votes != null) {
-    return {
-      found: true,
-      rating: Number(cached.imdb_rating),
-      votes: Number(cached.imdb_votes),
-      source: 'catalog_candidates'
-    };
+function resolveImdbRating(cached) {
+  if (cached?.imdb_rating == null || cached?.imdb_votes == null) {
+    return { found: false, rating: null, votes: null, source: 'cache-miss' };
   }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45000);
-  try {
-    const response = await fetch('https://datasets.imdbws.com/title.ratings.tsv.gz', {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'PikoFilm/1.0 personal-noncommercial' }
-    });
-    if (!response.ok || !response.body) throw new Error(`IMDb dataset HTTP ${response.status}`);
-
-    const input = Readable.fromWeb(response.body).pipe(createGunzip());
-    const lines = readline.createInterface({ input, crlfDelay: Infinity });
-    for await (const line of lines) {
-      if (!line.startsWith(`${imdbId}\t`)) continue;
-      const [, ratingRaw, votesRaw] = line.split('\t');
-      lines.close();
-      input.destroy();
-      controller.abort();
-      return {
-        found: true,
-        rating: Number(ratingRaw),
-        votes: Number(votesRaw),
-        source: 'title.ratings.tsv.gz'
-      };
-    }
-    return { found: false, rating: null, votes: null, source: 'title.ratings.tsv.gz' };
-  } finally {
-    clearTimeout(timer);
-  }
+  return {
+    found: true,
+    rating: Number(cached.imdb_rating),
+    votes: Number(cached.imdb_votes),
+    source: 'catalog_candidates'
+  };
 }
 
 async function resolveWikidata(imdbId) {
@@ -138,32 +108,36 @@ function parseFilmAffinityJsonLd(html) {
 }
 
 async function resolveFilmAffinity(faId) {
-  if (!faId) return { found: false, rating: null, votes: null, title: null, url: null };
+  if (!faId) return { found: false, rating: null, votes: null, title: null, url: null, parse_method: 'no-id' };
   const url = `https://www.filmaffinity.com/es/film${faId}.html`;
-  const html = await fetchText(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; PikoFilm/1.0; personal non-commercial)',
-      'Accept-Language': 'es-ES,es;q=0.9'
-    }
-  });
+  try {
+    const html = await fetchText(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; PikoFilm/1.0; personal non-commercial)',
+        'Accept-Language': 'es-ES,es;q=0.9'
+      }
+    });
 
-  const structured = parseFilmAffinityJsonLd(html);
-  if (structured) return { found: true, ...structured, url, parse_method: 'json-ld' };
+    const structured = parseFilmAffinityJsonLd(html);
+    if (structured) return { found: true, ...structured, url, parse_method: 'json-ld' };
 
-  const text = htmlToText(html);
-  const titleMatch = text.match(/(?:copiar la URL\s*)?([^|]{1,160}?)\s+(?:Ficha\s+Créditos|Ficha\s+Creditos)/i);
-  const scoreVoteMatch = text.match(/\b([0-9],[0-9])\s+([0-9][0-9\.]{0,12})\s+votos\b/i);
-  const rating = scoreVoteMatch ? Number(scoreVoteMatch[1].replace(',', '.')) : null;
-  const votes = scoreVoteMatch ? Number(scoreVoteMatch[2].replace(/\./g, '')) : null;
+    const text = htmlToText(html);
+    const titleMatch = text.match(/(?:copiar la URL\s*)?([^|]{1,160}?)\s+(?:Ficha\s+Créditos|Ficha\s+Creditos)/i);
+    const scoreVoteMatch = text.match(/\b([0-9],[0-9])\s+([0-9][0-9\.]{0,12})\s+votos\b/i);
+    const rating = scoreVoteMatch ? Number(scoreVoteMatch[1].replace(',', '.')) : null;
+    const votes = scoreVoteMatch ? Number(scoreVoteMatch[2].replace(/\./g, '')) : null;
 
-  return {
-    found: true,
-    rating: Number.isFinite(rating) ? rating : null,
-    votes: Number.isInteger(votes) ? votes : null,
-    title: titleMatch?.[1]?.trim() || null,
-    url,
-    parse_method: scoreVoteMatch ? 'visible-text' : 'not-found'
-  };
+    return {
+      found: true,
+      rating: Number.isFinite(rating) ? rating : null,
+      votes: Number.isInteger(votes) ? votes : null,
+      title: titleMatch?.[1]?.trim() || null,
+      url,
+      parse_method: scoreVoteMatch ? 'visible-text' : 'not-found'
+    };
+  } catch (error) {
+    return { found: false, rating: null, votes: null, title: null, url, parse_method: 'request-error', error: error.message };
+  }
 }
 
 async function resolveTmdb(imdbId) {
@@ -201,10 +175,10 @@ async function resolveTmdb(imdbId) {
       poster_path: details.belongs_to_collection.poster_path || null,
       backdrop_path: details.belongs_to_collection.backdrop_path || null
     } : null,
-    director: director ? { id: String(director.id), name: director.name, profile_path: director.profile_path || null } : null,
+    director: director ? { id: String(director.id), name: director.name, profile_path: director.profile_path || null, known_for_department: director.known_for_department || 'Directing' } : null,
     cast: (details.credits?.cast || []).slice(0, 15).map((c, index) => ({
       id: String(c.id), name: c.name, character: c.character || '', order: c.order ?? index,
-      profile_path: c.profile_path || null, known_for_department: c.known_for_department || null
+      profile_path: c.profile_path || null, known_for_department: c.known_for_department || 'Acting'
     }))
   };
 }
@@ -221,7 +195,7 @@ function computeCandidateScore(imdb, fa, tmdb) {
   return { score: Number(score.toFixed(2)), sources: weighted };
 }
 
-async function buildDryRun(imdbId) {
+async function buildCandidate(imdbId) {
   if (!/^tt\d+$/.test(imdbId)) throw new Error('IMDb ID inválido');
   const [plex, cachedImdb, wikidata, tmdb] = await Promise.all([
     getPlexSource(imdbId),
@@ -230,14 +204,12 @@ async function buildDryRun(imdbId) {
     resolveTmdb(imdbId)
   ]);
 
-  const [imdb, filmaffinity] = await Promise.all([
-    resolveImdbRating(imdbId, cachedImdb),
-    resolveFilmAffinity(wikidata?.filmaffinity_id)
-  ]);
+  const imdb = resolveImdbRating(cachedImdb);
+  const filmaffinity = await resolveFilmAffinity(wikidata?.filmaffinity_id);
   const pikoscore = computeCandidateScore(imdb, filmaffinity, tmdb);
 
   return {
-    dry_run: true,
+    mode: persistMode,
     imdb_id: imdbId,
     writes_to_catalog: 0,
     plex,
@@ -268,6 +240,7 @@ async function buildDryRun(imdbId) {
       backdrop_path: tmdb?.backdrop_path || null,
       overview: tmdb?.overview || null,
       original_language: tmdb?.original_language || null,
+      release_date: tmdb?.release_date || null,
       genres: tmdb?.genres || [],
       collection: tmdb?.collection || null,
       director: tmdb?.director || null,
@@ -275,20 +248,110 @@ async function buildDryRun(imdbId) {
     },
     source_status: {
       plex: true,
-      imdb_cache_hit: Boolean(cachedImdb?.imdb_rating != null),
+      imdb_cache_hit: Boolean(imdb?.found),
       imdb_rating_available: imdb?.rating != null,
       wikidata: Boolean(wikidata?.found),
       filmaffinity_id_found: Boolean(wikidata?.filmaffinity_id),
       filmaffinity_rating_fetched: filmaffinity?.rating != null,
+      filmaffinity_error: filmaffinity?.error || null,
       tmdb: Boolean(tmdb?.found)
     }
   };
 }
 
+async function persistCandidate(result) {
+  const c = result.candidate;
+  if (!result.source_status.imdb_rating_available) throw new Error('Commit bloqueado: falta rating/votos IMDb en caché. Ejecuta antes el refresco IMDb.');
+  if (!result.source_status.tmdb) throw new Error('Commit bloqueado: TMDb no encontró el título.');
+  if (!c.title_es || !c.year || !c.tmdb_id) throw new Error('Commit bloqueado: ficha mínima incompleta.');
+
+  const sourceStatus = JSON.stringify({
+    imdb: c.imdb_rating != null ? 'ok' : 'missing',
+    filmaffinity: c.fa_rating != null ? 'ok' : (c.fa_id ? 'partial' : 'missing'),
+    tmdb: 'ok',
+    wikidata: result.source_status.wikidata ? 'ok' : 'missing',
+    enriched_by: 'issue-14-worker',
+    enriched_at: new Date().toISOString()
+  });
+
+  const operations = [
+    sql`SELECT CASE WHEN pg_try_advisory_xact_lock(hashtext('pikofilm:catalog-enrichment')) THEN 1 ELSE (1/0) END AS lock_acquired`,
+    sql`
+      INSERT INTO movies (
+        imdb_id,type,title,title_es,original_title,year,runtime,country,origin,final_rating,
+        imdb_rating,imdb_votes,imdb_url,fa_id,fa_rating,fa_votes,fa_url,
+        tmdb_id,tmdb_rating,tmdb_votes,tmdb_url,wikidata_id,source_status,source_generated_at,
+        synced_at,poster_path,backdrop_path,artwork_synced_at,artwork_source,inclusion_origin
+      ) VALUES (
+        ${result.imdb_id},${c.type},${c.title_es},${c.title_es},${c.original_title},${c.year},${c.runtime},${c.country},'plex_manual',${c.final_rating_preview},
+        ${c.imdb_rating},${c.imdb_votes},${c.imdb_url},${c.fa_id},${c.fa_rating},${c.fa_votes},${c.fa_url},
+        ${c.tmdb_id},${c.tmdb_rating},${c.tmdb_votes},${c.tmdb_url},${c.wikidata_id},${sourceStatus}::jsonb,now(),
+        now(),${c.poster_path},${c.backdrop_path},now(),'tmdb','plex_manual'
+      )
+      ON CONFLICT (imdb_id) DO UPDATE SET
+        type=EXCLUDED.type,title=EXCLUDED.title,title_es=EXCLUDED.title_es,original_title=EXCLUDED.original_title,
+        year=EXCLUDED.year,runtime=EXCLUDED.runtime,country=EXCLUDED.country,final_rating=EXCLUDED.final_rating,
+        imdb_rating=EXCLUDED.imdb_rating,imdb_votes=EXCLUDED.imdb_votes,imdb_url=EXCLUDED.imdb_url,
+        fa_id=EXCLUDED.fa_id,fa_rating=EXCLUDED.fa_rating,fa_votes=EXCLUDED.fa_votes,fa_url=EXCLUDED.fa_url,
+        tmdb_id=EXCLUDED.tmdb_id,tmdb_rating=EXCLUDED.tmdb_rating,tmdb_votes=EXCLUDED.tmdb_votes,tmdb_url=EXCLUDED.tmdb_url,
+        wikidata_id=EXCLUDED.wikidata_id,source_status=EXCLUDED.source_status,source_generated_at=now(),synced_at=now(),
+        poster_path=EXCLUDED.poster_path,backdrop_path=EXCLUDED.backdrop_path,artwork_synced_at=now(),artwork_source='tmdb'
+    `,
+    sql`
+      INSERT INTO movie_metadata (imdb_id,overview,original_language,release_date,metadata_enriched_at,metadata_source)
+      VALUES (${result.imdb_id},${c.overview},${c.original_language},${c.release_date || null},now(),'tmdb')
+      ON CONFLICT (imdb_id) DO UPDATE SET overview=EXCLUDED.overview,original_language=EXCLUDED.original_language,
+        release_date=EXCLUDED.release_date,metadata_enriched_at=now(),metadata_source='tmdb'
+    `,
+    sql`DELETE FROM movie_genres WHERE imdb_id=${result.imdb_id}`,
+    sql`DELETE FROM movie_credits WHERE imdb_id=${result.imdb_id}`,
+    sql`DELETE FROM movie_collections WHERE imdb_id=${result.imdb_id}`
+  ];
+
+  for (const genre of c.genres || []) {
+    operations.push(sql`INSERT INTO movie_genres (imdb_id,genre) VALUES (${result.imdb_id},${genre}) ON CONFLICT DO NOTHING`);
+  }
+
+  const people = [];
+  if (c.director) people.push({ ...c.director, credit_type: 'crew', character: '', job: 'Director', order: 0 });
+  for (const actor of c.cast || []) people.push({ ...actor, credit_type: 'cast', job: '', character: actor.character || '', order: actor.order ?? 0 });
+
+  for (const person of people) {
+    operations.push(sql`
+      INSERT INTO people (tmdb_person_id,name,profile_path,known_for_department,updated_at)
+      VALUES (${person.id},${person.name},${person.profile_path || null},${person.known_for_department || null},now())
+      ON CONFLICT (tmdb_person_id) DO UPDATE SET name=EXCLUDED.name,profile_path=COALESCE(EXCLUDED.profile_path,people.profile_path),
+        known_for_department=COALESCE(EXCLUDED.known_for_department,people.known_for_department),updated_at=now()
+    `);
+    operations.push(sql`
+      INSERT INTO movie_credits (imdb_id,tmdb_person_id,credit_type,character_name,job,credit_order)
+      VALUES (${result.imdb_id},${person.id},${person.credit_type},${person.character || ''},${person.job || ''},${person.order})
+      ON CONFLICT (imdb_id,tmdb_person_id,credit_type,job,character_name) DO UPDATE SET credit_order=EXCLUDED.credit_order
+    `);
+  }
+
+  if (c.collection?.id) {
+    operations.push(sql`
+      INSERT INTO movie_collections (imdb_id,tmdb_collection_id,collection_name,collection_poster_path,collection_backdrop_path,updated_at)
+      VALUES (${result.imdb_id},${c.collection.id},${c.collection.name},${c.collection.poster_path},${c.collection.backdrop_path},now())
+      ON CONFLICT (imdb_id) DO UPDATE SET tmdb_collection_id=EXCLUDED.tmdb_collection_id,collection_name=EXCLUDED.collection_name,
+        collection_poster_path=EXCLUDED.collection_poster_path,collection_backdrop_path=EXCLUDED.collection_backdrop_path,updated_at=now()
+    `);
+  }
+
+  await sql.transaction(operations);
+  return { ...result, writes_to_catalog: 1, committed: true };
+}
+
 async function main() {
   const imdbId = process.env.TEST_IMDB_ID;
   if (!imdbId) throw new Error('Falta TEST_IMDB_ID');
-  const result = await buildDryRun(imdbId);
+  let result = await buildCandidate(imdbId);
+  if (persistMode === 'commit') {
+    const confirmation = process.env.CONFIRM_IMDB_ID;
+    if (confirmation !== imdbId) throw new Error('Commit bloqueado: CONFIRM_IMDB_ID debe coincidir exactamente con TEST_IMDB_ID');
+    result = await persistCandidate(result);
+  }
   console.log(JSON.stringify(result, null, 2));
 }
 
