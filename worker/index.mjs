@@ -274,85 +274,86 @@ async function persistCandidate(result) {
     enriched_at: new Date().toISOString()
   });
 
-  const operations = [
-    sql`SELECT CASE WHEN pg_try_advisory_xact_lock(hashtext('pikofilm:catalog-enrichment')) THEN 1 ELSE (1/0) END AS lock_acquired`,
-    sql`
-      INSERT INTO movies (
-        imdb_id,type,title,title_es,original_title,year,runtime,country,origin,final_rating,
-        imdb_rating,imdb_votes,imdb_url,fa_id,fa_rating,fa_votes,fa_url,
-        tmdb_id,tmdb_rating,tmdb_votes,tmdb_url,wikidata_id,source_status,source_generated_at,
-        synced_at,poster_path,backdrop_path,artwork_synced_at,artwork_source,inclusion_origin
-      ) VALUES (
-        ${result.imdb_id},${c.type},${c.title_es},${c.title_es},${c.original_title},${c.year},${c.runtime},${c.country},'plex_manual',${c.final_rating_preview},
-        ${c.imdb_rating},${c.imdb_votes},${c.imdb_url},${c.fa_id},${c.fa_rating},${c.fa_votes},${c.fa_url},
-        ${c.tmdb_id},${c.tmdb_rating},${c.tmdb_votes},${c.tmdb_url},${c.wikidata_id},${sourceStatus}::jsonb,now(),
-        now(),${c.poster_path},${c.backdrop_path},now(),'tmdb','plex_manual'
-      )
-      ON CONFLICT (imdb_id) DO UPDATE SET
-        type=EXCLUDED.type,title=EXCLUDED.title,title_es=EXCLUDED.title_es,original_title=EXCLUDED.original_title,
-        year=EXCLUDED.year,runtime=EXCLUDED.runtime,country=EXCLUDED.country,final_rating=EXCLUDED.final_rating,
-        imdb_rating=EXCLUDED.imdb_rating,imdb_votes=EXCLUDED.imdb_votes,imdb_url=EXCLUDED.imdb_url,
-        fa_id=EXCLUDED.fa_id,fa_rating=EXCLUDED.fa_rating,fa_votes=EXCLUDED.fa_votes,fa_url=EXCLUDED.fa_url,
-        tmdb_id=EXCLUDED.tmdb_id,tmdb_rating=EXCLUDED.tmdb_rating,tmdb_votes=EXCLUDED.tmdb_votes,tmdb_url=EXCLUDED.tmdb_url,
-        wikidata_id=EXCLUDED.wikidata_id,source_status=EXCLUDED.source_status,source_generated_at=now(),synced_at=now(),
-        poster_path=EXCLUDED.poster_path,backdrop_path=EXCLUDED.backdrop_path,artwork_synced_at=now(),artwork_source='tmdb'
-    `,
-    sql`
-      INSERT INTO movie_metadata (imdb_id,overview,original_language,release_date,metadata_enriched_at,metadata_source)
-      VALUES (${result.imdb_id},${c.overview},${c.original_language},${c.release_date || null},now(),'tmdb')
-      ON CONFLICT (imdb_id) DO UPDATE SET overview=EXCLUDED.overview,original_language=EXCLUDED.original_language,
-        release_date=EXCLUDED.release_date,metadata_enriched_at=now(),metadata_source='tmdb'
-    `,
-    sql`DELETE FROM movie_genres WHERE imdb_id=${result.imdb_id}`,
-    sql`DELETE FROM movie_credits WHERE imdb_id=${result.imdb_id}`,
-    sql`DELETE FROM movie_collections WHERE imdb_id=${result.imdb_id}`
-  ];
+  const lockRows = await sql`SELECT pg_try_advisory_lock(hashtext('pikofilm:catalog-enrichment')) AS acquired`;
+  if (!lockRows[0]?.acquired) throw new Error('Commit bloqueado: ya hay otra inclusión en curso.');
 
-  for (const genre of c.genres || []) {
-    operations.push(sql`INSERT INTO movie_genres (imdb_id,genre) VALUES (${result.imdb_id},${genre}) ON CONFLICT DO NOTHING`);
-  }
+  try {
+    const operations = [
+      sql`
+        INSERT INTO movies (
+          imdb_id,type,title,title_es,original_title,year,runtime,country,origin,final_rating,
+          imdb_rating,imdb_votes,imdb_url,fa_id,fa_rating,fa_votes,fa_url,
+          tmdb_id,tmdb_rating,tmdb_votes,tmdb_url,wikidata_id,source_status,source_generated_at,
+          synced_at,poster_path,backdrop_path,artwork_synced_at,artwork_source,inclusion_origin
+        ) VALUES (
+          ${result.imdb_id},${c.type},${c.title_es},${c.title_es},${c.original_title},${c.year},${c.runtime},${c.country},'plex_manual',${c.final_rating_preview},
+          ${c.imdb_rating},${c.imdb_votes},${c.imdb_url},${c.fa_id},${c.fa_rating},${c.fa_votes},${c.fa_url},
+          ${c.tmdb_id},${c.tmdb_rating},${c.tmdb_votes},${c.tmdb_url},${c.wikidata_id},${sourceStatus}::jsonb,now(),
+          now(),${c.poster_path},${c.backdrop_path},now(),'tmdb','plex_manual'
+        )
+        ON CONFLICT (imdb_id) DO UPDATE SET
+          type=EXCLUDED.type,title=EXCLUDED.title,title_es=EXCLUDED.title_es,original_title=EXCLUDED.original_title,
+          year=EXCLUDED.year,runtime=EXCLUDED.runtime,country=EXCLUDED.country,final_rating=EXCLUDED.final_rating,
+          imdb_rating=EXCLUDED.imdb_rating,imdb_votes=EXCLUDED.imdb_votes,imdb_url=EXCLUDED.imdb_url,
+          fa_id=EXCLUDED.fa_id,fa_rating=EXCLUDED.fa_rating,fa_votes=EXCLUDED.fa_votes,fa_url=EXCLUDED.fa_url,
+          tmdb_id=EXCLUDED.tmdb_id,tmdb_rating=EXCLUDED.tmdb_rating,tmdb_votes=EXCLUDED.tmdb_votes,tmdb_url=EXCLUDED.tmdb_url,
+          wikidata_id=EXCLUDED.wikidata_id,source_status=EXCLUDED.source_status,source_generated_at=now(),synced_at=now(),
+          poster_path=EXCLUDED.poster_path,backdrop_path=EXCLUDED.backdrop_path,artwork_synced_at=now(),artwork_source='tmdb',inclusion_origin='plex_manual'
+      `,
+      sql`
+        INSERT INTO movie_metadata (imdb_id,overview,original_language,release_date,metadata_enriched_at,metadata_source)
+        VALUES (${result.imdb_id},${c.overview},${c.original_language},${c.release_date || null},now(),'tmdb')
+        ON CONFLICT (imdb_id) DO UPDATE SET overview=EXCLUDED.overview,original_language=EXCLUDED.original_language,
+          release_date=EXCLUDED.release_date,metadata_enriched_at=now(),metadata_source='tmdb'
+      `,
+      sql`DELETE FROM movie_genres WHERE imdb_id=${result.imdb_id}`,
+      ...c.genres.map(genre => sql`INSERT INTO movie_genres (imdb_id,genre) VALUES (${result.imdb_id},${genre}) ON CONFLICT DO NOTHING`),
+      sql`DELETE FROM movie_credits WHERE imdb_id=${result.imdb_id}`
+    ];
 
-  const people = [];
-  if (c.director) people.push({ ...c.director, credit_type: 'crew', character: '', job: 'Director', order: 0 });
-  for (const actor of c.cast || []) people.push({ ...actor, credit_type: 'cast', job: '', character: actor.character || '', order: actor.order ?? 0 });
+    const people = [];
+    if (c.director) people.push(c.director);
+    for (const person of c.cast) people.push(person);
 
-  for (const person of people) {
-    operations.push(sql`
-      INSERT INTO people (tmdb_person_id,name,profile_path,known_for_department,updated_at)
-      VALUES (${person.id},${person.name},${person.profile_path || null},${person.known_for_department || null},now())
-      ON CONFLICT (tmdb_person_id) DO UPDATE SET name=EXCLUDED.name,profile_path=COALESCE(EXCLUDED.profile_path,people.profile_path),
-        known_for_department=COALESCE(EXCLUDED.known_for_department,people.known_for_department),updated_at=now()
-    `);
-    operations.push(sql`
+    for (const person of people) {
+      operations.push(sql`
+        INSERT INTO people (tmdb_person_id,name,profile_path,known_for_department,updated_at)
+        VALUES (${person.id},${person.name},${person.profile_path || null},${person.known_for_department || null},now())
+        ON CONFLICT (tmdb_person_id) DO UPDATE SET name=EXCLUDED.name,profile_path=EXCLUDED.profile_path,
+          known_for_department=COALESCE(EXCLUDED.known_for_department,people.known_for_department),updated_at=now()
+      `);
+    }
+
+    if (c.director) operations.push(sql`
       INSERT INTO movie_credits (imdb_id,tmdb_person_id,credit_type,character_name,job,credit_order)
-      VALUES (${result.imdb_id},${person.id},${person.credit_type},${person.character || ''},${person.job || ''},${person.order})
-      ON CONFLICT (imdb_id,tmdb_person_id,credit_type,job,character_name) DO UPDATE SET credit_order=EXCLUDED.credit_order
+      VALUES (${result.imdb_id},${c.director.id},'crew','','Director',NULL) ON CONFLICT DO NOTHING
     `);
-  }
+    for (const actor of c.cast) operations.push(sql`
+      INSERT INTO movie_credits (imdb_id,tmdb_person_id,credit_type,character_name,job,credit_order)
+      VALUES (${result.imdb_id},${actor.id},'cast',${actor.character || ''},'',${actor.order}) ON CONFLICT DO NOTHING
+    `);
 
-  if (c.collection?.id) {
-    operations.push(sql`
+    operations.push(sql`DELETE FROM movie_collections WHERE imdb_id=${result.imdb_id}`);
+    if (c.collection) operations.push(sql`
       INSERT INTO movie_collections (imdb_id,tmdb_collection_id,collection_name,collection_poster_path,collection_backdrop_path,updated_at)
       VALUES (${result.imdb_id},${c.collection.id},${c.collection.name},${c.collection.poster_path},${c.collection.backdrop_path},now())
       ON CONFLICT (imdb_id) DO UPDATE SET tmdb_collection_id=EXCLUDED.tmdb_collection_id,collection_name=EXCLUDED.collection_name,
         collection_poster_path=EXCLUDED.collection_poster_path,collection_backdrop_path=EXCLUDED.collection_backdrop_path,updated_at=now()
     `);
-  }
 
-  await sql.transaction(operations);
-  return { ...result, writes_to_catalog: 1, committed: true };
+    await sql.transaction(operations);
+    return { ...result, writes_to_catalog: 1, committed: true };
+  } finally {
+    await sql`SELECT pg_advisory_unlock(hashtext('pikofilm:catalog-enrichment'))`;
+  }
 }
 
 async function main() {
   const imdbId = process.env.TEST_IMDB_ID;
   if (!imdbId) throw new Error('Falta TEST_IMDB_ID');
-  let result = await buildCandidate(imdbId);
-  if (persistMode === 'commit') {
-    const confirmation = process.env.CONFIRM_IMDB_ID;
-    if (confirmation !== imdbId) throw new Error('Commit bloqueado: CONFIRM_IMDB_ID debe coincidir exactamente con TEST_IMDB_ID');
-    result = await persistCandidate(result);
-  }
-  console.log(JSON.stringify(result, null, 2));
+  const result = await buildCandidate(imdbId);
+  const output = persistMode === 'commit' ? await persistCandidate(result) : result;
+  console.log(JSON.stringify(output, null, 2));
 }
 
 main().catch(error => {
