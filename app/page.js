@@ -1,23 +1,2 @@
-import Kpi from '@/components/Kpi';
-import { getDashboard } from '@/lib/queries';
-
-export const dynamic = 'force-dynamic';
-
-export default async function Home() {
-  const d = await getDashboard();
-  return <>
-    <div className="hero"><div><div className="eyebrow">Centro de control</div><h1>Tu biblioteca, bajo control.</h1><p>PikoFilm prioriza qué merece entrar en Plex, cruza el catálogo seleccionado con tu biblioteca real y señala lo que necesita revisión.</p></div></div>
-    <div className="grid">
-      <Kpi label="Catálogo seleccionado" value={d.catalog_total} note="películas y series candidatas" href="/catalogo"/>
-      <Kpi label="Ya en Plex" value={d.catalog_in_plex} note="cruces confirmados" href="/catalogo"/>
-      <Kpi label="Faltan en Plex" value={d.catalog_missing} note="universo seleccionable" href="/catalogo"/>
-      <Kpi label="En proceso" value={d.catalog_acquiring} note="marcadas para conseguir" href="/catalogo"/>
-      <Kpi label="Revisión películas" value={d.movie_review_pending} note="incidencias pendientes" href="/calidad/peliculas"/>
-      <Kpi label="Series con incidencias" value={d.series_with_issues} note="diagnóstico por episodio" href="/calidad/series"/>
-      <Kpi label="Episodios que faltan en ES" value={d.missing_episodes_actionable} note="faltantes accionables confirmados" href="/calidad/series"/>
-      <Kpi label="Disponibilidad ES desconocida" value={d.missing_episodes_unknown} note="no se consideran error todavía" href="/calidad/series"/>
-      <Kpi label="Plex fuera del catálogo" value={d.plex_not_in_catalog} note="requieren contexto o cruce" href="/plex"/>
-    </div>
-    <section className="section"><div className="section-head"><h2>Flujo de trabajo</h2><p>La web está orientada a decisiones, no al consumo de vídeo.</p></div><div className="cards"><div className="card"><h3>1 · Seleccionar</h3><p>Explora el catálogo curado y encuentra qué títulos merecen incorporarse.</p></div><div className="card"><h3>2 · Correlacionar</h3><p>Comprueba inmediatamente si cada título ya existe en Plex o está en proceso.</p></div><div className="card"><h3>3 · Auditar</h3><p>Ataca identificaciones dudosas, calidad de ficheros y huecos reales de películas o episodios.</p></div></div></section>
-  </>;
-}
+import Link from 'next/link';import Kpi from '@/components/Kpi';import {getDashboard} from '@/lib/queries';export const dynamic='force-dynamic';
+export default async function Home(){const d=await getDashboard(),pct=d.catalog_total?Math.round(d.catalog_in_plex/d.catalog_total*100):0,max=Math.max(...d.decades.map(x=>x.total),1);return <><div className="hero dashboard-hero"><div><div className="eyebrow">Centro de datos</div><h1>PikoFilm Dashboard</h1><p>Una vista viva de tu catálogo, tu Plex y lo que queda por completar.</p></div><div className="coverage-ring" style={{'--pct':pct}}><b>{pct}%</b><span>en Plex</span></div></div><div className="grid dashboard-kpis"><Kpi label="Catálogo activo" value={d.catalog_total} note="películas y series" href="/catalogo"/><Kpi label="Ya en Plex" value={d.catalog_in_plex} note={`${pct}% de cobertura`} href="/catalogo?status=in_plex"/><Kpi label="Faltan" value={d.catalog_missing} note="candidatas a incorporar" href="/catalogo?status=missing"/><Kpi label="En proceso" value={d.catalog_acquiring} note="marcadas para conseguir" href="/catalogo?status=acquiring"/><Kpi label="Excluidas" value={d.catalog_excluded} note="fuera de estadísticas activas" href="/catalogo/excluidas"/><Kpi label="Revisión películas" value={d.movie_review_pending} note="incidencias pendientes" href="/calidad/peliculas"/></div><section className="dashboard-panel"><div className="section-head"><div><div className="eyebrow">Cobertura histórica</div><h2>Catálogo por décadas</h2></div><Link href="/catalogo">Explorar catálogo →</Link></div><div className="decade-chart">{d.decades.map(x=>{const h=Math.max(8,Math.round(x.total/max*100)),covered=x.total?Math.round(x.in_plex/x.total*100):0;return <Link key={x.decade} href={`/catalogo?year=${x.decade}`} title={`${x.decade}s · ${x.total} títulos · ${covered}% en Plex`}><div className="bar" style={{height:`${h}%`}}><i style={{height:`${covered}%`}}/></div><b>{String(x.decade).slice(2)}s</b><small>{covered}%</small></Link>})}</div><p className="footnote">Cada barra se recalcula desde Neon. Pulsa una década para abrir el detalle en Catálogo.</p></section><section className="dashboard-row"><Link className="insight-card" href="/calidad/series?state=actionable"><b>{d.missing_episodes_actionable}</b><span>Episodios que faltan en España</span></Link><Link className="insight-card" href="/calidad/series?state=unknown"><b>{d.missing_episodes_unknown}</b><span>Disponibilidad ES por confirmar</span></Link><Link className="insight-card" href="/plex"><b>{d.plex_not_in_catalog}</b><span>Plex fuera del catálogo</span></Link></section></>}
