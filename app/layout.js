@@ -1,0 +1,11 @@
+import './globals.css';
+import Nav from '@/components/Nav';
+
+export const metadata = {
+  title: 'PikoFilm',
+  description: 'Selección, cruce y control de calidad de Plex'
+};
+
+export default function RootLayout({ children }) {
+  return <html lang="es"><body><Nav/><main>{children}</main></body></html>;
+}
