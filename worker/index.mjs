@@ -8,16 +8,20 @@ if (!tmdbToken) throw new Error('Falta TMDB_API_TOKEN');
 
 const sql = neon(databaseUrl);
 
-async function fetchJson(url, options = {}) {
+async function fetchText(url, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
     if (!response.ok) throw new Error(`HTTP ${response.status} en ${new URL(url).hostname}`);
-    return await response.json();
+    return await response.text();
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function fetchJson(url, options = {}) {
+  return JSON.parse(await fetchText(url, options));
 }
 
 async function getPlexSource(imdbId) {
@@ -56,6 +60,44 @@ async function resolveWikidata(imdbId) {
     wikidata_item: binding.item?.value?.split('/').pop() || null,
     filmaffinity_id: binding.fa?.value || null
   } : { found: false, wikidata_item: null, filmaffinity_id: null };
+}
+
+function htmlToText(html) {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function resolveFilmAffinity(faId) {
+  if (!faId) return { found: false, rating: null, votes: null, title: null, url: null };
+  const url = `https://www.filmaffinity.com/es/film${faId}.html`;
+  const html = await fetchText(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 PikoFilm/1.0 personal-noncommercial',
+      'Accept-Language': 'es-ES,es;q=0.9'
+    }
+  });
+  const text = htmlToText(html);
+
+  const titleMatch = text.match(/(?:copiar la URL\s*)?([^|]{1,160}?)\s+(?:Ficha\s+Créditos|Ficha\s+Creditos)/i);
+  const scoreVoteMatch = text.match(/\b([0-9],[0-9])\s+([0-9][0-9\.]{0,12})\s+votos\b/i);
+  const rating = scoreVoteMatch ? Number(scoreVoteMatch[1].replace(',', '.')) : null;
+  const votes = scoreVoteMatch ? Number(scoreVoteMatch[2].replace(/\./g, '')) : null;
+
+  return {
+    found: true,
+    rating: Number.isFinite(rating) ? rating : null,
+    votes: Number.isInteger(votes) ? votes : null,
+    title: titleMatch?.[1]?.trim() || null,
+    url
+  };
 }
 
 async function resolveTmdb(imdbId) {
@@ -101,12 +143,16 @@ async function resolveTmdb(imdbId) {
   };
 }
 
-function computeCandidateScore(imdb, tmdb) {
+function computeCandidateScore(imdb, fa, tmdb) {
   const parts = [];
-  if (imdb?.imdb_rating != null && imdb?.imdb_votes > 0) parts.push({ rating: Number(imdb.imdb_rating), weight: Math.log10(Number(imdb.imdb_votes) + 10) });
-  if (tmdb?.vote_average != null && tmdb?.vote_count > 0) parts.push({ rating: Number(tmdb.vote_average), weight: Math.log10(Number(tmdb.vote_count) + 10) });
-  if (!parts.length) return null;
-  return Number((parts.reduce((s, p) => s + p.rating * p.weight, 0) / parts.reduce((s, p) => s + p.weight, 0)).toFixed(2));
+  if (imdb?.imdb_rating != null && imdb?.imdb_votes > 0) parts.push({ source: 'IMDb', rating: Number(imdb.imdb_rating), votes: Number(imdb.imdb_votes) });
+  if (fa?.rating != null && fa?.votes > 0) parts.push({ source: 'FilmAffinity', rating: Number(fa.rating), votes: Number(fa.votes) });
+  if (tmdb?.vote_average != null && tmdb?.vote_count > 0) parts.push({ source: 'TMDb', rating: Number(tmdb.vote_average), votes: Number(tmdb.vote_count) });
+  if (!parts.length) return { score: null, sources: [] };
+
+  const weighted = parts.map(p => ({ ...p, weight: Math.log10(p.votes + 10) }));
+  const score = weighted.reduce((s, p) => s + p.rating * p.weight, 0) / weighted.reduce((s, p) => s + p.weight, 0);
+  return { score: Number(score.toFixed(2)), sources: weighted };
 }
 
 async function buildDryRun(imdbId) {
@@ -118,6 +164,9 @@ async function buildDryRun(imdbId) {
     resolveTmdb(imdbId)
   ]);
 
+  const filmaffinity = await resolveFilmAffinity(wikidata?.filmaffinity_id);
+  const pikoscore = computeCandidateScore(imdb, filmaffinity, tmdb);
+
   return {
     dry_run: true,
     imdb_id: imdbId,
@@ -125,7 +174,7 @@ async function buildDryRun(imdbId) {
     plex,
     candidate: {
       type: tmdb?.media_type === 'tv' ? 'Serie' : 'Película',
-      title_es: tmdb?.title_es || plex.plex_title,
+      title_es: filmaffinity?.title || tmdb?.title_es || plex.plex_title,
       original_title: tmdb?.original_title || null,
       year: tmdb?.year || imdb?.year || plex.plex_year || null,
       runtime: tmdb?.runtime || null,
@@ -134,13 +183,16 @@ async function buildDryRun(imdbId) {
       imdb_votes: imdb?.imdb_votes ?? null,
       imdb_url: `https://www.imdb.com/title/${imdbId}/`,
       fa_id: wikidata?.filmaffinity_id || null,
-      fa_url: wikidata?.filmaffinity_id ? `https://www.filmaffinity.com/es/film${wikidata.filmaffinity_id}.html` : null,
+      fa_rating: filmaffinity?.rating ?? null,
+      fa_votes: filmaffinity?.votes ?? null,
+      fa_url: filmaffinity?.url || null,
       tmdb_id: tmdb?.id || null,
       tmdb_rating: tmdb?.vote_average ?? null,
       tmdb_votes: tmdb?.vote_count ?? null,
       tmdb_url: tmdb?.id ? `https://www.themoviedb.org/${tmdb.media_type}/${tmdb.id}` : null,
       wikidata_id: wikidata?.wikidata_item || null,
-      final_rating_preview: computeCandidateScore(imdb, tmdb),
+      final_rating_preview: pikoscore.score,
+      score_sources: pikoscore.sources,
       poster_path: tmdb?.poster_path || null,
       backdrop_path: tmdb?.backdrop_path || null,
       overview: tmdb?.overview || null,
@@ -153,10 +205,11 @@ async function buildDryRun(imdbId) {
     source_status: {
       plex: true,
       imdb_candidate: Boolean(imdb),
+      imdb_rating_available: imdb?.imdb_rating != null,
       wikidata: Boolean(wikidata?.found),
       filmaffinity_id_found: Boolean(wikidata?.filmaffinity_id),
-      tmdb: Boolean(tmdb?.found),
-      filmaffinity_rating_fetched: false
+      filmaffinity_rating_fetched: filmaffinity?.rating != null,
+      tmdb: Boolean(tmdb?.found)
     }
   };
 }
