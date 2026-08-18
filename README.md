@@ -2,46 +2,38 @@
 
 Centro de selección, correlación y control de calidad para una biblioteca Plex.
 
-## Objetivos prioritarios
+## Objetivos
 
 1. Mantener un catálogo curado de películas y series seleccionables para incorporar a Plex.
-2. Correlacionar ese catálogo con el contenido real de Plex.
-3. Auditar la calidad de Plex y detectar errores de identificación, títulos faltantes y problemas de integridad.
+2. Correlacionar el catálogo deseado con la biblioteca Plex real.
+3. Auditar Plex: identificaciones, ficheros, películas/sagas faltantes y series episodio a episodio.
 
-## Películas y series
-
-Los dos dominios comparten catálogo y cruce con Plex, pero tienen motores de diagnóstico diferentes.
-
-- **Películas:** identificación, presencia, duplicados, calidad/resolución, colecciones y títulos faltantes.
-- **Series:** serie → temporada → episodio, episodios presentes/faltantes, identificación, numeración, duración y disponibilidad efectiva en España.
-
-Una serie puede estar incompleta globalmente y, a la vez, estar completamente al día respecto a los episodios disponibles en España.
+Películas y series comparten catálogo y cruce Plex, pero **no comparten motor de diagnóstico**. En series, un episodio técnicamente ausente solo pasa a ser faltante real cuando existe evidencia de disponibilidad en España.
 
 ## V1
 
-Navegación principal prevista:
-
-- Inicio
-- Catálogo
-- Plex
-- Calidad
-  - Películas
-  - Series
-- Sagas
-
-Estados operativos del catálogo: `Falta`, `En proceso`, `En Plex`.
+- Inicio / centro de control
+- Catálogo con filtros, ficha y estado `Falta / En proceso / En Plex`
+- Plex: inventario y elementos fuera de catálogo
+- Calidad de películas: cola de revisión resoluble
+- Calidad de series: temporada/episodio y disponibilidad efectiva ES
+- Sagas: completitud y detalle título a título
+- Administración: historial de procesos y sincronizaciones
 
 ## Seguridad operativa
 
-- Sin GitHub Actions en V1.
-- Sin workflows automáticos.
-- Sin conexión automática GitHub → Vercel durante el desarrollo.
-- Los despliegues de Vercel serán manuales y agrupados.
-- Neon es la fuente de verdad de datos; GitHub contiene código, no el catálogo masivo.
-- La V1 observa, correlaciona y diagnostica Plex; no modifica automáticamente la biblioteca.
+GitHub contiene código, no el catálogo masivo. Neon es la fuente de verdad. Vercel sirve la aplicación.
+
+Actions permitidos en V1:
+- CI de PR: build, solo lectura, timeout 10 min y concurrencia cancelable.
+- Mantenimiento manual: `workflow_dispatch`, solo lectura, timeout 5 min y máximo 10 elementos.
+
+No hay cron, no hay workflows que hagan commits, no hay reintentos infinitos y no se usa Actions como motor de procesamiento masivo. `vercel.json` mantiene `git.deploymentEnabled=false`, por lo que los commits no provocan deployments automáticos.
+
+Los despliegues se hacen manualmente y agrupados. Los procesos pesados futuros deberán ser explícitos, limitados, auditables y separados del ciclo Git → Vercel.
 
 ## Arquitectura
 
-`Neon PostgreSQL → API PikoFilm → Web PikoFilm`
+`Web PikoFilm / Vercel → Neon PostgreSQL`
 
-La vista `catalog_read_model` será el punto de partida del catálogo de lectura. Las funciones específicas de diagnóstico utilizarán las tablas especializadas de Plex y series.
+Los procesos pesados futuros podrán consumir trabajos registrados en Neon, sin generar commits ni deployments.
