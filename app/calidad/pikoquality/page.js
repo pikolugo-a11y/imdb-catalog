@@ -22,6 +22,7 @@ export default async function Page(){
   const completedB=completedA&&s.pending_b===0&&s.errors===0;
   const completedAgg=completedB&&!s.aggregatePending;
   const distribution=[['excellent',styles.excellent,'85–100'],['very_good',styles.verygood,'75–84'],['correct',styles.correct,'60–74'],['improvable',styles.improvable,'40–59'],['deficient',styles.deficient,'< 40']];
+  const runnerState={recommendation:s.recommendation,progressA:s.progressA,progressB:s.progressB,pending_a:s.pending_a,pending_b:s.pending_b,errors:s.errors,total:s.total,evaluated:s.evaluated,enriched:s.enriched};
   return <div className={styles.page}>
     <div className={styles.topline}>
       <div className={styles.titleWrap}><div className={styles.logo}>☆</div><div><h1>PikoQuality <span className={styles.version}>v{QUALITY_VERSION}</span></h1><p className={styles.subtitle}>Evaluación de calidad técnica de películas y episodios con datos reales de Plex.</p></div></div>
@@ -30,7 +31,7 @@ export default async function Page(){
 
     <section className={styles.hero}>
       <div className={styles.heroStatus}><div className={styles.ring} style={{'--p':`${Math.max(1,progress)}%`}}><strong>{progress}%</strong></div><div><span className={styles.muted}>Estado actual</span><h2>{phaseTitle[phase]}</h2><p>{nf(s.evaluated)} / {nf(s.total)} elementos con score A válido</p><p>Películas: {nf(s.movies)} · Episodios: {nf(s.episodes)}</p></div></div>
-      <div className={styles.recommended}><PikoQualityRunner initial={s}/></div>
+      <div className={styles.recommended}><PikoQualityRunner initial={runnerState}/></div>
       <div className={styles.infoBox}><h3>¿Qué hace?</h3><ul><li><b>A:</b> calcula el score base desde Neon, sin llamar a Plex.</li><li><b>B:</b> obtiene streams detallados solo para pendientes.</li><li><b>Series:</b> agrega episodios en temporada y serie.</li><li><b>Después:</b> los cambios de fingerprint vuelven a aparecer automáticamente como pendientes.</li></ul></div>
     </section>
 
