@@ -24,6 +24,10 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Validar workers
+        run: |
+          node --check worker/imdb-discovery.mjs
+          node --check worker/update-imdb-ratings.mjs
       - name: Build
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder

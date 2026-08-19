@@ -1,292 +1,234 @@
 # PikoFilm V2 — Documento técnico
 
-**Estado:** baseline técnico de la versión estable · 19/08/2026  
+**Estado:** baseline técnica viva ampliada con Novedades V1 · 19/08/2026  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`
 
+> Regla de mantenimiento: esta especificación técnica y la funcional deben actualizarse antes de cada fusión/despliegue que cambie comportamiento, arquitectura, fuentes de verdad o flujos operativos.
+
 ## 1. Arquitectura general
-PikoFilm V2 es una aplicación web Next.js desplegada en Vercel, con PostgreSQL gestionado en Neon como almacenamiento operativo. El frontend usa App Router y Server Components/Server Actions; la lógica de dominio reside principalmente en `lib/`. Las integraciones externas principales son Plex y TMDb, junto con el pipeline de enriquecimiento de IMDb/FilmAffinity y fuentes auxiliares.
+PikoFilm es una aplicación Next.js desplegada en Vercel con PostgreSQL en Neon. Usa App Router, Server Components y Server Actions. La lógica de dominio reside principalmente en `lib/`; los trabajos batch largos se ejecutan con GitHub Actions/workers para evitar depender de timeouts HTTP.
 
-Arquitectura lógica:
-
-`Browser → Next.js/Vercel → servicios lib/* → Neon PostgreSQL`
+Flujo principal:
+`Browser → Next.js/Vercel → lib/* → Neon PostgreSQL`
 
 Integraciones:
+- `Plex → plex-sync → plex_* → read models/diagnósticos`
+- `IMDb/FA/TMDb/Wikidata → enrich-title → catálogo/identidad/sagas`
+- `TMDb TV → series-v2 → referencia de episodios + disponibilidad ES`
+- `IMDb datasets → imdb-discovery worker → catalog_candidates → Novedades`
+- `IMDb title.ratings.tsv.gz → helper on-demand → enriquecimiento individual cuando falta rating local`
 
-`Plex → plex-sync → tablas Plex → read models/diagnósticos`
+La regla arquitectónica es separar datos fuente, estado editorial, staging/candidatos y datos derivados.
 
-`IMDb/FA/TMDb → enrich-title → catálogo/identidad/sagas`
-
-`TMDb TV → series-v2 → referencia episodios + disponibilidad ES`
-
-La regla de diseño es separar **datos fuente**, **estado editorial** y **datos derivados/diagnósticos**.
-
-## 2. Estructura de aplicación
-### 2.1 `app/`
-Rutas principales observadas:
+## 2. Rutas principales
 - `/` Dashboard.
-- `/catalogo` y `/catalogo/[imdbId]`.
-- `/catalogo/excluidas`.
+- `/catalogo`, `/catalogo/[imdbId]`, `/catalogo/excluidas`.
+- `/novedades`, `/novedades/criterios`.
 - `/plex`.
 - `/calidad`, `/calidad/peliculas`, `/calidad/identidad`, `/calidad/series`, `/calidad/series/[ratingKey]`.
 - `/sagas`, `/sagas/[name]`.
 - `/personas/[id]`.
 - `/admin`.
 
-`app/actions.js` concentra Server Actions que conectan componentes con servicios de dominio y mutaciones.
+`app/actions.js` concentra acciones globales; `app/novedades/actions.js` concentra mutaciones específicas de Novedades.
 
-### 2.2 `components/`
-Contiene componentes reutilizables de navegación, KPIs, segmented controls, controles de procesos y visualizaciones. `DecadeCoverage` encapsula la visualización histórica por décadas.
+## 3. Servicios principales
+- `lib/db.js`: cliente Neon.
+- `lib/queries.js`: lecturas generales.
+- `lib/operational-queries.js`: consultas operativas V2.
+- `lib/plex-queries-v2.js`: Biblioteca Plex paginada.
+- `lib/plex-sync.js`: sincronización Plex e invalidación de referencias derivadas.
+- `lib/enrich-title.js`: enriquecimiento individual canónico.
+- `lib/imdb-rating-on-demand.js`: hidratación puntual de rating/votos IMDb desde dataset oficial.
+- `lib/news-v1.js`: lectura/configuración de Novedades.
+- `lib/identity.js`: diagnóstico/persistencia de identidad.
+- `lib/quality-v2.js`: Calidad Películas.
+- `lib/series-v2.js`: Series V2.
+- `lib/sagas-v2.js`: Sagas.
+- `lib/dashboard-v2.js`: Dashboard/snapshots.
+- `lib/admin-queries-v2.js`: Admin.
+- `lib/runlog.js`: logging transversal.
 
-### 2.3 `lib/`
-Servicios principales:
-- `db.js`: creación/acceso al cliente Neon.
-- `queries.js`: consultas de catálogo y lectura general.
-- `operational-queries.js`: consultas operativas V2.
-- `plex-queries-v2.js`: Biblioteca Plex paginada y cruces.
-- `plex-sync.js`: sincronización rápida/incremental Plex y reconciliaciones asociadas.
-- `enrich-title.js`: pipeline individual de enriquecimiento.
-- `identity.js`: diagnóstico y persistencia de identidad.
-- `quality-v2.js`: análisis Calidad Películas.
-- `series-v2.js`: refresco de referencia/disponibilidad de Series.
-- `sagas-v2.js`: lógica de sagas/cobertura.
-- `dashboard-v2.js`: agregados, KPIs, distribuciones e histórico.
-- `admin-queries-v2.js`: lectura de actividad operativa.
-- `runlog.js`: ciclo de vida de ejecuciones.
-- `excluded.js`: soporte de exclusiones.
+## 4. Persistencia y fuentes de verdad
+### 4.1 Catálogo
+`movies` y `catalog_read_model` representan el universo editorial. IMDb ID es identificador canónico central en el pipeline de títulos.
 
-## 3. Persistencia y dominios de datos
-### 3.1 Catálogo
-El catálogo se expone mediante un read model (`catalog_read_model`) y tablas fuente/editoriales. IMDb actúa como identificador canónico importante para películas y para gran parte del cruce histórico. El read model evita que cada pantalla reconstruya el universo editorial desde cero.
+### 4.2 Plex
+`plex_items` contiene inventario físico y estado `active`. `plex_external_ids` contiene IMDb/TMDb/TVDb/otros IDs. `plex_media` y `plex_files` contienen propiedades técnicas.
 
-### 3.2 Plex
-Tablas clave:
-- `plex_items`: inventario jerárquico y estado activo de elementos Plex.
-- `plex_external_ids`: IDs externos por `rating_key` y proveedor.
-- `plex_media`: características de media/streams agregadas por elemento.
-- `plex_files`: información física de archivos.
-- `plex_sync_runs`: detalle específico de sincronizaciones cuando aplica.
+### 4.3 Exclusiones
+`catalog_exclusions` es la única fuente canónica de exclusión reversible. Novedades, Calidad, Series, Sagas y Dashboard deben anti-join esta tabla cuando corresponda.
 
-`rating_key` es el identificador operativo Plex y permite relacionar show/season/episode mediante claves padre/abuelo e índices de temporada/episodio.
+### 4.4 Candidatos
+`catalog_candidates` es el staging canónico de Novedades. Almacena IMDb ID, tipo, año, rating, votos, elegibilidad, timestamps y `source_snapshot`. No debe crearse una segunda tabla paralela con la misma responsabilidad.
 
-### 3.3 Exclusiones
-`catalog_exclusions` mantiene la exclusión de forma reversible. Las consultas operativas hacen `LEFT JOIN`/anti-join para impedir que excluidos alimenten calidad, series, sagas y métricas.
+### 4.5 Configuración
+`app_settings` almacena configuración versionable de discovery (`imdb_discovery_v1`): umbrales generales/españoles y países excluidos.
 
-### 3.4 Series
-- `series_reference`: identidad y resumen oficial de un show.
-- `series_reference_episodes`: referencia oficial por `(show_rating_key, season_number, episode_number)`.
-- `series_season_availability`: disponibilidad por temporada/país, incluyendo override manual.
-- capas/vistas efectivas cruzan referencia, Plex y disponibilidad.
+### 4.6 Cola de jobs
+`admin_job_requests` permite solicitar desde la web trabajos largos como `imdb_discovery` sin ejecutar el batch en la petición Vercel.
 
-### 3.5 Calidad
-Las incidencias derivadas se separan de las tablas fuente Plex. Calidad no modifica ni elimina archivos; almacena diagnóstico/estado operativo y respeta excepciones.
+### 4.7 Series
+`series_reference`, `series_reference_episodes` y `series_season_availability` forman la referencia derivada. Solo shows activos en Plex participan en lecturas/refrescos operativos.
 
-### 3.6 Procesos
-`pipeline_runs` es el registro transversal. Los servicios llaman `startRun()` y `finishRun()` desde `runlog.js`, con `job_type`, `source`, estado, contadores y `summary` JSON. Tablas específicas pueden complementar este registro.
-
-### 3.7 Dashboard
-El dashboard combina consultas agregadas instantáneas con snapshots históricos. El objetivo es evitar cálculos costosos fila a fila en cada render y permitir evolución temporal.
-
-## 4. Acceso a base de datos
-`lib/db.js` centraliza la conexión PostgreSQL/Neon. Los servicios usan SQL parametrizado. Se favorecen agregaciones y joins en PostgreSQL para minimizar roundtrips y transferencias de miles de filas al runtime de Vercel.
-
-Las operaciones por lotes usan transacciones/chunks cuando es necesario; por ejemplo, Series inserta/actualiza episodios de referencia en bloques.
+### 4.8 Procesos
+`pipeline_runs` registra job type, source, estado, contadores, timings y `summary` JSON.
 
 ## 5. Sincronización Plex
-### 5.1 Responsabilidad
-`plex-sync.js` es la frontera de entrada de cambios físicos. Debe actualizar inventario, metadatos Plex, IDs externos y detectar altas/cambios/bajas sin convertir el sync en un análisis externo pesado.
+`plex-sync.js` es propietario de cambios físicos y de identidad provenientes de Plex. Detecta altas/cambios/bajas y marca inactivos los títulos que desaparecen.
 
-### 5.2 Incrementalidad
-El diseño evita reexpandir toda la biblioteca cuando no es necesario. El inventario base se compara con estado persistido y se amplían detalles donde existen cambios o información necesaria.
+En Series, si cambia IMDb/TMDb/TVDb del show, Plex Sync invalida la referencia derivada anterior. `series-v2` reconstruye después. Esta separación evita duplicar lógica y previene soluciones locales inconsistentes.
 
-### 5.3 Reconciliación de identidad de series
-La detección de un cambio de IMDb/TMDb/TVDb pertenece al sync Plex, no a `series-v2`. Cuando cambia la identidad de un show, Plex Sync invalida la referencia derivada anterior. El refresco de Series reconstruye posteriormente la referencia desde TMDb. Esta separación evita duplicar detección y evita que el sync haga llamadas masivas de temporadas.
+Un show `active=false` no puede aparecer en Calidad Series ni alimentar KPIs aunque `series_reference` permanezca por histórico. Caso de regresión: `Love is in the Air`.
 
-### 5.4 Bajas
-Los elementos desaparecidos se marcan/inactivan según el modelo de sincronización en lugar de confundirlos con catálogo editorial.
+## 6. Enriquecimiento individual
+`lib/enrich-title.js` es el único pipeline canónico de alta/actualización detallada. Resuelve identidad fuente, IMDb local, Wikidata/FilmAffinity, TMDb, PikoScore, metadatos, arte, géneros, reparto y colección/saga.
 
-### 5.5 Rendimiento/timeout
-La sincronización se ha optimizado reduciendo roundtrips y paginando la UI. Las operaciones cercanas al límite de ejecución deben instrumentarse y no depender de un margen HTTP mínimo.
+Las correcciones manuales de IDs tienen precedencia mediante `COALESCE`/lógica de preservación. El pipeline no debe borrar un ID manual válido porque una resolución automática falle.
 
-## 6. Pipeline individual de enriquecimiento
-`lib/enrich-title.js` implementa el alta/actualización individual.
+### 6.1 IMDb rating/votos on-demand
+Problema resuelto por #40: un título recién añadido desde Plex puede tener IMDb ID correcto pero todavía no haber sido incluido en el último refresco batch local de ratings.
 
-Entradas posibles: IMDb conocido, identidad Plex (ratingKey + GUIDs), TMDb/otros IDs y correcciones manuales.
+`lib/imdb-rating-on-demand.js` implementa dos funciones:
+- `imdbRatingFromOfficialDataset(imdbId,{timeoutMs})`: descarga `title.ratings.tsv.gz`, descomprime en streaming, recorre líneas hasta localizar el `tt...` y retorna rating/votos. No hace scraping web.
+- `ensureImdbRating(imdbId,{timeoutMs})`: primero consulta `movies` y `catalog_candidates`; solo si faltan datos usa el dataset oficial y persiste el resultado en ambos dominios cuando corresponda.
 
-Flujo conceptual:
-1. Resolver identidad suficiente.
-2. Obtener/normalizar metadatos IMDb.
-3. Resolver FilmAffinity/Wikidata según estrategia configurada.
-4. Resolver TMDb y recursos asociados.
-5. Persistir catálogo y relaciones.
-6. Actualizar colecciones/sagas cuando corresponda.
-7. Recalcular diagnósticos afectados.
-8. Registrar ejecución.
+`app/actions.js::processTitle()` llama `ensureImdbRating()` antes de `enrichTitle()`. El timeout puntual es acotado (12 s). Si el dataset no contiene el ID o expira, se continúa con TMDb/FA y `imdb_status=pending_dataset`; un fallo IMDb nunca invalida datos TMDb válidos.
 
-Los IDs marcados manualmente deben conservar precedencia. Un refresco automático no puede convertir un valor manual válido en `NULL` porque una fuente automática no lo encuentre.
+Esto complementa, no sustituye, al worker batch diario `worker/update-imdb-ratings.mjs`.
 
-## 7. Identidad V2
-`lib/identity.js` implementa la capa común.
+Caso de regresión: `First Lady`, IMDb `tt15787006`, TMDb `158808`.
 
-Principios técnicos:
-- distinguir identidad automática de identidad confirmada manualmente cuando el esquema lo permita;
-- validar formatos;
-- persistir cambios de forma transaccional/coherente;
-- actualizar tanto catálogo como identidad Plex cuando el origen de la edición lo requiera;
-- reanalizar después de mutaciones;
-- no corregir agresivamente contradicciones sin evidencia suficiente.
+## 7. Novedades V1
+### 7.1 Lectura/UI
+`lib/news-v1.js` consulta `catalog_candidates` con anti-joins contra `movies` y `catalog_exclusions`, paginación y filtros. `/novedades` no realiza llamadas externas durante render normal.
 
-La UI `/calidad/identidad` consulta problemas y ofrece reintento/edición. Las fichas reutilizan acciones de identidad.
+### 7.2 Configuración
+`/novedades/criterios` edita `app_settings.imdb_discovery_v1`. Valores iniciales:
+- movie general 6.0 / 10.000 votos;
+- movie ES 6.0 / 7.500;
+- series general 7.0 / 5.000;
+- series ES 6.5 / 4.000;
+- India excluida inicialmente (`Q668`/`IN`).
 
-## 8. Calidad Películas V2
-`lib/quality-v2.js` trabaja principalmente con datos ya presentes en Neon.
+La versión de configuración se incrementa y se guarda en snapshots/runs.
 
-### 8.1 Motor duración
-Calcula desviación absoluta y relativa entre duración física y referencia. Los umbrales fueron calibrados sobre la distribución real para reducir falsos positivos.
+### 7.3 Alta manual
+`addManualCandidateAction()` valida `tt...`, impide duplicar catálogo, respeta exclusiones y crea/activa candidato manual. Los manuales se protegen frente a recalculación automática usando flags en `source_snapshot` (`manual`, `manualActive`, `matchedRule`).
 
-### 8.2 Filename
-Normaliza extensiones/tags/resolución/codec y compara texto/año con títulos esperados.
+Si el título está excluido se exige `restoreAndAddManualAction()`; nunca se restaura silenciosamente.
 
-### 8.3 Duplicados
-Agrupa por identidad y compara medias. Duraciones muy diferentes impiden asumir automáticamente duplicidad equivalente.
+### 7.4 Excluir/retirar
+`excludeNewsCandidateAction()` reutiliza `catalog_exclusions`. `removeManualCandidateAction()` desactiva el candidato manual sin convertirlo en exclusión global.
 
-### 8.4 Calidad técnica
-Combina señales de resolución, bitrate, codec, tamaño/duración, HDR y audio según disponibilidad. La resolución aislada no determina el diagnóstico.
+### 7.5 Incorporar al catálogo
+`enrichNewsCandidateAction()` reutiliza `enrichTitle()`. Se crea un staging mínimo en `movies` para satisfacer el contrato del pipeline; si el enriquecimiento falla, ese staging se elimina y el candidato vuelve a `eligible`. En éxito queda `catalogued` y el anti-join hace que desaparezca de Novedades.
 
-### 8.5 Exclusiones y huella
-El motor filtra `catalog_exclusions`. Las excepciones deben estar vinculadas a la huella relevante para que un archivo realmente cambiado pueda reevaluarse.
+No se crea un segundo enriquecedor.
 
-## 9. Series V2
-`lib/series-v2.js` usa TMDb API con `TMDB_API_TOKEN` y `cache: no-store`.
+## 8. Worker IMDb discovery
+`worker/imdb-discovery.mjs` ejecuta el discovery sin scraping.
 
-### 9.1 Selección
-`refreshSeriesV2({limit=120})` selecciona referencias con `tmdb_id`, excluye títulos presentes en `catalog_exclusions`, prioriza referencias nunca refrescadas/antiguas y limita el lote.
+### 8.1 Fase ratings
+Stream de `title.ratings.tsv.gz`. Se conserva en memoria solo el subconjunto que alcanza el mínimo absoluto de alguna regla activa.
 
-### 9.2 Concurrencia
-Procesa shows con un pool concurrente de 6 workers. Para cada show consulta `/tv/{tmdb_id}` y después cada temporada positiva mediante `/tv/{tmdb_id}/season/{n}`.
+### 8.2 Fase basics
+Stream de `title.basics.tsv.gz`. Solo se procesan IDs preseleccionados; se filtran tipos `movie`, `tvSeries`, `tvMiniSeries`, adultos y demás criterios.
 
-### 9.3 Referencia
-Cada episodio se upserta en `series_reference_episodes`. Las escrituras de episodios se agrupan en transacciones de hasta 100 operaciones. Después se actualizan título, título original, año, número oficial de temporadas/episodios, fuente y `refreshed_at` de `series_reference`.
+### 8.3 Regla general y zona España
+Si cumple regla general no necesita nacionalidad para elegibilidad. Si solo cumple la zona española, se resuelve país selectivamente.
 
-### 9.4 Disponibilidad ES
-A partir de `watch/providers` para `ES`, fechas de emisión y episodios pasados/futuros calcula `ES_AVAILABLE`, `ES_PARTIAL`, `ES_NOT_YET` o `UNKNOWN`. `series_season_availability` se actualiza sin pisar filas con `manual_override=true`.
+### 8.4 Resolución de país
+Primero reutiliza país cacheado en `source_snapshot`; después intenta Wikidata batch y, si sigue sin resolverse, TMDb con concurrencia acotada. España se reconoce por `ES`/`Q29`. India se rechaza mientras figure en configuración global.
 
-### 9.5 Anomalías
-Tras el refresco ejecuta una agregación SQL que compara episodios Plex activos con la referencia por temporada/episodio. Calcula series con extras, episodios no emparejados y casos de alto riesgo (extras >=20% de episodios oficiales cuando existe denominador).
+### 8.5 Persistencia
+Upserts por lotes en `catalog_candidates`. Se guardan `matchedRule`, versión de reglas, países, estado de país, datasets y fecha de discovery. Los manuales activos no son pisados por el batch.
 
-### 9.6 Logging
-Registra `series_v2_refresh` en `pipeline_runs`; el summary incluye series revisadas, temporadas, episodios, disponibilidad, anomalías y errores.
+### 8.6 Invalidación
+Candidatos automáticos que dejan de cumplir pasan a `not_eligible`; no se borran. Excluidos y catalogados nunca reaparecen por el anti-join.
 
-### 9.7 Override manual
-`setSeasonAvailability()` persiste `EXCEPTION_AVAILABLE` o `EXCEPTION_NOT_AVAILABLE` con `source='manual'`, confianza alta y `manual_override=true`.
+## 9. GitHub Actions / ejecución batch
+`.github/workflows/imdb-discovery.yml` ejecuta el worker de forma programada y manual. La web puede crear una fila `admin_job_requests`; el worker reclama solicitudes pendientes (`FOR UPDATE SKIP LOCKED`) y registra resultado.
 
-### 9.8 Mejora pendiente
-Issue #36: el refresco puede acercarse/superar el timeout de la petición en el primer intento. Debe instrumentarse por fases y optimizarse o desacoplarse antes de limitarse a aumentar el timeout.
+`.github/workflows/imdb-ratings-refresh.yml` usa ya código de `main`, no una rama experimental, y actualiza ratings masivos de `movies`/`catalog_candidates`.
 
-## 10. Sagas V2
-`lib/sagas-v2.js` mantiene la lógica de cobertura sobre colecciones y universos. El estado se deriva del número de miembros presentes frente al total. La sincronización Plex puede cambiar cobertura sin necesidad de volver a consultar TMDb si la composición de la colección ya es conocida. Las actualizaciones externas deben ser incrementales.
+Los jobs están diseñados para ser idempotentes y reintentables.
 
-## 11. Dashboard V2
-`lib/dashboard-v2.js` produce:
-- KPIs agregados;
-- histórico por periodo;
-- distribuciones por resolución, codec, género y país;
-- cobertura por décadas;
-- contadores de calidad, identidad, series, sagas y fallos.
+## 10. Calidad Películas
+`quality-v2.js` opera principalmente sobre datos persistidos de Plex/catálogo. Analiza duración, filename, duplicados y calidad técnica. Filtra excluidos y nunca borra archivos.
 
-`app/page.js` es `force-dynamic`, por lo que solicita el estado actual al servidor. Los gráficos son componentes ligeros basados en HTML/CSS y datos agregados, evitando librerías pesadas innecesarias.
+## 11. Series V2
+`series-v2.js` usa TMDb con `cache:no-store`. Selecciona únicamente shows activos en Plex, no excluidos y con TMDb ID.
 
-`DecadeCoverage` calcula total, owned, cobertura, máximo de escala, mejor cobertura y máximo pendiente; renderiza columnas cuya altura representa volumen y cuya fracción interior representa presencia Plex.
+Procesa shows con concurrencia acotada y temporadas/episodios; upserta referencia y disponibilidad ES, preservando `manual_override`.
 
-## 12. Biblioteca Plex y paginación
-`plex-queries-v2.js` realiza filtrado y paginación en SQL. La UI no descarga los ~12k elementos para luego filtrarlos en navegador. Esto redujo significativamente la latencia observada al cambiar de vistas.
+El cálculo de anomalías compara episodios Plex activos con la referencia oficial y detecta extras/no mapeados.
 
-## 13. Admin y observabilidad
-`runlog.js` normaliza el ciclo de vida de procesos. Un proceso debe crear su run antes del trabajo y cerrarlo en `success` o `failed`, incluyendo error normalizado mediante `errorInfo()`.
+### 11.1 Timeout/observabilidad
+#36 aumenta el margen de la acción de Series a 60 s y añade instrumentación de fases para medir selección, TMDb/refresco, anomalías y finalización. El objetivo es completar en el primer intento con el volumen actual y disponer de evidencia para futuras optimizaciones/desacoplamiento.
 
-`admin-queries-v2.js` alimenta `/admin`. El objetivo operativo es que una incidencia pueda diagnosticarse por run, duración, contadores y etapa sin necesitar logs de infraestructura para errores de negocio.
+## 12. Sagas
+`sagas-v2.js` mantiene colecciones/universos y cobertura derivada contra Plex. Exclusiones no deben contaminar cobertura.
 
-Los fallos de build/deploy siguen perteneciendo a Vercel/GitHub CI y no pueden registrarse desde una aplicación que no llegó a desplegarse.
+## 13. Dashboard
+`dashboard-v2.js` produce KPIs, histórico, distribuciones y cobertura por décadas. Los snapshots permiten evolución temporal. Los KPIs de series ignoran shows inactivos.
 
-## 14. UI/UX
-Next.js App Router renderiza páginas servidor y usa acciones servidor para mutaciones. Los filtros pequeños usan controles segmentados/chips; listas de alta cardinalidad pueden usar select. Las rutas preservan query params cuando son parte del estado funcional.
+## 14. Biblioteca y rendimiento
+`plex-queries-v2.js` pagina y filtra en SQL. Novedades aplica el mismo principio. No se descargan miles de filas para filtrar en navegador.
 
-El detalle de Series usa explícitamente parámetros de URL para temporada y estado; `state=all` debe conservarse para que el servidor no vuelva al default `Faltan ES`.
+## 15. Admin y observabilidad
+`runlog.js` normaliza el ciclo de vida de jobs. `Admin` debe permitir distinguir errores funcionales, timeouts y fallos de infraestructura.
 
-Los listados grandes se paginan. Las acciones destructivas son reversibles cuando funcionalmente corresponde (exclusiones) y no provocan borrados físicos en Plex.
+Nuevos/actualizados jobs relevantes:
+- `imdb_discovery`;
+- `single_title` con estado IMDb completo/pendiente;
+- `series_v2_refresh` con timings por fase.
 
-## 15. Seguridad y secretos
-Los secretos (`DATABASE_URL`, token Plex, `TMDB_API_TOKEN` y credenciales equivalentes) deben existir únicamente como variables de entorno/secretos de plataforma. No deben incluirse en código, documentación, commits ni respuestas de UI. Las trazas Admin deben evitar exponerlos.
+## 16. Seguridad
+`DATABASE_URL`, Plex token, `TMDB_API_TOKEN` y credenciales equivalentes viven solo en secretos/variables de entorno. No deben entrar en commits, UI ni trazas.
 
-El servidor es quien accede a Neon y APIs con secretos; el navegador no necesita recibir credenciales de backend.
+IMDb datasets se acceden con User-Agent de uso personal/no comercial y sin scraping de páginas IMDb.
 
-## 16. CI/CD
-El repositorio contiene GitHub Actions para CI y tareas de mantenimiento/refresco. Vercel despliega la rama principal. Un merge correcto no implica que producción esté actualizada hasta que el deployment correspondiente esté `READY`; la batería final confirmó la importancia de verificar el deployment antes de atribuir resultados a un cambio.
+## 17. CI/CD
+El PR debe pasar `npm run build` y comprobaciones sintácticas de workers antes de fusionarse. Vercel despliega `main`; un merge no implica producción validada hasta que el deployment quede `READY`.
 
-## 17. Rendimiento y escalabilidad
-Principios aplicados:
-- SQL agregado y paginación server-side.
-- Separar lectura de procesos de enriquecimiento.
-- Incrementalidad Plex/TMDb.
-- Persistir referencias oficiales y disponibilidad.
-- Evitar APIs externas durante render normal.
-- Concurrencia acotada para APIs externas.
-- Escrituras por lotes/transacciones.
-- Snapshots para histórico del dashboard.
-- Exclusiones filtradas lo más cerca posible de la consulta fuente.
+## 18. Consistencia / fuentes canónicas
+- presencia física → `plex_items.active`;
+- IDs Plex → `plex_external_ids`;
+- catálogo editorial → `movies`/read model;
+- exclusión → `catalog_exclusions`;
+- candidatos → `catalog_candidates`;
+- configuración discovery → `app_settings`;
+- referencia series → `series_reference*`;
+- disponibilidad ES → `series_season_availability`;
+- histórico de procesos → `pipeline_runs`;
+- solicitudes batch → `admin_job_requests`.
 
-Con decenas de miles de títulos/episodios, cualquier nueva feature debe evitar N+1 de red y recomputación global por navegación.
+No deben crearse fuentes paralelas para solucionar bugs locales.
 
-## 18. Consistencia y fuentes de verdad
-- **Presencia física:** Plex (`plex_items.active`).
-- **Identidad externa Plex:** `plex_external_ids`.
-- **Universo editorial:** catálogo/read model.
-- **Exclusión:** `catalog_exclusions`.
-- **Referencia episodios:** `series_reference` + `series_reference_episodes`.
-- **Disponibilidad ES:** `series_season_availability` + overrides.
-- **Histórico operativo:** `pipeline_runs` y runs específicos.
-- **Composición de saga:** colecciones/universos persistidos; cobertura derivada contra Plex.
+## 19. Dependencias
+`Plex Sync → inventario/IDs → catálogo/sagas + invalidación Series`
 
-No deben crearse segundas fuentes canónicas para resolver bugs locales.
+`Series Refresh → TMDb reference/disponibilidad → diagnósticos`
 
-## 19. Dependencias entre procesos
-`Plex Sync → inventario/IDs → cobertura catálogo/sagas + invalidación identidad Series`
+`IMDb Discovery → catalog_candidates → Novedades`
 
-`Series Refresh → referencia TMDb + disponibilidad ES → estado efectivo + anomalías`
+`Novedades Add → enrichTitle → movies → desaparece de Novedades`
 
-`Enrichment → identidad/metadatos → catálogo + sagas + calidad de identidad`
+`Single-title update → ensureImdbRating → enrichTitle`
 
-`Quality Refresh → datos Plex + catálogo → incidencias`
+`IMDb ratings batch → movies + catalog_candidates`
 
-`Procesos relevantes → pipeline_runs → Admin + métricas Dashboard`
+`Procesos → pipeline_runs → Admin`
 
-Esta dirección de dependencias es deliberada. Un consumidor puede reconstruir derivados, pero no debe redefinir la fuente que le alimenta.
+## 20. Regresiones obligatorias
+- Castle: cambio de identidad Plex no deja referencia vieja activa.
+- Love is in the Air: show inactivo no aparece en Calidad ni KPIs.
+- First Lady `tt15787006`: actualización individual intenta hidratar IMDb desde dataset oficial y conserva TMDb `158808`.
+- Novedades: catálogo y excluidos no reaparecen.
+- India: permanece fuera mientras esté configurada como excluida.
+- España: títulos en zona de rescate solo entran si se confirma participación española.
+- Manuales: no desaparecen por fluctuación IMDb y no levantan exclusión silenciosamente.
 
-## 20. Operación y diagnóstico
-Ante un título mal asociado:
-1. comprobar IDs Plex/catálogo;
-2. corregir identidad en la fuente adecuada o manualmente;
-3. sincronizar Plex si cambió Plex;
-4. ejecutar el análisis derivado correspondiente;
-5. verificar que el diagnóstico se recalcula;
-6. revisar Admin si falla.
-
-Ante un timeout, distinguir timeout de infraestructura/petición de error funcional. No repetir escrituras no idempotentes sin comprobar el estado. Los upserts y procesos V2 están diseñados para que reintentos sean seguros en los flujos principales.
-
-## 21. Testing y regresión
-`docs/V2_ACCEPTANCE_TESTS.md` contiene la batería funcional. La estabilización final añadió casos de regresión sobre:
-- paginación/rendimiento Biblioteca;
-- alta desde Plex;
-- persistencia de IDs manuales;
-- exclusiones fuera de Calidad;
-- filtros Series;
-- anomalías de sobrecobertura;
-- reconciliación de identidad Castle;
-- Dashboard y décadas.
-
-Para cambios futuros en Plex/Series, Castle debe conservarse como caso de regresión conceptual: cambiar identidad en Plex no puede dejar una referencia oficial huérfana de la identidad anterior.
-
-## 22. Deuda técnica conocida
-La única incidencia menor abierta al cierre de esta baseline es #36, relativa al timeout de `Actualizar Series`. No invalida la estabilidad funcional de V2, pero debe resolverse antes de aumentar significativamente el volumen o la frecuencia del proceso.
-
-## 23. Regla para evolución futura
-Toda nueva funcionalidad debe declarar: fuente de verdad, datos derivados, política de invalidación, estrategia incremental, impacto en exclusiones, logging Admin, comportamiento ante reintentos, filtros/paginación y pruebas de regresión. Si una solución introduce una lógica paralela que intenta reparar datos derivados sin pasar por el propietario de la fuente, debe considerarse una violación arquitectónica.
+## 21. Documentación especializada
+`docs/NOVEDADES_V1_FUNCTIONAL.md` y `docs/NOVEDADES_V1_TECHNICAL.md` amplían el detalle del módulo. Este documento sigue siendo la referencia técnica global y debe actualizarse junto con la especificación funcional en cada cambio relevante.
