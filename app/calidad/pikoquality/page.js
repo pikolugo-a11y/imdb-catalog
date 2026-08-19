@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import {qualitySummary,QUALITY_VERSION} from '../../../lib/pikoquality';
+import {QUALITY_VERSION} from '../../../lib/pikoquality';
+import {getPikoQualityState} from '../../../lib/pikoquality-state';
 import PikoQualityRunner from './PikoQualityRunner';
 import styles from './pikoquality.module.css';
 
@@ -14,7 +15,7 @@ function Metric({label,value,sub}){return <div className={styles.metric}><span>{
 function pct(n,total){return total?Math.round(Number(n||0)*1000/Number(total))/10:0}
 
 export default async function Page(){
-  const s=await qualitySummary();
+  const s=await getPikoQualityState();
   const phase=s.recommendation.phase;
   const progress=phase==='a'?s.progressA:(phase==='b'||phase==='retry_b')?s.progressB:100;
   const latest=s.runs?.[0];
