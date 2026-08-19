@@ -22,24 +22,9 @@ export default async function Excluidas({searchParams}){
   const restoreReturn='/catalogo/excluidas?'+qs(p,{page:safePage});
 
   return <div className="excluded-v3">
-    <div className="excluded-topbar">
-      <div><span className="eyebrow">Catálogo · archivo reversible</span><h1>Excluidas</h1></div>
-      <Link className="excluded-back" href="/catalogo">← Volver al catálogo</Link>
-    </div>
+    <div className="excluded-topbar"><div><span className="eyebrow">Catálogo · archivo reversible</span><h1>Excluidas</h1></div><Link className="excluded-back" href="/catalogo">← Volver al catálogo</Link></div>
 
-    <section className="excluded-filter-shell" aria-label="Filtros de excluidas">
-      <form method="get" className="excluded-filter-form">
-        <input type="hidden" name="view" value={view}/><input type="hidden" name="type" value={p.type||''}/><input type="hidden" name="sort" value={p.sort||'newest'}/>
-        <div className="excluded-search"><span>⌕</span><input name="q" defaultValue={p.q||''} placeholder="Buscar por título o IMDb ID…"/>{hasFilters&&<Link href="/catalogo/excluidas">Limpiar</Link>}</div>
-        <div className="excluded-filter-row">
-          <div className="excluded-type" aria-label="Tipo"><span>Tipo</span><Link className={!p.type?'active':''} href={'/catalogo/excluidas?'+qs(p,{type:'',page:1})}>Todos</Link><Link className={p.type==='movie'?'active':''} href={'/catalogo/excluidas?'+qs(p,{type:'movie',page:1})}>Películas</Link><Link className={p.type==='series'?'active':''} href={'/catalogo/excluidas?'+qs(p,{type:'series',page:1})}>Series</Link></div>
-          <label><span>Motivo contiene</span><input name="reason" defaultValue={p.reason||''} placeholder="Ej. manualmente"/></label>
-          <label><span>Desde</span><input type="date" name="from" defaultValue={p.from||''}/></label>
-          <label><span>Hasta</span><input type="date" name="to" defaultValue={p.to||''}/></label>
-          <button>Aplicar</button>
-        </div>
-      </form>
-    </section>
+    <section className="excluded-filter-shell" aria-label="Filtros de excluidas"><form method="get" className="excluded-filter-form"><input type="hidden" name="view" value={view}/><input type="hidden" name="type" value={p.type||''}/><input type="hidden" name="sort" value={p.sort||'newest'}/><div className="excluded-search"><span>⌕</span><input name="q" defaultValue={p.q||''} placeholder="Buscar por título o IMDb ID…"/>{hasFilters&&<Link href="/catalogo/excluidas">Limpiar</Link>}</div><div className="excluded-filter-row"><div className="excluded-type" aria-label="Tipo"><span>Tipo</span><Link className={!p.type?'active':''} href={'/catalogo/excluidas?'+qs(p,{type:'',page:1})}>Todos</Link><Link className={p.type==='movie'?'active':''} href={'/catalogo/excluidas?'+qs(p,{type:'movie',page:1})}>Películas</Link><Link className={p.type==='series'?'active':''} href={'/catalogo/excluidas?'+qs(p,{type:'series',page:1})}>Series</Link></div><label><span>Motivo contiene</span><input name="reason" defaultValue={p.reason||''} placeholder="Ej. manualmente"/></label><label><span>Desde</span><input type="date" name="from" defaultValue={p.from||''}/></label><label><span>Hasta</span><input type="date" name="to" defaultValue={p.to||''}/></label><button>Aplicar</button></div></form></section>
 
     <section className="excluded-stats" aria-label="Resumen"><article><strong>{total.toLocaleString('es-ES')}</strong><span>Total excluidas</span></article><article><strong>{Number(stats.movies||0).toLocaleString('es-ES')}</strong><span>Películas</span></article><article><strong>{Number(stats.series||0).toLocaleString('es-ES')}</strong><span>Series / miniseries</span></article><article><strong>{Number(stats.last30||0).toLocaleString('es-ES')}</strong><span>Últimos 30 días</span></article></section>
 
