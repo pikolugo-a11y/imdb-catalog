@@ -4,7 +4,7 @@
 
 ## Estado registrado
 
-**Fecha:** 19/08/2026 12:24 (Europe/Madrid)  
+**Fecha:** 19/08/2026 12:54 (Europe/Madrid)  
 **Fase:** V2 estable + Novedades V1 desplegada, en aceptación dirigida por el usuario  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
@@ -20,85 +20,102 @@ Incluye Novedades V1, discovery IMDb por datasets oficiales, criterios configura
 
 ## Deployment de producción
 
-**DESPLEGADO Y VERIFICADO.**
+**DESPLEGADO Y VERIFICADO, pero producción todavía no incluye los últimos cambios de seguridad operativa del discovery.**
 
-El usuario realizó el deployment manual de producción y ChatGPT lo verificó en Vercel:
+Deployment validado:
 - proyecto: `imdb-catalog` (`prj_iApLZEUtSy3MTd6KT39PvagJrra2`);
-- equipo: `PikoFilm`;
 - deployment: `dpl_9JxhPtZRfuR8Kru8PLm3iyAttgfY`;
 - estado: `READY`;
-- rama: `main`;
 - commit desplegado: `02c272bd0366f78671e18631f8fa051863b2f0c0`;
-- dicho HEAD contiene el merge funcional `62880f5a0ed1cf33c8662979adbd89ff52fde256`.
+- contiene el merge funcional `62880f5a0ed1cf33c8662979adbd89ff52fde256`.
 
-Las pruebas funcionales/visuales las ejecuta siempre el usuario; ChatGPT diseña, conduce, registra y diagnostica.
+Los últimos cambios de `main` sobre discovery IMDb **aún no deben probarse en producción hasta nuevo deploy manual del usuario**.
 
 ## Protocolo permanente de deployment y aceptación
 
 Los deployments de producción en Vercel los realiza manualmente el usuario. ChatGPT deja `main` listo y avisa; el usuario despliega y confirma; ChatGPT verifica `READY` + commit exacto.
 
-Después del deploy, ChatGPT diseña y conduce la batería de aceptación **prueba a prueba**. El usuario ejecuta siempre cada prueba funcional/visual en la aplicación y comunica el resultado. ChatGPT registra cada respuesta, decide si la prueba pasa o falla, diagnostica técnicamente cuando sea necesario y abre/actualiza issues si aparece una incidencia real.
+Las pruebas funcionales/visuales las ejecuta siempre el usuario. ChatGPT diseña y conduce la batería prueba a prueba, registra cada resultado y abre/actualiza issues cuando procede.
 
-## Batería funcional obligatoria post-deploy
+## Batería funcional post-deploy
 
 ### A. Series borradas / Calidad — SUPERADA
-- **Prueba ejecutada por el usuario:** buscar **Love is in the Air** en Calidad de Series tras el deployment.
-- **Resultado comunicado:** no aparece.
-- **Conclusión:** PASS. Regresión de #37 validada en producción.
+- `Love is in the Air` no aparece en Calidad de Series.
+- PASS. Regresión de #37 validada.
 
 ### B. Actualizar Series / timeout — SUPERADA
-- El usuario ejecutó **Actualizar Series** desde Calidad → Series.
-- Completó correctamente **al primer intento**, sin timeout.
-- Verificación técnica posterior en `pipeline_runs`: último `series_v2_refresh` en `success`, **0 errores**, **10.01 s** total; instrumentación por fases persistida (`select` 0.10 s, `refresh` 9.63 s, `anomaly` 0.23 s).
-- **Conclusión:** PASS. Criterio de aceptación de #36 cumplido.
-- **Issue #36 cerrada** como completada el 19/08/2026.
+- Actualizar Series completó al primer intento.
+- `series_v2_refresh`: success, 0 errores, 10.01 s; timings por fase persistidos.
+- PASS. #36 cerrada.
 
-### B2. Biblioteca → Actualizar Plex — REGRESIÓN ADICIONAL SUPERADA
-- El usuario ejecutó manualmente **Biblioteca → Actualizar Plex**.
-- Duración observada por el usuario: **33 segundos**.
-- Resultado: terminó correctamente, sin timeout ni error.
-- Se registra como comprobación adicional positiva; no corresponde al criterio formal de #36, cuya issue estaba documentada para Actualizar Series.
+### B2. Biblioteca → Actualizar Plex — SUPERADA
+- Ejecutado por el usuario.
+- 33 segundos, finalización correcta, sin timeout.
 
-### C. First Lady / IMDb on-demand — PENDIENTE
-- Abrir **First Lady** (`tt15787006`).
-- Ejecutar Actualizar datos si procede.
-- Confirmar rating/votos IMDb desde dataset oficial sin romper TMDb/FA.
-- Confirmar TMDb `158808`.
+### C. First Lady / IMDb on-demand — SUPERADA
+- `First Lady` (`tt15787006`, TMDb `158808`) se actualizó correctamente.
+- IMDb quedó resuelto y el resto del enriquecimiento permaneció correcto.
+- PASS. #40 cerrada.
 
-### D. Novedades V1 — PENDIENTE
-Validar carga, criterios configurables, India excluida, candidatos generales, rescate España, alta IMDb manual, caso ya catalogado, caso excluido sin restauración silenciosa, excluir/restaurar, añadir y ampliar datos, desaparición de Novedades al catalogar, fallo/reintento, job manual/automático, trazabilidad Admin y ausencia de espera HTTP larga.
+### D. Novedades V1 — EN CURSO
+- Carga básica de Novedades: PASS.
+- Contadores observados: 146 propuestas = 34 películas + 112 series: coherente.
+- UX actual considerada deficiente por el usuario: tarjetas superiores excesivamente altas y acciones demasiado dispersas.
+- Creada **#41** para rediseño compacto: resumen en una fila, filtros compactos y acciones visibles por candidato (`Ver`, `IMDb`, `Añadir`, `Excluir`) más acceso visible a Excluidas.
+- Estado mostrado por producción: `Último discovery: failed · 16 ago 2026, 5:04 · última solicitud pending (19 ago 2026, 10:19)`.
+- El usuario comprobó en GitHub Actions que el workflow de discovery aparecía sin historial de ejecuciones.
+
+## Cambio de política — discovery IMDb
+
+El usuario establece como regla operativa definitiva:
+- **sin cron**;
+- **sin polling cada 5 minutos**;
+- discovery solo bajo petición manual explícita;
+- como máximo **una ejecución exitosa cada 7 días**;
+- cualquier intento anterior debe fallar antes de procesar datasets.
+
+Cambios aplicados en `main`:
+- commit `18f4620b7f75cedc9eea0a88b8fffa8482f02e7b`: `.github/workflows/imdb-discovery.yml` queda únicamente con `workflow_dispatch`; eliminados todos los `schedule`.
+- commit `0573c7226ba548e0b89f56c66bf41dbc46855fdb`: `worker/imdb-discovery.mjs` incorpora guard semanal contra la última ejecución exitosa de `pipeline_runs`; bloquea antes del trabajo pesado y registra `weekly_cooldown`.
+- solicitud `admin_job_requests` id 34, pendiente desde 19/08/2026 10:19 UTC, marcada `failed` con motivo de cambio de política.
+- issue **#42** redefinida como `Discovery IMDb — ejecución manual con límite semanal`.
+- especificaciones funcional y técnica actualizadas en commits `75b8a3e65738c7403d13d4830dc3f2d254b26710` y `6aeaf9a8ff284c22528527a03901cb67c1d4c32d`.
+
+Pendiente de #42: adaptar la UX/acción `Buscar novedades ahora` para que no cree solicitudes huérfanas y represente correctamente el modelo manual + límite semanal.
 
 ### E. Regresión mínima — PENDIENTE
 Validar Catálogo, Biblioteca Plex, Calidad Películas, Calidad Series y filtro `Todos`, Sagas, Dashboard incluido décadas y Admin.
 
-## Issues en aceptación
+## Issues actuales relevantes
 
-- **#36 cerrada y validada en producción** — Actualizar Series completa al primer intento; instrumentación correcta.
+- **#36 cerrada y validada** — timeout de Actualizar Series.
+- **#37 cerrada y regresión validada** — `Love is in the Air`.
 - **#38 abierta** — Novedades V1 / aceptación funcional.
-- **#40 abierta** — rating/votos IMDb on-demand para altas desde Plex.
-- **#37 cerrada y regresión validada en producción** — `Love is in the Air` no aparece en Calidad de Series tras el deployment.
-
-Regla: **deploy → pruebas funcionales del usuario → registro → cierre**.
+- **#40 cerrada y validada** — IMDb on-demand en `First Lady`.
+- **#41 abierta** — rediseño UX compacto de Novedades con acciones visibles y acceso a Excluidas.
+- **#42 abierta** — discovery IMDb solo manual, límite semanal y ajuste de la acción web.
 
 ## Casos de regresión históricos
 
-- **Castle:** cambio de identidad Plex invalida referencia antigua y Series reconstruye la nueva.
-- **Love is in the Air:** PASS 19/08/2026; show inactivo no aparece en Calidad tras deployment.
-- **First Lady:** alta desde Plex no debe quedar bloqueada en IMDb pendiente si el dataset oficial ya contiene el rating.
-- **Series / Todos:** `state=all` debe conservarse.
-- **Biblioteca / Actualizar Plex:** PASS adicional 19/08/2026; 33 s y finalización correcta.
+- Castle: cambio de identidad Plex invalida referencia antigua y Series reconstruye la nueva.
+- Love is in the Air: PASS 19/08/2026.
+- First Lady: PASS 19/08/2026.
+- Series / Todos: `state=all` debe conservarse.
+- Biblioteca / Actualizar Plex: PASS adicional 19/08/2026; 33 s.
+- Discovery IMDb: no debe existir cron/polling y un segundo intento antes de 7 días debe fallar antes de procesar datasets.
 
 ## Documentación funcional/técnica
 
-`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` siguen alineados con el código desplegado. Estas validaciones no cambian funcionalidad ni arquitectura.
+`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` están actualizados con la nueva política manual/semanal de discovery.
 
 ## Próximo paso exacto
 
-1. Continuar con la prueba C sobre **First Lady** (`tt15787006`, TMDb `158808`).
-2. El usuario abre la ficha y comunica qué rating/votos IMDb muestra, qué TMDb figura y si aparece algún estado `IMDb pendiente de dataset`.
-3. Si procede, el usuario ejecuta **Actualizar datos** una sola vez y comunica el resultado.
-4. ChatGPT registra el resultado; si cumple, cerrar #40; si falla, diagnosticar y actualizar la issue antes de continuar.
-5. Después continuar con la aceptación secuencial de Novedades V1 (#38).
+1. Continuar la aceptación de Novedades V1 sobre funciones que no dependen del nuevo código de discovery.
+2. Siguiente prueba: validar **Criterios IMDb** desde la UI, sin ejecutar discovery.
+3. Registrar resultado.
+4. Después validar candidatos manuales, exclusión/restauración y alta al catálogo.
+5. Antes de probar el nuevo comportamiento del discovery, completar el ajuste de `Buscar novedades ahora`, dejar `main` listo y solicitar un nuevo deployment manual al usuario.
+6. Mantener #41 y #42 abiertas hasta implementación + deploy + validación.
 
 ## Documentos que deben leerse al retomar
 
