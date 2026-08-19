@@ -10,6 +10,7 @@ const RATINGS='https://datasets.imdbws.com/title.ratings.tsv.gz';
 const BASICS='https://datasets.imdbws.com/title.basics.tsv.gz';
 const TMDB='https://api.themoviedb.org/3';
 const WEEK_MS=7*24*60*60*1000;
+const FORCE_ONCE=String(process.env.FORCE_DISCOVERY_ONCE||'false').toLowerCase()==='true';
 const DEFAULTS={version:1,movie:{general:{minRating:6,minVotes:10000},spain:{minRating:6,minVotes:7500}},series:{general:{minRating:7,minVotes:5000},spain:{minRating:6.5,minVotes:4000}},excludedCountries:['Q668','IN'],excludeAdult:true};
 const nowIso=()=>new Date().toISOString();
 const isSeries=t=>t==='tvSeries'||t==='tvMiniSeries';
@@ -17,7 +18,7 @@ const isSeries=t=>t==='tvSeries'||t==='tvMiniSeries';
 async function stream(url){const r=await fetch(url,{headers:{'User-Agent':'PikoFilm/2.0 personal-noncommercial-dataset-discovery'}});if(!r.ok||!r.body)throw new Error(`IMDb dataset HTTP ${r.status}: ${url}`);return Readable.fromWeb(r.body).pipe(createGunzip())}
 async function getSettings(){const [r]=await sql`SELECT value FROM app_settings WHERE key='imdb_discovery_v1' LIMIT 1`;const x=r?.value||{};return {...DEFAULTS,...x,movie:{general:{...DEFAULTS.movie.general,...x?.movie?.general},spain:{...DEFAULTS.movie.spain,...x?.movie?.spain}},series:{general:{...DEFAULTS.series.general,...x?.series?.general},spain:{...DEFAULTS.series.spain,...x?.series?.spain}},excludedCountries:Array.isArray(x?.excludedCountries)?x.excludedCountries:DEFAULTS.excludedCountries}}
 async function weeklyGuard(){const [last]=await sql`SELECT finished_at FROM pipeline_runs WHERE job_type='imdb_discovery' AND status='success' AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1`;if(!last?.finished_at)return{allowed:true,lastSuccessAt:null,nextAllowedAt:null};const lastMs=new Date(last.finished_at).getTime(),nextMs=lastMs+WEEK_MS;return{allowed:Date.now()>=nextMs,lastSuccessAt:new Date(lastMs).toISOString(),nextAllowedAt:new Date(nextMs).toISOString()}}
-async function startRun(source){const [r]=await sql`INSERT INTO pipeline_runs(job_type,source,status,started_at,summary,created_at,updated_at) VALUES('imdb_discovery',${source},'running',now(),'{}'::jsonb,now(),now()) RETURNING id`;return r.id}
+async function startRun(source,extra={}){const [r]=await sql`INSERT INTO pipeline_runs(job_type,source,status,started_at,summary,created_at,updated_at) VALUES('imdb_discovery',${source},'running',now(),${JSON.stringify(extra)}::jsonb,now(),now()) RETURNING id`;return r.id}
 async function finishRun(id,status,summary,counts={}){await sql`UPDATE pipeline_runs SET status=${status},finished_at=now(),processed_count=${counts.processed||0},added_count=${counts.added||0},updated_count=${counts.updated||0},skipped_count=${counts.skipped||0},error_count=${counts.errors||0},summary=${JSON.stringify(summary)}::jsonb,updated_at=now() WHERE id=${id}`}
 
 async function loadKnown(){
@@ -56,16 +57,16 @@ async function upsertBatch(rows){if(!rows.length)return;const payload=JSON.strin
 
 async function main(){
   const guard=await weeklyGuard();
-  if(!guard.allowed){const runId=await startRun('manual');const summary={stage:'blocked',reason:'weekly_cooldown',lastSuccessAt:guard.lastSuccessAt,nextAllowedAt:guard.nextAllowedAt};await finishRun(runId,'failed',summary,{errors:1});throw new Error(`Discovery bloqueado por límite semanal. Próxima ejecución permitida: ${guard.nextAllowedAt}`)}
-  const runId=await startRun('manual'),started=Date.now();
+  if(!guard.allowed&&!FORCE_ONCE){const runId=await startRun('manual',{forceOnce:false});const summary={stage:'blocked',reason:'weekly_cooldown',lastSuccessAt:guard.lastSuccessAt,nextAllowedAt:guard.nextAllowedAt,forceOnce:false};await finishRun(runId,'failed',summary,{errors:1});throw new Error(`Discovery bloqueado por límite semanal. Próxima ejecución permitida: ${guard.nextAllowedAt}`)}
+  const runId=await startRun(FORCE_ONCE?'manual_test_override':'manual',{forceOnce:FORCE_ONCE,weeklyGuardBypassed:FORCE_ONCE&&!guard.allowed}),started=Date.now();
   try{
     const settings=await getSettings(),known=await loadKnown(),ratingsPhase=await readRatings(settings),basicsPhase=await readBasics(ratingsPhase.ratings,settings,known),countryMap=await resolveCountries(basicsPhase.candidates,known),excluded=new Set(settings.excludedCountries||[]),rows=[];let general=0,spain=0,rejectedCountry=0,pendingCountry=0;
     for(const c of basicsPhase.candidates){const countries=[...(countryMap.get(c.imdb_id)||[])],isExcludedCountry=countries.some(x=>excluded.has(x)),isSpain=countries.some(x=>x==='ES'||x==='Q29');let eligibility='not_eligible',matchedRule=null,countryStatus=countries.length?'resolved':'pending';if(isExcludedCountry){eligibility='rejected';rejectedCountry++}else if(!countries.length){pendingCountry++}else if(c.general){eligibility='eligible';matchedRule='general';general++}else if(c.spainZone&&isSpain){eligibility='eligible';matchedRule='spain';spain++}
       rows.push({...c,eligibility_status:eligibility,source_snapshot:{title:c.title,originalTitle:c.originalTitle,isAdult:c.isAdult,matchedRule,discoveryVersion:'novedades-v1',rulesVersion:settings.version||1,countries,countryStatus,datasetRatings:RATINGS,datasetBasics:BASICS,discoveredAt:nowIso()}})}
     for(let i=0;i<rows.length;i+=500)await upsertBatch(rows.slice(i,i+500));
     await sql`UPDATE catalog_candidates SET eligibility_status='not_eligible',last_evaluated_at=now(),updated_at=now() WHERE source_snapshot->>'discoveryVersion'='novedades-v1' AND COALESCE(source_snapshot->>'manual','false')<>'true' AND eligibility_status IN('eligible','processing') AND last_seen_at < to_timestamp(${started/1000})`;
-    const summary={settingsVersion:settings.version||1,elapsedSeconds:Math.round((Date.now()-started)/1000),ratingsScanned:ratingsPhase.scanned,ratingsPreselected:ratingsPhase.ratings.size,basicsScanned:basicsPhase.scanned,potentialCandidates:basicsPhase.matched,generalEligible:general,spanishRescues:spain,rejectedCountry,pendingCountry,rowsUpserted:rows.length};
+    const summary={settingsVersion:settings.version||1,elapsedSeconds:Math.round((Date.now()-started)/1000),forceOnce:FORCE_ONCE,weeklyGuardBypassed:FORCE_ONCE&&!guard.allowed,ratingsScanned:ratingsPhase.scanned,ratingsPreselected:ratingsPhase.ratings.size,basicsScanned:basicsPhase.scanned,potentialCandidates:basicsPhase.matched,generalEligible:general,spanishRescues:spain,rejectedCountry,pendingCountry,rowsUpserted:rows.length};
     await finishRun(runId,'success',summary,{processed:basicsPhase.matched,added:general+spain,skipped:rejectedCountry+pendingCountry});console.log(JSON.stringify(summary,null,2));
-  }catch(e){await finishRun(runId,'failed',{error:e?.message||String(e)},{errors:1});throw e}
+  }catch(e){await finishRun(runId,'failed',{forceOnce:FORCE_ONCE,error:e?.message||String(e)},{errors:1});throw e}
 }
 main().catch(e=>{console.error(e);process.exit(1)});
