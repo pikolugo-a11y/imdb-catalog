@@ -4,7 +4,7 @@
 
 ## Estado registrado
 
-**Fecha:** 19/08/2026 12:54 (Europe/Madrid)  
+**Fecha:** 19/08/2026 13:00 (Europe/Madrid)  
 **Fase:** V2 estable + Novedades V1 desplegada, en aceptación dirigida por el usuario  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
@@ -64,6 +64,10 @@ Las pruebas funcionales/visuales las ejecuta siempre el usuario. ChatGPT diseña
 - Creada **#41** para rediseño compacto: resumen en una fila, filtros compactos y acciones visibles por candidato (`Ver`, `IMDb`, `Añadir`, `Excluir`) más acceso visible a Excluidas.
 - Estado mostrado por producción: `Último discovery: failed · 16 ago 2026, 5:04 · última solicitud pending (19 ago 2026, 10:19)`.
 - El usuario comprobó en GitHub Actions que el workflow de discovery aparecía sin historial de ejecuciones.
+- **Criterios IMDb:** pantalla carga correctamente. Valores observados: películas general 6.0/10.000; películas ES 6.0/7.500; series general 7.0/5.000; series ES 6.5/4.000; India excluida (`Q668, IN`). PASS.
+- **Persistencia de criterios:** el usuario cambió temporalmente películas general de 6.0 a 6.1 y pulsó Guardar; guardado correcto. PASS.
+- **Alta manual — ya catalogado:** `tt0133093` (Matrix) y `tt3566834` fueron rechazados correctamente con mensaje `Ese IMDb ya está en el catálogo`. PASS anti-duplicado.
+- **Alta manual — nuevo candidato:** `tt38268282` (`Steel Ball Run: JoJo's Bizarre Adventure`, 2026), verificado previamente como no catalogado/no excluido, fue aceptado con mensaje `IMDb añadido manualmente a Novedades`. PASS.
 
 ## Cambio de política — discovery IMDb
 
@@ -81,7 +85,7 @@ Cambios aplicados en `main`:
 - issue **#42** redefinida como `Discovery IMDb — ejecución manual con límite semanal`.
 - especificaciones funcional y técnica actualizadas en commits `75b8a3e65738c7403d13d4830dc3f2d254b26710` y `6aeaf9a8ff284c22528527a03901cb67c1d4c32d`.
 
-Pendiente de #42: adaptar la UX/acción `Buscar novedades ahora` para que no cree solicitudes huérfanas y represente correctamente el modelo manual + límite semanal.
+Pendiente de #42: adaptar la UX/acción `Buscar novedades ahora` para que no cree solicitudes pendientes sin ejecutor y para que muestre claramente el límite semanal / próxima fecha permitida.
 
 ### E. Regresión mínima — PENDIENTE
 Validar Catálogo, Biblioteca Plex, Calidad Películas, Calidad Series y filtro `Todos`, Sagas, Dashboard incluido décadas y Admin.
@@ -103,17 +107,18 @@ Validar Catálogo, Biblioteca Plex, Calidad Películas, Calidad Series y filtro 
 - Series / Todos: `state=all` debe conservarse.
 - Biblioteca / Actualizar Plex: PASS adicional 19/08/2026; 33 s.
 - Discovery IMDb: no debe existir cron/polling y un segundo intento antes de 7 días debe fallar antes de procesar datasets.
+- Novedades manual: un IMDb ya catalogado no se duplica; un IMDb nuevo puede entrar como candidato manual aunque no dependa de los umbrales automáticos.
 
 ## Documentación funcional/técnica
 
-`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` están actualizados con la nueva política manual/semanal de discovery.
+`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` están actualizados con la nueva política manual/semanal de discovery. Las pruebas de criterios y alta manual no cambian el diseño funcional/técnico ya documentado.
 
 ## Próximo paso exacto
 
-1. Continuar la aceptación de Novedades V1 sobre funciones que no dependen del nuevo código de discovery.
-2. Siguiente prueba: validar **Criterios IMDb** desde la UI, sin ejecutar discovery.
-3. Registrar resultado.
-4. Después validar candidatos manuales, exclusión/restauración y alta al catálogo.
+1. Continuar la aceptación de Novedades V1 con el candidato manual `tt38268282`.
+2. El usuario debe confirmar que aparece en Novedades con indicación/motivo de alta manual y que están disponibles las acciones previstas.
+3. Después validar exclusión desde Novedades y aparición en la vista canónica de Excluidas; posteriormente restauración explícita.
+4. Después validar `Añadir y ampliar datos` y que el candidato desaparece de Novedades y aparece en Catálogo.
 5. Antes de probar el nuevo comportamiento del discovery, completar el ajuste de `Buscar novedades ahora`, dejar `main` listo y solicitar un nuevo deployment manual al usuario.
 6. Mantener #41 y #42 abiertas hasta implementación + deploy + validación.
 
