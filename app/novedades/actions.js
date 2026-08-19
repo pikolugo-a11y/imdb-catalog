@@ -6,9 +6,32 @@ import {enrichTitle} from '@/lib/enrich-title';
 import {DEFAULT_NEWS_SETTINGS,getNewsSettings} from '@/lib/news-v1';
 import {audit,startRun,finishRun,errorInfo} from '@/lib/runlog';
 
+const WEEK_MS=7*24*60*60*1000;
+const DISPATCH_URL='https://api.github.com/repos/pikolugo-a11y/imdb-catalog/actions/workflows/imdb-discovery.yml/dispatches';
 function imdbIdOf(formData){const id=String(formData.get('imdbId')||'').trim();if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id}
 function num(formData,key,fallback,min=0,max=1e9){const n=Number(formData.get(key));return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback}
 function refreshNews(){revalidatePath('/novedades');revalidatePath('/novedades/criterios');revalidatePath('/catalogo');revalidatePath('/catalogo/excluidas');revalidatePath('/calidad');revalidatePath('/calidad/identidad');revalidatePath('/admin');revalidatePath('/')}
+
+export async function requestNewsDiscoveryAction(){
+  const sql=db(),token=process.env.GITHUB_ACTIONS_TOKEN;
+  if(!token){redirect('/novedades?notice=dispatch_not_configured')}
+  const [lastSuccess]=await sql`SELECT finished_at,started_at FROM pipeline_runs WHERE job_type='imdb_discovery' AND status='success' ORDER BY COALESCE(finished_at,started_at) DESC LIMIT 1`;
+  const lastAt=lastSuccess?.finished_at||lastSuccess?.started_at||null,nextAllowedAt=lastAt?new Date(new Date(lastAt).getTime()+WEEK_MS):null,cooldownActive=Boolean(nextAllowedAt&&nextAllowedAt>new Date());
+  let forceOnce=false,overrideConsumed=false;
+  if(cooldownActive){
+    const [override]=await sql`UPDATE app_settings SET value=jsonb_set(COALESCE(value,'{}'::jsonb),'{used}','true'::jsonb,true),updated_at=now() WHERE key='imdb_discovery_test_override' AND value->>'enabled'='true' AND COALESCE(value->>'used','false')='false' RETURNING value`;
+    if(!override)redirect(`/novedades?notice=discovery_blocked&next=${encodeURIComponent(nextAllowedAt.toISOString())}`);
+    forceOnce=true;overrideConsumed=true;
+  }
+  try{
+    const r=await fetch(DISPATCH_URL,{method:'POST',headers:{Authorization:`Bearer ${token}`,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'PikoFilm/2.0'},body:JSON.stringify({ref:'main',inputs:{force_once:forceOnce?'true':'false'}}),cache:'no-store'});
+    if(!r.ok){const detail=(await r.text()).slice(0,400);throw new Error(`GitHub workflow dispatch HTTP ${r.status}: ${detail}`)}
+    await audit('news','discovery','manual','workflow_dispatch',{forceOnce,nextAllowedAt:nextAllowedAt?.toISOString()||null});refreshNews();redirect(`/novedades?notice=discovery_dispatched${forceOnce?'_override':''}`)
+  }catch(e){
+    if(overrideConsumed)await sql`UPDATE app_settings SET value=jsonb_set(COALESCE(value,'{}'::jsonb),'{used}','false'::jsonb,true),updated_at=now() WHERE key='imdb_discovery_test_override'`;
+    await audit('news','discovery','manual','workflow_dispatch_failed',{forceOnce,error:e?.message||String(e)});refreshNews();redirect('/novedades?notice=dispatch_failed')
+  }
+}
 
 export async function addManualCandidateAction(formData){
   const imdbId=imdbIdOf(formData),sql=db();
