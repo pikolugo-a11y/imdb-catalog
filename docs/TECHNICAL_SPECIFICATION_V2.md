@@ -15,7 +15,7 @@ Integraciones:
 - `Plex → plex-sync → plex_* → read models/diagnósticos`
 - `IMDb/FA/TMDb/Wikidata → enrich-title → catálogo/identidad/sagas`
 - `TMDb TV → series-v2 → referencia de episodios + disponibilidad ES`
-- `IMDb datasets → imdb-discovery worker → catalog_candidates → Novedades`
+- `IMDb datasets → imdb-discovery worker manual → catalog_candidates → Novedades`
 - `IMDb title.ratings.tsv.gz → helper on-demand → enriquecimiento individual cuando falta rating local`
 
 La regla arquitectónica es separar datos fuente, estado editorial, staging/candidatos y datos derivados.
@@ -65,14 +65,14 @@ La regla arquitectónica es separar datos fuente, estado editorial, staging/cand
 ### 4.5 Configuración
 `app_settings` almacena configuración versionable de discovery (`imdb_discovery_v1`): umbrales generales/españoles y países excluidos.
 
-### 4.6 Cola de jobs
-`admin_job_requests` permite solicitar desde la web trabajos largos como `imdb_discovery` sin ejecutar el batch en la petición Vercel.
+### 4.6 Solicitudes históricas de jobs
+`admin_job_requests` puede conservar trazabilidad de solicitudes web históricas, pero el discovery IMDb ya no depende de una cola sondeada periódicamente. No debe existir polling para recoger `imdb_discovery`.
 
 ### 4.7 Series
 `series_reference`, `series_reference_episodes` y `series_season_availability` forman la referencia derivada. Solo shows activos en Plex participan en lecturas/refrescos operativos.
 
 ### 4.8 Procesos
-`pipeline_runs` registra job type, source, estado, contadores, timings y `summary` JSON.
+`pipeline_runs` registra job type, source, estado, contadores, timings y `summary` JSON. Para `imdb_discovery`, también registra intentos bloqueados por el límite semanal.
 
 ## 5. Sincronización Plex
 `plex-sync.js` es propietario de cambios físicos y de identidad provenientes de Plex. Detecta altas/cambios/bajas y marca inactivos los títulos que desaparecen.
@@ -95,7 +95,7 @@ Problema resuelto por #40: un título recién añadido desde Plex puede tener IM
 
 `app/actions.js::processTitle()` llama `ensureImdbRating()` antes de `enrichTitle()`. El timeout puntual es acotado (12 s). Si el dataset no contiene el ID o expira, se continúa con TMDb/FA y `imdb_status=pending_dataset`; un fallo IMDb nunca invalida datos TMDb válidos.
 
-Esto complementa, no sustituye, al worker batch diario `worker/update-imdb-ratings.mjs`.
+Esto complementa, no sustituye, al worker batch `worker/update-imdb-ratings.mjs`.
 
 Caso de regresión: `First Lady`, IMDb `tt15787006`, TMDb `158808`.
 
@@ -147,12 +147,17 @@ Upserts por lotes en `catalog_candidates`. Se guardan `matchedRule`, versión de
 ### 8.6 Invalidación
 Candidatos automáticos que dejan de cumplir pasan a `not_eligible`; no se borran. Excluidos y catalogados nunca reaparecen por el anti-join.
 
+### 8.7 Guardia semanal
+Antes de descargar datasets, el worker consulta en `pipeline_runs` la última ejecución `imdb_discovery` con `status='success'`. Si no han pasado 7 días, crea una ejecución trazable con estado fallido, `reason='weekly_cooldown'`, `lastSuccessAt` y `nextAllowedAt`, y termina con error antes de iniciar el trabajo pesado.
+
 ## 9. GitHub Actions / ejecución batch
-`.github/workflows/imdb-discovery.yml` ejecuta el worker de forma programada y manual. La web puede crear una fila `admin_job_requests`; el worker reclama solicitudes pendientes (`FOR UPDATE SKIP LOCKED`) y registra resultado.
+`.github/workflows/imdb-discovery.yml` **no contiene `schedule`**. Solo admite `workflow_dispatch` y ejecuta `worker/imdb-discovery.mjs` manualmente. No existe polling cada 5 minutos ni discovery diario automático.
 
-`.github/workflows/imdb-ratings-refresh.yml` usa ya código de `main`, no una rama experimental, y actualiza ratings masivos de `movies`/`catalog_candidates`.
+La limitación semanal se aplica en el worker, no solo en la UI o el workflow, para que cualquier intento prematuro sea rechazado de forma consistente.
 
-Los jobs están diseñados para ser idempotentes y reintentables.
+`.github/workflows/imdb-ratings-refresh.yml` usa código de `main` y actualiza ratings masivos de `movies`/`catalog_candidates` según su propia política operativa.
+
+Los jobs deben seguir siendo idempotentes y reintentables, pero nunca a costa de programar ejecuciones frecuentes no solicitadas.
 
 ## 10. Calidad Películas
 `quality-v2.js` opera principalmente sobre datos persistidos de Plex/catálogo. Analiza duración, filename, duplicados y calidad técnica. Filtra excluidos y nunca borra archivos.
@@ -177,10 +182,10 @@ El cálculo de anomalías compara episodios Plex activos con la referencia ofici
 `plex-queries-v2.js` pagina y filtra en SQL. Novedades aplica el mismo principio. No se descargan miles de filas para filtrar en navegador.
 
 ## 15. Admin y observabilidad
-`runlog.js` normaliza el ciclo de vida de jobs. `Admin` debe permitir distinguir errores funcionales, timeouts y fallos de infraestructura.
+`runlog.js` normaliza el ciclo de vida de jobs. `Admin` debe permitir distinguir errores funcionales, timeouts, bloqueos por cooldown y fallos de infraestructura.
 
 Nuevos/actualizados jobs relevantes:
-- `imdb_discovery`;
+- `imdb_discovery`, incluida trazabilidad de `weekly_cooldown`;
 - `single_title` con estado IMDb completo/pendiente;
 - `series_v2_refresh` con timings por fase.
 
@@ -201,8 +206,8 @@ El PR debe pasar `npm run build` y comprobaciones sintácticas de workers antes 
 - configuración discovery → `app_settings`;
 - referencia series → `series_reference*`;
 - disponibilidad ES → `series_season_availability`;
-- histórico de procesos → `pipeline_runs`;
-- solicitudes batch → `admin_job_requests`.
+- histórico de procesos y guard semanal → `pipeline_runs`;
+- solicitudes batch históricas → `admin_job_requests`.
 
 No deben crearse fuentes paralelas para solucionar bugs locales.
 
@@ -211,7 +216,7 @@ No deben crearse fuentes paralelas para solucionar bugs locales.
 
 `Series Refresh → TMDb reference/disponibilidad → diagnósticos`
 
-`IMDb Discovery → catalog_candidates → Novedades`
+`IMDb Discovery manual (máximo semanal) → catalog_candidates → Novedades`
 
 `Novedades Add → enrichTitle → movies → desaparece de Novedades`
 
@@ -229,6 +234,7 @@ No deben crearse fuentes paralelas para solucionar bugs locales.
 - India: permanece fuera mientras esté configurada como excluida.
 - España: títulos en zona de rescate solo entran si se confirma participación española.
 - Manuales: no desaparecen por fluctuación IMDb y no levantan exclusión silenciosamente.
+- Discovery IMDb: no hay cron/polling y un segundo intento antes de 7 días falla antes de procesar datasets.
 
 ## 21. Documentación especializada
 `docs/NOVEDADES_V1_FUNCTIONAL.md` y `docs/NOVEDADES_V1_TECHNICAL.md` amplían el detalle del módulo. Este documento sigue siendo la referencia técnica global y debe actualizarse junto con la especificación funcional en cada cambio relevante.
