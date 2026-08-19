@@ -3,111 +3,111 @@
 > **Documento vivo y obligatorio.** Actualizar después de cada hito, deploy, batería de pruebas, incidencia y antes de terminar sesión.
 
 ## Estado registrado
-**Fecha:** 19/08/2026 13:30 (Europe/Madrid)  
-**Fase:** V2 estable + Novedades V1; correcciones #41/#42/#43 implementadas en `main`, PENDIENTES de deployment y aceptación del usuario  
+**Fecha:** 19/08/2026 13:39 (Europe/Madrid)  
+**Fase:** V2 estable + Novedades V1; #41/#42/#43 implementadas y documentadas en `main`, PENDIENTES de deployment manual y aceptación del usuario  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
 
 ## Reglas operativas innegociables
-- Los deployments de Vercel los realiza **siempre el usuario manualmente**. ChatGPT prepara `main` y avisa; no despliega producción.
-- Las pruebas funcionales/visuales las realiza **siempre el usuario**. ChatGPT diseña la batería, la dirige paso a paso y registra resultados.
-- Ninguna issue que requiera aceptación se cierra solo porque exista código: debe estar desplegada y probada por el usuario.
-- Especificación funcional, técnica y esta bitácora deben mantenerse vivas.
+- Deployments Vercel: **siempre manuales por el usuario**. ChatGPT no despliega.
+- Pruebas funcionales/visuales: **siempre ejecutadas por el usuario**. ChatGPT diseña, dirige y registra.
+- No cerrar issues antes de deploy + PASS explícito.
+- Mantener funcional, técnico y bitácora actualizados.
 
-## Producción actual
+## Producción vigente
 Último deployment validado: `dpl_9JxhPtZRfuR8Kru8PLm3iyAttgfY`, commit `02c272bd0366f78671e18631f8fa051863b2f0c0`.
 
-**Producción todavía NO contiene los cambios nuevos de #41/#42/#43 ni los cambios de seguridad del discovery posteriores a ese commit.** No probarlos hasta nuevo deployment manual del usuario.
+Producción **NO contiene todavía** este hito. No atribuirle ningún resultado de #41/#42/#43 hasta nuevo deployment manual.
 
-## Auditoría de issues — 19/08/2026 13:30
-Se revisaron issues abiertas/cerradas y últimos commits de `main`.
+## Auditoría de issues
+Revisadas abiertas/cerradas y últimos commits.
 
-Cerradas con aceptación explícita reciente y mantenidas cerradas:
-- #36 timeout Actualizar Series: PASS por usuario; completó al primer intento.
-- #37 series eliminadas de Plex: PASS con `Love is in the Air`.
-- #40 IMDb on-demand: PASS con `First Lady`.
+Cerradas y mantenidas por aceptación explícita del usuario: #36, #37, #40.
 
-**#29 reabierta.** Aunque la ruta `/catalogo/excluidas` existía y Catálogo tenía un enlace textual pequeño, el usuario confirmó en aceptación que no encontraba cómo llegar a Excluidas. Por tanto no cumplía el criterio de descubribilidad y estaba cerrada prematuramente. Se añadió comentario de auditoría a la issue.
+**#29 reabierta**: el usuario no encontraba Excluidas; el enlace pequeño existente no cumplía descubribilidad. Comentario registrado. Issues abiertas actuales: **#29, #38, #41, #42, #43**.
 
-Issues abiertas tras auditoría: #29, #38, #41, #42, #43.
+## Aceptación Novedades previa
+PASS: carga, contadores 146=34+112, criterios y persistencia, anti-duplicado, alta manual `tt38268282`, retirar/reañadir, excluir, bloqueo de excluido y restauración explícita.
 
-## Aceptación ya realizada de Novedades
-- carga básica: PASS;
-- contadores 146 = 34 películas + 112 series: PASS;
-- criterios IMDb cargan/guardan: PASS;
-- anti-duplicado manual (`tt0133093`, `tt3566834`): PASS;
-- `tt38268282` alta manual: PASS;
-- retirar y volver a añadir: PASS;
-- excluir: PASS;
-- excluido bloquea alta silenciosa: PASS;
-- restauración explícita: PASS;
-- acceso visible a Excluidas: FAIL UX → #29/#41;
-- `Añadir y ampliar datos` con `tt38268282`: FAIL por `TMDb no encontró el título` → #43.
+FAIL detectados:
+- Excluidas no descubrible → #29/#41.
+- `tt38268282` no catalogaba por `TMDb no encontró el título` (`pipeline_runs` 5957) → #43.
 
-Las pruebas visuales/filtros restantes de Novedades quedan aplazadas por decisión del usuario hasta desplegar el nuevo frontal.
+Resto de pruebas visuales/filtros aplazado por el usuario hasta el frontal nuevo.
 
-## Implementación #41 — nuevo frontal Novedades
-Preparada en `main`, sin cerrar issue:
-- vista compacta tipo tabla en escritorio;
-- KPIs compactos: propuestas, películas, series y último discovery;
-- toolbar compacta con alta IMDb manual, tipo, búsqueda y orden;
-- acciones visibles por fila: `Ver`, `IMDb`, `Añadir`, `Excluir`; `Retirar` adicional para manuales;
-- nueva ficha `/novedades/[imdbId]`;
-- acceso prominente `Excluidas` con contador desde Novedades;
-- acceso prominente `Ver excluidas` desde cabecera de Catálogo;
+## Hito implementado en main
+### #41 — UX compacta
+- tabla compacta de Novedades;
+- KPIs compactos;
+- toolbar única;
+- acciones visibles `Ver / IMDb / Añadir / Excluir`, más `Retirar` manual;
+- ficha `/novedades/[imdbId]`;
+- `Excluidas · N` visible desde Novedades;
+- `Ver excluidas` visible en cabecera de Catálogo;
 - paginación 24/48/96;
-- estilos responsive específicos en `app/novedades/news.css`.
+- CSS responsive `app/novedades/news.css`.
 
-Commits principales: `112dcbba...`, `eb53e9b2...`, `1103ef4f...`, `f85512ee...`, `316186c3...`.
+### #42 — discovery seguro
+- workflow discovery solo `workflow_dispatch`;
+- guardia worker máximo 1 éxito / 7 días;
+- web ya no crea `admin_job_requests` pending;
+- Guardar criterios no dispara discovery;
+- UI calcula cooldown y próxima fecha;
+- cuando está permitido, botón abre explícitamente el workflow manual GitHub; cuando no, queda bloqueado.
 
-## Implementación #42 — discovery manual seguro
-Regla definitiva: sin cron, sin polling, máximo una ejecución exitosa cada 7 días.
+### #43 — alta parcial
+`enrichNewsCandidateAction()` conserva/catalogará la fila cuando hay identidad mínima fiable aunque falle una fuente secundaria. Marca `source_status.partial`, `enrichment_status=pending`, run `success/stage=partial`; Calidad/Identidad debe mostrar lo pendiente. Solo identidad mínima insuficiente hace rollback. Regresión: `tt38268282`.
 
-Ya existente en `main`:
-- workflow únicamente `workflow_dispatch` (`18f4620b...`);
-- guard semanal dura en worker (`0573c722...`).
+## Documentación actualizada
+- `docs/FUNCTIONAL_SPECIFICATION_V2.md` → commit `c580bea24407f47e21a5a5850ee99b11c244c95f`.
+- `docs/TECHNICAL_SPECIFICATION_V2.md` → commit `754814936896fa3327909c820624922a09d11e61`.
+- `docs/NOVEDADES_V1_FUNCTIONAL.md` → commit `87190eba5357aca3ae64007cc03d54f1bca4b5a2`.
+- `docs/NOVEDADES_V1_TECHNICAL.md` → commit `9238b8d6755662365e9d513c65b0c0488ee59f99`.
 
-Cambio web nuevo:
-- eliminada creación de `admin_job_requests` desde Novedades;
-- eliminado `Guardar y buscar ahora` de Criterios: guardar nunca dispara/encola discovery;
-- Novedades calcula la próxima fecha permitida desde el último `pipeline_runs` exitoso;
-- si hay cooldown, el control queda bloqueado e informa de la próxima fecha;
-- si está permitido, `Buscar novedades ahora` abre explícitamente el workflow manual de GitHub Actions; no existe ejecutor/polling oculto.
+## Revisión de workflows / seguridad GitHub
+Revisados los 5 workflows actuales de `.github/workflows`:
+- `imdb-discovery.yml`: solo `workflow_dispatch`, sin schedule.
+- `imdb-ratings-refresh.yml`: solo `workflow_dispatch`.
+- `catalog-enrichment-test.yml`: solo `workflow_dispatch`, timeout 3 min.
+- `manual-maintenance.yml`: solo `workflow_dispatch`, read-only, timeout 5 min.
+- `ci.yml`: únicamente `pull_request` a main/develop; no cron/polling.
 
-Commits principales: `f622dc4b...`, `876cb0e4...`, `112dcbba...`, `bf6f830b...`.
+No queda ningún workflow con ejecución periódica/cron. Esta revisión no lanzó ningún workflow.
 
-## Implementación #43 — alta tolerante a enriquecimiento parcial
-Caso de regresión: `tt38268282`.
+## Revisión técnica antes de deployment
+- búsqueda de `requestNewsDiscoveryAction`: sin referencias restantes;
+- búsqueda de cola `admin_job_requests imdb_discovery` en código actual: sin referencias de ejecución web;
+- workflow discovery confirmado sin `schedule`;
+- HEAD no tiene status checks asociados porque los cambios se realizaron directamente en `main` y CI está configurado solo para `pull_request`; **no se ha ejecutado CI ni deployment automáticamente**, respetando la política del usuario.
 
-`enrichNewsCandidateAction` ahora distingue:
-- **identidad mínima fiable**: título real distinto del IMDb ID + tipo IMDb soportado. Se crea el título y `enrichTitle()` se ejecuta best-effort. Si una fuente secundaria falla, NO se borra la fila: se marca `source_status.partial=true`, `enrichment_status=pending`, se cataloga el candidato y el run queda `success` con `stage=partial` y error pendiente trazable;
-- **identidad mínima insuficiente**: conserva rollback y candidato reintentable.
+## Commits funcionales principales del hito
+- `f622dc4b2e0f972630d622d45c1ddc819b7584b1` — alta parcial + eliminar cola web.
+- `876cb0e45d800f8396d3c0175af5605ee05d6b91` — stats/cooldown/paginación.
+- `112dcbba5584ddd627e391b590df113962cf84ea` — frontal compacto.
+- `eb53e9b224a9f64f52324f3b4f153bb6bee3b7cc` — ficha candidato.
+- `1103ef4f7ef9eba497f3d755a3e63e6a78c666e9` + `f85512ee7761499b3115ce961fc1f53c73bc3454` — estilos.
+- `bf6f830b14498bc54599ba10a011ad30a77901eb` — criterios sin ejecución.
+- `316186c30082596d6d98a77fcb8f3b30e705f2fe` — Excluidas visible en Catálogo.
 
-Calidad/Identidad sigue siendo el mecanismo canónico para detectar IDs/datos faltantes; no se crea silo paralelo.
-
-Commit principal: `f622dc4b...`.
-
-## Issues actuales
-- #29 ABIERTA — UX V2 / Excluidas; reabierta hasta que el nuevo acceso visible sea probado.
-- #38 ABIERTA — Novedades V1; aceptación global pendiente del nuevo frontal y regresiones.
-- #41 ABIERTA — implementación preparada, pendiente deploy + prueba usuario.
-- #42 ABIERTA — implementación preparada, pendiente deploy + prueba usuario.
-- #43 ABIERTA — implementación preparada, pendiente deploy + prueba `tt38268282` por usuario.
-
-## Documentación
-Las especificaciones funcional y técnica deben reflejar este hito antes de solicitar deployment. La bitácora ya registra implementación, auditoría y estado de aceptación.
+## Issues
+- #29 ABIERTA — implementación parcial de descubribilidad preparada; pendiente aceptación.
+- #38 ABIERTA — aceptación Novedades global pendiente.
+- #41 ABIERTA — código listo, pendiente deploy + prueba.
+- #42 ABIERTA — código listo, pendiente deploy + prueba.
+- #43 ABIERTA — código listo, pendiente deploy + prueba.
 
 ## Próximo paso exacto
-1. Actualizar `FUNCTIONAL_SPECIFICATION_V2.md` y `TECHNICAL_SPECIFICATION_V2.md` con el nuevo frontal, acceso visible a Excluidas, ejecución manual vía workflow y semántica de alta parcial.
-2. Revisar sintaxis/consistencia del código y estado final de `main` sin desplegar.
-3. Si no aparece bloqueo técnico, avisar al usuario de que `main` está listo y pedirle **un deployment manual**.
-4. Tras confirmación del usuario, verificar commit desplegado/READY.
-5. Preparar batería de aceptación nueva y hacer que **el usuario** la ejecute paso a paso: #41 primero, #42 sin provocar ejecuciones innecesarias, #43 con `tt38268282`, regresión #29 y finalmente #38.
-6. Cerrar issues únicamente tras PASS explícito del usuario.
+1. **Usuario realiza deployment manual de `main`**. HEAD esperado en el momento de esta bitácora: el commit de bitácora que resulte de esta actualización (descendiente de `9238b8d6755662365e9d513c65b0c0488ee59f99`).
+2. Usuario confirma `ya está`.
+3. ChatGPT verifica técnicamente deployment READY + commit exacto; no ejecuta pruebas funcionales.
+4. ChatGPT entrega al usuario una prueba cada vez, empezando por carga/UX #41 y acceso a Excluidas.
+5. Después #42 sin ejecutar discovery si el cooldown lo bloquea; comprobar mensajes/ausencia de pending.
+6. Después #43 con `tt38268282`: Añadir debe catalogar parcial, desaparecer de Novedades y aparecer en Calidad/Faltan datos.
+7. Ejecutar regresión mínima y cerrar solo lo que el usuario confirme PASS.
 
-## Documentos que deben leerse al retomar
+## Documentos a leer al retomar
 1. `docs/PROJECT_STATUS.md`.
 2. `docs/PROJECT_RULES.md`.
 3. `docs/FUNCTIONAL_SPECIFICATION_V2.md`.
 4. `docs/TECHNICAL_SPECIFICATION_V2.md`.
-5. Issues abiertas y últimos commits/PRs de `main`.
+5. Issues abiertas y últimos commits de `main`.
