@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker:imdb-discovery": "node worker/imdb-discovery.mjs"
+    "worker:imdb-discovery": "node worker/imdb-discovery.mjs",
+    "worker:imdb-ratings": "node worker/update-imdb-ratings.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
