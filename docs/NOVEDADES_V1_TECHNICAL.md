@@ -1,72 +1,45 @@
 # PikoFilm — Novedades V1 · Especificación técnica
 
 ## Componentes
-- `app/novedades/page.js`: read model y UI de propuestas.
-- `app/novedades/criterios/page.js`: edición de reglas.
-- `app/novedades/actions.js`: acciones servidor de cola, alta manual, exclusión y enriquecimiento.
-- `lib/news-v1.js`: configuración, consultas y estadísticas.
-- `worker/imdb-discovery.mjs`: discovery batch IMDb.
-- `.github/workflows/imdb-discovery.yml`: scheduler y consumidor de cola.
-- `worker/update-imdb-ratings.mjs`: worker de ratings trasladado a mainline.
+- `app/novedades/page.js`: UI compacta.
+- `app/novedades/news.css`: estilos responsive específicos.
+- `app/novedades/[imdbId]/page.js`: ficha de candidato.
+- `app/novedades/criterios/page.js`: reglas.
+- `app/novedades/actions.js`: alta manual, exclusión/restauración, retirada y catalogación.
+- `lib/news-v1.js`: consultas, stats, paginación y cooldown.
+- `worker/imdb-discovery.mjs`: batch IMDb.
+- `.github/workflows/imdb-discovery.yml`: **solo `workflow_dispatch`**.
 
-## Persistencia reutilizada
-No se introduce una nueva fuente canónica de candidatos. Se reutilizan:
-- `catalog_candidates`: staging de discovery.
-- `catalog_exclusions`: exclusión global reversible.
-- `movies`: catálogo editorial definitivo.
-- `app_settings`: configuración versionada de reglas.
-- `admin_job_requests`: cola de solicitudes largas.
-- `pipeline_runs`: trazabilidad operativa.
-
-## Configuración
-La clave `app_settings.key='imdb_discovery_v1'` contiene perfiles `movie.general`, `movie.spain`, `series.general`, `series.spain`, lista `excludedCountries`, versión y flags operativos. Si no existe fila se aplican defaults en código; guardar desde UI materializa la configuración en Neon.
+## Persistencia
+`catalog_candidates`, `catalog_exclusions`, `movies`, `app_settings`, `pipeline_runs`. `admin_job_requests` ya no actúa como cola del discovery actual.
 
 ## Discovery
-### Fase 1 — ratings
-`title.ratings.tsv.gz` se consume con `Readable.fromWeb(...).pipe(createGunzip())`. Solo se guardan en memoria IDs que superan el mínimo absoluto necesario para alguna regla activa.
+Streaming de `title.ratings.tsv.gz` y después `title.basics.tsv.gz`; tipos movie/tvSeries/tvMiniSeries; país selectivo para rescate España; caché `source_snapshot`; Wikidata batch y TMDb fallback acotado; upserts por lotes. India configurable (`Q668`,`IN`). Automáticos no vistos pasan a `not_eligible`, no se borran.
 
-### Fase 2 — basics
-`title.basics.tsv.gz` se consume también por streaming. Se descartan tipos distintos de `movie`, `tvSeries` y `tvMiniSeries`, contenido adulto cuando la regla está activa, títulos ya catalogados/excluidos y filas que no cumplen ni regla general ni zona de rescate España.
+## Ejecución segura (#42)
+No existe `schedule`, cron ni polling. El workflow solo admite ejecución manual. Antes de descargar datasets el worker consulta la última ejecución exitosa y bloquea si no han pasado 7 días, registrando `weekly_cooldown`.
 
-### Resolución de país
-Los países se reutilizan desde `source_snapshot.countries` si ya existen. Para candidatos sin caché se intenta Wikidata en lotes mediante IMDb ID/P345 y país de origen/P495. Los no resueltos usan TMDb como fallback con concurrencia acotada. Si el país sigue sin resolverse, el candidato no se expone como elegible: se prioriza no dejar escapar países globalmente excluidos.
+La web no inserta solicitudes `pending`. `saveNewsSettingsAction()` solo persiste configuración. `getNewsV1()` calcula `nextAllowedAt` y `discoveryAllowed`; si está permitido la UI abre el workflow manual GitHub, si no muestra cooldown. No se añaden tokens GitHub a Vercel/frontend.
 
-`Q668` y `IN` representan la exclusión inicial de India. `Q29` y `ES` identifican España en las fuentes empleadas.
+## UI (#41)
+`getNewsV1()` pagina 24/48/96 (default 24), devuelve stats, contador de excluidas y último run. Tabla compacta con acciones Ver/IMDb/Añadir/Excluir/Retirar. `getNewsCandidate()` alimenta ficha local sin llamadas externas. Catálogo añade acceso prominente `/catalogo/excluidas`.
 
-## Upserts
-Los candidatos se escriben en lotes mediante `jsonb_to_recordset`. `source_snapshot` conserva título, título original, regla que hizo match, versión de discovery, versión de reglas, países y estado de resolución. Los candidatos manuales activos tienen precedencia y no son pisados por el worker automático.
+## Alta parcial (#43)
+`enrichNewsCandidateAction()` crea staging y reutiliza `enrichTitle()`.
+- éxito completo → `catalogued`, staging eliminado, run `success/done`;
+- error con identidad mínima fiable → conservar `movies`, `source_status.partial=true`, `enrichment_status=pending`, error/timestamp, candidato `catalogued`, run `success/partial` con error pendiente;
+- identidad mínima insuficiente → borrar solo staging, candidato `eligible`, run `failed_identity`.
 
-Al final del run, candidatos automáticos V1 que antes eran elegibles pero no han sido vistos en la ejecución actual pasan a `not_eligible`; no se borran.
+Calidad/Identidad detecta TMDb/FA/campos pendientes desde la fila canónica; no se crea silo adicional. Regresión `tt38268282`.
 
-## Cola y scheduling
-La acción web inserta un `admin_job_requests` pendiente. El workflow de GitHub Actions ejecuta un consumidor cada cinco minutos y una ejecución completa diaria. El worker reclama una sola petición con `FOR UPDATE SKIP LOCKED`, la marca `running` y termina en `success`/`failed`.
-
-La petición web nunca espera a descargar/recorrer IMDb.
-
-## Enriquecimiento desde Novedades
-`enrichTitle()` no se duplica. El adaptador de Novedades crea una fila staging mínima en `movies` para satisfacer el contrato actual del enriquecedor, ejecuta el pipeline existente y elimina el flag `staging` al completar. Si falla, elimina exclusivamente la fila staging y conserva el candidato.
-
-`inclusion_origin` diferencia `imdb_discovery` e `imdb_manual`.
-
-## Exclusión y restauración
-Novedades escribe directamente en `catalog_exclusions`. La consulta de Novedades hace anti-join con esa tabla y con `movies`. Restaurar la exclusión deja que reaparezca el candidato si su estado sigue siendo elegible; no hay tabla de exclusiones paralela.
+## Exclusión
+`catalog_exclusions` sigue siendo única fuente. Anti-join en Novedades. Restauración explícita para manual excluido.
 
 ## Observabilidad
-`pipeline_runs` registra `job_type='imdb_discovery'`, fuente (`queue` o `schedule`), duración y contadores. El summary incluye escaneos, preselección, potenciales, elegibles generales, rescates España, descartes de país, pendientes de país y filas actualizadas.
+`pipeline_runs`: `imdb_discovery` para batch/cooldown y `single_title` para alta completa/parcial/fallo de identidad. Auditoría ligera para mutaciones de candidatos.
 
 ## Rendimiento
-- streaming gzip;
-- prefiltrado ratings antes de basics;
-- Sets/Maps en memoria solo para subconjuntos relevantes;
-- anti-join conceptual contra Catálogo/Excluidas antes de resolver país;
-- Wikidata batch;
-- TMDb con concurrencia limitada;
-- upserts de 500 filas;
-- navegación Novedades paginada en servidor (48 filas);
-- cero APIs externas durante el render.
+Streaming gzip, prefiltrado ratings, país selectivo, upserts batch, render Neon-only, paginación server-side y cero enriquecimiento masivo en render.
 
-## Robustez Series (#36)
-`app/calidad/series/page.js` declara `maxDuration=60`, dando margen respecto al tiempo observado cercano a 28–30 s. `lib/series-v2.js` registra tiempos de selección, refresco TMDb, cálculo de anomalías y total para poder optimizar con evidencia si el volumen aumenta. Las referencias siguen limitadas a shows Plex activos, preservando el arreglo de #37.
-
-## CI
-CI valida sintaxis de ambos workers con `node --check` y ejecuta `next build`. Los workflows IMDb dejan de depender de `issue-14-worker` y pasan a mainline tras el merge.
+## CI / deployment
+Antes de producción debe validarse build/sintaxis. El deployment de Vercel lo realiza manualmente el usuario; después el usuario ejecuta la batería funcional dirigida. Issues no se cierran antes de aceptación explícita.
