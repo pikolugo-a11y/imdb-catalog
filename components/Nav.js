@@ -1,5 +1,45 @@
 'use client';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
-const items=[['/','Inicio'],['/catalogo','Catálogo'],['/novedades','Novedades'],['/plex','Biblioteca'],['/calidad','Calidad'],['/sagas','Sagas'],['/admin','Admin']];
-export default function Nav(){const path=usePathname();const active=h=>h==='/'?path==='/':path.startsWith(h);return <><header className="topbar ux-topbar"><Link href="/" className="brand"><span>P</span>PikoFilm</Link><nav className="ux-nav">{items.map(([h,l])=><Link key={h} href={h} className={active(h)?'active':''}>{l}</Link>)}</nav><div className="version">V2</div></header><nav className="mobile-nav ux-mobile">{items.slice(0,5).map(([h,l])=><Link key={h} href={h} className={active(h)?'active':''}>{l}</Link>)}</nav></>}
+
+const items=[
+  ['/', 'Inicio', '⌂'],
+  ['/catalogo','Catálogo','▦'],
+  ['/novedades','Novedades','✦'],
+  ['/plex','Biblioteca','▶'],
+  ['/calidad','Calidad','✓'],
+  ['/sagas','Sagas','◈'],
+  ['/admin','Admin','⚙']
+];
+
+function sectionLabel(path){
+  const item=items.find(([href])=>href==='/'?path==='/':path.startsWith(href));
+  return item?.[1]||'PikoFilm';
+}
+
+export default function Nav(){
+  const path=usePathname();
+  const active=href=>href==='/'?path==='/':path.startsWith(href);
+  const current=sectionLabel(path);
+  return <>
+    <aside className="v3-sidebar" aria-label="Navegación principal">
+      <Link href="/" className="v3-brand" aria-label="PikoFilm - Inicio">
+        <span className="v3-brand-mark">P</span>
+        <span className="v3-brand-copy"><b>PikoFilm</b><small>Biblioteca personal</small></span>
+      </Link>
+      <nav className="v3-side-nav">
+        {items.map(([href,label,icon])=><Link key={href} href={href} className={active(href)?'active':''} aria-current={active(href)?'page':undefined}><span className="v3-nav-icon" aria-hidden="true">{icon}</span><span>{label}</span></Link>)}
+      </nav>
+      <div className="v3-sidebar-foot"><span className="v3-version-pill">V3</span><small>Roadmap en evolución</small></div>
+    </aside>
+
+    <header className="v3-header">
+      <div><span className="v3-header-kicker">PikoFilm</span><strong>{current}</strong></div>
+      <span className="v3-header-status">V3</span>
+    </header>
+
+    <nav className="v3-mobile-nav" aria-label="Navegación móvil">
+      {items.map(([href,label,icon])=><Link key={href} href={href} className={active(href)?'active':''} aria-current={active(href)?'page':undefined}><span aria-hidden="true">{icon}</span><small>{label}</small></Link>)}
+    </nav>
+  </>;
+}
