@@ -3,107 +3,83 @@
 > **Documento vivo y obligatorio.** Actualizar después de cada hito, deploy, batería de pruebas, incidencia y antes de terminar sesión.
 
 ## Estado registrado
-**Fecha:** 19/08/2026 13:39 (Europe/Madrid)  
-**Fase:** V2 estable + Novedades V1; #41/#42/#43 implementadas y documentadas en `main`, PENDIENTES de deployment manual y aceptación del usuario  
+**Fecha:** 19/08/2026 14:50 (Europe/Madrid)  
+**Fase:** Novedades V1 en aceptación; #41 y #43 validadas funcionalmente, #42 ampliada para prueba real desde frontal  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
 
 ## Reglas operativas innegociables
-- Deployments Vercel: **siempre manuales por el usuario**. ChatGPT no despliega.
-- Pruebas funcionales/visuales: **siempre ejecutadas por el usuario**. ChatGPT diseña, dirige y registra.
-- No cerrar issues antes de deploy + PASS explícito.
+- Deployments Vercel: siempre manuales por el usuario. ChatGPT no despliega.
+- Pruebas funcionales/visuales: siempre ejecutadas por el usuario. ChatGPT diseña, dirige y registra.
+- No cerrar issues antes de deployment + PASS explícito.
 - Mantener funcional, técnico y bitácora actualizados.
 
-## Producción vigente
-Último deployment validado: `dpl_9JxhPtZRfuR8Kru8PLm3iyAttgfY`, commit `02c272bd0366f78671e18631f8fa051863b2f0c0`.
+## Producción / deployment validado
+El usuario realizó deployment manual del hito #41/#42/#43 y ChatGPT verificó READY + commit esperado antes de comenzar aceptación.
 
-Producción **NO contiene todavía** este hito. No atribuirle ningún resultado de #41/#42/#43 hasta nuevo deployment manual.
+## Batería ejecutada por el usuario — 19/08
+### #41 / #29 — UX y Excluidas
+PASS explícitos:
+- nuevo frontal compacto carga correctamente;
+- acciones visibles `Ver / IMDb / Añadir / Excluir`;
+- acceso `Excluidas · 3` visible y vista de excluidos correcta;
+- filtro Películas: 34;
+- filtro Series: 111;
+- búsqueda `Bekaaboo` combinada con Series;
+- ordenación;
+- ficha individual de candidato;
+- enlace IMDb correcto.
 
-## Auditoría de issues
-Revisadas abiertas/cerradas y últimos commits.
-
-Cerradas y mantenidas por aceptación explícita del usuario: #36, #37, #40.
-
-**#29 reabierta**: el usuario no encontraba Excluidas; el enlace pequeño existente no cumplía descubribilidad. Comentario registrado. Issues abiertas actuales: **#29, #38, #41, #42, #43**.
-
-## Aceptación Novedades previa
-PASS: carga, contadores 146=34+112, criterios y persistencia, anti-duplicado, alta manual `tt38268282`, retirar/reañadir, excluir, bloqueo de excluido y restauración explícita.
-
-FAIL detectados:
-- Excluidas no descubrible → #29/#41.
-- `tt38268282` no catalogaba por `TMDb no encontró el título` (`pipeline_runs` 5957) → #43.
-
-Resto de pruebas visuales/filtros aplazado por el usuario hasta el frontal nuevo.
-
-## Hito implementado en main
-### #41 — UX compacta
-- tabla compacta de Novedades;
-- KPIs compactos;
-- toolbar única;
-- acciones visibles `Ver / IMDb / Añadir / Excluir`, más `Retirar` manual;
-- ficha `/novedades/[imdbId]`;
-- `Excluidas · N` visible desde Novedades;
-- `Ver excluidas` visible en cabecera de Catálogo;
-- paginación 24/48/96;
-- CSS responsive `app/novedades/news.css`.
-
-### #42 — discovery seguro
-- workflow discovery solo `workflow_dispatch`;
-- guardia worker máximo 1 éxito / 7 días;
-- web ya no crea `admin_job_requests` pending;
-- Guardar criterios no dispara discovery;
-- UI calcula cooldown y próxima fecha;
-- cuando está permitido, botón abre explícitamente el workflow manual GitHub; cuando no, queda bloqueado.
+Conclusión funcional: #41 y requisito de descubribilidad de #29 han pasado la batería dirigida. Mantener issues abiertas hasta registrar/cerrar formalmente después de la regresión final del bloque.
 
 ### #43 — alta parcial
-`enrichNewsCandidateAction()` conserva/catalogará la fila cuando hay identidad mínima fiable aunque falle una fuente secundaria. Marca `source_status.partial`, `enrichment_status=pending`, run `success/stage=partial`; Calidad/Identidad debe mostrar lo pendiente. Solo identidad mínima insuficiente hace rollback. Regresión: `tt38268282`.
+Caso `tt38268282`:
+- candidato localizado en Novedades: PASS;
+- Añadir con TMDb sin match: entra en Catálogo: PASS;
+- aparece en Calidad/Faltan datos: PASS;
+- reintento sigue sin encontrar TMDb pero no elimina ni duplica el título: PASS.
 
-## Documentación actualizada
-- `docs/FUNCTIONAL_SPECIFICATION_V2.md` → commit `c580bea24407f47e21a5a5850ee99b11c244c95f`.
-- `docs/TECHNICAL_SPECIFICATION_V2.md` → commit `754814936896fa3327909c820624922a09d11e61`.
-- `docs/NOVEDADES_V1_FUNCTIONAL.md` → commit `87190eba5357aca3ae64007cc03d54f1bca4b5a2`.
-- `docs/NOVEDADES_V1_TECHNICAL.md` → commit `9238b8d6755662365e9d513c65b0c0488ee59f99`.
+Conclusión funcional: contrato #43 validado por el usuario. Pendiente cierre formal tras registrar regresión final.
 
-## Revisión de workflows / seguridad GitHub
-Revisados los 5 workflows actuales de `.github/workflows`:
-- `imdb-discovery.yml`: solo `workflow_dispatch`, sin schedule.
-- `imdb-ratings-refresh.yml`: solo `workflow_dispatch`.
-- `catalog-enrichment-test.yml`: solo `workflow_dispatch`, timeout 3 min.
-- `manual-maintenance.yml`: solo `workflow_dispatch`, read-only, timeout 5 min.
-- `ci.yml`: únicamente `pull_request` a main/develop; no cron/polling.
+### #42 — discovery
+UI muestra cooldown semanal. El usuario solicita poder probar una ejecución real **desde el propio frontal**, no desde GitHub.
 
-No queda ningún workflow con ejecución periódica/cron. Esta revisión no lanzó ningún workflow.
+Decisión:
+- mantener máximo 1 éxito/7 días;
+- sin cron, schedule ni polling;
+- añadir dispatch server-side desde PikoFilm mediante `GITHUB_ACTIONS_TOKEN` guardado solo en Vercel;
+- habilitar para aceptación una excepción controlada de una sola ejecución durante cooldown;
+- usuario será quien pulse el botón desde PikoFilm;
+- después de éxito, la nueva ejecución fija automáticamente el nuevo cooldown semanal.
 
-## Revisión técnica antes de deployment
-- búsqueda de `requestNewsDiscoveryAction`: sin referencias restantes;
-- búsqueda de cola `admin_job_requests imdb_discovery` en código actual: sin referencias de ejecución web;
-- workflow discovery confirmado sin `schedule`;
-- HEAD no tiene status checks asociados porque los cambios se realizaron directamente en `main` y CI está configurado solo para `pull_request`; **no se ha ejecutado CI ni deployment automáticamente**, respetando la política del usuario.
+Código ya presente en `main` al registrar este estado:
+- `requestNewsDiscoveryAction()` realiza POST autenticado a workflow dispatch;
+- `imdb-discovery.yml` acepta `force_once`;
+- worker acepta `FORCE_DISCOVERY_ONCE` y deja trazabilidad;
+- UI puede mostrar `Ejecutar prueba única ahora` si el override está habilitado;
+- `app_settings.imdb_discovery_test_override` es la bandera de aceptación de una sola vez.
 
-## Commits funcionales principales del hito
-- `f622dc4b2e0f972630d622d45c1ddc819b7584b1` — alta parcial + eliminar cola web.
-- `876cb0e45d800f8396d3c0175af5605ee05d6b91` — stats/cooldown/paginación.
-- `112dcbba5584ddd627e391b590df113962cf84ea` — frontal compacto.
-- `eb53e9b224a9f64f52324f3b4f153bb6bee3b7cc` — ficha candidato.
-- `1103ef4f7ef9eba497f3d755a3e63e6a78c666e9` + `f85512ee7761499b3115ce961fc1f53c73bc3454` — estilos.
-- `bf6f830b14498bc54599ba10a011ad30a77901eb` — criterios sin ejecución.
-- `316186c30082596d6d98a77fcb8f3b30e705f2fe` — Excluidas visible en Catálogo.
+Requisito pendiente para producción: configurar `GITHUB_ACTIONS_TOKEN` en Vercel con privilegio mínimo y realizar nuevo deployment manual del usuario para que la Server Action use el secreto/configuración vigentes.
+
+## Seguridad discovery confirmada
+Los workflows siguen sin cron/polling. Discovery solo se ejecuta mediante `workflow_dispatch`. La web no crea `admin_job_requests pending`. El override de aceptación no rearma automáticamente y el worker conserva su guardia semanal independiente.
 
 ## Issues
-- #29 ABIERTA — implementación parcial de descubribilidad preparada; pendiente aceptación.
-- #38 ABIERTA — aceptación Novedades global pendiente.
-- #41 ABIERTA — código listo, pendiente deploy + prueba.
-- #42 ABIERTA — código listo, pendiente deploy + prueba.
-- #43 ABIERTA — código listo, pendiente deploy + prueba.
+- #29 ABIERTA — requisito funcional PASS; pendiente cierre formal.
+- #38 ABIERTA — aceptación global Novedades aún en curso.
+- #41 ABIERTA — batería principal PASS; pendiente cierre formal.
+- #42 ABIERTA — falta probar dispatch real desde frontal y posterior cooldown.
+- #43 ABIERTA — batería funcional PASS; pendiente cierre formal.
 
 ## Próximo paso exacto
-1. **Usuario realiza deployment manual de `main`**. HEAD esperado en el momento de esta bitácora: el commit de bitácora que resulte de esta actualización (descendiente de `9238b8d6755662365e9d513c65b0c0488ee59f99`).
-2. Usuario confirma `ya está`.
-3. ChatGPT verifica técnicamente deployment READY + commit exacto; no ejecuta pruebas funcionales.
-4. ChatGPT entrega al usuario una prueba cada vez, empezando por carga/UX #41 y acceso a Excluidas.
-5. Después #42 sin ejecutar discovery si el cooldown lo bloquea; comprobar mensajes/ausencia de pending.
-6. Después #43 con `tt38268282`: Añadir debe catalogar parcial, desaparecer de Novedades y aparecer en Calidad/Faltan datos.
-7. Ejecutar regresión mínima y cerrar solo lo que el usuario confirme PASS.
+1. Configurar en Vercel el secreto server-side `GITHUB_ACTIONS_TOKEN` con permiso mínimo para ejecutar Actions en `pikolugo-a11y/imdb-catalog`; el usuario no debe pegar el token en ChatGPT.
+2. Confirmar/habilitar `imdb_discovery_test_override` una sola vez para aceptación.
+3. Usuario realiza deployment manual de `main`; ChatGPT no despliega.
+4. ChatGPT verifica READY + commit.
+5. Usuario entra en Novedades y pulsa `Ejecutar prueba única ahora`.
+6. ChatGPT verifica técnicamente que se creó exactamente un workflow/run y su resultado; usuario comprueba la UI.
+7. Verificar que el frontal vuelve a `Discovery bloqueado 7 días` con próxima fecha +7 días y que no existe `pending` huérfano.
+8. Registrar resultados, cerrar #29/#41/#42/#43 solo según PASS y completar #38/regresión restante.
 
 ## Documentos a leer al retomar
 1. `docs/PROJECT_STATUS.md`.
