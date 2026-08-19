@@ -2,6 +2,15 @@ name: PikoFilm · descubrir novedades IMDb
 
 on:
   workflow_dispatch:
+    inputs:
+      force_once:
+        description: 'Excepción controlada: ignorar cooldown una sola ejecución manual'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: read
@@ -17,6 +26,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
+      FORCE_DISCOVERY_ONCE: ${{ inputs.force_once }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
