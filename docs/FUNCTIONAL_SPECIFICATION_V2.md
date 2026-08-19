@@ -119,7 +119,7 @@ El usuario puede introducir cualquier `tt...` aunque no cumpla criterios. Si ya 
 Reutiliza el pipeline existente de enriquecimiento. Al completar con éxito, el título entra en Catálogo y desaparece naturalmente de Novedades. Si falla, permanece reintentable.
 
 ### 14.11 Ejecución
-Existe ejecución automática diaria y solicitud manual `Buscar novedades ahora`. El trabajo batch se ejecuta fuera de la petición web para no bloquear Vercel. Admin permite consultar ejecución y resultado.
+El discovery IMDb se ejecuta **solo bajo petición manual explícita**. No existe cron diario ni polling periódico. El workflow de GitHub Actions se inicia únicamente mediante `workflow_dispatch` y el worker impone además un límite duro de **una ejecución exitosa cada 7 días**. Si se intenta ejecutar antes, la ejecución falla antes de procesar los datasets e informa de la próxima fecha permitida. La UI debe reflejar esta política y no dejar solicitudes `pending` sin ejecutor.
 
 ### 14.12 Rendimiento
 La UI lee datos persistidos y está paginada. El worker filtra primero ratings, después basics, resuelve país solo donde es necesario y hace escrituras por lotes.
@@ -129,7 +129,7 @@ La UI lee datos persistidos y está paginada. El worker filtra primero ratings, 
 Actualizar Plex → Biblioteca fuera de catálogo → Añadir → rating IMDb on-demand si falta → enriquecimiento → Catálogo → cruce Plex.
 
 ### Novedad automática
-Discovery IMDb → reglas/país → anti-join catálogo/excluidas → Novedades → Añadir y ampliar datos → Catálogo.
+Petición manual de discovery IMDb (máximo semanal) → reglas/país → anti-join catálogo/excluidas → Novedades → Añadir y ampliar datos → Catálogo.
 
 ### Novedad manual
 Introducir IMDb → validación → comprobar catálogo/exclusión → Novedades → enriquecer o excluir/retirar.
@@ -141,7 +141,7 @@ Corregir en Plex → Actualizar Plex → invalidar referencia → Actualizar Ser
 Excluir desde Catálogo o Novedades → desaparecer de operaciones → conservar registro → restaurar cuando se desee.
 
 ## 16. Estado de aceptación y regresión
-La baseline V2 validó Biblioteca, altas desde Plex, edición/protección de IDs, exclusiones, Calidad, Dashboard, filtro `Todos` y reconciliación Castle. La ampliación actual añade como regresiones obligatorias: `Love is in the Air` no debe aparecer en Calidad si está inactiva en Plex; `First Lady` debe poder completar rating/votos IMDb desde el dataset oficial al actualizar; Novedades debe respetar catálogo/excluidas, rescate España e India excluida.
+La baseline V2 validó Biblioteca, altas desde Plex, edición/protección de IDs, exclusiones, Calidad, Dashboard, filtro `Todos` y reconciliación Castle. La ampliación actual añade como regresiones obligatorias: `Love is in the Air` no debe aparecer en Calidad si está inactiva en Plex; `First Lady` debe poder completar rating/votos IMDb desde el dataset oficial al actualizar; Novedades debe respetar catálogo/excluidas, rescate España e India excluida. El discovery IMDb no debe ejecutarse automáticamente y debe respetar el límite semanal.
 
 ## 17. Documentación especializada
 Para detalle adicional de Novedades se mantienen también `docs/NOVEDADES_V1_FUNCTIONAL.md` y `docs/NOVEDADES_V1_TECHNICAL.md`. Este documento sigue siendo la referencia funcional global de PikoFilm y debe permanecer sincronizado con ellos.
