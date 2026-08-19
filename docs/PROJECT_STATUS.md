@@ -4,7 +4,7 @@
 
 ## Estado registrado
 
-**Fecha:** 19/08/2026 12:17 (Europe/Madrid)  
+**Fecha:** 19/08/2026 12:24 (Europe/Madrid)  
 **Fase:** V2 estable + Novedades V1 desplegada, en aceptación dirigida por el usuario  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
@@ -31,25 +31,33 @@ El usuario realizó el deployment manual de producción y ChatGPT lo verificó e
 - commit desplegado: `02c272bd0366f78671e18631f8fa051863b2f0c0`;
 - dicho HEAD contiene el merge funcional `62880f5a0ed1cf33c8662979adbd89ff52fde256`.
 
-Desde este punto está permitido ejecutar la batería funcional sobre producción, pero las pruebas funcionales/visuales las ejecuta siempre el usuario.
+Las pruebas funcionales/visuales las ejecuta siempre el usuario; ChatGPT diseña, conduce, registra y diagnostica.
 
 ## Protocolo permanente de deployment y aceptación
 
 Los deployments de producción en Vercel los realiza manualmente el usuario. ChatGPT deja `main` listo y avisa; el usuario despliega y confirma; ChatGPT verifica `READY` + commit exacto.
 
-Después del deploy, ChatGPT diseña y conduce la batería de aceptación **prueba a prueba**. El usuario ejecuta siempre cada prueba funcional/visual en la aplicación y comunica el resultado. ChatGPT registra cada respuesta, decide si la prueba pasa o falla, diagnostica técnicamente cuando sea necesario y abre/actualiza issues si aparece una incidencia real. ChatGPT no debe sustituir al usuario ejecutando acciones funcionales de aceptación en producción.
+Después del deploy, ChatGPT diseña y conduce la batería de aceptación **prueba a prueba**. El usuario ejecuta siempre cada prueba funcional/visual en la aplicación y comunica el resultado. ChatGPT registra cada respuesta, decide si la prueba pasa o falla, diagnostica técnicamente cuando sea necesario y abre/actualiza issues si aparece una incidencia real.
 
 ## Batería funcional obligatoria post-deploy
 
 ### A. Series borradas / Calidad — SUPERADA
 - **Prueba ejecutada por el usuario:** buscar **Love is in the Air** en Calidad de Series tras el deployment.
 - **Resultado comunicado:** no aparece.
-- **Conclusión:** PASS. La serie borrada/inactiva en Plex ya no aparece operativamente en Calidad de Series. Regresión de #37 validada en producción.
+- **Conclusión:** PASS. Regresión de #37 validada en producción.
 
-### B. Actualizar Series / timeout — PENDIENTE
-- Ejecutar Actualizar Series.
-- Confirmar que completa en el primer intento.
-- Revisar duración/instrumentación en Admin.
+### B. Actualizar Series / timeout — SUPERADA
+- El usuario ejecutó **Actualizar Series** desde Calidad → Series.
+- Completó correctamente **al primer intento**, sin timeout.
+- Verificación técnica posterior en `pipeline_runs`: último `series_v2_refresh` en `success`, **0 errores**, **10.01 s** total; instrumentación por fases persistida (`select` 0.10 s, `refresh` 9.63 s, `anomaly` 0.23 s).
+- **Conclusión:** PASS. Criterio de aceptación de #36 cumplido.
+- **Issue #36 cerrada** como completada el 19/08/2026.
+
+### B2. Biblioteca → Actualizar Plex — REGRESIÓN ADICIONAL SUPERADA
+- El usuario ejecutó manualmente **Biblioteca → Actualizar Plex**.
+- Duración observada por el usuario: **33 segundos**.
+- Resultado: terminó correctamente, sin timeout ni error.
+- Se registra como comprobación adicional positiva; no corresponde al criterio formal de #36, cuya issue estaba documentada para Actualizar Series.
 
 ### C. First Lady / IMDb on-demand — PENDIENTE
 - Abrir **First Lady** (`tt15787006`).
@@ -65,7 +73,7 @@ Validar Catálogo, Biblioteca Plex, Calidad Películas, Calidad Series y filtro 
 
 ## Issues en aceptación
 
-- **#36 abierta** — robustecer timeout de Actualizar Series.
+- **#36 cerrada y validada en producción** — Actualizar Series completa al primer intento; instrumentación correcta.
 - **#38 abierta** — Novedades V1 / aceptación funcional.
 - **#40 abierta** — rating/votos IMDb on-demand para altas desde Plex.
 - **#37 cerrada y regresión validada en producción** — `Love is in the Air` no aparece en Calidad de Series tras el deployment.
@@ -78,18 +86,19 @@ Regla: **deploy → pruebas funcionales del usuario → registro → cierre**.
 - **Love is in the Air:** PASS 19/08/2026; show inactivo no aparece en Calidad tras deployment.
 - **First Lady:** alta desde Plex no debe quedar bloqueada en IMDb pendiente si el dataset oficial ya contiene el rating.
 - **Series / Todos:** `state=all` debe conservarse.
+- **Biblioteca / Actualizar Plex:** PASS adicional 19/08/2026; 33 s y finalización correcta.
 
 ## Documentación funcional/técnica
 
-`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` siguen alineados con el código desplegado. El resultado de esta prueba no cambia funcionalidad ni arquitectura de PikoFilm.
+`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` siguen alineados con el código desplegado. Estas validaciones no cambian funcionalidad ni arquitectura.
 
 ## Próximo paso exacto
 
-1. Continuar con la prueba B: el usuario ejecuta **Actualizar Series** una vez desde la aplicación.
-2. El usuario comunica si termina correctamente al primer intento y qué mensaje/resultado observa.
-3. ChatGPT registra el resultado y contrasta la instrumentación en Admin si procede.
-4. Si falla, diagnosticar y actualizar/abrir issue antes de avanzar; si pasa, continuar con First Lady.
-5. Mantener esta bitácora actualizada durante toda la batería.
+1. Continuar con la prueba C sobre **First Lady** (`tt15787006`, TMDb `158808`).
+2. El usuario abre la ficha y comunica qué rating/votos IMDb muestra, qué TMDb figura y si aparece algún estado `IMDb pendiente de dataset`.
+3. Si procede, el usuario ejecuta **Actualizar datos** una sola vez y comunica el resultado.
+4. ChatGPT registra el resultado; si cumple, cerrar #40; si falla, diagnosticar y actualizar la issue antes de continuar.
+5. Después continuar con la aceptación secuencial de Novedades V1 (#38).
 
 ## Documentos que deben leerse al retomar
 
