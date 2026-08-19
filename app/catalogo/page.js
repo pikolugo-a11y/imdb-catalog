@@ -5,6 +5,7 @@ import CatalogSortV3 from '@/components/CatalogSortV3';
 import {getCatalogV3,getCatalogFiltersV3,getCatalogStatsV3,catalogPageSize} from '@/lib/catalog-v3-queries';
 import {markAcquiring,excludeTitle,restoreTitle} from '@/app/actions';
 import './catalog-v3.css';
+import './catalog-kpi-tweak.css';
 
 export const dynamic='force-dynamic';
 
