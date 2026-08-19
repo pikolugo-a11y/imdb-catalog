@@ -10,7 +10,7 @@ El principio funcional central es que cada pantalla responda a una pregunta conc
 
 ## 2. Conceptos funcionales
 ### 2.1 Catálogo
-Universo editorial PikoFilm. Incluye películas y series seleccionadas y enriquecidas. Un título puede estar en Plex, faltar en Plex o estar en proceso de adquisición. Los títulos excluidos se mantienen registrados pero desaparecen de las vistas operativas normales.
+Universo editorial PikoFilm. Incluye películas y series seleccionadas. Un título puede estar completamente enriquecido o tener fuentes/datos pendientes; la falta temporal de una fuente secundaria no lo expulsa del catálogo si su identidad mínima es fiable. Un título puede estar en Plex, faltar en Plex o estar en proceso de adquisición. Los títulos excluidos se mantienen registrados pero desaparecen de las vistas operativas normales.
 
 ### 2.2 Plex
 Inventario físico. Representa lo que Plex declara actualmente como presente. La Biblioteca Plex nunca debe utilizarse para representar títulos del catálogo que faltan físicamente.
@@ -19,7 +19,7 @@ Inventario físico. Representa lo que Plex declara actualmente como presente. La
 Universo temporal de candidatos todavía no incorporados. IMDb es el punto de entrada de elegibilidad por rating/votos. El usuario decide posteriormente si incorpora, excluye o retira una propuesta. Novedades no es una segunda copia del catálogo.
 
 ### 2.4 Identidad
-La identidad audiovisual se apoya principalmente en IMDb, TMDb y FilmAffinity; en series puede existir además TVDb. Los identificadores permiten cruzar universos y son editables manualmente. Una corrección manual confirmada tiene prioridad sobre heurísticas automáticas.
+La identidad audiovisual se apoya principalmente en IMDb, TMDb y FilmAffinity; en series puede existir además TVDb. Los identificadores permiten cruzar universos y son editables manualmente. Una corrección manual confirmada tiene prioridad sobre heurísticas automáticas. Para una alta desde Novedades, un IMDb válido acompañado de metadatos mínimos fiables (título y, cuando estén disponibles, año/tipo) puede constituir identidad suficiente aunque TMDb/FA todavía no resuelvan el título.
 
 ### 2.5 Exclusión
 Excluir no borra. Una exclusión aparta un título de Catálogo, Novedades, Calidad, Dashboard, Sagas y análisis operativos donde no tenga sentido seguir tratándolo. Puede restaurarse posteriormente.
@@ -42,8 +42,10 @@ Una serie borrada de Plex deja de participar inmediatamente en Calidad de Series
 ## 6. Calidad — Películas
 Analiza duración, nombre de archivo, duplicados y calidad técnica con criterios relativos. No considera SD/720p malas por definición ni elimina archivos automáticamente. Las incidencias pueden marcarse como excepción o esperando sincronización y se reevaluarán cuando cambie la huella técnica. Los títulos excluidos no participan.
 
-## 7. Calidad — Identidad
+## 7. Calidad — Identidad / Faltan datos
 Detecta ausencia o incoherencia de IMDb/TMDb/FilmAffinity y permite reintento automático o edición manual. Los IDs confirmados manualmente no deben ser borrados ni sustituidos silenciosamente por el enriquecimiento automático.
+
+Un título catalogado con enriquecimiento parcial debe aparecer aquí o en el mecanismo canónico equivalente de Calidad, indicando qué fuente/dato sigue pendiente y permitiendo reintentar su ampliación posteriormente.
 
 ## 8. Calidad — Series
 TMDb aporta estructura oficial de temporadas/episodios y disponibilidad España. Se distinguen episodios realmente accionables, desconocidos y episodios Plex que sobran/no encajan. `Todos` conserva el filtro seleccionado.
@@ -62,7 +64,9 @@ Cuando hay créditos disponibles, permite navegar por personas y consultar su fi
 Admin registra procesos operativos, estado, inicio/fin, duración, procesados, errores y resumen estructurado. Incluye sincronización Plex, enriquecimiento individual, Calidad, Series, Sagas, Identidad y discovery IMDb.
 
 ## 12. Enriquecimiento individual
-El pipeline individual incorpora o actualiza un título a partir de IMDb/identidad Plex y completa TMDb, FilmAffinity/Wikidata, metadatos, arte, reparto, sagas y puntuaciones disponibles.
+El pipeline individual incorpora o actualiza un título a partir de IMDb/identidad Plex e intenta completar TMDb, FilmAffinity/Wikidata, metadatos, arte, reparto, sagas y puntuaciones disponibles.
+
+La **catalogación y el enriquecimiento son responsabilidades separables**. Si la identidad mínima del título es fiable, la ausencia temporal de TMDb, FilmAffinity, carátula, rating secundario u otra fuente complementaria no debe provocar rollback del alta. Se persisten los datos disponibles, el título queda catalogado, se marca como incompleto y Calidad lo presenta para reintento. Solo deben bloquear la catalogación los fallos que impidan establecer una identidad mínima fiable o que puedan crear duplicados/corrupción.
 
 ### 12.1 Rating IMDb inmediato para altas desde Plex
 Cuando un título recién incorporado desde Plex tiene IMDb ID válido pero todavía no ha pasado por el refresco batch diario, `Actualizar datos` intenta completar rating y votos desde el dataset oficial IMDb `title.ratings.tsv.gz`, en streaming y con timeout acotado, sin scraping.
@@ -82,6 +86,7 @@ El caso de regresión es `First Lady` (`tt15787006`, TMDb `158808`), añadida de
 8. Preferir procesamiento incremental, streaming y SQL agregado.
 9. Ningún diagnóstico debe eliminar archivos automáticamente.
 10. Las documentaciones funcional y técnica se actualizan con cada cambio relevante antes de fusionar/desplegar.
+11. Una fuente secundaria ausente no debe bloquear una alta con identidad mínima fiable; debe generar una incidencia de Calidad reintentable.
 
 ## 14. Novedades V1 — Descubrimiento continuo
 ### 14.1 Objetivo
@@ -116,7 +121,7 @@ El usuario puede introducir cualquier `tt...` aunque no cumpla criterios. Si ya 
 `Excluir` desde Novedades reutiliza `catalog_exclusions`. El título desaparece y no vuelve a proponerse hasta restauración. Se consulta/restaura desde la vista normal de excluidos.
 
 ### 14.10 Añadir y ampliar datos
-Reutiliza el pipeline existente de enriquecimiento. Al completar con éxito, el título entra en Catálogo y desaparece naturalmente de Novedades. Si falla, permanece reintentable.
+Reutiliza el pipeline existente de enriquecimiento. Si existe identidad mínima IMDb fiable, el título **entra en Catálogo aunque una fuente secundaria no pueda ampliarlo**. Los datos disponibles se conservan, el candidato pasa a catalogado y desaparece de Novedades; las fuentes/datos pendientes quedan señalados en Calidad para reintento posterior. Solo un fallo de identidad mínima, duplicidad o integridad debe impedir el alta completa. El caso de regresión inicial es `tt38268282`, cuyo alta no debe bloquearse únicamente porque TMDb todavía no lo encuentre.
 
 ### 14.11 Ejecución
 El discovery IMDb se ejecuta **solo bajo petición manual explícita**. No existe cron diario ni polling periódico. El workflow de GitHub Actions se inicia únicamente mediante `workflow_dispatch` y el worker impone además un límite duro de **una ejecución exitosa cada 7 días**. Si se intenta ejecutar antes, la ejecución falla antes de procesar los datasets e informa de la próxima fecha permitida. La UI debe reflejar esta política y no dejar solicitudes `pending` sin ejecutor.
@@ -126,13 +131,13 @@ La UI lee datos persistidos y está paginada. El worker filtra primero ratings, 
 
 ## 15. Flujos end-to-end principales
 ### Nuevo título detectado en Plex
-Actualizar Plex → Biblioteca fuera de catálogo → Añadir → rating IMDb on-demand si falta → enriquecimiento → Catálogo → cruce Plex.
+Actualizar Plex → Biblioteca fuera de catálogo → Añadir → rating IMDb on-demand si falta → alta con identidad mínima → enriquecimiento disponible → Catálogo → cruce Plex → Calidad si quedan datos pendientes.
 
 ### Novedad automática
-Petición manual de discovery IMDb (máximo semanal) → reglas/país → anti-join catálogo/excluidas → Novedades → Añadir y ampliar datos → Catálogo.
+Petición manual de discovery IMDb (máximo semanal) → reglas/país → anti-join catálogo/excluidas → Novedades → Añadir y ampliar datos → Catálogo aunque el enriquecimiento secundario sea parcial → Calidad si quedan datos pendientes.
 
 ### Novedad manual
-Introducir IMDb → validación → comprobar catálogo/exclusión → Novedades → enriquecer o excluir/retirar.
+Introducir IMDb → validación → comprobar catálogo/exclusión → Novedades → catalogar con identidad mínima y enriquecer lo disponible, o excluir/retirar.
 
 ### Serie mal asociada
 Corregir en Plex → Actualizar Plex → invalidar referencia → Actualizar Series → reconstruir TMDb → recalcular faltantes/extras.
@@ -141,7 +146,7 @@ Corregir en Plex → Actualizar Plex → invalidar referencia → Actualizar Ser
 Excluir desde Catálogo o Novedades → desaparecer de operaciones → conservar registro → restaurar cuando se desee.
 
 ## 16. Estado de aceptación y regresión
-La baseline V2 validó Biblioteca, altas desde Plex, edición/protección de IDs, exclusiones, Calidad, Dashboard, filtro `Todos` y reconciliación Castle. La ampliación actual añade como regresiones obligatorias: `Love is in the Air` no debe aparecer en Calidad si está inactiva en Plex; `First Lady` debe poder completar rating/votos IMDb desde el dataset oficial al actualizar; Novedades debe respetar catálogo/excluidas, rescate España e India excluida. El discovery IMDb no debe ejecutarse automáticamente y debe respetar el límite semanal.
+La baseline V2 validó Biblioteca, altas desde Plex, edición/protección de IDs, exclusiones, Calidad, Dashboard, filtro `Todos` y reconciliación Castle. La ampliación actual añade como regresiones obligatorias: `Love is in the Air` no debe aparecer en Calidad si está inactiva en Plex; `First Lady` debe poder completar rating/votos IMDb desde el dataset oficial al actualizar; Novedades debe respetar catálogo/excluidas, rescate España e India excluida; `tt38268282` debe poder catalogarse aunque TMDb no lo encuentre y quedar señalado en Calidad como incompleto. El discovery IMDb no debe ejecutarse automáticamente y debe respetar el límite semanal.
 
 ## 17. Documentación especializada
 Para detalle adicional de Novedades se mantienen también `docs/NOVEDADES_V1_FUNCTIONAL.md` y `docs/NOVEDADES_V1_TECHNICAL.md`. Este documento sigue siendo la referencia funcional global de PikoFilm y debe permanecer sincronizado con ellos.
