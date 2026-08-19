@@ -50,7 +50,7 @@ function EditorialSeries({item,back,notice,operational,dashboard}){
           <div className="rating-cell primary"><span>★ PikoScore</span><strong>{item.final_rating?.toFixed?.(1)??item.final_rating??'—'}</strong><small>Valoración PikoFilm</small></div>
           <div className="rating-cell"><span>IMDb</span><strong>{item.imdb_rating??'—'}</strong><small>{n(item.imdb_votes)} votos</small></div>
           <div className="rating-cell"><span>FilmAffinity</span><strong>{item.fa_rating??'—'}</strong><small>{item.fa_votes!=null?`${n(item.fa_votes)} votos`:'Sin votos'}</small></div>
-          <div className="rating-cell"><span>TMDb</span><strong>{item.tmdb_rating??'—'}</strong><small>{item.tmdb_votes!=null?`${n(item.tmdb_votes)} votos`:'Sin votos'}</small></div>
+          <div className="rating-cell"><span>TMDb</span><strong>{Number(item.tmdb_votes)>0?(item.tmdb_rating??'—'):'—'}</strong><small>{Number(item.tmdb_votes)>0?`${n(item.tmdb_votes)} votos`:'Sin datos'}</small></div>
           <div className={`rating-cell quality-cell ${quality?qClass(quality.band):'pending'}`}><span>CALIDAD DE TUS ARCHIVOS</span>{quality?<><strong>{quality.score}</strong><b>PikoQuality · {qBand(quality.band)}</b><small>{quality.analyzed_count}/{quality.total_count} episodios analizados</small></>:<><strong>···</strong><b>PikoQuality · Calculando</b><small>Pendiente de agregados</small></>}</div>
         </div>
         <div className={`hero-coverage coverage-compact ${coverage===100?'good':coverage>=80?'warn':'bad'}`}><div className="hero-ring" style={{'--pct':`${coverage*3.6}deg`}}><strong>{coverage}%</strong></div><div><span>COBERTURA PLEX</span><b>{present} / {total||'—'}</b><small>{s?.missing||0} faltan · {s?.unknown||0} por confirmar</small></div></div>
