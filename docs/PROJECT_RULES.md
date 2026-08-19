@@ -36,6 +36,8 @@ Este documento es obligatorio para cualquier sesión futura de trabajo sobre Pik
 
 16. **Seguridad y secretos.** Nunca persistir tokens, credenciales o secretos en código, documentación, issues o logs. Usar variables de entorno/secretos de plataforma.
 
+17. **Despliegues manuales por el usuario.** Los deployments de producción en Vercel los realiza manualmente el usuario. ChatGPT no debe intentar desplegar ni sustituir ese paso. Cuando un hito esté listo para producción, debe avisar de forma explícita indicando qué commit/HEAD debe desplegarse. Después de que el usuario confirme que ha hecho el deploy, ChatGPT debe verificar en Vercel que producción corresponde al commit esperado y solo entonces ejecutar la batería funcional y continuar con cierres de issues o aceptación.
+
 ## Regla de cierre de sesión
 
 Antes de terminar una sesión significativa de PikoFilm, actualizar obligatoriamente `PROJECT_STATUS.md`. Si durante la sesión cambió funcionalidad o arquitectura, actualizar también los documentos funcional y técnico antes de considerar el trabajo entregado.
