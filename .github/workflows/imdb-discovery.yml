@@ -1,0 +1,44 @@
+name: PikoFilm · descubrir novedades IMDb
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+    - cron: '17 4 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pikofilm-imdb-discovery
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Instalar dependencias
+        run: npm install --ignore-scripts
+
+      - name: Discovery completo programado/manual
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '17 4 * * *' }}
+        run: npm run worker:imdb-discovery
+
+      - name: Procesar solicitud en cola
+        if: ${{ github.event_name == 'schedule' && github.event.schedule == '*/5 * * * *' }}
+        run: npm run worker:imdb-discovery -- --queued
