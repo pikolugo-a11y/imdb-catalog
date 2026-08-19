@@ -4,7 +4,7 @@
 
 ## Estado registrado
 
-**Fecha:** 19/08/2026 11:49 (Europe/Madrid)  
+**Fecha:** 19/08/2026 11:56 (Europe/Madrid)  
 **Fase:** V2 estable + Novedades V1 preparada para despliegue/aceptación  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
@@ -22,6 +22,8 @@ Al retomar el 19/08/2026 se verificó que los últimos commits de `main` eran:
 - `0281e9a7c4384d4deac00f3c783d976fa596ac96` — bitácora operativa;
 - `3012adff277ff2e35de94859804df1b38c1ebb8c` — reglas de oro;
 - `62880f5a0ed1cf33c8662979adbd89ff52fde256` — merge funcional pendiente de aceptación.
+
+Durante esta sesión se añadieron además commits documentales posteriores para reflejar el estado operativo y el protocolo de despliegue manual. No cambian funcionalidad de PikoFilm.
 
 ## Qué contiene la versión pendiente de aceptación
 
@@ -43,7 +45,7 @@ Al retomar el 19/08/2026 se verificó que los últimos commits de `main` eran:
 
 ## Estado de despliegue
 
-**BLOQUEADO PENDIENTE DE REALIZAR UN ÚNICO DEPLOYMENT CORRECTO DE `main`.**
+**PENDIENTE DE DEPLOYMENT MANUAL POR EL USUARIO.**
 
 Verificación realizada el 19/08/2026 11:46–11:49:
 - Proyecto Vercel correcto: `imdb-catalog` (`prj_iApLZEUtSy3MTd6KT39PvagJrra2`, equipo `PikoFilm`).
@@ -52,20 +54,29 @@ Verificación realizada el 19/08/2026 11:46–11:49:
 - **Commit realmente desplegado:** `76ee95d9ce002134416c47fc8a0d32fc684adfbe` (`fix: scope decade dashboard styles`).
 - Por tanto producción **NO contiene todavía** el merge funcional `62880f5a...` ni los commits posteriores de documentación.
 
-### Incidencia de despliegue registrada
+### Protocolo de deployment confirmado
 
-Se intentó utilizar el conector Vercel para desplegar directamente el proyecto enlazado. La acción disponible de deployment exige enviar explícitamente el árbol completo de archivos (`files[]`) y no expone en esta integración una opción segura para crear el deployment directamente desde el `gitSource`/commit de `main`. No se ha forzado un despliegue parcial ni se ha creado un mecanismo alternativo improvisado, para evitar publicar un árbol incompleto, duplicar despliegues o romper la trazabilidad.
+El usuario ha aclarado que **los deployments de producción en Vercel los realiza siempre manualmente él**. ChatGPT debe avisar cuando un hito esté listo para desplegar, pero no debe intentar sustituir ese paso ni lanzar deployments por su cuenta.
 
-Se revisó además el repositorio en busca de un mecanismo propio de despliegue Vercel y no existe código/workflow Vercel preparado en el repo que permita lanzar este paso de forma segura con las credenciales actuales.
+Flujo obligatorio desde ahora:
+1. ChatGPT deja `main` listo y documentado.
+2. ChatGPT avisa explícitamente al usuario de que ya puede realizar el deploy manual.
+3. El usuario realiza el deployment en Vercel y confirma que lo ha hecho.
+4. ChatGPT verifica en Vercel que producción está `READY` y que `githubCommitSha` contiene el commit funcional esperado/HEAD correcto.
+5. Solo entonces se ejecuta la batería funcional post-deploy.
+6. Después de pruebas satisfactorias se cierran las issues correspondientes y se actualiza la bitácora.
+
+La incidencia anterior sobre limitaciones del conector Vercel deja de ser un bloqueo operativo: no es necesario que ChatGPT disponga de capacidad de despliegue, porque ese paso pertenece al usuario por diseño del flujo de trabajo.
 
 **No se ha ejecutado ninguna batería funcional nueva**, porque la regla de oro prohíbe probar como desplegados cambios que producción aún no contiene.
 
 ### Próximo paso exacto
 
-1. Realizar **un único deployment de producción de `main`** que incluya como mínimo `62880f5a0ed1cf33c8662979adbd89ff52fde256` y, preferiblemente, el HEAD documental posterior.
-2. Confirmar mediante metadata de Vercel que el deployment queda `READY` y que `githubCommitSha` corresponde al commit esperado/HEAD de `main` que contiene `62880f5a...`.
-3. Actualizar esta bitácora inmediatamente después del deploy.
-4. Ejecutar la batería funcional post-deploy completa antes de cerrar las issues pendientes.
+1. **Avisar al usuario de que `main` está listo para deployment manual.**
+2. El usuario debe realizar un único deployment de producción desde `main`, de forma que incluya como mínimo `62880f5a0ed1cf33c8662979adbd89ff52fde256` y los commits documentales posteriores.
+3. Cuando el usuario confirme que el deploy está hecho, verificar en Vercel que queda `READY` y que `githubCommitSha` corresponde al HEAD esperado de `main` que contiene `62880f5a...`.
+4. Actualizar esta bitácora inmediatamente después de verificar el deploy.
+5. Ejecutar la batería funcional post-deploy completa antes de cerrar las issues pendientes.
 
 ## Batería funcional obligatoria post-deploy
 
@@ -131,7 +142,7 @@ Aplicar siempre la regla: **deploy → pruebas funcionales → cierre**. No cerr
 
 ## Documentación funcional/técnica
 
-`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` se revisaron al retomar y siguen alineados con el merge funcional pendiente de aceptación. No se han realizado cambios funcionales ni arquitectónicos en esta incidencia de despliegue, por lo que no requieren modificación adicional en este hito.
+`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` se revisaron al retomar y siguen alineados con el merge funcional pendiente de aceptación. La aclaración del protocolo de deployment no cambia funcionalidad ni arquitectura de PikoFilm, por lo que no requieren modificación en este hito.
 
 ## Documentos que deben leerse al retomar
 
