@@ -1,3 +1,4 @@
+import './news.css';
 import Link from 'next/link';
 import Segmented from '@/components/Segmented';
 import {getNewsV1,getNewsSettings} from '@/lib/news-v1';
