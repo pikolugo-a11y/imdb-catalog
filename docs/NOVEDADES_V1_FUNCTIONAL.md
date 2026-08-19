@@ -18,7 +18,11 @@ Excluir reutiliza `catalog_exclusions`. Novedades muestra acceso visible `Exclui
 Reutiliza el enriquecedor canónico. Si existe identidad mínima IMDb fiable, una fuente secundaria ausente **no bloquea el alta**: se cataloga con los datos disponibles, desaparece de Novedades y Calidad/Identidad muestra lo pendiente para reintento. Solo identidad mínima insuficiente o integridad insegura conserva el candidato sin catalogar. Regresión: `tt38268282`.
 
 ## Ejecución
-Discovery **solo manual**. Sin cron, sin polling, sin cola `pending` desde la web. GitHub Actions admite únicamente `workflow_dispatch`; el worker impone máximo una ejecución exitosa cada 7 días y bloquea antes de procesar datasets. Novedades muestra próxima fecha permitida; cuando está permitido, `Buscar novedades ahora` abre el workflow manual. Guardar criterios nunca dispara discovery.
+Discovery **solo manual**. Sin cron, sin polling y sin cola `pending` desde la web. El usuario pulsa `Buscar novedades ahora` en PikoFilm; una Server Action autenticada solicita una única ejecución de `imdb-discovery.yml` mediante `workflow_dispatch`. La credencial vive únicamente en Vercel como secreto server-side.
+
+El worker impone máximo una ejecución exitosa cada 7 días y bloquea antes de procesar datasets. Novedades muestra próxima fecha permitida. Guardar criterios nunca dispara discovery.
+
+Para aceptación puede habilitarse una excepción controlada de una sola ejecución mientras existe cooldown. El frontal la muestra como `Ejecutar prueba única ahora`, se consume al solicitar el workflow y no se rearma automáticamente. Tras una ejecución exitosa, vuelve a gobernar el cooldown semanal desde la nueva fecha.
 
 ## UX
 Vista compacta: KPIs en una fila, toolbar de alta manual/filtros, tabla densa y acciones directas `Ver`, `IMDb`, `Añadir`, `Excluir` (`Retirar` en manuales). Ficha de candidato `/novedades/[imdbId]`. Paginación 24/48/96. Responsive.
@@ -27,7 +31,7 @@ Vista compacta: KPIs en una fila, toolbar de alta manual/filtros, tabla densa y 
 Render desde Neon. Worker streaming gzip: ratings → basics → país selectivo → upserts por lotes. Sin scraping ni enriquecimiento masivo en render.
 
 ## Trazabilidad
-`pipeline_runs.job_type='imdb_discovery'` registra ejecuciones/cooldown. `single_title` distingue enriquecimiento completo, parcial o fallo de identidad. `admin_job_requests` no es ejecutor del discovery actual.
+`pipeline_runs.job_type='imdb_discovery'` registra ejecuciones/cooldown/override. `single_title` distingue enriquecimiento completo, parcial o fallo de identidad. `admin_job_requests` no es ejecutor del discovery actual. El dispatch desde frontal deja audit log.
 
 ## Aceptación
 La implementación no se considera aceptada hasta deployment manual y pruebas del usuario. #29/#38/#41/#42/#43 permanecen abiertas hasta PASS explícito.
