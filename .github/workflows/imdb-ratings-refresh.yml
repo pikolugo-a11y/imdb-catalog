@@ -24,10 +24,10 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       VERIFY_IMDB_ID: ${{ inputs.verify_imdb_id }}
     steps:
-      - name: Checkout worker experimental
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: issue-14-worker
+          ref: main
           persist-credentials: false
 
       - name: Preparar Node
