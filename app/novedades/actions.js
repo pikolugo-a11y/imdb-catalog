@@ -70,12 +70,13 @@ export async function enrichNewsCandidateAction(formData){
     await sql`UPDATE movies SET inclusion_origin=${isManual?'imdb_manual':'imdb_discovery'},origin='imdb_discovery',source_status=source_status-'staging' WHERE imdb_id=${imdbId}`;
     await sql`UPDATE catalog_candidates SET eligibility_status='catalogued',processed_at=now(),updated_at=now() WHERE imdb_id=${imdbId}`;
     await finishRun(run.id,'success',{processed:1,added:1,summary:{stage:'done',imdb_id:imdbId,title:result.title,origin:isManual?'manual':'discovery'}});
-    await audit('news','candidate',imdbId,'catalogue',{origin:isManual?'manual':'discovery'});refreshNews();redirect(`/catalogo/${imdbId}?notice=news_added`)
+    await audit('news','candidate',imdbId,'catalogue',{origin:isManual?'manual':'discovery'});
   }catch(e){
     await sql`DELETE FROM movies WHERE imdb_id=${imdbId} AND source_status->>'staging'='true'`;
     await sql`UPDATE catalog_candidates SET eligibility_status='eligible',updated_at=now(),source_snapshot=COALESCE(source_snapshot,'{}'::jsonb)||${JSON.stringify({lastEnrichmentError:new Date().toISOString()})}::jsonb WHERE imdb_id=${imdbId}`;
     await finishRun(run.id,'failed',{processed:1,errors:1,summary:{stage:'failed',imdb_id:imdbId,error:errorInfo(e)}});refreshNews();redirect(`/novedades?notice=enrich_error&imdb=${encodeURIComponent(imdbId)}`)
   }
+  refreshNews();redirect(`/catalogo/${imdbId}?notice=news_added`)
 }
 
 export async function saveNewsSettingsAction(formData){
