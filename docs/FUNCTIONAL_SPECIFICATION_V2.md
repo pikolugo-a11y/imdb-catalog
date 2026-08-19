@@ -1,6 +1,6 @@
 # PikoFilm V2 — Documento funcional
 
-**Estado:** V2 estable + Novedades V1, correcciones #41/#42/#43 preparadas · 19/08/2026  
+**Estado:** V2 estable + Novedades V1, aceptación en curso; #42 ampliada para ejecución desde frontal · 19/08/2026  
 **Propósito:** especificación funcional viva. Debe actualizarse antes de cada deployment con cambios funcionales relevantes.
 
 ## 1. Visión y objetivo
@@ -93,9 +93,11 @@ Excluir desde Novedades reutiliza `catalog_exclusions`. Desaparece inmediatament
 `Añadir` reutiliza el pipeline canónico. Con identidad mínima IMDb fiable, el título entra en Catálogo aunque TMDb/FA/otra fuente secundaria falle; se marca enriquecimiento parcial, desaparece de Novedades y queda diagnosticado en Calidad/Faltan datos. Solo identidad mínima insuficiente o integridad insegura conserva el candidato reintentable sin catalogar. Regresión: `tt38268282`.
 
 ### 14.7 Ejecución discovery — contrato #42
-**Solo manual.** No existe cron diario, schedule ni polling cada 5 minutos. El workflow admite únicamente `workflow_dispatch`. El worker impone un máximo de **una ejecución exitosa cada 7 días** y rechaza intentos prematuros antes de procesar datasets.
+**Solo manual y siempre iniciada por una acción explícita del usuario.** No existe cron diario, `schedule` ni polling cada 5 minutos. El workflow usa únicamente `workflow_dispatch`. El worker impone un máximo de **una ejecución exitosa cada 7 días** y rechaza intentos prematuros antes de procesar datasets.
 
-La web **no crea solicitudes `pending`** ni promete un worker inexistente. Criterios solo guarda configuración. Novedades calcula el cooldown desde la última ejecución exitosa: si no está permitido muestra la próxima fecha; si está permitido, `Buscar novedades ahora` lleva explícitamente al workflow manual de GitHub Actions.
+La web no crea solicitudes `pending`. `Buscar novedades ahora` se ejecuta desde el propio frontal de PikoFilm: una Server Action autenticada solicita a GitHub Actions una única ejecución del workflow y vuelve inmediatamente a la UI. La credencial necesaria vive solo como secreto de producción en Vercel y nunca se expone en navegador, repositorio, documentación o logs.
+
+Cuando existe cooldown, el botón permanece bloqueado y muestra la próxima fecha permitida. Para aceptación técnica puede habilitarse una **excepción controlada de una sola ejecución**: se consume atómicamente al solicitar el workflow, se envía como `force_once=true`, queda trazada y, tras una ejecución exitosa, la regla semanal vuelve a gobernar automáticamente desde esa nueva fecha. Si GitHub rechaza el dispatch, la excepción se devuelve para no consumirla por un fallo técnico.
 
 ### 14.8 UX compacta — contrato #41
 Novedades es una herramienta operativa densa, no una sucesión de tarjetas enormes:
@@ -115,7 +117,7 @@ Render normal lee Neon, no enriquece masivamente. Worker filtra ratings antes de
 ## 15. Flujos principales
 **Plex nuevo:** Actualizar Plex → fuera de catálogo → Añadir → identidad mínima → enriquecimiento best-effort → Catálogo → Calidad si parcial.
 
-**Novedad automática:** ejecución manual semanal permitida → reglas/país → Novedades → decisión → Catálogo parcial/completo o Exclusión.
+**Novedad automática:** usuario pulsa Buscar novedades → dispatch único GitHub Actions → guard semanal/override único si procede → reglas/país → Novedades → decisión → Catálogo parcial/completo o Exclusión.
 
 **Novedad manual:** introducir IMDb → validar catálogo/exclusión → Novedades → Añadir/Excluir/Retirar.
 
@@ -132,8 +134,9 @@ Render normal lee Neon, no enriquece masivamente. Worker filtra ratings antes de
 - Rescate España solo con participación española confirmada.
 - Manual excluido exige restauración explícita.
 - Discovery sin cron/polling y cooldown semanal.
+- Discovery manual se puede lanzar desde el frontal con secreto server-side; la excepción de aceptación solo puede consumirse una vez.
 - `tt38268282`: TMDb ausente no bloquea catalogación; queda incompleto en Calidad.
 - Excluidas: acceso visible desde Catálogo y Novedades.
 
 ## 17. Aceptación
-Código no equivale a aceptación. Las issues #29/#38/#41/#42/#43 permanecen abiertas hasta deployment manual y PASS explícito del usuario. Las pruebas restantes de Novedades se realizan sobre el frontal nuevo.
+Código no equivale a aceptación. Las issues #29/#38/#41/#42/#43 permanecen abiertas hasta deployment manual y PASS explícito del usuario. Las pruebas funcionales/visuales se realizan siempre por el usuario desde producción.
