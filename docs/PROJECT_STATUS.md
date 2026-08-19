@@ -3,8 +3,8 @@
 > **Documento vivo y obligatorio.** Actualizar después de cada hito, deploy, batería de pruebas, incidencia y antes de terminar sesión.
 
 ## Estado registrado
-**Fecha:** 19/08/2026 14:50 (Europe/Madrid)  
-**Fase:** Novedades V1 en aceptación; #41 y #43 validadas funcionalmente, #42 ampliada para prueba real desde frontal  
+**Fecha:** 19/08/2026 (Europe/Madrid)  
+**Fase:** Novedades V1 en aceptación; #41 y #43 cerradas tras PASS; #42 ampliada para ejecución real desde frontal  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
 
@@ -14,12 +14,12 @@
 - No cerrar issues antes de deployment + PASS explícito.
 - Mantener funcional, técnico y bitácora actualizados.
 
-## Producción / deployment validado
-El usuario realizó deployment manual del hito #41/#42/#43 y ChatGPT verificó READY + commit esperado antes de comenzar aceptación.
+## Producción actual
+Producción validada anteriormente en commit `b5c43e9e8510c3205bd1d7a3f0a127e032bbfda0` (READY). Ese deployment contiene el frontal compacto y la alta parcial ya aceptados, pero **NO contiene todavía la ampliación posterior de #42 para lanzar GitHub Actions desde el frontal**.
 
 ## Batería ejecutada por el usuario — 19/08
-### #41 / #29 — UX y Excluidas
-PASS explícitos:
+### #41 — UX Novedades
+PASS explícitos del usuario:
 - nuevo frontal compacto carga correctamente;
 - acciones visibles `Ver / IMDb / Añadir / Excluir`;
 - acceso `Excluidas · 3` visible y vista de excluidos correcta;
@@ -30,7 +30,10 @@ PASS explícitos:
 - ficha individual de candidato;
 - enlace IMDb correcto.
 
-Conclusión funcional: #41 y requisito de descubribilidad de #29 han pasado la batería dirigida. Mantener issues abiertas hasta registrar/cerrar formalmente después de la regresión final del bloque.
+**#41 cerrada como completada** tras registrar el PASS.
+
+### #29 — descubribilidad Excluidas
+El requisito que provocó su reapertura queda validado: desde Novedades el acceso a Excluidas es inequívoco y la vista funciona; Catálogo también dispone de acceso prominente. #29 permanece abierta porque su alcance es UX V2 global y tiene más criterios transversales que esta regresión concreta.
 
 ### #43 — alta parcial
 Caso `tt38268282`:
@@ -39,47 +42,76 @@ Caso `tt38268282`:
 - aparece en Calidad/Faltan datos: PASS;
 - reintento sigue sin encontrar TMDb pero no elimina ni duplica el título: PASS.
 
-Conclusión funcional: contrato #43 validado por el usuario. Pendiente cierre formal tras registrar regresión final.
+**#43 cerrada como completada** tras PASS explícito del usuario.
 
-### #42 — discovery
-UI muestra cooldown semanal. El usuario solicita poder probar una ejecución real **desde el propio frontal**, no desde GitHub.
+## #42 — discovery manual desde PikoFilm
+El usuario quiere validar una ejecución real desde el propio frontal, no entrando en GitHub.
 
-Decisión:
-- mantener máximo 1 éxito/7 días;
-- sin cron, schedule ni polling;
-- añadir dispatch server-side desde PikoFilm mediante `GITHUB_ACTIONS_TOKEN` guardado solo en Vercel;
-- habilitar para aceptación una excepción controlada de una sola ejecución durante cooldown;
-- usuario será quien pulse el botón desde PikoFilm;
-- después de éxito, la nueva ejecución fija automáticamente el nuevo cooldown semanal.
+Contrato vigente:
+- sin cron;
+- sin `schedule`;
+- sin polling;
+- máximo una ejecución exitosa cada 7 días;
+- la web no crea `admin_job_requests pending`;
+- el usuario inicia el proceso pulsando el control de Novedades.
 
-Código ya presente en `main` al registrar este estado:
-- `requestNewsDiscoveryAction()` realiza POST autenticado a workflow dispatch;
-- `imdb-discovery.yml` acepta `force_once`;
-- worker acepta `FORCE_DISCOVERY_ONCE` y deja trazabilidad;
-- UI puede mostrar `Ejecutar prueba única ahora` si el override está habilitado;
-- `app_settings.imdb_discovery_test_override` es la bandera de aceptación de una sola vez.
+### Implementación nueva en `main`
+- `.github/workflows/imdb-discovery.yml`: sigue solo con `workflow_dispatch`; añade input `force_once`, default `false`.
+- `worker/imdb-discovery.mjs`: mantiene guard semanal; `FORCE_DISCOVERY_ONCE=true` permite únicamente una ejecución excepcional y la traza como `manual_test_override`.
+- `app/novedades/actions.js::requestNewsDiscoveryAction()`: recalcula cooldown server-side y hace POST autenticado al endpoint de GitHub Actions para `imdb-discovery.yml` sobre `main`.
+- `lib/news-v1.js`: lee disponibilidad de override de aceptación.
+- `app/novedades/page.js`: durante cooldown muestra `Ejecutar prueba única ahora` solo si el override está disponible; en situación normal muestra `Buscar novedades ahora` o bloqueo.
+- el token GitHub se lee únicamente de `GITHUB_ACTIONS_TOKEN` en Vercel y nunca llega al navegador.
+- si GitHub rechaza el dispatch, el override se rearma para no consumir la única prueba por un fallo técnico.
 
-Requisito pendiente para producción: configurar `GITHUB_ACTIONS_TOKEN` en Vercel con privilegio mínimo y realizar nuevo deployment manual del usuario para que la Server Action use el secreto/configuración vigentes.
+### Override de aceptación
+Neon preparado explícitamente para esta batería:
+- `app_settings.key='imdb_discovery_test_override'`;
+- `enabled=true`;
+- `used=false`;
+- motivo `acceptance_test_2026-08-19`.
 
-## Seguridad discovery confirmada
-Los workflows siguen sin cron/polling. Discovery solo se ejecuta mediante `workflow_dispatch`. La web no crea `admin_job_requests pending`. El override de aceptación no rearma automáticamente y el worker conserva su guardia semanal independiente.
+Se consume atómicamente por la Server Action. No se rearma automáticamente. Tras un discovery exitoso, ese nuevo `pipeline_runs status=success` vuelve a fijar el cooldown normal de +7 días.
 
-## Issues
-- #29 ABIERTA — requisito funcional PASS; pendiente cierre formal.
+### Commits principales de esta ampliación
+- `6738001e...` workflow input `force_once`;
+- `85e1c30d...` worker bypass controlado;
+- `9d3513d5...` lectura override;
+- `138dc09c...` dispatch server-side;
+- `ea653a71...` control desde UI;
+- `faa8896c...` corrección de control de redirect;
+- documentación global/especializada actualizada hasta `399aa2d9...`.
+
+## Seguridad
+GitHub documenta que el endpoint `POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches` puede usarse con fine-grained PAT y requiere permiso de repositorio **Actions: write**. El token debe limitarse a `pikolugo-a11y/imdb-catalog` y guardarse solo en Vercel como secreto `GITHUB_ACTIONS_TOKEN`.
+
+Ningún workflow del discovery se ha ejecutado durante esta implementación. ChatGPT no ha desplegado ni ha hecho la prueba funcional.
+
+## Issues actuales relevantes
+- #29 ABIERTA — UX V2 global; regresión Excluidas PASS.
 - #38 ABIERTA — aceptación global Novedades aún en curso.
-- #41 ABIERTA — batería principal PASS; pendiente cierre formal.
-- #42 ABIERTA — falta probar dispatch real desde frontal y posterior cooldown.
-- #43 ABIERTA — batería funcional PASS; pendiente cierre formal.
+- #42 ABIERTA — falta prueba real desde frontal + comprobar nuevo cooldown.
+- #41 CERRADA — PASS usuario.
+- #43 CERRADA — PASS usuario.
+
+## Documentación
+Actualizados en este hito:
+- `docs/FUNCTIONAL_SPECIFICATION_V2.md`;
+- `docs/TECHNICAL_SPECIFICATION_V2.md`;
+- `docs/NOVEDADES_V1_FUNCTIONAL.md`;
+- `docs/NOVEDADES_V1_TECHNICAL.md`;
+- `docs/PROJECT_STATUS.md`.
 
 ## Próximo paso exacto
-1. Configurar en Vercel el secreto server-side `GITHUB_ACTIONS_TOKEN` con permiso mínimo para ejecutar Actions en `pikolugo-a11y/imdb-catalog`; el usuario no debe pegar el token en ChatGPT.
-2. Confirmar/habilitar `imdb_discovery_test_override` una sola vez para aceptación.
-3. Usuario realiza deployment manual de `main`; ChatGPT no despliega.
-4. ChatGPT verifica READY + commit.
-5. Usuario entra en Novedades y pulsa `Ejecutar prueba única ahora`.
-6. ChatGPT verifica técnicamente que se creó exactamente un workflow/run y su resultado; usuario comprueba la UI.
-7. Verificar que el frontal vuelve a `Discovery bloqueado 7 días` con próxima fecha +7 días y que no existe `pending` huérfano.
-8. Registrar resultados, cerrar #29/#41/#42/#43 solo según PASS y completar #38/regresión restante.
+1. El usuario crea un **fine-grained personal access token** limitado exclusivamente al repositorio `pikolugo-a11y/imdb-catalog`, con permiso **Actions: Read and write** y sin permisos adicionales innecesarios.
+2. El usuario lo guarda directamente en Vercel, proyecto `imdb-catalog`, como variable sensible de producción **`GITHUB_ACTIONS_TOKEN`**. No pegar el token en ChatGPT ni en GitHub.
+3. El usuario realiza deployment manual del `main` que incluya esta bitácora y los cambios de #42. ChatGPT no despliega.
+4. ChatGPT verifica READY + commit desplegado.
+5. Usuario entra en Novedades y debe ver `Ejecutar prueba única ahora`.
+6. Usuario pulsa ese botón una sola vez.
+7. ChatGPT verifica técnicamente que se creó exactamente un workflow run, que usa el override, que completa/falla con diagnóstico y que no existe solicitud `pending` huérfana.
+8. Si completa, usuario refresca Novedades y confirma que vuelve `Discovery bloqueado 7 días` con próxima fecha ~+7 días.
+9. Registrar batería y cerrar #42 solo tras PASS; después completar #38 y revisar qué parte de #29 sigue realmente pendiente.
 
 ## Documentos a leer al retomar
 1. `docs/PROJECT_STATUS.md`.
