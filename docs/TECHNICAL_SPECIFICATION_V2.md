@@ -1,180 +1,129 @@
 # PikoFilm V2 — Documento técnico
 
-**Estado:** baseline técnica viva ampliada con Novedades V1 · 19/08/2026  
+**Estado:** baseline técnica viva + Novedades V1; #41/#42/#43 preparadas · 19/08/2026  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`
 
-> Regla de mantenimiento: esta especificación técnica y la funcional deben actualizarse antes de cada fusión/despliegue que cambie comportamiento, arquitectura, fuentes de verdad o flujos operativos.
+> Funcional, técnico y bitácora deben actualizarse antes de deployment. Producción la despliega manualmente el usuario y la aceptación funcional/visual la ejecuta el usuario.
 
-## 1. Arquitectura general
-PikoFilm es una aplicación Next.js desplegada en Vercel con PostgreSQL en Neon. Usa App Router, Server Components y Server Actions. La lógica de dominio reside principalmente en `lib/`; los trabajos batch largos se ejecutan con GitHub Actions/workers para evitar depender de timeouts HTTP.
+## 1. Arquitectura
+Next.js App Router en Vercel + PostgreSQL Neon. Server Components/Server Actions para web; workers GitHub Actions para batch largo. Separación canónica: fuente física Plex, catálogo editorial, staging de candidatos, exclusiones y datos derivados.
 
-Flujo principal: `Browser → Next.js/Vercel → lib/* → Neon PostgreSQL`.
+## 2. Rutas
+- `/`, `/catalogo`, `/catalogo/[imdbId]`, `/catalogo/excluidas`.
+- `/novedades`, `/novedades/[imdbId]`, `/novedades/criterios`.
+- `/plex`, `/calidad/*`, `/sagas/*`, `/personas/*`, `/admin`.
 
-La regla arquitectónica es separar datos fuente, estado editorial, staging/candidatos y datos derivados. La pertenencia al catálogo no debe depender de que todas las fuentes externas estén disponibles simultáneamente.
+## 3. Servicios
+- `lib/db.js`: Neon.
+- `lib/queries.js`, `lib/operational-queries.js`: lecturas.
+- `lib/plex-sync.js`, `lib/plex-queries-v2.js`: Plex.
+- `lib/enrich-title.js`: enriquecedor individual canónico.
+- `lib/imdb-rating-on-demand.js`: rating/votos IMDb puntual.
+- `lib/news-v1.js`: Novedades, stats, cooldown y candidatos.
+- `lib/identity.js`, `lib/quality-v2.js`, `lib/series-v2.js`, `lib/sagas-v2.js`, `lib/dashboard-v2.js`.
+- `lib/runlog.js`: observabilidad.
 
-## 2. Rutas principales
-- `/` Dashboard.
-- `/catalogo`, `/catalogo/[imdbId]`, `/catalogo/excluidas`.
-- `/novedades`, `/novedades/criterios`.
-- `/plex`.
-- `/calidad`, `/calidad/peliculas`, `/calidad/identidad`, `/calidad/series`, `/calidad/series/[ratingKey]`.
-- `/sagas`, `/sagas/[name]`.
-- `/personas/[id]`.
-- `/admin`.
+## 4. Fuentes de verdad
+- catálogo: `movies` + `catalog_read_model`;
+- Plex: `plex_items.active`, `plex_external_ids`, `plex_media`, `plex_files`;
+- exclusión: `catalog_exclusions`;
+- candidatos: `catalog_candidates`;
+- configuración discovery: `app_settings.imdb_discovery_v1`;
+- series: `series_reference*`, `series_season_availability`;
+- procesos: `pipeline_runs`.
 
-`app/actions.js` concentra acciones globales; `app/novedades/actions.js` concentra mutaciones específicas de Novedades.
+`admin_job_requests` queda como histórico/infra heredada: **Novedades ya no crea solicitudes discovery pending** y no existe polling que las recoja.
 
-## 3. Servicios principales
-- `lib/db.js`: cliente Neon.
-- `lib/queries.js`: lecturas generales.
-- `lib/operational-queries.js`: consultas operativas V2.
-- `lib/plex-queries-v2.js`: Biblioteca Plex paginada.
-- `lib/plex-sync.js`: sincronización Plex e invalidación de referencias derivadas.
-- `lib/enrich-title.js`: enriquecimiento individual canónico.
-- `lib/imdb-rating-on-demand.js`: hidratación puntual de rating/votos IMDb desde dataset oficial.
-- `lib/news-v1.js`: lectura/configuración de Novedades.
-- `lib/identity.js`: diagnóstico/persistencia de identidad.
-- `lib/quality-v2.js`: Calidad Películas.
-- `lib/series-v2.js`: Series V2.
-- `lib/sagas-v2.js`: Sagas.
-- `lib/dashboard-v2.js`: Dashboard/snapshots.
-- `lib/admin-queries-v2.js`: Admin.
-- `lib/runlog.js`: logging transversal.
+## 5. Plex
+`plex-sync.js` mantiene inventario físico e invalida referencias de Series cuando cambia identidad. Shows `active=false` quedan fuera de Calidad/KPIs sin necesidad de borrar histórico. Regresión: `Love is in the Air`.
 
-## 4. Persistencia y fuentes de verdad
-### 4.1 Catálogo
-`movies` y `catalog_read_model` representan el universo editorial. IMDb ID es identificador canónico central en el pipeline de títulos. Una fila catalogada puede estar parcialmente enriquecida; la ausencia de IDs/metadatos secundarios debe ser observable por Calidad, no representarse borrando la fila.
+## 6. Enriquecimiento y alta parcial (#43)
+`lib/enrich-title.js` continúa siendo el único enriquecedor. `app/novedades/actions.js::enrichNewsCandidateAction()` adapta un candidato al catálogo.
 
-### 4.2 Plex
-`plex_items` contiene inventario físico y estado `active`. `plex_external_ids` contiene IMDb/TMDb/TVDb/otros IDs. `plex_media` y `plex_files` contienen propiedades técnicas.
+Contrato implementado:
+1. Crea staging mínimo en `movies`.
+2. Ejecuta `enrichTitle()`.
+3. Si completa: elimina flag staging, marca candidato `catalogued`, run `success/stage=done`.
+4. Si falla y existe identidad mínima fiable (`title !== imdbId` + `candidate_type` soportado): **no borra `movies`**; elimina staging y añade a `source_status` `partial=true`, `enrichment_status='pending'`, `last_enrichment_error`, `last_enrichment_at`; marca candidato `catalogued`; `pipeline_runs` termina `success` con `stage='partial'`, `errors=1` y error pendiente trazable.
+5. Si no existe identidad mínima fiable: rollback del staging, candidato vuelve a `eligible`, run `failed/stage=failed_identity`.
 
-### 4.3 Exclusiones
-`catalog_exclusions` es la única fuente canónica de exclusión reversible. Novedades, Calidad, Series, Sagas y Dashboard deben anti-join esta tabla cuando corresponda.
+Calidad/Identidad detecta los IDs/campos faltantes desde las fuentes canónicas; no se crea tabla paralela para #43. Reintentar usa la misma fila/`enrichTitle()`.
 
-### 4.4 Candidatos
-`catalog_candidates` es el staging canónico de Novedades. Almacena IMDb ID, tipo, año, rating, votos, elegibilidad, timestamps y `source_snapshot`. No debe crearse una segunda tabla paralela con la misma responsabilidad.
+Regresión: `tt38268282` debe entrar parcial aunque TMDb no lo encuentre.
 
-### 4.5 Configuración
-`app_settings` almacena configuración versionable de discovery (`imdb_discovery_v1`).
+### IMDb on-demand
+`ensureImdbRating()` usa `title.ratings.tsv.gz` en streaming cuando faltan rating/votos locales. Fallo/ausencia no invalida TMDb/FA. Regresión: `First Lady`.
 
-### 4.6 Solicitudes históricas de jobs
-`admin_job_requests` puede conservar trazabilidad histórica, pero discovery IMDb no depende de polling periódico.
+## 7. Novedades — lectura y UX (#41)
+`lib/news-v1.js::getNewsV1()`:
+- anti-join `movies` + `catalog_exclusions`;
+- filtros tipo/búsqueda/orden;
+- pageSize permitido 24/48/96, default 24;
+- stats de propuestas/películas/series/rescate/manual;
+- contador de `catalog_exclusions`;
+- último run discovery;
+- última ejecución exitosa y cálculo `nextAllowedAt = lastSuccess + 7 días`;
+- `discoveryAllowed` calculado server-side.
 
-### 4.7 Series
-`series_reference`, `series_reference_episodes` y `series_season_availability` forman la referencia derivada. Solo shows activos en Plex participan en lecturas/refrescos operativos.
+`getNewsCandidate(imdbId)` alimenta `/novedades/[imdbId]` sin llamadas externas.
 
-### 4.8 Procesos
-`pipeline_runs` registra job type, source, estado, contadores, timings y `summary` JSON.
+`app/novedades/page.js` usa `app/novedades/news.css` y presenta tabla compacta con acciones directas `Ver`, `IMDb`, `Añadir`, `Excluir` y `Retirar` para manuales. Cabecera ofrece `Criterios IMDb`, `Excluidas · N` y control de discovery. Catálogo muestra `Ver excluidas` como botón visible en cabecera.
 
-## 5. Sincronización Plex
-`plex-sync.js` es propietario de cambios físicos y de identidad provenientes de Plex. Detecta altas/cambios/bajas y marca inactivos los títulos que desaparecen. Si cambia identidad de Series, invalida referencia derivada y `series-v2` reconstruye posteriormente.
+## 8. Candidatos manuales/exclusión
+`addManualCandidateAction()` valida IMDb, impide duplicados y respeta exclusión. `restoreAndAddManualAction()` exige restauración explícita. `removeManualCandidateAction()` solo desactiva el manual. `excludeNewsCandidateAction()` escribe en `catalog_exclusions`.
 
-Un show `active=false` no puede aparecer en Calidad Series ni alimentar KPIs. Caso de regresión: `Love is in the Air`.
+## 9. Discovery IMDb seguro (#42)
+`.github/workflows/imdb-discovery.yml` solo contiene `workflow_dispatch`; **sin `schedule`**.
 
-## 6. Enriquecimiento individual
-`lib/enrich-title.js` sigue siendo el único enriquecedor canónico. Resuelve lo que pueda de identidad, IMDb local, Wikidata/FilmAffinity, TMDb, PikoScore, metadatos, arte, géneros, reparto y colección/saga.
+`worker/imdb-discovery.mjs` consulta la última ejecución `imdb_discovery` exitosa antes de descargar datasets. Si no han pasado 7 días, registra `weekly_cooldown` y falla antes del trabajo pesado.
 
-Las correcciones manuales de IDs tienen precedencia. El pipeline no debe borrar un ID manual válido porque una resolución automática falle.
+Web:
+- se eliminó `requestNewsDiscoveryAction()` y toda inserción `pending` de discovery;
+- `saveNewsSettingsAction()` solo guarda criterios;
+- se eliminó `Guardar y buscar ahora`;
+- Novedades muestra cooldown/fecha siguiente;
+- cuando `discoveryAllowed=true`, el botón abre explícitamente `https://github.com/pikolugo-a11y/imdb-catalog/actions/workflows/imdb-discovery.yml` para que el usuario inicie el workflow manual;
+- cuando no está permitido, el control queda deshabilitado.
 
-### 6.1 Contrato de alta tolerante a enriquecimiento parcial (#43)
-La capa que incorpora un título debe distinguir **fallo de identidad/integridad** de **fallo de enriquecimiento secundario**.
+No se introduce PAT/token GitHub en Vercel ni un disparador oculto desde la web: se prioriza seguridad operativa de la cuenta.
 
-- Si no puede establecerse una identidad mínima fiable o existe riesgo de duplicidad/corrupción, la operación puede abortar.
-- Si IMDb identifica suficientemente el título y ya existen metadatos mínimos persistibles, un fallo/no-match de TMDb, FilmAffinity/Wikidata, arte u otra fuente secundaria **no debe eliminar el staging ni revertir la catalogación**.
-- Debe persistirse el título con los datos disponibles y un estado/diagnóstico que permita a Calidad detectar qué fuentes/campos faltan.
-- El reintento posterior debe reutilizar `enrichTitle()` y completar la misma fila, nunca crear un duplicado.
-- `pipeline_runs.summary` debe distinguir alta completa de alta parcial y enumerar fuentes/etapas pendientes cuando sea posible.
+## 10. Worker discovery
+Streaming gzip de ratings → preselección → basics → resolución selectiva de país → upserts por lotes. India configurable; rescate España solo donde procede. Automáticos que dejan de cumplir pasan a `not_eligible`, no se borran.
 
-No se crea un segundo enriquecedor: la tolerancia debe implementarse alrededor/dentro del contrato canónico existente de forma reutilizable también para altas desde Plex cuando proceda.
+## 11. Calidad
+Calidad Películas usa datos persistidos Plex/catálogo. Calidad Identidad es el destino de altas parciales con TMDb/FA/campos pendientes. Excluidos se filtran.
 
-### 6.2 IMDb rating/votos on-demand
-`lib/imdb-rating-on-demand.js` hidrata puntualmente rating/votos desde `title.ratings.tsv.gz`. `app/actions.js::processTitle()` intenta `ensureImdbRating()` antes de `enrichTitle()`. Si IMDb dataset no contiene el ID o expira, se continúa con otras fuentes y `imdb_status=pending_dataset`. Caso de regresión: `First Lady`, `tt15787006`, TMDb `158808`.
+## 12. Series
+`series-v2.js` usa TMDb, referencia/disponibilidad ES y solo shows Plex activos/no excluidos. #36 mantiene margen de 60 s e instrumentación por fases.
 
-## 7. Novedades V1
-### 7.1 Lectura/UI
-`lib/news-v1.js` consulta `catalog_candidates` con anti-joins contra `movies` y `catalog_exclusions`, paginación y filtros. `/novedades` no realiza llamadas externas durante render normal.
+## 13. Sagas / Dashboard / Admin
+Sagas mantiene cobertura sin excluidos. Dashboard ignora shows inactivos en KPIs de Series. Admin debe distinguir `weekly_cooldown`, fallos, timeouts y `single_title` parcial/completo.
 
-### 7.2 Configuración
-`/novedades/criterios` edita `app_settings.imdb_discovery_v1`.
+## 14. Seguridad
+Secretos solo en variables de entorno. Sin scraping IMDb. Sin cron/polling agresivo para discovery. No añadir credenciales GitHub al frontend ni al repositorio.
 
-### 7.3 Alta manual
-`addManualCandidateAction()` valida `tt...`, impide duplicar catálogo, respeta exclusiones y crea/activa candidato manual. Si está excluido exige restauración explícita.
+## 15. CI/CD y aceptación
+Antes de deployment: revisar sintaxis/build y consistencia de `main`. **ChatGPT no despliega producción.** El usuario ejecuta deployment manual en Vercel; después ChatGPT verifica commit/READY y dirige pruebas que ejecuta el usuario. Issues no se cierran antes del PASS explícito.
 
-### 7.4 Excluir/retirar
-`excludeNewsCandidateAction()` reutiliza `catalog_exclusions`. `removeManualCandidateAction()` desactiva el candidato manual sin convertirlo en exclusión global.
-
-### 7.5 Incorporar al catálogo
-`enrichNewsCandidateAction()` reutiliza `enrichTitle()`. El staging mínimo en `movies` deja de considerarse puramente descartable cuando existe identidad mínima fiable: ante un fallo secundario como `TMDb no encontró el título`, debe conservarse/promoverse como título catalogado parcial, marcar el candidato `catalogued` y dejar que el anti-join lo retire de Novedades. Calidad debe detectar después los IDs/datos pendientes.
-
-Solo se elimina/revierte el staging ante fallos de identidad mínima, duplicidad o integridad que hagan insegura la catalogación. Caso de regresión: `tt38268282`.
-
-## 8. Worker IMDb discovery
-`worker/imdb-discovery.mjs` ejecuta el discovery sin scraping, mediante streaming de datasets oficiales. Filtra ratings, cruza basics, resuelve país selectivamente y persiste por lotes en `catalog_candidates`. Los automáticos que dejan de cumplir pasan a `not_eligible`; no se borran.
-
-Antes de descargar datasets, consulta la última ejecución `imdb_discovery` exitosa. Si no han pasado 7 días, registra `weekly_cooldown` y termina antes del trabajo pesado.
-
-## 9. GitHub Actions / ejecución batch
-`.github/workflows/imdb-discovery.yml` no contiene `schedule`: solo `workflow_dispatch`. No existe polling cada 5 minutos ni discovery diario automático. La guardia semanal vive también en el worker.
-
-Los jobs deben ser idempotentes/reintentables sin ejecuciones frecuentes no solicitadas.
-
-## 10. Calidad Películas / Identidad
-`quality-v2.js` analiza calidad técnica y filtra excluidos. Calidad/Identidad debe ser además el destino operativo de títulos catalogados parcialmente: ausencia de TMDb/FA u otros campos esperables se muestra como dato pendiente, con posibilidad de reintento/edición según el mecanismo canónico existente. No se crea una lista paralela específica para #43 si la vista de Calidad ya puede representar el diagnóstico.
-
-## 11. Series V2
-`series-v2.js` usa TMDb con concurrencia acotada, temporadas/episodios y disponibilidad ES. Solo shows Plex activos, no excluidos y con TMDb ID participan. #36 amplía margen a 60 s e instrumenta fases.
-
-## 12. Sagas
-`sagas-v2.js` mantiene colecciones/universos y cobertura derivada contra Plex. Exclusiones no contaminan cobertura.
-
-## 13. Dashboard
-`dashboard-v2.js` produce KPIs, histórico, distribuciones y cobertura por décadas. Los KPIs de series ignoran shows inactivos.
-
-## 14. Biblioteca y rendimiento
-`plex-queries-v2.js` pagina y filtra en SQL. Novedades aplica el mismo principio.
-
-## 15. Admin y observabilidad
-`runlog.js` normaliza jobs. Admin debe distinguir errores funcionales, timeouts, cooldown y enriquecimientos parciales. Jobs relevantes: `imdb_discovery`, `single_title`, `series_v2_refresh`.
-
-## 16. Seguridad
-Secretos (`DATABASE_URL`, Plex token, `TMDB_API_TOKEN`, etc.) viven solo en variables de entorno. IMDb datasets se acceden sin scraping.
-
-## 17. CI/CD
-El PR debe pasar `npm run build` y comprobaciones sintácticas de workers antes de fusionarse. Los deployments de producción los realiza manualmente el usuario; ChatGPT verifica después el deployment y el usuario ejecuta las pruebas funcionales dirigidas.
-
-## 18. Consistencia / fuentes canónicas
-- presencia física → `plex_items.active`;
-- IDs Plex → `plex_external_ids`;
-- catálogo editorial → `movies`/read model;
-- exclusión → `catalog_exclusions`;
-- candidatos → `catalog_candidates`;
-- configuración discovery → `app_settings`;
-- referencia series → `series_reference*`;
-- disponibilidad ES → `series_season_availability`;
-- histórico de procesos → `pipeline_runs`.
-
-No deben crearse fuentes paralelas para solucionar bugs locales.
-
-## 19. Dependencias
+## 16. Dependencias
 `Plex Sync → inventario/IDs → catálogo/sagas + invalidación Series`
 
-`Series Refresh → TMDb reference/disponibilidad → diagnósticos`
+`IMDb Discovery manual semanal → catalog_candidates → Novedades`
 
-`IMDb Discovery manual (máximo semanal) → catalog_candidates → Novedades`
+`Novedades Add → identidad mínima → movies → enrichTitle best-effort → Calidad si parcial`
 
-`Novedades Add → identidad mínima → movies → enrichTitle (best effort) → Calidad si parcial → desaparece de Novedades`
-
-`Single-title update → ensureImdbRating → enrichTitle`
+`Single title → ensureImdbRating → enrichTitle`
 
 `Procesos → pipeline_runs → Admin`
 
-## 20. Regresiones obligatorias
-- Castle: cambio de identidad Plex no deja referencia vieja activa.
-- Love is in the Air: show inactivo no aparece en Calidad ni KPIs.
-- First Lady `tt15787006`: rating IMDb on-demand y TMDb `158808` conservado.
-- Novedades: catálogo y excluidos no reaparecen.
-- India permanece fuera mientras esté configurada.
-- España: rescate solo con participación española confirmada.
+## 17. Regresiones obligatorias
+- Castle: referencia antigua invalidada tras cambio de identidad.
+- Love is in the Air: inactiva fuera de Calidad/KPIs.
+- First Lady: IMDb on-demand conserva TMDb.
+- Novedades: catálogo/excluidos no reaparecen.
+- India/rescate España correctos.
 - Manual excluido requiere restauración explícita.
-- Discovery no tiene cron/polling y respeta cooldown semanal.
-- `tt38268282`: ausencia de TMDb no bloquea catalogación; desaparece de Novedades y queda diagnosticado en Calidad como incompleto.
+- Discovery: sin cron/polling, cooldown semanal, sin `pending` huérfanos.
+- `tt38268282`: TMDb ausente → alta parcial catalogada + Calidad.
+- Excluidas: acceso visible desde Catálogo y Novedades.
+- UX Novedades: tabla compacta, acciones visibles y paginación 24/48/96.
