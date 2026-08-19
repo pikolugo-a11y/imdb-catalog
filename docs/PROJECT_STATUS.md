@@ -41,24 +41,26 @@ Después del deploy, ChatGPT diseña y conduce la batería de aceptación **prue
 
 ## Batería funcional obligatoria post-deploy
 
-### A. Series borradas / Calidad
-- Confirmar que **Love is in the Air**, borrada/inactiva en Plex, no aparece operativamente en Calidad de Series.
+### A. Series borradas / Calidad — SUPERADA
+- **Prueba ejecutada por el usuario:** buscar **Love is in the Air** en Calidad de Series tras el deployment.
+- **Resultado comunicado:** no aparece.
+- **Conclusión:** PASS. La serie borrada/inactiva en Plex ya no aparece operativamente en Calidad de Series. Regresión de #37 validada en producción.
 
-### B. Actualizar Series / timeout
+### B. Actualizar Series / timeout — PENDIENTE
 - Ejecutar Actualizar Series.
 - Confirmar que completa en el primer intento.
 - Revisar duración/instrumentación en Admin.
 
-### C. First Lady / IMDb on-demand
+### C. First Lady / IMDb on-demand — PENDIENTE
 - Abrir **First Lady** (`tt15787006`).
 - Ejecutar Actualizar datos si procede.
 - Confirmar rating/votos IMDb desde dataset oficial sin romper TMDb/FA.
 - Confirmar TMDb `158808`.
 
-### D. Novedades V1
+### D. Novedades V1 — PENDIENTE
 Validar carga, criterios configurables, India excluida, candidatos generales, rescate España, alta IMDb manual, caso ya catalogado, caso excluido sin restauración silenciosa, excluir/restaurar, añadir y ampliar datos, desaparición de Novedades al catalogar, fallo/reintento, job manual/automático, trazabilidad Admin y ausencia de espera HTTP larga.
 
-### E. Regresión mínima
+### E. Regresión mínima — PENDIENTE
 Validar Catálogo, Biblioteca Plex, Calidad Películas, Calidad Series y filtro `Todos`, Sagas, Dashboard incluido décadas y Admin.
 
 ## Issues en aceptación
@@ -66,29 +68,28 @@ Validar Catálogo, Biblioteca Plex, Calidad Películas, Calidad Series y filtro 
 - **#36 abierta** — robustecer timeout de Actualizar Series.
 - **#38 abierta** — Novedades V1 / aceptación funcional.
 - **#40 abierta** — rating/votos IMDb on-demand para altas desde Plex.
-- **#37 cerrada** — series eliminadas de Plex seguían apareciendo en Calidad; `Love is in the Air` sigue como caso de regresión obligatorio.
+- **#37 cerrada y regresión validada en producción** — `Love is in the Air` no aparece en Calidad de Series tras el deployment.
 
 Regla: **deploy → pruebas funcionales del usuario → registro → cierre**.
 
 ## Casos de regresión históricos
 
 - **Castle:** cambio de identidad Plex invalida referencia antigua y Series reconstruye la nueva.
-- **Love is in the Air:** show inactivo no debe aparecer en Calidad ni KPIs.
+- **Love is in the Air:** PASS 19/08/2026; show inactivo no aparece en Calidad tras deployment.
 - **First Lady:** alta desde Plex no debe quedar bloqueada en IMDb pendiente si el dataset oficial ya contiene el rating.
 - **Series / Todos:** `state=all` debe conservarse.
 
 ## Documentación funcional/técnica
 
-`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` siguen alineados con el código desplegado. El protocolo de aceptación no cambia funcionalidad ni arquitectura de PikoFilm.
+`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` siguen alineados con el código desplegado. El resultado de esta prueba no cambia funcionalidad ni arquitectura de PikoFilm.
 
 ## Próximo paso exacto
 
-1. ChatGPT entrega al usuario la batería de aceptación de forma secuencial, una prueba cada vez.
-2. El usuario ejecuta la prueba y comunica el resultado observado.
-3. ChatGPT registra el resultado en esta bitácora y, si hay fallo real, abre/actualiza la issue correspondiente antes de continuar o diagnosticar.
-4. Si hace falta código, actualizar especificaciones funcional/técnica cuando corresponda, fusionar y solicitar nuevo deployment manual antes de volver a probar.
-5. Si las pruebas son satisfactorias, cerrar únicamente las issues validadas.
-6. Actualizar esta bitácora después de cada bloque/hito de pruebas y antes de terminar la sesión.
+1. Continuar con la prueba B: el usuario ejecuta **Actualizar Series** una vez desde la aplicación.
+2. El usuario comunica si termina correctamente al primer intento y qué mensaje/resultado observa.
+3. ChatGPT registra el resultado y contrasta la instrumentación en Admin si procede.
+4. Si falla, diagnosticar y actualizar/abrir issue antes de avanzar; si pasa, continuar con First Lady.
+5. Mantener esta bitácora actualizada durante toda la batería.
 
 ## Documentos que deben leerse al retomar
 
