@@ -1,3 +1,4 @@
+import './DecadeCoverage.module.css';
 export default function DecadeCoverage({rows=[]}){
   const pct=(a,b)=>b?Math.round(Number(a||0)/Number(b)*1000)/10:0;
   const clean=rows.filter(x=>Number(x.total)>0).map(x=>({...x,total:Number(x.total||0),owned:Number(x.owned||0)}));
