@@ -4,8 +4,8 @@
 
 ## Estado registrado
 
-**Fecha:** 19/08/2026 12:13 (Europe/Madrid)  
-**Fase:** V2 estable + Novedades V1 desplegada, en aceptación  
+**Fecha:** 19/08/2026 12:17 (Europe/Madrid)  
+**Fase:** V2 estable + Novedades V1 desplegada, en aceptación dirigida por el usuario  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
 
@@ -31,11 +31,13 @@ El usuario realizó el deployment manual de producción y ChatGPT lo verificó e
 - commit desplegado: `02c272bd0366f78671e18631f8fa051863b2f0c0`;
 - dicho HEAD contiene el merge funcional `62880f5a0ed1cf33c8662979adbd89ff52fde256`.
 
-Desde este punto está permitido ejecutar la batería funcional sobre producción.
+Desde este punto está permitido ejecutar la batería funcional sobre producción, pero las pruebas funcionales/visuales las ejecuta siempre el usuario.
 
-## Protocolo permanente de deployment
+## Protocolo permanente de deployment y aceptación
 
-Los deployments de producción en Vercel los realiza manualmente el usuario. ChatGPT deja `main` listo y avisa; el usuario despliega y confirma; ChatGPT verifica `READY` + commit exacto y solo entonces prueba producción.
+Los deployments de producción en Vercel los realiza manualmente el usuario. ChatGPT deja `main` listo y avisa; el usuario despliega y confirma; ChatGPT verifica `READY` + commit exacto.
+
+Después del deploy, ChatGPT diseña y conduce la batería de aceptación **prueba a prueba**. El usuario ejecuta siempre cada prueba funcional/visual en la aplicación y comunica el resultado. ChatGPT registra cada respuesta, decide si la prueba pasa o falla, diagnostica técnicamente cuando sea necesario y abre/actualiza issues si aparece una incidencia real. ChatGPT no debe sustituir al usuario ejecutando acciones funcionales de aceptación en producción.
 
 ## Batería funcional obligatoria post-deploy
 
@@ -66,7 +68,7 @@ Validar Catálogo, Biblioteca Plex, Calidad Películas, Calidad Series y filtro 
 - **#40 abierta** — rating/votos IMDb on-demand para altas desde Plex.
 - **#37 cerrada** — series eliminadas de Plex seguían apareciendo en Calidad; `Love is in the Air` sigue como caso de regresión obligatorio.
 
-Regla: **deploy → pruebas funcionales → cierre**.
+Regla: **deploy → pruebas funcionales del usuario → registro → cierre**.
 
 ## Casos de regresión históricos
 
@@ -77,15 +79,16 @@ Regla: **deploy → pruebas funcionales → cierre**.
 
 ## Documentación funcional/técnica
 
-`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` siguen alineados con el código desplegado. Este hito de deployment no cambia funcionalidad ni arquitectura.
+`docs/FUNCTIONAL_SPECIFICATION_V2.md` y `docs/TECHNICAL_SPECIFICATION_V2.md` siguen alineados con el código desplegado. El protocolo de aceptación no cambia funcionalidad ni arquitectura de PikoFilm.
 
 ## Próximo paso exacto
 
-1. Ejecutar la batería funcional post-deploy completa.
-2. Registrar cualquier incidencia en GitHub y aquí.
-3. Si hace falta código, actualizar especificaciones funcional/técnica cuando corresponda, fusionar y solicitar nuevo deployment manual antes de probar.
-4. Si las pruebas son satisfactorias, cerrar únicamente las issues validadas.
-5. Actualizar esta bitácora después de la batería y antes de terminar la sesión.
+1. ChatGPT entrega al usuario la batería de aceptación de forma secuencial, una prueba cada vez.
+2. El usuario ejecuta la prueba y comunica el resultado observado.
+3. ChatGPT registra el resultado en esta bitácora y, si hay fallo real, abre/actualiza la issue correspondiente antes de continuar o diagnosticar.
+4. Si hace falta código, actualizar especificaciones funcional/técnica cuando corresponda, fusionar y solicitar nuevo deployment manual antes de volver a probar.
+5. Si las pruebas son satisfactorias, cerrar únicamente las issues validadas.
+6. Actualizar esta bitácora después de cada bloque/hito de pruebas y antes de terminar la sesión.
 
 ## Documentos que deben leerse al retomar
 
