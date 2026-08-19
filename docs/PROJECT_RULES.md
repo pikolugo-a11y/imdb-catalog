@@ -14,7 +14,7 @@ Este documento es obligatorio para cualquier sesión futura de trabajo sobre Pik
 
 5. **No probar código que no esté realmente desplegado.** Antes de atribuir un resultado funcional a un cambio, verificar que producción contiene el commit/deployment esperado.
 
-6. **Validación funcional obligatoria después de CADA deploy.** Ningún despliegue se considera terminado ni ninguna corrección se considera cerrada hasta ejecutar una batería funcional proporcional a los cambios desplegados. Las pruebas deben incluir el caso corregido y regresiones razonables sobre funciones relacionadas. Registrar el resultado en la bitácora.
+6. **Validación funcional obligatoria después de CADA deploy.** Ningún despliegue se considera terminado ni ninguna corrección se considera cerrada hasta completar una batería funcional proporcional a los cambios desplegados. ChatGPT diseña y conduce la batería prueba a prueba; el usuario ejecuta siempre las pruebas funcionales/visuales en producción y comunica el resultado. ChatGPT registra cada resultado en la bitácora y abre/actualiza issues cuando corresponda. Las pruebas deben incluir el caso corregido y regresiones razonables sobre funciones relacionadas.
 
 7. **No cerrar issues antes de validar.** Implementar, desplegar, probar funcionalmente y solo entonces cerrar la issue. Una mejora explícitamente no bloqueante puede mantenerse abierta aunque una versión se considere estable.
 
@@ -36,7 +36,9 @@ Este documento es obligatorio para cualquier sesión futura de trabajo sobre Pik
 
 16. **Seguridad y secretos.** Nunca persistir tokens, credenciales o secretos en código, documentación, issues o logs. Usar variables de entorno/secretos de plataforma.
 
-17. **Despliegues manuales por el usuario.** Los deployments de producción en Vercel los realiza manualmente el usuario. ChatGPT no debe intentar desplegar ni sustituir ese paso. Cuando un hito esté listo para producción, debe avisar de forma explícita indicando qué commit/HEAD debe desplegarse. Después de que el usuario confirme que ha hecho el deploy, ChatGPT debe verificar en Vercel que producción corresponde al commit esperado y solo entonces ejecutar la batería funcional y continuar con cierres de issues o aceptación.
+17. **Despliegues manuales por el usuario.** Los deployments de producción en Vercel los realiza manualmente el usuario. ChatGPT no debe intentar desplegar ni sustituir ese paso. Cuando un hito esté listo para producción, debe avisar de forma explícita indicando qué commit/HEAD debe desplegarse. Después de que el usuario confirme que ha hecho el deploy, ChatGPT debe verificar en Vercel que producción corresponde al commit esperado.
+
+18. **Pruebas de aceptación ejecutadas siempre por el usuario.** ChatGPT no debe ejecutar por su cuenta acciones funcionales o visuales de aceptación sobre la aplicación en producción. Debe generar una batería ordenada, entregar las pruebas de una en una con pasos concretos y resultado esperado, recibir la respuesta del usuario, registrar cada resultado y decidir si procede continuar, diagnosticar o abrir/actualizar una issue. Las comprobaciones técnicas no funcionales necesarias para preparar o interpretar la prueba (commit desplegado, logs, BBDD, código, configuración) sí puede realizarlas ChatGPT.
 
 ## Regla de cierre de sesión
 
