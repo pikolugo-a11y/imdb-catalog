@@ -33,6 +33,8 @@ Plex sigue siendo la fuente de verdad de presencia física, pero la pantalla ope
 
 La vista es una tabla compacta, sin ficha intermedia, porque la decisión aquí es identificar y **Añadir al catálogo**. Presenta título Plex, título original cuando esté disponible, tipo, año, IMDb y fecha real `added_at` rotulada **Añadido a Plex**. La ausencia de IMDb es una excepción accionable y ofrece **Resolver identidad**; un año ausente se señala discretamente. El estado normal `Listo para añadir` no ocupa una columna propia. Al completar correctamente el alta, el elemento deja de pertenecer a esta bandeja al revalidarse las fuentes canónicas.
 
+**Alta parcial desde Plex:** si Plex aporta un IMDb válido y título/tipo mínimos, la ausencia o fallo de TMDb, FilmAffinity, carátula u otra fuente secundaria **no bloquea la incorporación al Catálogo**. Se conserva el alta con los datos mínimos de Plex/IMDb, se marca como enriquecimiento parcial y el título pasa a Calidad → Identidad para completar o corregir lo pendiente. Solo una identidad mínima insuficiente o un problema de integridad puede bloquear el alta.
+
 `Actualizar Plex` permanece visible junto a la fecha de la última sincronización. Refresca altas/cambios/bajas y cruces. En Series, un cambio de identidad invalida referencias derivadas antiguas para que el análisis posterior reconstruya la correcta. Una serie borrada deja de participar inmediatamente en Calidad/KPIs aunque se conserve histórico.
 
 ## 6. Calidad — Películas
@@ -140,6 +142,7 @@ Render normal lee Neon, no enriquece masivamente. Worker filtra ratings antes de
 - Discovery sin cron/polling y cooldown semanal.
 - Discovery manual se puede lanzar desde el frontal con secreto server-side; la excepción de aceptación solo puede consumirse una vez.
 - `tt38268282`: TMDb ausente no bloquea catalogación; queda incompleto en Calidad.
+- `tt5901280` (The River desde Plex): TMDb ausente no bloquea alta; usa identidad mínima Plex/IMDb, desaparece de Mi Biblioteca y aparece en Calidad/Identidad con TMDb pendiente.
 - Excluidas: acceso visible desde Catálogo y Novedades.
 - Mi Biblioteca: solo pendientes Plex→Catálogo; alta correcta hace desaparecer la fila; sin IMDb ofrece Resolver identidad; fecha mostrada corresponde a `added_at`.
 
