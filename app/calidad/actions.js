@@ -1,8 +1,8 @@
 'use server';
 import {revalidatePath} from 'next/cache';
 import {analyzeMovieQuality} from '@/lib/quality-v2';
-import {refreshSeriesV2} from '@/lib/series-v2';
 import {reanalyzeIdentity} from '@/lib/identity';
+import {dispatchFullSeriesRefresh} from '@/lib/series-full-refresh-dispatch';
 import {audit,errorInfo} from '@/lib/runlog';
 
 function refreshQuality(){
@@ -28,12 +28,13 @@ export async function refreshMoviesFromQuality(){
 
 export async function refreshSeriesFromQuality(){
   try{
-    const r=await refreshSeriesV2();
-    await audit('quality','dashboard','series','refresh',{series:r.series,seasons:r.seasons,episodes:r.episodes,anomalies:r.anomalies,unmatchedEpisodes:r.unmatchedEpisodes,errors:r.errors});
+    const r=await dispatchFullSeriesRefresh('quality_dashboard');
     refreshQuality();
-    return{ok:true,message:`Series actualizadas: ${r.series} revisadas · ${r.seasons} temporadas · ${r.anomalies??0} anomalías · ${r.errors} errores`};
+    if(!r.ok)return{ok:false,message:r.message||'No se pudo lanzar la actualización completa de Series'};
+    if(r.alreadyRunning)return{ok:true,message:`Series ya se están actualizando: ${Number(r.processed||0).toLocaleString('es-ES')} / ${Number(r.total||0).toLocaleString('es-ES')} procesadas`};
+    return{ok:true,message:`Actualización completa lanzada: ${Number(r.total||0).toLocaleString('es-ES')} series. Puedes seguir el progreso aquí y en Admin.`};
   }catch(e){
-    await audit('quality','dashboard','series','refresh_failed',{error:errorInfo(e)});
+    await audit('quality','dashboard','series','refresh_dispatch_failed',{error:errorInfo(e)});
     refreshQuality();
     return{ok:false,message:e?.message||'No se pudo actualizar Series'};
   }
