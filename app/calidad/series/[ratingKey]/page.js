@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import {headers} from 'next/headers';
 import {notFound} from 'next/navigation';
 import {getSeriesDetailV2} from '@/lib/operational-queries';
 import {seasonAvailabilityAction} from '@/app/actions';
@@ -9,13 +10,19 @@ const stateLabel={present:'En Plex',missing_actionable:'Falta en Plex',not_avail
 const pct=(a,b)=>b?Math.round(100*a/b):0;
 const qs=(base,patch)=>{const p=new URLSearchParams();Object.entries({...base,...patch}).forEach(([k,v])=>{if(v!==undefined&&v!==null&&v!==''&&v!==false)p.set(k,String(v))});return`?${p.toString()}`};
 
+function catalogOriginFromReferer(referer=''){
+  try{const u=new URL(referer);return u.pathname.startsWith('/catalogo/')?`${u.pathname}${u.search}`:''}catch{return''}
+}
+
 export default async function SerieDetalle({params,searchParams}){
   const{ratingKey}=await params,q=await searchParams,s=await getSeriesDetailV2(ratingKey);if(!s)notFound();
   const seasonNums=[...new Set(s.episodes.map(e=>e.season_number))].filter(n=>n!=null).sort((a,b)=>a-b);
   const selected=q.season==='all'?'all':q.season!==undefined?Number(q.season):(seasonNums[0]??null);
   const status=String(q.status||'all');
   const missingOnly=q.missing==='1';
-  const from=String(q.from||'');
+  const h=await headers();
+  const inferredFrom=catalogOriginFromReferer(h.get('referer')||'');
+  const from=String(q.from||inferredFrom||'');
   const back=from.startsWith('/catalogo')?from:'/calidad/series';
   const counts=seasonNums.map(n=>{const es=s.episodes.filter(e=>e.season_number===n),a=s.seasons.find(x=>x.season_number===n);return{n,total:es.length,present:es.filter(e=>e.effective_status==='present').length,missing:es.filter(e=>e.effective_status==='missing_actionable').length,unknown:es.filter(e=>e.effective_status==='availability_unknown').length,noes:es.filter(e=>e.effective_status==='not_available_es').length,availability:a?.status||'UNKNOWN'}});
   const scope=selected==='all'?s.episodes:s.episodes.filter(e=>e.season_number===selected);
