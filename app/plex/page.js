@@ -21,7 +21,7 @@ export default async function Plex({searchParams}){
       <div>
         <div className="eyebrow">PLEX → PIKOFILM</div>
         <h1>Mi Biblioteca</h1>
-        <p>Nuevos títulos detectados en Plex que todavía no forman parte del catálogo.</p>
+        <p>Títulos de Plex que todavía no están incorporados al catálogo PikoFilm.</p>
       </div>
       <div className="plex-sync-block">
         <span className="plex-sync-label">Última sincronización</span>
@@ -30,9 +30,9 @@ export default async function Plex({searchParams}){
       </div>
     </div>
 
-    <div className="plex-summary-strip">
-      <div><span className="plex-summary-number">{s.outside_catalog}</span><span><b>pendientes de incorporar</b><small>Desaparecen de aquí al añadirlos al catálogo</small></span></div>
-      <div className="plex-summary-ok"><span>✓</span><span><b>{s.in_catalog.toLocaleString('es-ES')} ya vinculados</b><small>Gestionados desde Catálogo y Calidad</small></span></div>
+    <div className="plex-summary-strip plex-summary-compact">
+      <div><span className="plex-summary-number">{s.outside_catalog.toLocaleString('es-ES')}</span><span><b>Títulos de Plex aún no incorporados al catálogo</b><small>Al añadir uno al catálogo desaparecerá automáticamente de esta bandeja.</small></span></div>
+      <div className="plex-linked-note"><span>✓</span><span><b>{s.in_catalog.toLocaleString('es-ES')} ya vinculados</b><small>Gestionados desde Catálogo y Calidad</small></span></div>
     </div>
 
     <div className="plex-toolbar">
@@ -53,16 +53,18 @@ export default async function Plex({searchParams}){
     {rows.length?<>
       <div className="plex-table-wrap">
         <table className="plex-table">
-          <thead><tr><th>Título en Plex</th><th>Tipo</th><th>Año</th><th>IMDb</th><th>Detectado</th><th>Estado</th><th></th></tr></thead>
-          <tbody>{rows.map(r=><tr key={r.rating_key}>
-            <td><div className="plex-title"><b>{r.plex_title||'Sin título'}</b><small>Plex #{r.rating_key}</small></div></td>
-            <td><span className="plex-type">{r.item_type==='show'?'Serie':'Película'}</span></td>
-            <td>{r.plex_year||'—'}</td>
-            <td>{r.imdb_id?<span className="plex-imdb">{r.imdb_id}</span>:<span className="plex-muted">Sin identificar</span>}</td>
-            <td>{fmtDate(r.added_at)}</td>
-            <td>{r.imdb_id?<span className="plex-ready">● Listo para añadir</span>:<span className="plex-pending">● Requiere identidad</span>}</td>
-            <td className="plex-action">{r.imdb_id?<EnrichTitleButton imdbId={r.imdb_id} label="+ Añadir al catálogo" className="primary"/>:<Link className="button ghost" href={`/calidad/identidad?plex=${encodeURIComponent(r.rating_key)}&q=${encodeURIComponent(r.plex_title||'')}`}>Resolver identidad</Link>}</td>
-          </tr>)}</tbody>
+          <thead><tr><th>Título en Plex</th><th>Tipo</th><th>Año</th><th>IMDb</th><th>Añadido a Plex</th><th></th></tr></thead>
+          <tbody>{rows.map(r=>{
+            const title=r.plex_title||'Sin título';
+            const original=r.original_title&&r.original_title!==title?r.original_title:null;
+            return <tr key={r.rating_key} className={!r.imdb_id?'plex-row-attention':''}>
+              <td><div className="plex-title"><b>{title}</b>{original&&<span className="plex-original">{original}</span>}<small>Plex #{r.rating_key}</small></div></td>
+              <td><span className="plex-type">{r.item_type==='show'?'Serie':'Película'}</span></td>
+              <td>{r.plex_year||<span className="plex-year-missing" title="Plex no informa del año">—</span>}</td>
+              <td>{r.imdb_id?<span className="plex-imdb">{r.imdb_id}</span>:<span className="plex-pending">● Sin IMDb</span>}</td>
+              <td>{fmtDate(r.added_at)}</td>
+              <td className="plex-action">{r.imdb_id?<EnrichTitleButton imdbId={r.imdb_id} label="+ Añadir al catálogo" className="primary"/>:<Link className="button ghost" href={`/calidad/identidad?plex=${encodeURIComponent(r.rating_key)}&q=${encodeURIComponent(title)}`}>Resolver identidad</Link>}</td>
+            </tr>})}</tbody>
         </table>
       </div>
       <div className="plex-table-foot"><span>{d.total.toLocaleString('es-ES')} pendientes</span><span>Página {d.page} de {d.pages}</span></div>
