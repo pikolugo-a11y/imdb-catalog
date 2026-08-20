@@ -1,8 +1,10 @@
 'use server';
 import {revalidatePath} from 'next/cache';
+import {db} from '@/lib/db';
 import {dispatchIdentityRefresh,cancelIdentityRefresh} from '@/lib/identity-run-control';
 import {saveIdentity} from '@/lib/identity';
 import {markIdentityRefreshPending,refreshKnownIdentity} from '@/lib/identity-refresh';
+import {resolveTmdbOnly,wikidataFaBatch,wikidataFaByTmdbBatch,wikidataFaRetryBatch,searchFaDirect,saveIdentity as saveResolvedIdentity} from '@/lib/identity-resolver';
 
 function refresh(imdbId){revalidatePath('/calidad/identidad');revalidatePath('/calidad');revalidatePath('/admin');if(imdbId){revalidatePath('/catalogo');revalidatePath(`/catalogo/${imdbId}`)}}
 function imdb(formData,name='imdbId'){const id=String(formData.get(name)||'').trim();if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id}
@@ -10,3 +12,6 @@ export async function startIdentityRefreshAction(){const r=await dispatchIdentit
 export async function stopIdentityRefreshAction(_prev,formData){const r=await cancelIdentityRefresh(formData.get('runId'));refresh();return r}
 export async function saveIdentityPageAction(formData){const old=imdb(formData),newId=await saveIdentity(old,{imdbId:formData.get('newImdbId'),tmdbId:formData.get('tmdbId'),faId:formData.get('faId')});await markIdentityRefreshPending(newId,'manual_identity_edit');refresh(old);refresh(newId)}
 export async function refreshIdentityDataAction(_prev,formData){try{const id=imdb(formData),r=await refreshKnownIdentity(id);refresh(id);return{ok:true,message:`Datos refrescados: ${r?.title||id}`}}catch(e){return{ok:false,message:e?.message||'No se pudieron refrescar los datos'}}}
+export async function retryMissingIdentityAction(_prev,formData){try{const id=imdb(formData),sql=db();let[row]=await sql`SELECT imdb_id,type,title,title_es,original_title,year,tmdb_id,fa_id FROM movies WHERE imdb_id=${id}`;if(!row)throw new Error('Título no encontrado');let tmdbId=null,faId=null,methods=[];if(!row.tmdb_id){tmdbId=await resolveTmdbOnly(id,row.type);if(tmdbId){methods.push('tmdb_imdb');await saveResolvedIdentity(id,{tmdbId,faId:null,method:'tmdb_imdb'});row={...row,tmdb_id:tmdbId}}}
+if(!row.fa_id){const w1=await wikidataFaBatch([id]);faId=w1.map[id]||null;if(faId)methods.push('wikidata_imdb');if(!faId&&row.tmdb_id){const w2=await wikidataFaByTmdbBatch([row]);faId=w2.map[String(row.tmdb_id)]||null;if(faId)methods.push('wikidata_tmdb')}if(!faId){const wr=await wikidataFaRetryBatch([id]);faId=wr.map[id]||null;if(faId)methods.push('wikidata_retry')}if(!faId){const direct=await searchFaDirect(row);faId=direct.faId;if(faId)methods.push(direct.method||'fa_search')}if(faId)await saveResolvedIdentity(id,{tmdbId:null,faId,method:methods.join('+')||'fa_search'})}
+await markIdentityRefreshPending(id,'single_identity_retry');refresh(id);const[after]=await sql`SELECT tmdb_id,fa_id FROM movies WHERE imdb_id=${id}`;return{ok:true,message:after?.tmdb_id&&after?.fa_id?'Identidad completa. Ya puedes refrescar los datos.':'Reintento completado; aún falta algún ID.'}}catch(e){return{ok:false,message:e?.message||'No se pudo reintentar la identidad'}}}
