@@ -4,7 +4,7 @@
 
 ## Estado registrado
 **Fecha:** 20/08/2026 (Europe/Madrid)  
-**Fase:** evolución UX V3 — Mi Biblioteca / bandeja Plex → Catálogo implementada y pendiente de deployment/aceptación  
+**Fase:** evolución UX V3 — Mi Biblioteca validada visualmente; corregido contrato de alta parcial Plex → Catálogo; pendiente deployment/aceptación funcional  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
 
@@ -14,35 +14,54 @@
 - No cerrar trabajo funcional antes de deployment + PASS explícito.
 - Mantener funcional, técnico y bitácora actualizados.
 
-## Hito actual — Mi Biblioteca
-Se ha redefinido `/plex` como bandeja de entrada operativa de elementos presentes físicamente en Plex y todavía ausentes del catálogo. Los ya vinculados quedan únicamente como contexto agregado y se gestionan desde Catálogo/Calidad.
+## Hito Mi Biblioteca
+`/plex` funciona como bandeja de entrada de elementos activos presentes en Plex y todavía ausentes del catálogo. La vista visual fue validada por el usuario el 20/08.
 
-Implementado en `main`:
-- tabla compacta como vista principal;
+Incluye:
+- tabla compacta;
 - filtros Todos / Películas / Series, búsqueda y año;
-- acción directa **Añadir al catálogo** reutilizando el enriquecimiento individual canónico;
-- elementos sin IMDb ofrecen **Resolver identidad**;
-- sin ficha intermedia Plex;
-- última sincronización + **Actualizar Plex** visibles;
-- título original mostrado solo cuando existe dato canónico disponible;
-- columna normal `Estado/Listo para añadir` eliminada por redundante;
+- acción directa **Añadir al catálogo**;
+- sin IMDb → **Resolver identidad**;
+- sin ficha intermedia;
+- última sincronización + **Actualizar Plex**;
 - `added_at` rotulado **Añadido a Plex**;
-- ausencia de año señalada discretamente;
-- jerarquía del resumen superior reducida: pendientes como mensaje principal y vinculados como contexto secundario;
+- estado normal redundante eliminado;
+- resumen superior compacto;
 - estado vacío `Todo al día`.
 
-Último commit de código/UX del hito antes de documentación: `140b7b1d0c5b0a9100988d917d61c0c103e3ebdd`. Después se actualizaron especificaciones y esta bitácora, por lo que debe desplegarse el HEAD final de `main`, no ese commit intermedio.
+## Incidencia detectada y corregida — alta parcial desde Plex
+Caso de regresión: `tt5901280` / The River, Plex rating key `156271`.
+
+Producción antes del fix:
+- Plex aporta IMDb válido `tt5901280`, título `The River`, tipo `movie`;
+- no existe todavía en `movies`;
+- TMDb no encuentra el título;
+- `processTitle()` propagaba el error y bloqueaba completamente el alta.
+
+Contrato correcto ya implementado en `main`:
+- `processTitle()` obtiene identidad mínima desde Plex antes de enriquecer;
+- crea staging mínimo en `movies` con origen `plex_manual`;
+- ejecuta `ensureImdbRating()` best-effort + `enrichTitle()` canónico;
+- si TMDb/FA/otra fuente secundaria falla, conserva el título catalogado, marca `source_status.partial=true`, `enrichment_status='pending'`, guarda el error y deja trazabilidad `plex_catalogue_partial`;
+- la fila debe desaparecer de Mi Biblioteca porque ya existe en Catálogo;
+- Calidad → Identidad debe mostrarlo por `tmdb_id IS NULL` y permitir reintento;
+- solo se elimina staging si no existía identidad mínima fiable.
+
+Commit de código del fix: `3d93aa1b7f961e24bbdebf97d351bc87ca8cde1f`. Después se actualizaron especificaciones y esta bitácora; desplegar siempre el HEAD final de `main`.
 
 ## Pendiente de aceptación
-1. Deployment manual del HEAD actual de `main` por el usuario.
-2. Verificar que producción corresponde exactamente al HEAD desplegado.
-3. Prueba visual: jerarquía superior, tabla sin Estado, etiqueta Añadido a Plex y responsive razonable.
-4. Prueba funcional con una fila IMDb válida: Añadir al catálogo → alta → la fila desaparece de Mi Biblioteca tras revalidación.
-5. Prueba funcional de una fila sin IMDb: Resolver identidad lleva al flujo canónico de Calidad/Identidad.
-6. Regresión: Actualizar Plex sigue operativo y la fecha de última sincronización se actualiza cuando corresponde.
+1. Usuario realiza deployment manual del HEAD actual de `main`.
+2. Verificar técnicamente que producción corresponde al HEAD esperado.
+3. Prueba funcional principal: en Mi Biblioteca, pulsar **Añadir al catálogo** sobre `tt5901280`.
+   - Esperado: mensaje de alta parcial, no error bloqueante.
+   - Esperado: The River desaparece de Mi Biblioteca.
+   - Esperado: aparece en Catálogo con datos mínimos Plex/IMDb.
+   - Esperado: aparece en Calidad → Identidad como `missing_tmdb`.
+4. Verificar en Admin/pipeline que el run termina como `success` con `stage='partial'`, `errors=1`, y existe audit `plex_catalogue_partial`.
+5. Regresión: un título Plex cuyo TMDb sí existe sigue enriqueciendo completamente y desaparece igualmente de Mi Biblioteca.
 
 ## Próximo paso exacto
-Usuario despliega manualmente el HEAD actual de `main` en Vercel. Después ChatGPT verifica commit/READY y conduce la batería de aceptación prueba a prueba.
+Usuario despliega manualmente el HEAD actual de `main`. Después ChatGPT verifica el commit desplegado y conduce primero la prueba `tt5901280`.
 
 ## Documentos a leer al retomar
 1. `docs/PROJECT_STATUS.md`.
