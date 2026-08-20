@@ -36,4 +36,18 @@ jobs:
       - name: Instalar dependencias
         run: npm install --ignore-scripts
       - name: Actualizar universo completo de series
+        timeout-minutes: 25
         run: node worker/series-full-refresh.mjs
+      - name: Registrar fallo de infraestructura
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { neon } from '@neondatabase/serverless';
+          const sql=neon(process.env.DATABASE_URL),id=Number(process.env.PIPELINE_RUN_ID||0);
+          if(id){
+            const [r]=await sql`SELECT status FROM pipeline_runs WHERE id=${id}`;
+            if(r?.status==='running')await sql`UPDATE pipeline_runs SET status='failed',finished_at=now(),error_count=GREATEST(COALESCE(error_count,0),1),summary=COALESCE(summary,'{}'::jsonb)||'{"stage":"workflow_failed","message":"GitHub Actions terminó antes de completar el worker"}'::jsonb,updated_at=now() WHERE id=${id}`;
+            try{await sql`INSERT INTO admin_events(event_type,entity_type,entity_id,action,payload,created_at) VALUES('quality','series_refresh',${String(id)},'workflow_failed','{"source":"github_actions"}'::jsonb,now())`}catch{}
+          }
+          NODE
