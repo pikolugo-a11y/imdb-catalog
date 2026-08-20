@@ -2,6 +2,7 @@ import Link from 'next/link';
 import ActionButton from '@/components/ActionButton';
 import {getQualityDashboard} from '@/lib/quality-dashboard';
 import {refreshMoviesFromQuality,refreshSeriesFromQuality,refreshIdentityFromQuality} from './actions';
+import './quality-dashboard.css';
 export const dynamic='force-dynamic';
 const nf=n=>Number(n||0).toLocaleString('es-ES');
 const pct=n=>`${Number(n||0).toLocaleString('es-ES',{maximumFractionDigits:1})}%`;
