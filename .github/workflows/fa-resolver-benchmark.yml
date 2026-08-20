@@ -1,0 +1,48 @@
+name: FA resolver benchmark
+on:
+  push:
+    branches: [test/fa-resolver-benchmark]
+    paths: ['.github/workflows/fa-resolver-benchmark.yml']
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Benchmark Wikidata IMDb to FilmAffinity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.parse,urllib.request
+          ids=['tt0058796','tt12286260','tt14922556','tt0187636','tt5887650','tt1657505','tt4680444','tt0312109','tt8269202','tt2393813']
+          titles={
+          'tt0058796':'Los días de nuestras vidas','tt12286260':'Santa Inc.','tt14922556':'Amor entre Hada y Demonio','tt0187636':'Farscape','tt5887650':'Living Space','tt1657505':'Terapia de Choque','tt4680444':'Forged in Fire','tt0312109':'Código: KND','tt8269202':'Custodia compartida','tt2393813':'Graceland'}
+          endpoint='https://query.wikidata.org/sparql'
+          headers={'Accept':'application/sparql-results+json','User-Agent':'PikoFilm-FA-benchmark/1.0 (GitHub Actions; read-only test)'}
+          def query(q):
+            url=endpoint+'?'+urllib.parse.urlencode({'query':q,'format':'json'})
+            req=urllib.request.Request(url,headers=headers)
+            t=time.perf_counter()
+            with urllib.request.urlopen(req,timeout=45) as r: data=json.load(r)
+            return data,time.perf_counter()-t
+          print('=== INDIVIDUAL IMDb -> P480 ===')
+          individual={}; total_t=0
+          for imdb in ids:
+            q=f'''SELECT ?fa WHERE {{ ?item wdt:P345 "{imdb}" . OPTIONAL {{ ?item wdt:P480 ?fa . }} }} LIMIT 5'''
+            q='PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n'+q
+            try:
+              d,dt=query(q); total_t+=dt
+              vals=[b.get('fa',{}).get('value') for b in d['results']['bindings'] if b.get('fa')]
+              individual[imdb]=vals[0] if vals else None
+              print(f'{imdb}\t{titles[imdb]}\tFA={individual[imdb]}\t{dt:.3f}s')
+            except Exception as e: print(f'{imdb}\tERROR\t{e}')
+          print(f'INDIVIDUAL_TOTAL={total_t:.3f}s HITS={sum(v is not None for v in individual.values())}/10')
+          values=' '.join('"'+x+'"' for x in ids)
+          q='''PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?imdb ?fa WHERE { VALUES ?imdb { %s } ?item wdt:P345 ?imdb . OPTIONAL { ?item wdt:P480 ?fa . } }'''%values
+          print('=== BATCH IMDb -> P480 ===')
+          try:
+            d,dt=query(q); rows={b['imdb']['value']:b.get('fa',{}).get('value') for b in d['results']['bindings']}
+            for imdb in ids: print(f'{imdb}\t{titles[imdb]}\tFA={rows.get(imdb)}')
+            print(f'BATCH_TOTAL={dt:.3f}s HITS={sum(rows.get(x) is not None for x in ids)}/10 ROWS={len(rows)}')
+          except Exception as e: print('BATCH_ERROR',e)
+          PY
