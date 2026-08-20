@@ -4,6 +4,7 @@ import {redirect} from 'next/navigation';
 import {db} from '@/lib/db';
 import {enrichTitle} from '@/lib/enrich-title';
 import {DEFAULT_NEWS_SETTINGS,getNewsSettings} from '@/lib/news-v1';
+import {resolveManualNewsCandidate} from '@/lib/news-manual-resolver';
 import {audit,startRun,finishRun,errorInfo} from '@/lib/runlog';
 
 const WEEK_MS=7*24*60*60*1000;
@@ -11,6 +12,16 @@ const DISPATCH_URL='https://api.github.com/repos/pikolugo-a11y/imdb-catalog/acti
 function imdbIdOf(formData){const id=String(formData.get('imdbId')||'').trim();if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id}
 function num(formData,key,fallback,min=0,max=1e9){const n=Number(formData.get(key));return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback}
 function refreshNews(){revalidatePath('/novedades');revalidatePath('/novedades/criterios');revalidatePath('/catalogo');revalidatePath('/catalogo/excluidas');revalidatePath('/calidad');revalidatePath('/calidad/identidad');revalidatePath('/admin');revalidatePath('/')}
+
+async function upsertResolvedManual(sql,imdbId,extraSnapshot={}){
+  const resolved=await resolveManualNewsCandidate(imdbId);
+  const snap={...resolved.source_snapshot,...extraSnapshot,manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1'};
+  await sql`
+    INSERT INTO catalog_candidates(imdb_id,candidate_type,year,imdb_rating,imdb_votes,eligibility_status,first_seen_at,last_seen_at,became_eligible_at,last_evaluated_at,source_snapshot,created_at,updated_at)
+    VALUES(${imdbId},${resolved.candidate_type},${resolved.year},${resolved.imdb_rating},${resolved.imdb_votes},'eligible',now(),now(),now(),now(),${JSON.stringify(snap)}::jsonb,now(),now())
+    ON CONFLICT(imdb_id) DO UPDATE SET candidate_type=COALESCE(EXCLUDED.candidate_type,catalog_candidates.candidate_type),year=COALESCE(EXCLUDED.year,catalog_candidates.year),imdb_rating=COALESCE(EXCLUDED.imdb_rating,catalog_candidates.imdb_rating),imdb_votes=COALESCE(EXCLUDED.imdb_votes,catalog_candidates.imdb_votes),eligibility_status='eligible',last_seen_at=now(),became_eligible_at=COALESCE(catalog_candidates.became_eligible_at,now()),last_evaluated_at=now(),source_snapshot=COALESCE(catalog_candidates.source_snapshot,'{}'::jsonb)||EXCLUDED.source_snapshot,updated_at=now()`;
+  return resolved;
+}
 
 export async function requestNewsDiscoveryAction(){
   const sql=db(),token=process.env.GITHUB_ACTIONS_TOKEN;
@@ -42,21 +53,22 @@ export async function addManualCandidateAction(formData){
   if(movie)redirect(`/novedades?notice=exists&imdb=${encodeURIComponent(imdbId)}`);
   const [excluded]=await sql`SELECT imdb_id FROM catalog_exclusions WHERE imdb_id=${imdbId} LIMIT 1`;
   if(excluded)redirect(`/novedades?notice=excluded&imdb=${encodeURIComponent(imdbId)}`);
-  await sql`
-    INSERT INTO catalog_candidates(imdb_id,eligibility_status,first_seen_at,last_seen_at,became_eligible_at,last_evaluated_at,source_snapshot,created_at,updated_at)
-    VALUES(${imdbId},'eligible',now(),now(),now(),now(),${JSON.stringify({manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1',title:imdbId})}::jsonb,now(),now())
-    ON CONFLICT(imdb_id) DO UPDATE SET eligibility_status='eligible',last_seen_at=now(),became_eligible_at=COALESCE(catalog_candidates.became_eligible_at,now()),last_evaluated_at=now(),source_snapshot=COALESCE(catalog_candidates.source_snapshot,'{}'::jsonb)||${JSON.stringify({manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1'})}::jsonb,updated_at=now()`;
-  await audit('news','candidate',imdbId,'manual_add');refreshNews();redirect(`/novedades?notice=manual_added&imdb=${encodeURIComponent(imdbId)}`)
+  try{
+    const resolved=await upsertResolvedManual(sql,imdbId);
+    await audit('news','candidate',imdbId,'manual_add',{resolved:Boolean(resolved.candidate_type),title:resolved.source_snapshot?.title||null});
+    refreshNews();redirect(`/novedades?notice=manual_added&imdb=${encodeURIComponent(imdbId)}`)
+  }catch(e){
+    await audit('news','candidate',imdbId,'manual_resolve_failed',{error:e?.message||String(e)});
+    await sql`INSERT INTO catalog_candidates(imdb_id,eligibility_status,first_seen_at,last_seen_at,became_eligible_at,last_evaluated_at,source_snapshot,created_at,updated_at) VALUES(${imdbId},'eligible',now(),now(),now(),now(),${JSON.stringify({manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1',title:imdbId,manualResolveError:new Date().toISOString()})}::jsonb,now(),now()) ON CONFLICT(imdb_id) DO UPDATE SET eligibility_status='eligible',last_seen_at=now(),last_evaluated_at=now(),source_snapshot=COALESCE(catalog_candidates.source_snapshot,'{}'::jsonb)||${JSON.stringify({manual:true,manualActive:true,matchedRule:'manual',manualResolveError:new Date().toISOString()})}::jsonb,updated_at=now()`;
+    refreshNews();redirect(`/novedades?notice=manual_resolve_error&imdb=${encodeURIComponent(imdbId)}`)
+  }
 }
 
 export async function restoreAndAddManualAction(formData){
   const imdbId=imdbIdOf(formData),sql=db();
   await sql`DELETE FROM catalog_exclusions WHERE imdb_id=${imdbId}`;
-  await sql`
-    INSERT INTO catalog_candidates(imdb_id,eligibility_status,first_seen_at,last_seen_at,became_eligible_at,last_evaluated_at,source_snapshot,created_at,updated_at)
-    VALUES(${imdbId},'eligible',now(),now(),now(),now(),${JSON.stringify({manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1',title:imdbId})}::jsonb,now(),now())
-    ON CONFLICT(imdb_id) DO UPDATE SET eligibility_status='eligible',last_seen_at=now(),became_eligible_at=COALESCE(catalog_candidates.became_eligible_at,now()),source_snapshot=COALESCE(catalog_candidates.source_snapshot,'{}'::jsonb)||${JSON.stringify({manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1'})}::jsonb,updated_at=now()`;
-  await audit('news','candidate',imdbId,'restore_manual');refreshNews();redirect(`/novedades?notice=restored&imdb=${encodeURIComponent(imdbId)}`)
+  try{await upsertResolvedManual(sql,imdbId,{restored:true});await audit('news','candidate',imdbId,'restore_manual',{resolved:true});refreshNews();redirect(`/novedades?notice=restored&imdb=${encodeURIComponent(imdbId)}`)}
+  catch(e){await audit('news','candidate',imdbId,'restore_manual_resolve_failed',{error:e?.message||String(e)});refreshNews();redirect(`/novedades?notice=manual_resolve_error&imdb=${encodeURIComponent(imdbId)}`)}
 }
 
 export async function excludeNewsCandidateAction(formData){
