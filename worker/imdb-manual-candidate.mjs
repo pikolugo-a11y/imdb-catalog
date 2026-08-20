@@ -1,0 +1,28 @@
+import {neon} from '@neondatabase/serverless';
+import {createGunzip} from 'node:zlib';
+import {Readable} from 'node:stream';
+import {createInterface} from 'node:readline';
+
+const databaseUrl=process.env.DATABASE_URL;if(!databaseUrl)throw new Error('Falta DATABASE_URL');
+const imdbId=String(process.env.IMDB_ID||'').trim();if(!/^tt\d+$/.test(imdbId))throw new Error('IMDB_ID inválido');
+const sql=neon(databaseUrl),RATINGS='https://datasets.imdbws.com/title.ratings.tsv.gz',BASICS='https://datasets.imdbws.com/title.basics.tsv.gz',TMDB='https://api.themoviedb.org/3';
+const targetNum=Number(imdbId.slice(2));
+const nowIso=()=>new Date().toISOString();
+const isSeries=t=>t==='tvSeries'||t==='tvMiniSeries';
+async function stream(url){const r=await fetch(url,{headers:{'User-Agent':'PikoFilm/3.0 personal-noncommercial-single-discovery'}});if(!r.ok||!r.body)throw new Error(`IMDb dataset HTTP ${r.status}: ${url}`);return Readable.fromWeb(r.body).pipe(createGunzip())}
+async function findRating(){const rl=createInterface({input:await stream(RATINGS),crlfDelay:Infinity});let head=true;for await(const line of rl){if(head){head=false;continue}const[id,r,v]=line.split('\t'),n=Number(id.slice(2));if(id===imdbId)return{rating:Number(r),votes:Number(v)};if(Number.isFinite(n)&&n>targetNum)break}return{rating:null,votes:null}}
+async function findBasics(){const rl=createInterface({input:await stream(BASICS),crlfDelay:Infinity});let head=true;for await(const line of rl){if(head){head=false;continue}const p=line.split('\t'),id=p[0],n=Number(id.slice(2));if(id===imdbId){const type=p[1];return{candidate_type:type==='movie'||isSeries(type)?type:null,title:p[2]==='\\N'?null:p[2],originalTitle:p[3]==='\\N'?null:p[3],isAdult:p[4]==='1',year:Number(p[5])||null}}if(Number.isFinite(n)&&n>targetNum)break}return null}
+async function wikidataCountries(){const query=`SELECT ?country WHERE { ?item wdt:P345 "${imdbId}"; wdt:P495 ?country. }`,url=`https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;try{const r=await fetch(url,{headers:{Accept:'application/sparql-results+json','User-Agent':'PikoFilm/3.0 personal non-commercial'}});if(!r.ok)return[];const j=await r.json();return [...new Set((j?.results?.bindings||[]).map(b=>b.country?.value?.split('/').pop()).filter(Boolean))]}catch{return[]}}
+async function tmdbResolve(type){const token=process.env.TMDB_API_TOKEN;if(!token)return null;const headers={Authorization:`Bearer ${token}`,Accept:'application/json'};try{const f=await fetch(`${TMDB}/find/${imdbId}?external_source=imdb_id`,{headers});if(!f.ok)return null;const j=await f.json(),movie=j.movie_results?.[0]||null,tv=j.tv_results?.[0]||null,hit=type==='movie'?(movie||tv):(isSeries(type)?(tv||movie):(movie||tv));if(!hit)return null;const media=movie&&hit===movie?'movie':'tv';const d=await fetch(`${TMDB}/${media}/${hit.id}?language=es-ES`,{headers});const x=d.ok?await d.json():hit;return{tmdbId:hit.id,posterPath:x.poster_path||hit.poster_path||null,overview:x.overview||hit.overview||null,countries:media==='movie'?(x.production_countries||[]).map(c=>c.iso_3166_1).filter(Boolean):(x.origin_country||hit.origin_country||[])} }catch{return null}}
+async function main(){
+  const [rating,basics]=await Promise.all([findRating(),findBasics()]);if(!basics)throw new Error('IMDb ID no encontrado en title.basics');
+  let countries=await wikidataCountries();const tmdb=await tmdbResolve(basics.candidate_type);if(!countries.length&&tmdb?.countries?.length)countries=tmdb.countries;
+  const [existing]=await sql`SELECT source_snapshot FROM catalog_candidates WHERE imdb_id=${imdbId} LIMIT 1`;const prior=existing?.source_snapshot||{};
+  const snap={...prior,title:basics.title||prior.title||imdbId,originalTitle:basics.originalTitle||prior.originalTitle||basics.title||imdbId,isAdult:basics.isAdult,manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1',countries,countryStatus:countries.length?'resolved':'pending',datasetRatings:RATINGS,datasetBasics:BASICS,discoveredAt:prior.discoveredAt||nowIso(),manualAuthoritativeResolvedAt:nowIso(),manualResolver:'imdb-datasets+wikidata+tmdb',tmdbId:tmdb?.tmdbId||prior.tmdbId||null,posterPath:tmdb?.posterPath||prior.posterPath||null,overview:tmdb?.overview||prior.overview||null};
+  await sql`INSERT INTO catalog_candidates(imdb_id,candidate_type,year,imdb_rating,imdb_votes,eligibility_status,first_seen_at,last_seen_at,became_eligible_at,last_evaluated_at,source_snapshot,created_at,updated_at)
+    VALUES(${imdbId},${basics.candidate_type},${basics.year},${rating.rating},${rating.votes},'eligible',now(),now(),now(),now(),${JSON.stringify(snap)}::jsonb,now(),now())
+    ON CONFLICT(imdb_id) DO UPDATE SET candidate_type=EXCLUDED.candidate_type,year=EXCLUDED.year,imdb_rating=EXCLUDED.imdb_rating,imdb_votes=EXCLUDED.imdb_votes,eligibility_status='eligible',last_seen_at=now(),last_evaluated_at=now(),source_snapshot=EXCLUDED.source_snapshot,updated_at=now()`;
+  await sql`INSERT INTO audit_log(scope,entity_type,entity_id,action,payload,created_at) VALUES('news','candidate',${imdbId},'manual_authoritative_resolved',${JSON.stringify({rating:rating.rating,votes:rating.votes,type:basics.candidate_type,year:basics.year,countries})}::jsonb,now())`;
+  console.log(JSON.stringify({imdbId,...basics,...rating,countries},null,2));
+}
+main().catch(async e=>{try{await sql`INSERT INTO audit_log(scope,entity_type,entity_id,action,payload,created_at) VALUES('news','candidate',${imdbId},'manual_authoritative_failed',${JSON.stringify({error:e?.message||String(e)})}::jsonb,now())`}catch{}console.error(e);process.exit(1)});
