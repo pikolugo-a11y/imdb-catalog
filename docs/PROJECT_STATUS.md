@@ -4,7 +4,7 @@
 
 ## Estado registrado
 **Fecha:** 20/08/2026 (Europe/Madrid)  
-**Fase:** evolución UX V3 — Calidad en curso; actualización completa de Series implementada mediante worker GitHub  
+**Fase:** evolución UX V3 — portada general de Calidad cerrada; Calidad → Películas V3 implementada y pendiente de aceptación  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
 
@@ -14,74 +14,70 @@
 - No cerrar trabajo funcional antes de deployment + PASS explícito.
 - Mantener funcional, técnico y bitácora actualizados.
 
-## Hito Mi Biblioteca
-`/plex` funciona como bandeja de entrada de elementos activos presentes en Plex y todavía ausentes del catálogo. La vista visual fue validada por el usuario el 20/08.
+## Hitos ya validados
+- Mi Biblioteca `/plex`: bandeja Plex → Catálogo validada.
+- Alta parcial desde Plex: TMDb no bloquea con identidad mínima fiable; regresión `tt5901280`.
+- Portada general `/calidad`: Centro de Control V3 validado.
+- Actualización completa de Series: eliminado límite funcional de 120; worker completo por GitHub Actions con progreso y trazabilidad.
 
-Incluye:
-- tabla compacta;
-- filtros Todos / Películas / Series, búsqueda y año;
-- acción directa **Añadir al catálogo**;
-- sin IMDb → **Resolver identidad**;
-- sin ficha intermedia;
-- última sincronización + **Actualizar Plex**;
-- `added_at` rotulado **Añadido a Plex**;
-- estado normal redundante eliminado;
-- resumen superior compacto;
-- estado vacío `Todo al día`.
+## Hito actual — Calidad → Películas V3
+Se ha rediseñado `/calidad/peliculas` según boceto aprobado y se ha corregido el motor antes de presentar los diagnósticos.
 
-## Alta parcial desde Plex
-Caso de regresión: `tt5901280` / The River. Con identidad IMDb/Plex mínima fiable, TMDb no bloquea el alta: se conserva catalogado parcialmente, desaparece de Mi Biblioteca y queda pendiente en Calidad → Identidad. El proceso y el audit quedan trazados en Admin.
+### Cambios funcionales
+1. **Duración** conserva criterio conservador absoluto + relativo, pero ambos umbrales son configurables.
+2. **Filename** deja de exigir simultáneamente título y año incorrectos. Calcula similitud normalizada de tokens contra títulos Plex/español/original/catálogo; puede alertar aunque el archivo no contenga año. Año incompatible incrementa riesgo.
+3. **Calidad** deja de usar un segundo algoritmo de bitrate/resolución. Las alertas técnicas consumen el `score` ya persistido por PikoQuality. El umbral mínimo aceptable es configurable.
+4. **Duplicados** se presenta como **Varias versiones**. Mantiene comparación de duraciones para distinguir duplicado probable de posible montaje distinto; PikoQuality se utiliza como señal preferente para recomendar la mejor versión cuando existe.
+5. **Excepciones obsoletas** pasan a `resolved` cuando la anomalía ya no se detecta, manteniendo historial en `movie_quality_actions`.
+6. No se borra ningún archivo automáticamente.
 
-## Hito Calidad — portada V3
-La portada `/calidad` es un centro de control operativo con:
-- total de elementos que requieren atención;
-- Películas, Series e Identidad como áreas accionables;
-- PikoQuality diferenciado como motor técnico;
-- botones **Actualizar** en Películas, Series e Identidad;
-- fecha y resumen de última ejecución;
-- trazabilidad en Admin.
+### Criterios configurables
+Persistidos en `app_settings.movie_quality_v3` y editables dentro de la propia pantalla:
+- diferencia mínima duración (minutos), default 10;
+- diferencia mínima duración (%), default 15;
+- similitud mínima filename, default 55%;
+- PikoQuality mínimo aceptable, default 60;
+- umbral versiones casi idénticas, default 2%;
+- umbral de posible montaje distinto, default 10%.
 
-## Cambio clave — actualización completa de Series
-El antiguo `refreshSeriesV2()` procesaba por defecto solo 120 series. El universo real comprobado en Neon el 20/08 es:
-- 954 series activas en Plex;
-- 1.004 referencias históricas de series;
-- 921 series activas, no excluidas y con TMDb, elegibles para refresco.
+Los cambios se aplican en el siguiente **Actualizar**, no retroactivamente. Cada cambio queda auditado en Admin (`admin_events`, action `update_criteria`).
 
-El botón de Series ya no ejecuta ese lote limitado en Vercel. Ahora:
-1. PikoFilm crea un `pipeline_runs` `series_v2_refresh` en estado `running/queued` con el total real.
-2. La Server Action hace `workflow_dispatch` de `.github/workflows/series-full-refresh.yml`.
-3. `worker/series-full-refresh.mjs` procesa **todo el universo elegible** con concurrencia limitada de 6 series y reintentos TMDb.
-4. Cada 10 series actualiza heartbeat/progreso en `pipeline_runs`: procesadas, total, %, temporadas, episodios y errores.
-5. `/calidad` se autorrefresca cada 5 s mientras el run esté activo y muestra progreso real.
-6. Al terminar se guardan snapshot antes/después y deltas de faltantes, anomalías y estados desconocidos.
-7. Se registran `admin_events` de dispatch, inicio, finalización o fallo.
-8. El workflow tiene cierre de fallo de infraestructura para evitar un `running` fantasma si el worker no llega a completar.
-9. El mismo botón completo se usa tanto desde la portada de Calidad como desde `/calidad/series`.
+### UX V3
+- cabecera con última actualización y botón Actualizar;
+- películas únicas que requieren atención y bloque de prioridad alta/crítica;
+- KPIs por Duración / Varias versiones / Calidad / Nombre;
+- estados Pendientes / Esperando Plex / Excepciones / Todas;
+- filtros por detector, búsqueda y riesgo alto/crítico;
+- criterios editables en bloque plegable;
+- tarjetas en lenguaje humano sin JSON visible;
+- PikoQuality visible en diagnóstico técnico;
+- acciones **Es correcta** y **Ya la corregí**;
+- paginación de 10 resultados.
 
-No se ha creado ninguna tabla nueva. Se reutilizan `pipeline_runs`, `admin_events`, `series_reference*`, `series_season_availability` y las vistas/consultas existentes.
+### Trazabilidad
+- análisis: `pipeline_runs.job_type='movie_quality_analysis'`;
+- acciones manuales: `movie_quality_actions` + `admin_events` existentes;
+- cambios de criterios: `admin_events`;
+- criterios usados quedan también copiados en el summary de la ejecución.
 
-### Trazabilidad Admin
-- Películas → `movie_quality_analysis`.
-- Series → `series_v2_refresh` con `mode=full`, progreso y resumen antes/después.
-- Identidad → `identity_scan`.
-- Series además registra `refresh_dispatched`, `refresh_started`, `refresh_completed`, `refresh_failed` / `workflow_failed` según corresponda.
+Especificación dedicada: `docs/QUALITY_MOVIES_V3.md`.
 
 ## Pendiente de aceptación
 1. Deployment manual del HEAD actual de `main`.
-2. Abrir `/calidad` y pulsar **Actualizar todas** en Series.
-3. Esperado al lanzar: mensaje con el total real (aprox. 921, según estado actual de la BBDD).
-4. Esperado durante ejecución: progreso `X / total` y porcentaje que cambia automáticamente cada ~5 s.
-5. Esperado al finalizar: 100%, hora final, número total revisado, temporadas/errores y delta de faltantes.
-6. Comprobar en Admin que existe un único `series_v2_refresh` con progreso y cierre, además de los eventos de auditoría.
-7. Verificar que un segundo clic mientras corre no crea una segunda ejecución: debe informar de la ya existente.
-8. Confirmar que `/calidad/series` lanza el mismo proceso completo, no un lote de 120.
+2. Abrir `/calidad/peliculas` y validar fidelidad visual al boceto.
+3. Guardar un cambio inocuo de criterio y verificar registro en Admin.
+4. Ejecutar **Actualizar** y comprobar que el summary refleja los criterios activos.
+5. Validar al menos un caso de duración, filename, varias versiones y calidad/PikoQuality.
+6. Confirmar que una excepción que deje de detectarse pasa a resuelta tras reanálisis.
+7. Confirmar que **Es correcta** mantiene excepción si la fingerprint y anomalía siguen iguales.
 
 ## Próximo paso exacto
-Desplegar manualmente el HEAD actual de `main` y ejecutar una actualización completa de Series desde Calidad para medir duración real y validar progreso/resumen.
+Desplegar manualmente `main` y validar Calidad → Películas V3 con datos reales antes de cerrar la subpantalla.
 
 ## Documentos a leer al retomar
 1. `docs/PROJECT_STATUS.md`.
 2. `docs/PROJECT_RULES.md`.
 3. `docs/FUNCTIONAL_SPECIFICATION_V2.md`.
 4. `docs/TECHNICAL_SPECIFICATION_V2.md`.
-5. Issues abiertas y últimos commits de `main`.
+5. `docs/QUALITY_MOVIES_V3.md`.
+6. Issues abiertas y últimos commits de `main`.
