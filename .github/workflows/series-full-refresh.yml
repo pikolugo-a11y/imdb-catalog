@@ -1,0 +1,39 @@
+name: PikoFilm · actualizar todas las series
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'pipeline_runs id creado por PikoFilm'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pikofilm-series-full-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
+      PIPELINE_RUN_ID: ${{ inputs.run_id }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Instalar dependencias
+        run: npm install --ignore-scripts
+      - name: Actualizar universo completo de series
+        run: node worker/series-full-refresh.mjs
