@@ -6,7 +6,7 @@ const items=[
   ['/', 'Inicio', '⌂'],
   ['/catalogo','Catálogo','▦'],
   ['/novedades','Novedades','✦'],
-  ['/plex','Biblioteca','▶'],
+  ['/plex','Mi Biblioteca','▶'],
   ['/calidad','Calidad','✓'],
   ['/sagas','Sagas','◈'],
   ['/admin','Admin','⚙']
