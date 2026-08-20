@@ -13,94 +13,68 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json,time,urllib.parse,urllib.request,re,html
+          import json,time,urllib.parse,urllib.request,re
           rows=[
-          ('tt0058796','881','Los días de nuestras vidas',1965,'Serie'),
-          ('tt12286260','103214','Santa Inc.',2021,'Serie'),
-          ('tt14922556','130368','Amor entre Hada y Demonio',2022,'Serie'),
-          ('tt0187636','4271','Farscape',1999,'Serie'),
-          ('tt5887650','506068','Living Space',2018,'Película'),
-          ('tt1657505','35348','Terapia de Choque',2011,'Serie'),
-          ('tt4680444','62884','Forged in Fire',2015,'Serie'),
-          ('tt0312109','2660','Código: KND',2002,'Serie'),
-          ('tt8269202','581244','Custodia compartida',2018,'Película'),
-          ('tt2393813','47318','Graceland',2013,'Serie')]
-          WD='https://query.wikidata.org/sparql'; UA='PikoFilm-FA-benchmark/2.0 (read-only GitHub Actions benchmark)'
+          ('tt0058796','881','Los días de nuestras vidas',1965,'Serie'),('tt12286260','103214','Santa Inc.',2021,'Serie'),('tt14922556','130368','Amor entre Hada y Demonio',2022,'Serie'),('tt0187636','4271','Farscape',1999,'Serie'),('tt5887650','506068','Living Space',2018,'Película'),('tt1657505','35348','Terapia de Choque',2011,'Serie'),('tt4680444','62884','Forged in Fire',2015,'Serie'),('tt0312109','2660','Código: KND',2002,'Serie'),('tt8269202','581244','Custodia compartida',2018,'Película'),('tt2393813','47318','Graceland',2013,'Serie')]
+          WD='https://query.wikidata.org/sparql'; UA='PikoFilm-FA-benchmark/3.0 (read-only GitHub Actions benchmark)'
           def get(url,accept=None,timeout=45):
             h={'User-Agent':UA};
-            if accept: h['Accept']=accept
+            if accept:h['Accept']=accept
             t=time.perf_counter(); req=urllib.request.Request(url,headers=h)
-            with urllib.request.urlopen(req,timeout=timeout) as r: data=r.read()
-            return data,time.perf_counter()-t
-          def sparql(q,retries=3):
+            with urllib.request.urlopen(req,timeout=timeout) as r:return r.read(),time.perf_counter()-t
+          def sparql(q):
             url=WD+'?'+urllib.parse.urlencode({'query':q,'format':'json'})
-            last=None
-            for n in range(retries):
-              try:
-                b,dt=get(url,'application/sparql-results+json'); return json.loads(b),dt,n
-              except Exception as e:
-                last=e; time.sleep(1.5*(n+1))
-            raise last
-          def wd_batch(prop,pairs):
-            vals=' '.join('"'+str(x[1])+'"' for x in pairs)
-            q=f'''PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?key ?fa WHERE {{ VALUES ?key {{ {vals} }} ?item wdt:{prop} ?key . OPTIONAL {{ ?item wdt:P480 ?fa . }} }}'''
-            d,dt,retries=sparql(q); out={b['key']['value']:b.get('fa',{}).get('value') for b in d['results']['bindings']}
-            return out,dt,retries,len(d['results']['bindings'])
+            try:
+              b,dt=get(url,'application/sparql-results+json'); return json.loads(b),dt,None
+            except Exception as e:return None,0,f'{type(e).__name__}: {e}'
+          def wd_batch(prop,vals):
+            q='PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?key ?fa WHERE { VALUES ?key { '+ ' '.join('"'+str(v)+'"' for v in vals)+' } ?item wdt:'+prop+' ?key . OPTIONAL { ?item wdt:P480 ?fa . } }'
+            d,dt,err=sparql(q)
+            if err:return {},dt,err,0
+            return {b['key']['value']:b.get('fa',{}).get('value') for b in d['results']['bindings']},dt,None,len(d['results']['bindings'])
           def fa_search(title,year):
-            urls=[
-              'https://www.filmaffinity.com/es/search.php?'+urllib.parse.urlencode({'stext':title}),
-              'https://www.google.com/search?'+urllib.parse.urlencode({'q':f'site:filmaffinity.com {title} {year}'})]
-            for source,url in [('FA',urls[0]),('GOOGLE',urls[1])]:
+            attempts=[('FA','https://www.filmaffinity.com/es/search.php?'+urllib.parse.urlencode({'stext':title})),('GOOGLE','https://www.google.com/search?'+urllib.parse.urlencode({'q':f'site:filmaffinity.com {title} {year}'}))]
+            total=0; notes=[]
+            for src,url in attempts:
               try:
-                b,dt=get(url,'text/html',30); s=b.decode('utf-8','ignore')
+                b,dt=get(url,'text/html',30); total+=dt; s=b.decode('utf-8','ignore')
                 ids=[]
-                for pat in [r'film(\d+)\.html',r'/film(\d+)',r'filmaffinity\.com/(?:es/)?film(\d+)']:
-                  ids += re.findall(pat,s,re.I)
-                ids=list(dict.fromkeys(ids))
-                return (ids[0] if ids else None),dt,source,len(ids),None
-              except Exception as e:
-                err=f'{type(e).__name__}: {e}'
-            return None,0,None,0,err
-          total_start=time.perf_counter(); solved={}; timings={}; print('=== FULL RESOLVER LADDER / 10 REAL PENDING TITLES ===')
-          # Stage 1 IMDb -> Wikidata -> FA batch
-          t=time.perf_counter(); imap,dt,r,n=wd_batch('P345',[(x[0],x[0]) for x in rows]); timings['wd_imdb']=time.perf_counter()-t
+                for pat in [r'film(\d+)\.html',r'/film(\d+)',r'filmaffinity\.com/(?:es/)?film(\d+)']: ids+=re.findall(pat,s,re.I)
+                ids=list(dict.fromkeys(ids)); notes.append(f'{src}:{len(ids)}')
+                if ids:return ids[0],total,src,len(ids),';'.join(notes)
+              except Exception as e:notes.append(f'{src}:ERR:{type(e).__name__}:{e}')
+            return None,total,None,0,';'.join(notes)
+          solved={};timings={};start=time.perf_counter();print('=== FULL RESOLVER LADDER / 10 REAL PENDING TITLES ===')
+          t=time.perf_counter();m,dt,err,n=wd_batch('P345',[x[0] for x in rows]);timings['wd_imdb']=time.perf_counter()-t
           for x in rows:
-            if imap.get(x[0]): solved[x[0]]=('WD_IMDB',imap[x[0]])
-          print(f'STAGE1 WD_IMDB batch={dt:.3f}s wall={timings["wd_imdb"]:.3f}s retries={r} hits={sum(1 for x in rows if imap.get(x[0]))}/10 rows={n}')
-          # Stage 2 TMDb -> Wikidata -> FA batch, try movie P4947 and TV P4983 separately
-          pending=[x for x in rows if x[0] not in solved]; t=time.perf_counter(); maps={}; reqs=0; raw=0; retry=0
+            if m.get(x[0]):solved[x[0]]=('WD_IMDB',m[x[0]])
+          print(f'STAGE1 WD_IMDB request={dt:.3f}s wall={timings["wd_imdb"]:.3f}s hits={sum(1 for x in rows if m.get(x[0]))}/10 rows={n} err={err}')
+          pending=[x for x in rows if x[0] not in solved];t=time.perf_counter();new=0
           for prop,kind in [('P4947','Película'),('P4983','Serie')]:
             subset=[x for x in pending if x[4]==kind]
-            if not subset: continue
-            m,d,r,n=wd_batch(prop,[(x[0],x[1]) for x in subset]); reqs+=1; raw+=n; retry+=r; maps.update(m)
-          timings['wd_tmdb']=time.perf_counter()-t
-          for x in pending:
-            if maps.get(x[1]): solved[x[0]]=('WD_TMDB',maps[x[1]])
-          print(f'STAGE2 WD_TMDB requests={reqs} wall={timings["wd_tmdb"]:.3f}s retries={retry} new_hits={sum(1 for x in pending if maps.get(x[1]))}/{len(pending)} rows={raw}')
-          # Stage 3 retry unresolved Wikidata once as individual IMDb, with retry/backoff
-          pending=[x for x in rows if x[0] not in solved]; t=time.perf_counter(); retryhits=0; reqtime=0; errors=0
-          for x in pending:
-            q=f'''PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?fa WHERE {{ ?item wdt:P345 "{x[0]}" . ?item wdt:P480 ?fa . }} LIMIT 2'''
-            try:
-              d,dtime,rr=sparql(q); reqtime+=dtime; vals=[b['fa']['value'] for b in d['results']['bindings'] if 'fa' in b]
-              if vals: solved[x[0]]=('WD_RETRY',vals[0]); retryhits+=1
-            except Exception: errors+=1
+            if not subset:continue
+            mm,dd,ee,nn=wd_batch(prop,[x[1] for x in subset]);print(f'  WD_TMDB_{kind} request={dd:.3f}s rows={nn} err={ee}')
+            for x in subset:
+              if mm.get(x[1]):solved[x[0]]=('WD_TMDB',mm[x[1]]);new+=1
+            if ee and '429' in ee:print('  WDQS rate-limited: skipping remaining Wikidata retries and continuing to direct search')
+            time.sleep(1.2)
+          timings['wd_tmdb']=time.perf_counter()-t;print(f'STAGE2 WD_TMDB wall={timings["wd_tmdb"]:.3f}s new_hits={new}')
+          pending=[x for x in rows if x[0] not in solved];t=time.perf_counter();retryhits=0;retryerrs=0
+          # only one compact retry batch, never individual spam
+          if pending:
+            mm,dd,ee,nn=wd_batch('P345',[x[0] for x in pending]);
+            for x in pending:
+              if mm.get(x[0]):solved[x[0]]=('WD_RETRY',mm[x[0]]);retryhits+=1
+            retryerrs=1 if ee else 0;print(f'STAGE3 WD_RETRY_BATCH request={dd:.3f}s rows={nn} new_hits={retryhits} err={ee}')
           timings['wd_retry']=time.perf_counter()-t
-          print(f'STAGE3 WD_RETRY individual={len(pending)} request_time={reqtime:.3f}s wall={timings["wd_retry"]:.3f}s new_hits={retryhits} errors={errors}')
-          # Stage 4 direct FA search, fallback Google site search if FA yields no id
-          pending=[x for x in rows if x[0] not in solved]; t=time.perf_counter(); directhits=0; directreq=0; derr=0
+          pending=[x for x in rows if x[0] not in solved];t=time.perf_counter();directhits=0;reqsum=0
           for x in pending:
-            fa,dt,src,cands,err=fa_search(x[2],x[3]); directreq+=dt
-            if fa: solved[x[0]]=(src+'_SEARCH',fa); directhits+=1
-            if err: derr+=1
-            print(f'SEARCH {x[0]} | {x[2]} ({x[3]}) -> FA={fa} source={src} candidates={cands} time={dt:.3f}s err={err}')
-          timings['direct_search']=time.perf_counter()-t
-          print(f'STAGE4 DIRECT_SEARCH titles={len(pending)} request_time={directreq:.3f}s wall={timings["direct_search"]:.3f}s new_hits={directhits} errors={derr}')
+            fa,dt,src,cands,note=fa_search(x[2],x[3]);reqsum+=dt
+            if fa:solved[x[0]]=(src+'_SEARCH',fa);directhits+=1
+            print(f'SEARCH {x[0]} | {x[2]} ({x[3]}) -> FA={fa} source={src} candidates={cands} time={dt:.3f}s note={note}')
+            time.sleep(.35)
+          timings['direct_search']=time.perf_counter()-t;print(f'STAGE4 DIRECT_SEARCH titles={len(pending)} request_time={reqsum:.3f}s wall={timings["direct_search"]:.3f}s new_hits={directhits}')
           print('=== RESULTS ===')
-          for x in rows: print(f'{x[0]}\t{x[2]}\tTMDB={x[1]}\tRESULT={solved.get(x[0])}')
-          wall=time.perf_counter()-total_start; hits=len(solved)
-          print(f'FINAL HITS={hits}/10 WALL={wall:.3f}s')
-          print('TIMINGS_JSON='+json.dumps(timings,sort_keys=True))
-          if hits:
-            print(f'EXTRAPOLATION_4000 naive_wall_seconds={wall*400:.1f} based_on_this_sample=true')
+          for x in rows:print(f'{x[0]}\t{x[2]}\tTMDB={x[1]}\tRESULT={solved.get(x[0])}')
+          wall=time.perf_counter()-start;print(f'FINAL HITS={len(solved)}/10 WALL={wall:.3f}s');print('TIMINGS_JSON='+json.dumps(timings,sort_keys=True));print(f'EXTRAPOLATION_4000_NAIVE_SECONDS={wall*400:.1f}')
           PY
