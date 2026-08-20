@@ -40,9 +40,16 @@ Next.js App Router en Vercel + PostgreSQL Neon. Server Components/Server Actions
 
 `/plex` se implementa como bandeja operativa Plex → Catálogo. `getPlexLibrary(..., mode='uncatalogued')` cruza `plex_items` + `plex_external_ids` + `movies`; las filas visibles son elementos Plex activos cuyo IMDb no tiene fila en `movies`. `getPlexSummary()` conserva el agregado `in_catalog/outside_catalog` para contexto, pero los ya catalogados no se listan como universo operativo.
 
-La tabla usa directamente `plex_title`, `plex_year`, `item_type`, `added_at`, `rating_key` e IMDb de `plex_external_ids`. También expone `movies.original_title` cuando existe; en pendientes puros normalmente será nulo hasta que haya metadata catalogada, por lo que la UI no inventa un título original. No existe ficha intermedia de Plex. Con IMDb se reutiliza `EnrichTitleButton`/pipeline canónico; sin IMDb se deriva a Calidad/Identidad. La columna de estado normal se elimina y solo las excepciones se expresan visualmente. Tras una catalogación correcta, la siguiente revalidación/lectura deja de cumplir el anti-join y la fila desaparece.
+La tabla usa directamente `plex_title`, `plex_year`, `item_type`, `added_at`, `rating_key` e IMDb de `plex_external_ids`. También expone `movies.original_title` cuando existe; en pendientes puros normalmente será nulo hasta que haya metadata catalogada, por lo que la UI no inventa un título original. No existe ficha intermedia de Plex. Con IMDb se reutiliza `EnrichTitleButton`; sin IMDb se deriva a Calidad/Identidad. La columna de estado normal se elimina y solo las excepciones se expresan visualmente. Tras una catalogación correcta, la siguiente revalidación/lectura deja de cumplir el anti-join y la fila desaparece.
 
 `added_at` se presenta explícitamente como **Añadido a Plex**, no como fecha de detección del sincronizador. `PlexSyncButton` permanece junto al último `plex_sync_runs.finished_at` exitoso.
+
+### Alta parcial desde Plex
+`app/actions.js::processTitle()` aplica el mismo contrato funcional de alta parcial usado por Novedades sin crear una fuente nueva ni una tabla paralela. Antes de enriquecer, si el IMDb todavía no existe en `movies`, obtiene de Plex la identidad mínima (`rating_key`, `plex_title`, `plex_year`, `item_type`) y crea una fila staging en `movies` con origen/inclusion `plex_manual`.
+
+Después ejecuta `ensureImdbRating()` best-effort y el enriquecedor canónico `enrichTitle()`. Si el enriquecimiento termina bien, elimina el flag `staging`. Si falla una fuente secundaria (por ejemplo `TMDb no encontró el título`) pero existía identidad mínima Plex/IMDb, conserva la fila, elimina `staging`, marca `source_status.partial=true`, `enrichment_status='pending'`, `tmdb='missing'`, guarda el error y finaliza `pipeline_runs` como éxito parcial con `errors=1`. La UI devuelve éxito parcial para que la fila desaparezca de Mi Biblioteca y Calidad/Identidad la detecte mediante `m.tmdb_id IS NULL`.
+
+Si no existe identidad mínima fiable, se elimina únicamente la fila staging y el run termina como fallo. Los reintentos posteriores se realizan desde Calidad/Identidad mediante el mismo `enrichTitle()` canónico.
 
 ## 6. Enriquecimiento y alta parcial
 `lib/enrich-title.js` continúa siendo el único enriquecedor. Catalogación y enriquecimiento son separables: con identidad mínima fiable, fallos secundarios dejan alta parcial diagnosticable en Calidad en lugar de destruir el registro.
@@ -72,7 +79,7 @@ Secretos solo en variables de entorno. Sin scraping IMDb. Tokens nunca se persis
 Antes de deployment: revisar consistencia de `main`. ChatGPT no despliega producción. El usuario ejecuta deployment manual en Vercel y realiza todas las pruebas funcionales/visuales. No se considera aceptado antes del PASS explícito.
 
 ## 15. Dependencias
-`Plex Sync → plex_items/IDs → Mi Biblioteca pendientes → enrichTitle → Catálogo → Calidad si parcial`
+`Plex Sync → plex_items/IDs → Mi Biblioteca pendientes → processTitle staging mínimo → enrichTitle → Catálogo → Calidad si parcial`
 
 `PikoFilm Server Action → GitHub workflow_dispatch → IMDb Discovery → catalog_candidates → Novedades`
 
@@ -82,6 +89,7 @@ Antes de deployment: revisar consistencia de `main`. ChatGPT no despliega produc
 - Castle: referencia antigua invalidada tras cambio de identidad.
 - Love is in the Air: inactiva fuera de Calidad/KPIs.
 - First Lady: IMDb on-demand conserva TMDb.
+- `tt5901280` (The River): TMDb ausente desde Mi Biblioteca → alta parcial conservada, fila desaparece de `/plex`, aparece en Calidad/Identidad y queda traza `plex_catalogue_partial`.
 - Novedades: catálogo/excluidos no reaparecen.
 - Discovery: sin cron/polling y cooldown semanal.
 - Mi Biblioteca: solo activos no catalogados; sin IMDb deriva a Identidad; alta correcta elimina la fila; `added_at` se etiqueta correctamente; no existe estado normal redundante.
