@@ -4,7 +4,7 @@
 
 ## Estado registrado
 **Fecha:** 20/08/2026 (Europe/Madrid)  
-**Fase:** evolución UX V3 — Mi Biblioteca validada visualmente; corregido contrato de alta parcial Plex → Catálogo; pendiente deployment/aceptación funcional  
+**Fase:** evolución UX V3 — portada de Calidad rediseñada; añadidos controles de actualización, última ejecución y trazabilidad Admin  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama operativa:** `main`
 
@@ -29,39 +29,41 @@ Incluye:
 - resumen superior compacto;
 - estado vacío `Todo al día`.
 
-## Incidencia detectada y corregida — alta parcial desde Plex
-Caso de regresión: `tt5901280` / The River, Plex rating key `156271`.
+## Alta parcial desde Plex
+Caso de regresión: `tt5901280` / The River. Con identidad IMDb/Plex mínima fiable, TMDb no bloquea el alta: se conserva catalogado parcialmente, desaparece de Mi Biblioteca y queda pendiente en Calidad → Identidad. El proceso y el audit quedan trazados en Admin.
 
-Producción antes del fix:
-- Plex aporta IMDb válido `tt5901280`, título `The River`, tipo `movie`;
-- no existe todavía en `movies`;
-- TMDb no encuentra el título;
-- `processTitle()` propagaba el error y bloqueaba completamente el alta.
+## Hito Calidad — portada V3
+La portada `/calidad` deja de ser un simple menú y pasa a ser un centro de control operativo con:
+- total de elementos que requieren atención;
+- Películas, Series e Identidad separadas como áreas accionables;
+- PikoQuality diferenciado como motor técnico;
+- desglose de incidencias usando datos ya persistidos, sin crear motores paralelos;
+- botones **Actualizar** directamente en Películas, Series e Identidad;
+- fecha de última actualización por área;
+- resumen de la última ejecución tras finalizar;
+- revalidación de portada y páginas de detalle al terminar.
 
-Contrato correcto ya implementado en `main`:
-- `processTitle()` obtiene identidad mínima desde Plex antes de enriquecer;
-- crea staging mínimo en `movies` con origen `plex_manual`;
-- ejecuta `ensureImdbRating()` best-effort + `enrichTitle()` canónico;
-- si TMDb/FA/otra fuente secundaria falla, conserva el título catalogado, marca `source_status.partial=true`, `enrichment_status='pending'`, guarda el error y deja trazabilidad `plex_catalogue_partial`;
-- la fila debe desaparecer de Mi Biblioteca porque ya existe en Catálogo;
-- Calidad → Identidad debe mostrarlo por `tmdb_id IS NULL` y permitir reintento;
-- solo se elimina staging si no existía identidad mínima fiable.
+### Trazabilidad Admin revisada
+Los tres procesos ya usan `pipeline_runs` canónico:
+- Películas → `movie_quality_analysis`;
+- Series → `series_v2_refresh`;
+- Identidad → `identity_scan`.
 
-Commit de código del fix: `3d93aa1b7f961e24bbdebf97d351bc87ca8cde1f`. Después se actualizaron especificaciones y esta bitácora; desplegar siempre el HEAD final de `main`.
+Además, los nuevos disparadores desde la portada escriben `admin_events` tanto en éxito como en fallo (`refresh` / `refresh_failed`) con contadores o error estructurado. Por tanto, cada ejecución lanzada desde Calidad queda visible/auditable en Admin.
 
 ## Pendiente de aceptación
-1. Usuario realiza deployment manual del HEAD actual de `main`.
-2. Verificar técnicamente que producción corresponde al HEAD esperado.
-3. Prueba funcional principal: en Mi Biblioteca, pulsar **Añadir al catálogo** sobre `tt5901280`.
-   - Esperado: mensaje de alta parcial, no error bloqueante.
-   - Esperado: The River desaparece de Mi Biblioteca.
-   - Esperado: aparece en Catálogo con datos mínimos Plex/IMDb.
-   - Esperado: aparece en Calidad → Identidad como `missing_tmdb`.
-4. Verificar en Admin/pipeline que el run termina como `success` con `stage='partial'`, `errors=1`, y existe audit `plex_catalogue_partial`.
-5. Regresión: un título Plex cuyo TMDb sí existe sigue enriqueciendo completamente y desaparece igualmente de Mi Biblioteca.
+1. Deployment manual del HEAD actual de `main`.
+2. Revisar visualmente `/calidad` con datos reales.
+3. Ejecutar **Actualizar Películas** desde la portada y comprobar:
+   - estado pending mientras corre;
+   - mensaje final;
+   - fecha/resumen de última actualización;
+   - registro en Admin.
+4. Repetir con **Series** e **Identidad**.
+5. Confirmar que los contadores de la portada cambian tras una ejecución cuando el proceso añade/resuelve incidencias.
 
 ## Próximo paso exacto
-Usuario despliega manualmente el HEAD actual de `main`. Después ChatGPT verifica el commit desplegado y conduce primero la prueba `tt5901280`.
+Desplegar manualmente el HEAD actual de `main` y validar primero las tres actualizaciones desde la nueva portada de Calidad.
 
 ## Documentos a leer al retomar
 1. `docs/PROJECT_STATUS.md`.
