@@ -1,6 +1,6 @@
 # PikoFilm V2 — Documento funcional
 
-**Estado:** V2 estable + Novedades V1, aceptación en curso; #42 ampliada para ejecución desde frontal · 19/08/2026  
+**Estado:** V2 estable + Novedades V1 + evolución UX V3 en curso · 20/08/2026  
 **Propósito:** especificación funcional viva. Debe actualizarse antes de cada deployment con cambios funcionales relevantes.
 
 ## 1. Visión y objetivo
@@ -28,8 +28,12 @@ Centro de control con KPIs de catálogo/Plex, faltantes, en proceso, calidad/ide
 ## 4. Catálogo
 Búsqueda/filtros por tipo, estado, género, año y otros criterios; grid/lista y acciones rápidas. La cabecera debe ofrecer un acceso visible **Ver excluidas**. La exclusión es reversible y no debe provocar 404.
 
-## 5. Biblioteca / Plex
-Solo elementos activos presentes en Plex. `Actualizar Plex` refresca altas/cambios/bajas y cruces. En Series, un cambio de identidad invalida referencias derivadas antiguas para que el análisis posterior reconstruya la correcta. Una serie borrada deja de participar inmediatamente en Calidad/KPIs aunque se conserve histórico.
+## 5. Mi Biblioteca / Plex
+Plex sigue siendo la fuente de verdad de presencia física, pero la pantalla operativa **Mi Biblioteca** funciona como bandeja de entrada Plex → PikoFilm: muestra por defecto y como universo funcional los elementos activos presentes en Plex que todavía no forman parte del catálogo. Los ya catalogados se gestionan desde Catálogo/Calidad y solo se muestran como contexto agregado, no como filas operativas.
+
+La vista es una tabla compacta, sin ficha intermedia, porque la decisión aquí es identificar y **Añadir al catálogo**. Presenta título Plex, título original cuando esté disponible, tipo, año, IMDb y fecha real `added_at` rotulada **Añadido a Plex**. La ausencia de IMDb es una excepción accionable y ofrece **Resolver identidad**; un año ausente se señala discretamente. El estado normal `Listo para añadir` no ocupa una columna propia. Al completar correctamente el alta, el elemento deja de pertenecer a esta bandeja al revalidarse las fuentes canónicas.
+
+`Actualizar Plex` permanece visible junto a la fecha de la última sincronización. Refresca altas/cambios/bajas y cruces. En Series, un cambio de identidad invalida referencias derivadas antiguas para que el análisis posterior reconstruya la correcta. Una serie borrada deja de participar inmediatamente en Calidad/KPIs aunque se conserve histórico.
 
 ## 6. Calidad — Películas
 Analiza duración, filename, duplicados y calidad técnica relativa. SD/720p no son malas por definición. No elimina archivos automáticamente. Excepciones y espera de sincronización son reversibles.
@@ -115,7 +119,7 @@ Novedades es una herramienta operativa densa, no una sucesión de tarjetas enorm
 Render normal lee Neon, no enriquece masivamente. Worker filtra ratings antes de basics, resuelve país selectivamente y escribe por lotes.
 
 ## 15. Flujos principales
-**Plex nuevo:** Actualizar Plex → fuera de catálogo → Añadir → identidad mínima → enriquecimiento best-effort → Catálogo → Calidad si parcial.
+**Plex nuevo:** Actualizar Plex → fuera de catálogo → Mi Biblioteca → Añadir → identidad mínima → enriquecimiento best-effort → Catálogo → Calidad si parcial.
 
 **Novedad automática:** usuario pulsa Buscar novedades → dispatch único GitHub Actions → guard semanal/override único si procede → reglas/país → Novedades → decisión → Catálogo parcial/completo o Exclusión.
 
@@ -137,6 +141,7 @@ Render normal lee Neon, no enriquece masivamente. Worker filtra ratings antes de
 - Discovery manual se puede lanzar desde el frontal con secreto server-side; la excepción de aceptación solo puede consumirse una vez.
 - `tt38268282`: TMDb ausente no bloquea catalogación; queda incompleto en Calidad.
 - Excluidas: acceso visible desde Catálogo y Novedades.
+- Mi Biblioteca: solo pendientes Plex→Catálogo; alta correcta hace desaparecer la fila; sin IMDb ofrece Resolver identidad; fecha mostrada corresponde a `added_at`.
 
 ## 17. Aceptación
-Código no equivale a aceptación. Las issues #29/#38/#41/#42/#43 permanecen abiertas hasta deployment manual y PASS explícito del usuario. Las pruebas funcionales/visuales se realizan siempre por el usuario desde producción.
+Código no equivale a aceptación. Los cambios permanecen pendientes hasta deployment manual y PASS explícito del usuario. Las pruebas funcionales/visuales se realizan siempre por el usuario desde producción.
