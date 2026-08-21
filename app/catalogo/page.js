@@ -3,7 +3,6 @@ import {MediaCard} from '@/components/MediaCard';
 import CatalogFiltersV3 from '@/components/CatalogFiltersV3';
 import CatalogSortV3 from '@/components/CatalogSortV3';
 import {getCatalogV3,getCatalogFiltersV3,getCatalogStatsV3,catalogPageSize} from '@/lib/catalog-v3-queries';
-import {getLifecycleSnapshot} from '@/lib/lifecycle';
 import {markAcquiring,excludeTitle,restoreTitle} from '@/app/actions';
 import './catalog-v3.css';
 import './catalog-kpi-tweak.css';
@@ -24,13 +23,12 @@ function statusLabel(v){return v==='in_plex'?'En Plex':v==='acquiring'?'En proce
 
 export default async function Catalogo({searchParams}){
   const p=await searchParams;const view=p.view==='list'?'list':'grid';
-  const [rows,f,stats,lifecycle]=await Promise.all([getCatalogV3({...p,view}),getCatalogFiltersV3(),getCatalogStatsV3(p),getLifecycleSnapshot()]);
+  const [rows,f,stats]=await Promise.all([getCatalogV3({...p,view}),getCatalogFiltersV3(),getCatalogStatsV3(p)]);
   const page=Math.max(1,n(p.page)||1),pageSize=catalogPageSize(view),total=Number(stats.total||0),pages=Math.max(1,Math.ceil(total/pageSize)),safePage=Math.min(page,pages),first=total?((safePage-1)*pageSize)+1:0,last=Math.min(safePage*pageSize,total);
   const returnTo='/catalogo?'+qs(p,{notice:'',undo:''});const genres=list(p.genres||p.genre),legacyYear=n(p.year);
   const initial={q:String(p.q||''),type:String(p.type||''),status:String(p.status||''),genres,genreMode:p.genreMode==='all'?'all':'any',yearFrom:n(p.yearFrom)??legacyYear??'',yearTo:n(p.yearTo)??legacyYear??''};
   const hasFilters=Boolean(initial.q||initial.type||initial.status||genres.length||initial.yearFrom||initial.yearTo),sort=String(p.sort||'score'),dir=String(p.dir||(sort==='title'?'asc':'desc'));
   const statItems=[['total','Total',stats.total,'100%'],['missing','Faltan',stats.missing,pct(stats.missing,total)],['acquiring','Proceso',stats.acquiring,pct(stats.acquiring,total)],['plex','Plex',stats.in_plex,pct(stats.in_plex,total)]];
-  const flowStates=lifecycle.states.filter(x=>x.state!=='EXCLUDED'&&x.count>0);
   const pageHref=x=>'/catalogo?'+qs(p,{page:x});
   const sortHref=key=>{const current=sort===key,nextDir=current?(dir==='asc'?'desc':'asc'):(key==='title'?'asc':'desc');return '/catalogo?'+qs(p,{sort:key,dir:nextDir,page:1,view:'list'});};
   const arrow=key=>sort===key?(dir==='asc'?' ↑':' ↓'):'';
@@ -41,8 +39,6 @@ export default async function Catalogo({searchParams}){
     <div className="catalog-filter-shell catalog-filter-shell-r4"><CatalogFiltersV3 genres={f.genres} minYear={f.minYear} maxYear={f.maxYear} initial={initial}/></div>
 
     <section className="catalog-stat-strip catalog-stat-strip-r4" aria-label="Resumen del catálogo">{statItems.map(([kind,label,value,percent])=><article key={kind} className={`catalog-stat ${kind}`}><StateIcon kind={kind}/><div><strong>{Number(value||0).toLocaleString('es-ES')}</strong><span>{label}</span></div><small>{percent}</small></article>)}</section>
-
-    <section className="catalog-lifecycle-strip" aria-label="Ciclo de vida del catálogo"><div className="catalog-lifecycle-title"><b>Estado del flujo</b><span>Catálogo es la fuente única; cada área trabaja solo su cola.</span></div><div className="catalog-lifecycle-items">{flowStates.map(s=><Link key={s.state} href={s.area} className={`catalog-lifecycle-chip ${s.tone}`}><strong>{Number(s.count).toLocaleString('es-ES')}</strong><span>{s.label}</span></Link>)}<Link href="/catalogo/excluidas" className="catalog-lifecycle-chip muted"><strong>{Number(lifecycle.counts.EXCLUDED||0).toLocaleString('es-ES')}</strong><span>Excluidas</span></Link></div></section>
 
     <div className="catalog-resultbar catalog-resultbar-r4">
       <span>Mostrando <b>{first.toLocaleString('es-ES')}–{last.toLocaleString('es-ES')}</b> de <b>{total.toLocaleString('es-ES')}</b>{hasFilters?' filtrados':''}</span>
