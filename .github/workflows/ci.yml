@@ -27,6 +27,7 @@ jobs:
       - name: Validar workers
         run: |
           node --check worker/imdb-discovery.mjs
+          node --check worker/imdb-manual-candidate.mjs
           node --check worker/update-imdb-ratings.mjs
           node --check worker/identity-validation-refresh.mjs
       - name: Build
