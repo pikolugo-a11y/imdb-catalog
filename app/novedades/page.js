@@ -3,7 +3,8 @@ import Link from 'next/link';
 import {getNewsV1,getNewsSettings} from '@/lib/news-v1';
 import {countryLabel} from '@/lib/country-display';
 import {db} from '@/lib/db';
-import {savePlexIdentityAction,syncPlex} from '@/app/actions';
+import PlexSyncButton from '@/components/PlexSyncButton';
+import {savePlexIdentityAction} from '@/app/actions';
 import {addManualCandidateAction,enrichNewsCandidateAction,excludeNewsCandidateAction,removeManualCandidateAction,restoreAndAddManualAction,requestNewsDiscoveryAction,retryManualCandidateAction} from './actions';
 export const dynamic='force-dynamic';
 const STALE_MS=30*60*1000;
@@ -27,7 +28,7 @@ export default async function Novedades({searchParams}){
   const notices={exists:'Ese IMDb ya está en el catálogo.',excluded:'Ese IMDb está excluido. Puedes restaurarlo explícitamente.',manual_added:'IMDb añadido manualmente.',manual_resolve_error:'Se añadió el IMDb, pero la resolución inicial falló.',retry_dispatched:'Reintento solicitado.',retry_failed:'No se pudo lanzar el reintento.',retry_missing:'Ese candidato ya no está disponible.',restored:'Exclusión retirada y candidato añadido a Novedades.',excluded_now:'Título excluido.',manual_removed:'Candidato manual retirado.',enrich_error:'No se pudo establecer identidad mínima suficiente.',discovery_dispatched:'Discovery solicitado.',discovery_dispatched_override:'Discovery de prueba solicitado.',dispatch_not_configured:'Falta configurar la credencial segura de GitHub en Vercel.',dispatch_failed:'GitHub no aceptó la solicitud de discovery.',discovery_blocked:'Discovery bloqueado por la regla semanal.',plex_identity_saved:'IMDb Plex guardado. La Novedad continuará por el flujo común.'};
   const sortHref=key=>'/novedades?'+qs(p,{sort:key,page:1,view:undefined});
   return <div className="news-page">
-    <div className="news-head"><div><div className="eyebrow">✦ DESCUBRIMIENTO</div><h1>Novedades</h1><p>Una única cola para Discovery, Plex y altas manuales. La tabla es la vista operativa.</p></div><div className="discovery-box"><form action={syncPlex}><button>↻ Actualizar Plex</button></form><div><span>✓ Última actualización Plex</span><b>{latestPlexRun?fmtDate(latestPlexRun.finished_at||latestPlexRun.started_at):'Sin ejecución'}</b></div><div><span>✓ Último discovery</span><b>{latestRun?fmtDate(latestRun.finished_at||latestRun.started_at):'Sin ejecución'}</b></div><div><span>◷ Próximo discovery disponible</span><b>{discoveryAllowed?'Ahora':fmtDate(nextAllowedAt)}</b></div>{canDispatch?<form action={requestNewsDiscoveryAction}><button>{discoveryAllowed?'Buscar novedades':'Prueba única'}</button></form>:null}</div></div>
+    <div className="news-head"><div><div className="eyebrow">✦ DESCUBRIMIENTO</div><h1>Novedades</h1><p>Una única cola para Discovery, Plex y altas manuales. La tabla es la vista operativa.</p></div><div className="discovery-box"><PlexSyncButton/><div><span>✓ Última actualización Plex</span><b>{latestPlexRun?fmtDate(latestPlexRun.finished_at||latestPlexRun.started_at):'Sin ejecución'}</b></div><div><span>✓ Último discovery</span><b>{latestRun?fmtDate(latestRun.finished_at||latestRun.started_at):'Sin ejecución'}</b></div><div><span>◷ Próximo discovery disponible</span><b>{discoveryAllowed?'Ahora':fmtDate(nextAllowedAt)}</b></div>{canDispatch?<form action={requestNewsDiscoveryAction}><button>{discoveryAllowed?'Buscar novedades':'Prueba única'}</button></form>:null}</div></div>
 
     {p.notice&&notices[p.notice]?<div className="info-banner">{notices[p.notice]}{p.imdb?` · ${p.imdb}`:''}</div>:null}
     {p.notice==='excluded'&&p.imdb?<form action={restoreAndAddManualAction}><input type="hidden" name="imdbId" value={p.imdb}/><button className="button">Restaurar y añadir</button></form>:null}
