@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - test/fa-python-5
+  pull_request:
+    branches:
+      - main
 
 jobs:
   test-fa:
@@ -21,32 +24,14 @@ jobs:
           python - <<'PY'
           import json, time
           import python_filmaffinity
-
-          ids = [
-              ('363136','El viaje a la Luna'),
-              ('915417','El nacimiento de una nación'),
-              ('891614','Intolerancia'),
-              ('469437','Lirios rotos'),
-              ('446167','El gabinete del doctor Caligari'),
-          ]
-          service = python_filmaffinity.FilmAffinity(lang='es', cache_backend='memory')
+          ids=[('363136','El viaje a la Luna'),('915417','El nacimiento de una nación'),('891614','Intolerancia'),('469437','Lirios rotos'),('446167','El gabinete del doctor Caligari')]
+          service=python_filmaffinity.FilmAffinity(lang='es', cache_backend='memory')
           out=[]
           for fa_id, expected in ids:
               t=time.perf_counter()
               try:
                   m=service.get_movie(id=fa_id)
-                  elapsed=round(time.perf_counter()-t,3)
-                  row={
-                    'fa_id': fa_id,
-                    'expected': expected,
-                    'ok': bool(m),
-                    'title': m.get('title') if isinstance(m,dict) else None,
-                    'original_title': m.get('original_title') if isinstance(m,dict) else None,
-                    'year': m.get('year') if isinstance(m,dict) else None,
-                    'rating': m.get('rating') if isinstance(m,dict) else None,
-                    'elapsed_s': elapsed,
-                    'keys': sorted(list(m.keys())) if isinstance(m,dict) else [],
-                  }
+                  row={'fa_id':fa_id,'expected':expected,'ok':bool(m),'title':m.get('title') if isinstance(m,dict) else None,'original_title':m.get('original_title') if isinstance(m,dict) else None,'year':m.get('year') if isinstance(m,dict) else None,'rating':m.get('rating') if isinstance(m,dict) else None,'elapsed_s':round(time.perf_counter()-t,3),'keys':sorted(list(m.keys())) if isinstance(m,dict) else []}
               except Exception as e:
                   row={'fa_id':fa_id,'expected':expected,'ok':False,'error':repr(e),'elapsed_s':round(time.perf_counter()-t,3)}
               out.append(row)
