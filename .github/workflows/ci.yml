@@ -28,6 +28,7 @@ jobs:
         run: |
           node --check worker/imdb-discovery.mjs
           node --check worker/update-imdb-ratings.mjs
+          node --check worker/identity-validation-refresh.mjs
       - name: Build
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
