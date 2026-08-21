@@ -7,6 +7,11 @@ on:
         description: 'pipeline_runs id creado por PikoFilm'
         required: true
         type: string
+      mode:
+        description: 'full o brave_test'
+        required: false
+        default: 'full'
+        type: string
 
 permissions:
   contents: read
@@ -22,6 +27,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       PIPELINE_RUN_ID: ${{ inputs.run_id }}
+      IDENTITY_RUN_MODE: ${{ inputs.mode }}
       PIKOFILM_URL: https://imdb-catalog-eight.vercel.app
     steps:
       - name: Checkout main
