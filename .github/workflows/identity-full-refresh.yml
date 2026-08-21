@@ -39,8 +39,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Instalar dependencias
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependencias Node
         run: npm install --ignore-scripts
+      - name: Instalar dependencias Python
+        run: pip install -r requirements.txt
       - name: Reanalizar identidad por bloques
         timeout-minutes: 110
         run: node worker/identity-full-refresh.mjs
