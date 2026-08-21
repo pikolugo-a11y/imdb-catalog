@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import EnrichTitleButton from '@/components/EnrichTitleButton';
 import PlexSyncButton from '@/components/PlexSyncButton';
 import Segmented from '@/components/Segmented';
 import {getPlexLibrary,getPlexSummary} from '@/lib/plex-queries-v2';
@@ -19,9 +18,9 @@ export default async function Plex({searchParams}){
   return <div className="plex-inbox">
     <div className="page-head plex-head">
       <div>
-        <div className="eyebrow">PLEX → PIKOFILM</div>
+        <div className="eyebrow">PLEX → NOVEDADES → CATÁLOGO</div>
         <h1>Mi Biblioteca</h1>
-        <p>Títulos de Plex que todavía no están incorporados al catálogo PikoFilm.</p>
+        <p>Plex detecta títulos físicos. Si aún no existen en Catálogo, se envían a Novedades para usar la misma puerta de entrada que Discovery y Manual.</p>
       </div>
       <div className="plex-sync-block">
         <span className="plex-sync-label">Última sincronización</span>
@@ -31,8 +30,8 @@ export default async function Plex({searchParams}){
     </div>
 
     <div className="plex-summary-strip plex-summary-compact">
-      <div><span className="plex-summary-number">{s.outside_catalog.toLocaleString('es-ES')}</span><span><b>Títulos de Plex aún no incorporados al catálogo</b><small>Al añadir uno al catálogo desaparecerá automáticamente de esta bandeja.</small></span></div>
-      <div className="plex-linked-note"><span>✓</span><span><b>{s.in_catalog.toLocaleString('es-ES')} ya vinculados</b><small>Gestionados desde Catálogo y Calidad</small></span></div>
+      <div><span className="plex-summary-number">{s.outside_catalog.toLocaleString('es-ES')}</span><span><b>Títulos de Plex aún no incorporados al catálogo</b><small>La sincronización los crea/actualiza en Novedades; desde allí siguen el flujo común.</small></span></div>
+      <div className="plex-linked-note"><span>✓</span><span><b>{s.in_catalog.toLocaleString('es-ES')} ya vinculados</b><small>Gestionados desde Catálogo y sus colas de Calidad</small></span></div>
     </div>
 
     <div className="plex-toolbar">
@@ -63,7 +62,7 @@ export default async function Plex({searchParams}){
               <td>{r.plex_year||<span className="plex-year-missing" title="Plex no informa del año">—</span>}</td>
               <td>{r.imdb_id?<span className="plex-imdb">{r.imdb_id}</span>:<span className="plex-pending">● Sin IMDb</span>}</td>
               <td>{fmtDate(r.added_at)}</td>
-              <td className="plex-action">{r.imdb_id?<EnrichTitleButton imdbId={r.imdb_id} label="+ Añadir al catálogo" className="primary"/>:<Link className="button ghost" href={`/calidad/identidad?plex=${encodeURIComponent(r.rating_key)}&q=${encodeURIComponent(title)}`}>Resolver identidad</Link>}</td>
+              <td className="plex-action">{r.imdb_id?<Link className="button primary" href={`/novedades?q=${encodeURIComponent(r.imdb_id)}`}>Ver en Novedades</Link>:<Link className="button ghost" href={`/calidad/identidad?plex=${encodeURIComponent(r.rating_key)}&q=${encodeURIComponent(title)}`}>Resolver identidad</Link>}</td>
             </tr>})}</tbody>
         </table>
       </div>
