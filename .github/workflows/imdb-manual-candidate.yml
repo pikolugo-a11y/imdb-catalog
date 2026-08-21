@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 10
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
+      OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
       IMDB_ID: ${{ inputs.imdb_id }}
     steps:
       - name: Checkout main
@@ -35,5 +35,5 @@ jobs:
           node-version: '24'
       - name: Instalar dependencias
         run: npm install --ignore-scripts
-      - name: Resolver candidato con datasets IMDb
+      - name: Resolver candidato con OMDb
         run: node worker/imdb-manual-candidate.mjs
