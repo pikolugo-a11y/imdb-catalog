@@ -1,5 +1,6 @@
 import {NextResponse} from 'next/server';
-import {processABatch,rebuildAggregates,DEFAULT_A_BATCH} from '../../../../lib/pikoquality';
+import {rebuildAggregates,DEFAULT_A_BATCH} from '../../../../lib/pikoquality';
+import {processLifecycleABatch} from '../../../../lib/pikoquality-lifecycle-a';
 import {getPikoQualityState} from '../../../../lib/pikoquality-state';
 import {enrichPending,DEFAULT_B_BATCH} from '../../../../lib/pikoquality-enrichment';
 
@@ -11,7 +12,7 @@ export async function POST(request){
     const body=await request.json().catch(()=>({}));
     const phase=String(body?.phase||'');
     let result;
-    if(phase==='a')result=await processABatch(DEFAULT_A_BATCH);
+    if(phase==='a')result=await processLifecycleABatch(DEFAULT_A_BATCH);
     else if(phase==='b')result=await enrichPending(DEFAULT_B_BATCH,false);
     else if(phase==='retry_b')result=await enrichPending(80,true);
     else if(phase==='aggregate')result=await rebuildAggregates();
