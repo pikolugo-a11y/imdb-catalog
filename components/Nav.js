@@ -6,7 +6,6 @@ const items=[
   ['/', 'Inicio', '⌂'],
   ['/catalogo','Catálogo','▦'],
   ['/novedades','Novedades','✦'],
-  ['/plex','Mi Biblioteca','▶'],
   ['/calidad','Calidad','✓'],
   ['/sagas','Sagas','◈'],
   ['/admin','Admin','⚙']
@@ -23,6 +22,7 @@ const qualityItems=[
 function sectionLabel(path){
   const quality=qualityItems.find(([href])=>path.startsWith(href));
   if(quality)return `Calidad · ${quality[1]}`;
+  if(path.startsWith('/plex'))return 'Novedades';
   const item=items.find(([href])=>href==='/'?path==='/':path.startsWith(href));
   return item?.[1]||'PikoFilm';
 }
