@@ -6,6 +6,7 @@ service=python_filmaffinity.FilmAffinity(lang='es',cache_backend='memory')
 out=[]
 consecutive_errors=0
 consecutive_empty=0
+MIN_ACCEPT_SCORE=45
 
 def norm(value):
     s=unicodedata.normalize('NFD',str(value or ''))
@@ -64,16 +65,17 @@ for item in items:
         else:
             consecutive_empty=0;consecutive_errors=0
             best=ranked[0]; second=ranked[1]['score'] if len(ranked)>1 else 0; margin=best['score']-second
-            if best['score']<92 or (len(ranked)>1 and margin<12):
-                out.append({'ok':True,'status':'ambiguous','imdb_id':item.get('imdb_id'),'fa_id':None,'confidence':best['score'],'margin':margin,'candidates':ranked[:5],'queries':queries,'elapsed_s':round(time.perf_counter()-started,3)})
+            if best['score']<MIN_ACCEPT_SCORE:
+                out.append({'ok':True,'status':'ambiguous','imdb_id':item.get('imdb_id'),'fa_id':None,'best_fa_id':best['id'],'confidence':best['score'],'margin':margin,'candidates':ranked[:5],'queries':queries,'elapsed_s':round(time.perf_counter()-started,3)})
             else:
                 verified=service.get_movie(id=best['id'])
                 vscore=score(verified,titles,year) if isinstance(verified,dict) else 0
                 vy=as_year(verified.get('year')) if isinstance(verified,dict) else None
-                if not isinstance(verified,dict) or vscore<92 or (year and vy and abs(vy-year)>1):
-                    out.append({'ok':True,'status':'ambiguous','imdb_id':item.get('imdb_id'),'fa_id':None,'confidence':vscore,'margin':margin,'candidates':ranked[:5],'elapsed_s':round(time.perf_counter()-started,3)})
+                if not isinstance(verified,dict) or vscore<MIN_ACCEPT_SCORE or (year and vy and abs(vy-year)>1):
+                    out.append({'ok':True,'status':'ambiguous','imdb_id':item.get('imdb_id'),'fa_id':None,'best_fa_id':best['id'],'confidence':vscore,'margin':margin,'candidates':ranked[:5],'queries':queries,'elapsed_s':round(time.perf_counter()-started,3)})
                 else:
-                    out.append({'ok':True,'status':'exact' if vscore>=100 else 'high','imdb_id':item.get('imdb_id'),'fa_id':best['id'],'confidence':vscore,'margin':margin,'verified':{'title':verified.get('title'),'original_title':verified.get('original_title'),'year':vy},'elapsed_s':round(time.perf_counter()-started,3)})
+                    status='exact' if vscore>=100 else 'high' if vscore>=70 else 'probable'
+                    out.append({'ok':True,'status':status,'imdb_id':item.get('imdb_id'),'fa_id':best['id'],'confidence':vscore,'margin':margin,'candidates':ranked[:5],'verified':{'title':verified.get('title'),'original_title':verified.get('original_title'),'year':vy},'elapsed_s':round(time.perf_counter()-started,3)})
     except Exception as e:
         consecutive_errors+=1
         out.append({'ok':False,'status':'error','imdb_id':item.get('imdb_id'),'fa_id':None,'error':str(e)[:300],'elapsed_s':round(time.perf_counter()-started,3)})
