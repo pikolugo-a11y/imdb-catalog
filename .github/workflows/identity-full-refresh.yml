@@ -40,16 +40,24 @@ jobs:
         with:
           node-version: '24'
       - name: Preparar Python
+        if: ${{ inputs.mode != 'brave_test' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Instalar dependencias Node
         run: npm install --ignore-scripts
       - name: Instalar dependencias Python
+        if: ${{ inputs.mode != 'brave_test' }}
         run: pip install -r requirements.txt
       - name: Reanalizar identidad por bloques
         timeout-minutes: 110
-        run: node worker/identity-full-refresh-safe.mjs
+        shell: bash
+        run: |
+          if [ "${IDENTITY_RUN_MODE}" = "brave_test" ]; then
+            node worker/identity-full-refresh.mjs
+          else
+            node worker/identity-full-refresh-safe.mjs
+          fi
       - name: Registrar fallo de infraestructura
         if: ${{ failure() }}
         shell: bash
