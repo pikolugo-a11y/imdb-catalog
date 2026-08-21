@@ -18,12 +18,11 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 5
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
       PIPELINE_RUN_ID: ${{ inputs.run_id }}
-      PIKOFILM_URL: https://imdb-catalog-eight.vercel.app
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,6 +31,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install --ignore-scripts
-      - name: Ejecutar validación por bloques
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencias Node mínimas
+        run: npm install --ignore-scripts
+      - name: FilmAffinity parser
+        run: pip install --disable-pip-version-check python-filmaffinity==0.1.0
+      - name: Ejecutar sesión limitada por fases
         run: node worker/identity-validation-refresh.mjs
