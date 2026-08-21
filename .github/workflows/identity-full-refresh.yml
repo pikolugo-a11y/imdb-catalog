@@ -49,7 +49,7 @@ jobs:
         run: pip install -r requirements.txt
       - name: Reanalizar identidad por bloques
         timeout-minutes: 110
-        run: node worker/identity-full-refresh.mjs
+        run: node worker/identity-full-refresh-safe.mjs
       - name: Registrar fallo de infraestructura
         if: ${{ failure() }}
         shell: bash
