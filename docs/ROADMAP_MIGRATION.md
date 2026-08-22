@@ -1,7 +1,7 @@
 # PikoFilm — Roadmap de Migración / Limpieza de legado
 
 **Fecha:** 22/08/2026  
-**Objetivo:** inventariar piezas de versiones anteriores que deben eliminarse, adaptarse o confirmarse antes de considerarlas parte de la arquitectura Lifecycle. No se borran en este documento; cada eliminación debe verificar dependencias y pasar CI.
+**Objetivo:** inventariar piezas de versiones anteriores que deben eliminarse, adaptarse o confirmarse antes de considerarlas parte de la arquitectura Lifecycle. Cada eliminación debe verificar dependencias y pasar CI.
 
 ## P0 — contradicen el modelo unitario actual
 
@@ -40,8 +40,8 @@
 **Acción:** cambiar todos los enlaces internos al destino nuevo; mantener redirect temporal una versión y después valorar eliminarlo.
 
 ### M09. Eliminar terminología “Mi Biblioteca”
-**Situación:** aparece en documentación histórica y posiblemente componentes. La entrada Plex ya vive en Novedades.  
-**Acción:** sustituir por “Novedades · origen Plex” y archivar documentación antigua.
+**Situación:** puede persistir en componentes o textos heredados. La entrada Plex ya vive en Novedades.  
+**Acción:** sustituir por “Novedades · origen Plex” donde corresponda.
 
 ### M10. Revisar `PlexIntake.js` y `NovedadesPlexShell.js`
 **Situación:** componentes nacidos durante la transición de Plex a Novedades.  
@@ -51,17 +51,17 @@
 **Situación:** KPIs todavía enlazan a `/plex?mode=uncatalogued`.  
 **Acción:** apuntar a `/novedades?source=plex` y eliminar parámetros legacy.
 
-### M12. Archivar documentación V1/V2/V3 parcial
-**Situación:** `V1_SCOPE`, planes V3, docs Novedades V1, pilotos y especificaciones parciales pueden contradecir el sistema actual.  
-**Acción:** mover a `docs/archive/` o añadir cabecera DEPRECATED. Las dos especificaciones canónicas deben prevalecer.
+### M12–M14. Documentación histórica — COMPLETADO 22/08/2026
+Se retiraron de la rama activa los documentos de versiones anteriores y pilotos obsoletos:
+- `V1_SCOPE.md`;
+- `NOVEDADES_V1_FUNCTIONAL.md`;
+- `NOVEDADES_V1_TECHNICAL.md`;
+- `V2_ACCEPTANCE_TESTS.md`;
+- `V3_IMPLEMENTATION_PLAN.md`;
+- `QUALITY_MOVIES_V3.md`;
+- `PikoQuality_B_PILOT.md`.
 
-### M13. Actualizar/eliminar `QUALITY_MOVIES_V3.md`
-**Situación:** documenta la versión masiva de Calidad Películas previa al lifecycle por fingerprint.  
-**Acción:** extraer únicamente criterios todavía vigentes y archivar el resto.
-
-### M14. Retirar `PikoQuality_B_PILOT.md`
-**Situación:** piloto histórico.  
-**Acción:** archivar una vez confirmada la versión productiva.
+`V3_CANONICAL_DATA.md` se sustituyó por `CANONICAL_DATA.md`, eliminando referencias de versión y conservando únicamente las reglas vigentes de países y géneros. El histórico completo permanece recuperable mediante Git.
 
 ### M15. Revisar `pikoquality-pilot` y `admin/pikoquality-probe`
 **Situación:** rutas de pruebas conservadas.  
@@ -186,7 +186,7 @@ Antes de borrar cualquier elemento:
 ## Orden recomendado
 
 1. M01–M07: eliminar duplicidad operativa más peligrosa.
-2. M08–M15: limpiar conceptos/rutas/pilotos.
+2. M08–M11 y M15: limpiar conceptos/rutas/pilotos restantes.
 3. M16–M27: reducir GitHub Actions/APIs legacy y riesgo operativo.
 4. M28–M35: cerrar arquitectura lifecycle.
 5. M36–M45: optimizar Neon y deuda visual.
