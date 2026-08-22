@@ -27,6 +27,7 @@ export async function correctedMovieResetAction(formData){
   await sql.transaction([
     sql`DELETE FROM movie_quality_findings WHERE imdb_id=${imdbId}`,
     sql`DELETE FROM movie_file_validation WHERE imdb_id=${imdbId}`,
+    sql`DELETE FROM piko_quality WHERE rating_key=${ratingKey}`,
     sql`DELETE FROM catalog_candidates WHERE imdb_id=${imdbId}`,
     sql`DELETE FROM plex_catalog_status WHERE imdb_id=${imdbId}`,
     sql`DELETE FROM movies WHERE imdb_id=${imdbId}`
