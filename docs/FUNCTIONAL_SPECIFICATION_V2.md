@@ -1,150 +1,447 @@
-# PikoFilm V2 — Documento funcional
+# PikoFilm — Especificación funcional canónica
 
-**Estado:** V2 estable + Novedades V1 + evolución UX V3 en curso · 20/08/2026  
-**Propósito:** especificación funcional viva. Debe actualizarse antes de cada deployment con cambios funcionales relevantes.
+**Versión documental:** Lifecycle + PikoScore 2.0  
+**Fecha:** 22/08/2026  
+**Estado:** documentación de la versión actual validada mediante un flujo completo de película.  
+**Ámbito:** comportamiento funcional vigente. Los cambios futuros se registran en los roadmaps, no aquí.
 
-## 1. Visión y objetivo
-PikoFilm es un sistema personal de gobierno de catálogo audiovisual. Separa catálogo editorial, inventario físico Plex, candidatos de Novedades, exclusiones reversibles, calidad/identidad y datos derivados de Series/Sagas. Cada pantalla debe responder a una pregunta concreta sin destruir información ni mezclar universos.
+## 1. Propósito
 
-## 2. Conceptos funcionales
-### Catálogo
-Universo editorial seleccionado. Un título puede estar completamente enriquecido o tener fuentes/datos pendientes. Puede estar `En Plex`, `Falta` o `En proceso`.
+PikoFilm es una base de datos personal de gobierno audiovisual. Su objetivo es mantener un catálogo editorial coherente, enriquecerlo con fuentes externas, correlacionarlo con la biblioteca física de Plex, detectar problemas de identidad/datos/archivos y ofrecer una puntuación propia PikoScore y una puntuación técnica PikoQuality.
 
-### Plex
-Inventario físico real. Biblioteca representa exclusivamente elementos activos presentes en Plex.
+PikoFilm **no sustituye a Plex como reproductor ni como gestor de consumo**. No se registran reproducciones, progreso, historial de visionado, visto/no visto ni hábitos de consumo.
 
-### Novedades
-Staging temporal de candidatos todavía no incorporados. IMDb decide elegibilidad automática por rating/votos; el usuario decide incorporar, excluir o retirar.
+## 2. Principios funcionales
 
-### Identidad
-IMDb es el identificador central del pipeline. TMDb, FilmAffinity y TVDb cuando proceda enriquecen/cruzan identidad. Correcciones manuales confirmadas tienen prioridad.
+1. **Catálogo es la fuente única editorial.** Todo título catalogado debe poder verse desde `/catalogo`, con independencia de la fase en la que esté.
+2. **Plex es la fuente de verdad física.** Indica qué archivos existen realmente y permite detectar altas, bajas y sustituciones.
+3. **Novedades es la única puerta de entrada operativa.** Discovery, altas manuales y títulos nuevos detectados en Plex confluyen en una misma cola y se distinguen por `origen`.
+4. **El lifecycle decide qué pantalla debe tratar cada título.** Una pantalla no debe procesar títulos que aún no hayan alcanzado su estado.
+5. **Excluidas están fuera del flujo.** No deben reaparecer en colas automáticas hasta restauración explícita.
+6. **Los procesos de títulos son unitarios.** El usuario procesa una película/serie cada vez y recibe feedback inmediato.
+7. **Los datos generales, los ratings y PikoScore son procesos distintos.** Calcular PikoScore nunca consulta fuentes externas.
+8. **La rama física solo existe si el título está en Plex.** Una película sin archivo puede quedar completa después de PikoScore.
+9. **La validez física es por archivo/fingerprint, no eterna por IMDb.** Si cambia el archivo, se repiten las comprobaciones físicas.
+10. **Toda operación relevante deja traza en Admin.**
+11. **Los despliegues a producción son manuales.** El usuario decide cuándo desplegar y realiza la aceptación funcional/visual.
 
-### Exclusión
-Excluir no borra. `catalog_exclusions` aparta un título de vistas operativas y permite restaurarlo. **Excluidas debe ser claramente descubrible**: acceso visible desde Catálogo y desde Novedades, no un enlace escondido.
+## 3. Universos de datos
 
-## 3. Dashboard
-Centro de control con KPIs de catálogo/Plex, faltantes, en proceso, calidad/identidad, episodios, sagas, procesos y evolución temporal. Los KPIs operativos ignoran excluidos y series Plex inactivas cuando corresponda.
+### 3.1 Catálogo
+Es la colección editorial de películas, series y miniseries que PikoFilm gestiona. El registro principal vive en `movies` y se complementa con metadata, géneros, créditos, estado Plex y lifecycle.
 
-## 4. Catálogo
-Búsqueda/filtros por tipo, estado, género, año y otros criterios; grid/lista y acciones rápidas. La cabecera debe ofrecer un acceso visible **Ver excluidas**. La exclusión es reversible y no debe provocar 404.
+Un título puede estar:
+- fuera de Plex;
+- en proceso de conseguirse;
+- en Plex;
+- en cualquier fase intermedia de calidad/identidad;
+- completo;
+- excluido.
 
-## 5. Mi Biblioteca / Plex
-Plex sigue siendo la fuente de verdad de presencia física, pero la pantalla operativa **Mi Biblioteca** funciona como bandeja de entrada Plex → PikoFilm: muestra por defecto y como universo funcional los elementos activos presentes en Plex que todavía no forman parte del catálogo. Los ya catalogados se gestionan desde Catálogo/Calidad y solo se muestran como contexto agregado, no como filas operativas.
+### 3.2 Plex
+Representa los elementos físicos activos de Plex. Un elemento de Plex puede existir antes de estar catalogado. La sincronización Plex no crea un flujo paralelo: los nuevos elementos se convierten en Novedades de origen Plex.
 
-La vista es una tabla compacta, sin ficha intermedia, porque la decisión aquí es identificar y **Añadir al catálogo**. Presenta título Plex, título original cuando esté disponible, tipo, año, IMDb y fecha real `added_at` rotulada **Añadido a Plex**. La ausencia de IMDb es una excepción accionable y ofrece **Resolver identidad**; un año ausente se señala discretamente. El estado normal `Listo para añadir` no ocupa una columna propia. Al completar correctamente el alta, el elemento deja de pertenecer a esta bandeja al revalidarse las fuentes canónicas.
+### 3.3 Novedades
+Staging de candidatos todavía no incorporados al Catálogo. Tres orígenes:
+- `discovery`: descubrimiento por datasets IMDb;
+- `plex`: detectado físicamente en Plex;
+- `manual`: IMDb introducido por el usuario.
 
-**Alta parcial desde Plex:** si Plex aporta un IMDb válido y título/tipo mínimos, la ausencia o fallo de TMDb, FilmAffinity, carátula u otra fuente secundaria **no bloquea la incorporación al Catálogo**. Se conserva el alta con los datos mínimos de Plex/IMDb, se marca como enriquecimiento parcial y el título pasa a Calidad → Identidad para completar o corregir lo pendiente. Solo una identidad mínima insuficiente o un problema de integridad puede bloquear el alta.
+### 3.4 Exclusiones
+`catalog_exclusions` es un archivo reversible. Excluir no borra el historial ni el archivo de Plex. Impide que el título participe en el lifecycle operativo.
 
-`Actualizar Plex` permanece visible junto a la fecha de la última sincronización. Refresca altas/cambios/bajas y cruces. En Series, un cambio de identidad invalida referencias derivadas antiguas para que el análisis posterior reconstruya la correcta. Una serie borrada deja de participar inmediatamente en Calidad/KPIs aunque se conserve histórico.
+### 3.5 Datos derivados
+Identidad validada, referencia de series, validación física, PikoQuality, sagas y auditoría son derivados del Catálogo/Plex y pueden reconstruirse cuando cambian sus fuentes.
 
-## 6. Calidad — Películas
-Analiza duración, filename, duplicados y calidad técnica relativa. SD/720p no son malas por definición. No elimina archivos automáticamente. Excepciones y espera de sincronización son reversibles.
+## 4. Lifecycle canónico
 
-## 7. Calidad — Identidad / Faltan datos
-Detecta IMDb/TMDb/FilmAffinity ausentes o incoherentes y permite reintento/edición manual. Un título catalogado con enriquecimiento parcial debe aparecer aquí (o en el mecanismo canónico equivalente) indicando qué falta y permitiendo completar posteriormente la misma fila.
+| Estado | Significado | Pantalla |
+|---|---|---|
+| `IDENTITY_PENDING` | falta IMDb/TMDb/FilmAffinity o identidad mínima válida | Calidad → Identidad |
+| `IDENTITY_VALIDATION` | están los IDs pero falta demostrar que corresponden al mismo título | Calidad → Validación de Identidad |
+| `IDENTITY_REVIEW_REQUIRED` | validación dudosa o probable error | Calidad → Validación de Identidad |
+| `DATA_INCOMPLETE` | identidad válida, faltan datos obligatorios | Calidad → Datos |
+| `PIKOSCORE_PENDING` | datos completos; PikoScore inexistente/caducado o fórmula antigua | Calidad → Datos |
+| `MOVIE_FILE_PENDING` | película en Plex; archivo actual nunca validado | Calidad → Películas |
+| `MOVIE_FILE_REVIEW` | validación del archivo detectó incidencia | Calidad → Películas |
+| `SERIES_SYNC_PENDING` | serie en Plex sin referencia oficial de episodios | Calidad → Series |
+| `SERIES_REVIEW` | serie con faltantes, extras o disponibilidad por confirmar | Calidad → Series |
+| `TECH_PENDING` | PikoQuality pendiente para archivo/episodios actuales | Calidad → PikoQuality / rama Series |
+| `TECH_REVIEW` | incidencia técnica pendiente de decisión | Calidad → Películas |
+| `COMPLETE` | no queda trabajo aplicable | Catálogo |
+| `EXCLUDED` | fuera del flujo por decisión del usuario | Catálogo → Excluidas |
 
-## 8. Calidad — Series
-TMDb aporta referencia oficial y disponibilidad España. La vista principal usa faltantes accionables; desconocidos no se confunden con faltantes. Shows Plex inactivos y excluidos no participan. `Actualizar Series` mantiene trazabilidad y margen suficiente de ejecución.
+### 4.1 Orden de evaluación
 
-## 9. Sagas
-Clasifica incompletas/completas/no iniciadas, muestra cobertura y miembros. Colecciones TMDb son base automática y universos PikoFilm permiten agrupaciones editoriales. Excluidos no contaminan cobertura.
+El lifecycle aplica siempre el primer bloqueo existente:
 
-## 10. Personas
-Navegación por reparto/personas y filmografía relacionada cuando existen créditos.
+`Exclusión → Identidad → Validación identidad → Datos → PikoScore → rama Plex → Complete`
 
-## 11. Administración
-`pipeline_runs` registra procesos, estado, tiempos, contadores, errores y resumen estructurado. Todo proceso operativo relevante debe ser auditable.
+Si no hay presencia física en Plex, el título puede pasar de PikoScore directamente a `COMPLETE`.
 
-## 12. Enriquecimiento individual
-Existe un único pipeline canónico de enriquecimiento. **Catalogación y enriquecimiento son separables.** Si existe identidad mínima fiable, la ausencia temporal de TMDb, FilmAffinity, carátula, rating secundario u otra fuente complementaria no provoca rollback: se guardan los datos disponibles, el título queda catalogado y Calidad muestra lo pendiente. Solo identidad insuficiente, duplicidad o riesgo de integridad bloquean el alta.
+## 5. Entrada al sistema
 
-### IMDb on-demand
-Un alta desde Plex con IMDb válido puede intentar rating/votos desde `title.ratings.tsv.gz` en streaming. Si no está aún disponible, el resto del enriquecimiento continúa. Regresión: `First Lady` (`tt15787006`, TMDb `158808`).
+### 5.1 Discovery automático bajo demanda
 
-## 13. Reglas transversales
-1. Plex = presencia física; Catálogo = selección editorial.
-2. IMDb = punto de entrada de Novedades.
-3. Exclusión reversible, nunca borrado como representación de estado.
-4. Excluidos no participan en operaciones donde no correspondan.
-5. IDs manuales confirmados no se sobrescriben silenciosamente.
-6. Sincronizaciones rápidas separadas de análisis externos pesados.
-7. Trazabilidad obligatoria.
-8. Procesamiento incremental/streaming/SQL agregado cuando sea viable.
-9. Ningún diagnóstico elimina archivos automáticamente.
-10. Documentación funcional, técnica y bitácora se mantienen vivas.
-11. Fuente secundaria ausente no bloquea alta con identidad mínima fiable.
-12. Deployments de producción los realiza manualmente el usuario; pruebas funcionales/visuales también las realiza el usuario.
+1. El usuario pulsa **Buscar novedades**.
+2. Se solicita una única ejecución manual del discovery IMDb.
+3. El worker aplica rating/votos, reglas España y países excluidos.
+4. Los candidatos válidos aparecen en `/novedades` con origen Discovery.
+5. El usuario decide **Añadir** o **Excluir**.
 
-## 14. Novedades V1
-### 14.1 Fuente y criterios
-Sin scraping IMDb. Discovery por `title.ratings.tsv.gz` + `title.basics.tsv.gz` en streaming. Umbrales configurables persistidos:
-- películas generales 6,0 / 10.000 votos;
-- series/miniseries generales 7,0 / 5.000;
-- películas españolas 6,0 / 7.500;
-- series españolas 6,5 / 4.000.
+No existe un cron periódico de discovery. Hay control de frecuencia/cooldown.
 
-### 14.2 España e India
-Rescate España resuelve país solo para la zona que no cumple regla general pero puede cumplir regla española. Coproducción con España cuenta. India (`Q668`/`IN`) permanece inicialmente excluida mediante configuración reversible.
+### 5.2 Alta manual
 
-### 14.3 Cruces y estados
-Automático visible = cumple regla activa + no catalogado + no excluido + no país globalmente excluido. Si deja de cumplir pasa a no elegible sin borrar histórico. Manuales permanecen hasta incorporar, excluir o retirar.
+1. El usuario escribe `tt...` en Novedades.
+2. Se comprueba que no esté ya catalogado y que no esté excluido.
+3. Se obtiene identidad/datos mínimos usando fuentes rápidas disponibles.
+4. Aparece en la misma tabla con origen Manual.
+5. El usuario lo añade al Catálogo.
 
-### 14.4 Alta manual
-Se puede introducir cualquier `tt...`. Ya catalogado no duplica. Excluido exige restauración explícita. Retirar un manual no lo convierte en exclusión.
+Retirar un candidato manual no equivale a excluirlo.
 
-### 14.5 Excluir / restaurar
-Excluir desde Novedades reutiliza `catalog_exclusions`. Desaparece inmediatamente y no reaparece hasta restauración. Novedades muestra acceso visible **Excluidas** con contador; Catálogo también ofrece acceso prominente.
+### 5.3 Entrada desde Plex con IMDb
 
-### 14.6 Añadir al catálogo — contrato #43
-`Añadir` reutiliza el pipeline canónico. Con identidad mínima IMDb fiable, el título entra en Catálogo aunque TMDb/FA/otra fuente secundaria falle; se marca enriquecimiento parcial, desaparece de Novedades y queda diagnosticado en Calidad/Faltan datos. Solo identidad mínima insuficiente o integridad insegura conserva el candidato reintentable sin catalogar. Regresión: `tt38268282`.
+1. **Actualizar Plex** detecta un archivo nuevo.
+2. Si no existe en Catálogo, se siembra una Novedad con origen Plex.
+3. Con IMDb válido se obtienen los datos mínimos necesarios para Novedades.
+4. El usuario pulsa **Añadir**.
+5. Desde ese momento sigue exactamente el mismo lifecycle que cualquier otra entrada.
 
-### 14.7 Ejecución discovery — contrato #42
-**Solo manual y siempre iniciada por una acción explícita del usuario.** No existe cron diario, `schedule` ni polling cada 5 minutos. El workflow usa únicamente `workflow_dispatch`. El worker impone un máximo de **una ejecución exitosa cada 7 días** y rechaza intentos prematuros antes de procesar datasets.
+### 5.4 Entrada desde Plex sin IMDb
 
-La web no crea solicitudes `pending`. `Buscar novedades ahora` se ejecuta desde el propio frontal de PikoFilm: una Server Action autenticada solicita a GitHub Actions una única ejecución del workflow y vuelve inmediatamente a la UI. La credencial necesaria vive solo como secreto de producción en Vercel y nunca se expone en navegador, repositorio, documentación o logs.
+1. Plex detecta el elemento físico pero no dispone de IMDb.
+2. Novedades muestra el registro como **Sin IMDb**.
+3. El usuario puede escribir el IMDb en la propia fila.
+4. Una vez guardado, se crea/resuelve el candidato común y continúa por Novedades.
 
-Cuando existe cooldown, el botón permanece bloqueado y muestra la próxima fecha permitida. Para aceptación técnica puede habilitarse una **excepción controlada de una sola ejecución**: se consume atómicamente al solicitar el workflow, se envía como `force_once=true`, queda trazada y, tras una ejecución exitosa, la regla semanal vuelve a gobernar automáticamente desde esa nueva fecha. Si GitHub rechaza el dispatch, la excepción se devuelve para no consumirla por un fallo técnico.
+### 5.5 Restauración de una exclusión
 
-### 14.8 UX compacta — contrato #41
-Novedades es una herramienta operativa densa, no una sucesión de tarjetas enormes:
-- cabecera compacta;
-- acciones visibles: Criterios, Excluidas, Buscar novedades;
-- KPIs en una fila compacta: propuestas, películas, series, último discovery;
-- alta IMDb manual + tipo + búsqueda + orden en toolbar compacta;
-- tabla/listado con título, año, tipo, IMDb, votos, país, motivo y fecha;
-- acciones directas por fila: **Ver, IMDb, Añadir, Excluir**; `Retirar` adicional para manuales;
-- ficha de candidato `/novedades/[imdbId]`;
-- paginación 24/48/96;
-- responsive móvil sin perder acciones.
+Una exclusión puede restaurarse. Si el título todavía existe en Catálogo se reactiva allí; si era solo un candidato, vuelve a Novedades. La restauración es explícita.
 
-### 14.9 Rendimiento
-Render normal lee Neon, no enriquece masivamente. Worker filtra ratings antes de basics, resuelve país selectivamente y escribe por lotes.
+## 6. Pantallas
 
-## 15. Flujos principales
-**Plex nuevo:** Actualizar Plex → fuera de catálogo → Mi Biblioteca → Añadir → identidad mínima → enriquecimiento best-effort → Catálogo → Calidad si parcial.
+## 6.1 Dashboard `/`
 
-**Novedad automática:** usuario pulsa Buscar novedades → dispatch único GitHub Actions → guard semanal/override único si procede → reglas/país → Novedades → decisión → Catálogo parcial/completo o Exclusión.
+Centro de control. Resume Catálogo, presencia Plex, faltantes, en proceso, trabajo de calidad, identidad, episodios, sagas y procesos fallidos. Incluye evolución temporal y distribuciones por resolución, codec, géneros, países y décadas.
 
-**Novedad manual:** introducir IMDb → validar catálogo/exclusión → Novedades → Añadir/Excluir/Retirar.
+Su función es orientar; no debe ejecutar procesos pesados durante el render.
 
-**Serie mal asociada:** corregir Plex → Actualizar Plex → invalidar referencia → Actualizar Series → reconstruir.
+## 6.2 Novedades `/novedades`
 
-**Exclusión:** excluir → desaparecer de operaciones → conservar registro → restaurar explícitamente.
+Única bandeja de entrada.
 
-## 16. Regresiones obligatorias
-- Castle: identidad Plex corregida no deja referencia antigua activa.
-- Love is in the Air: inactiva no aparece en Calidad/KPIs.
-- First Lady: rating/votos IMDb on-demand sin perder TMDb.
-- Novedades: catalogados/excluidos no reaparecen.
-- India excluida mientras esté configurada.
-- Rescate España solo con participación española confirmada.
-- Manual excluido exige restauración explícita.
-- Discovery sin cron/polling y cooldown semanal.
-- Discovery manual se puede lanzar desde el frontal con secreto server-side; la excepción de aceptación solo puede consumirse una vez.
-- `tt38268282`: TMDb ausente no bloquea catalogación; queda incompleto en Calidad.
-- `tt5901280` (The River desde Plex): TMDb ausente no bloquea alta; usa identidad mínima Plex/IMDb, desaparece de Mi Biblioteca y aparece en Calidad/Identidad con TMDb pendiente.
-- Excluidas: acceso visible desde Catálogo y Novedades.
-- Mi Biblioteca: solo pendientes Plex→Catálogo; alta correcta hace desaparecer la fila; sin IMDb ofrece Resolver identidad; fecha mostrada corresponde a `added_at`.
+### Información
+- título / IMDb;
+- año y tipo;
+- país;
+- IMDb y votos cuando ya están disponibles;
+- origen: Discovery / Plex / Manual;
+- estado: Sin IMDb / Preparando / Lista / Error;
+- fecha de detección.
 
-## 17. Aceptación
-Código no equivale a aceptación. Los cambios permanecen pendientes hasta deployment manual y PASS explícito del usuario. Las pruebas funcionales/visuales se realizan siempre por el usuario desde producción.
+### Acciones
+- **Actualizar Plex**;
+- **Buscar novedades** cuando el cooldown lo permita;
+- alta manual por IMDb;
+- guardar IMDb de un elemento Plex sin identidad;
+- **Añadir** al Catálogo;
+- **Excluir**;
+- reintentar un manual fallido/atascado;
+- retirar un candidato manual.
+
+Las vistas de carátulas no forman parte del objetivo operativo de esta pantalla: la tabla es la vista canónica.
+
+## 6.3 Criterios de Novedades `/novedades/criterios`
+
+Configura rating/votos mínimos por películas/series y reglas específicas para España, además de países excluidos globalmente. Los cambios se aplican en el siguiente discovery; guardar criterios no ejecuta discovery.
+
+## 6.4 Catálogo `/catalogo`
+
+Punto único para consultar la base editorial completa. Tiene vista carátulas y tabla, búsqueda, filtros, ordenación, paginación y acceso a Excluidas.
+
+Cada título muestra un badge de lifecycle. En tabla el badge enlaza a la pantalla que actualmente debe tratarlo.
+
+Estados de presencia independientes del lifecycle:
+- `En Plex`;
+- `En proceso`;
+- `Falta`.
+
+Las acciones de adquisición no deben confundirse con el lifecycle de calidad.
+
+## 6.5 Ficha de película `/catalogo/[imdbId]`
+
+Presenta datos editoriales, sinopsis, reparto/equipo, IDs, PikoScore y ratings. Permite actualizar datos, editar identidad y acciones editoriales permitidas.
+
+La ficha no debe recalcular masivamente nada al abrirse.
+
+## 6.6 Ficha de serie `/catalogo/[imdbId]`
+
+Además de datos/ratings incluye:
+- cobertura Plex;
+- temporadas y episodios oficiales;
+- PikoQuality agregada cuando existe;
+- acceso a revisión episodio a episodio;
+- edición de IDs;
+- actualización de datos;
+- exclusión del Catálogo, incluso si físicamente sigue en Plex.
+
+Excluir una serie en Plex no elimina los archivos.
+
+## 6.7 Excluidas `/catalogo/excluidas`
+
+Archivo reversible con búsqueda, tipo, motivo, rango de fechas, orden y grid/lista. La restauración devuelve cada registro al contexto adecuado.
+
+## 6.8 Calidad `/calidad`
+
+Debe ser un **mapa de colas del lifecycle**, no un motor paralelo. Sus contadores se basan en `catalog_lifecycle` y cada bloque lleva a la cola correspondiente.
+
+La versión objetivo es unitaria. Los botones masivos que todavía quedan visibles se consideran legado y están inventariados en `ROADMAP_MIGRATION.md`.
+
+## 6.9 Identidad `/calidad/identidad`
+
+Solo contiene `IDENTITY_PENDING`.
+
+Objetivo único: completar IMDb, TMDb y FilmAffinity.
+
+Por fila:
+- **Obtener identidad**: procesa solo el título actual;
+- **Corregir**: edición manual de IDs;
+- abrir ficha.
+
+Si consigue los tres IDs, desaparece automáticamente y pasa a Validación de Identidad. Los resultados ambiguos/fallos se informan en el propio proceso, no en una bandeja separada.
+
+## 6.10 Validación de Identidad `/calidad/validacion-identidad`
+
+Comprueba que IMDb, TMDb y FilmAffinity describen el mismo título mediante evidencia de título original/año y score.
+
+Subestados:
+- `evidence_pending`: faltan datos necesarios para evaluar;
+- `ready`: evidencia suficiente, pendiente de evaluación;
+- `doubtful`: 60–84;
+- `probable_error`: <60.
+
+Una evaluación ≥85 se considera válida y sale de la fase.
+
+Acciones unitarias:
+- actualizar evidencia;
+- validar/revalidar;
+- editar IDs;
+- decisión manual Correcta / Dudosa / ID incorrecto;
+- retirar decisión manual.
+
+Editar IDs invalida la evidencia dependiente y obliga a revalidar.
+
+## 6.11 Datos y PikoScore `/calidad/datos`
+
+Comparte pantalla pero contiene dos trabajos claramente separados.
+
+### A. `DATA_INCOMPLETE`
+Botón **Actualizar datos**. Intenta completar la ficha usando fuentes externas. Los datos críticos incluyen identidad editorial, ratings/votos, duración, país, géneros, sinopsis y carátula.
+
+### B. `PIKOSCORE_PENDING`
+Si los ratings están caducados: **Actualizar notas**. Solo consulta ratings/votos y críticos; no vuelve a descargar reparto, sinopsis, poster, etc.
+
+Si los ratings están frescos: **Calcular PikoScore**. Cálculo 100% local con datos almacenados.
+
+La pantalla muestra cobertura, principales faltantes, última lectura de notas, caducidad, PikoScore anterior, fecha y confianza.
+
+## 7. PikoScore 2.0
+
+PikoScore no es una media simple.
+
+### 7.1 Fuentes núcleo
+- IMDb rating + votos;
+- FilmAffinity rating + votos;
+- TMDb rating + votos.
+
+Los votos regulan la confianza mediante shrinkage bayesiano. Una nota extrema con uno o pocos votos se acerca fuertemente a una referencia estadística y no puede comportarse como un 10 consolidado.
+
+### 7.2 Pesos
+No españolas: IMDb 40%, FA 35%, TMDb 25%.
+
+Españolas: IMDb 30%, FA 45%, TMDb 25%, además de medianas/priores de votos específicos. No existe un bonus fijo por nacionalidad.
+
+### 7.3 Crítica profesional
+Rotten Tomatoes y Metacritic aportan un modificador limitado a ±0,35 puntos. Rotten Tomatoes no se convierte directamente en una nota 0–10.
+
+### 7.4 Confianza
+Se calcula a partir de volumen de votos y consenso entre fuentes. Se almacena por separado del score.
+
+### 7.5 Frescura dinámica
+- estreno <3 meses: 14 días;
+- 3–12 meses: 30 días;
+- 1–3 años: 90 días;
+- 3–10 años: 180 días;
+- >10 años: 365 días.
+
+`ratings_refreshed_at` y `pikoscore_calculated_at` son independientes. Un cambio de fórmula puede obligar a recalcular PikoScore sin volver a consultar Internet si los ratings siguen frescos.
+
+## 8. Rama de película con archivo físico
+
+Después de PikoScore, si no está en Plex → `COMPLETE`.
+
+Si está en Plex:
+
+`MOVIE_FILE_PENDING → MOVIE_FILE_REVIEW (si hay incidencia) → TECH_PENDING → COMPLETE`
+
+## 8.1 Validación de película `/calidad/peliculas`
+
+La validación pertenece al **fingerprint del archivo actual**.
+
+Comprueba:
+- duración Plex vs duración de catálogo;
+- similitud nombre/año del fichero;
+- varias versiones físicas/duplicados.
+
+### Salidas
+1. **Sin incidencia**: pasa automáticamente a PikoQuality.
+2. **Incidencia + Es correcta**: se acepta la excepción y pasa a PikoQuality.
+3. **Ya la corregí**: significa que el usuario modificó referencia/nombre/archivo. Se elimina la referencia catalogada dependiente y la siguiente sincronización Plex debe volver a introducirla por Novedades para rehacer el ciclo.
+
+Ninguna acción borra físicamente archivos de Plex.
+
+## 8.2 PikoQuality `/calidad/pikoquality`
+
+Solo una película ya validada puede entrar como `TECH_PENDING`.
+
+**Analizar PikoQuality**:
+- procesa una película;
+- obtiene detalle/streams del archivo actual desde Plex;
+- calcula score técnico;
+- guarda score + banda + versión + fingerprint;
+- recalcula lifecycle en la misma operación.
+
+Si todo está correcto, pasa directamente a `COMPLETE`. No existe botón adicional de confirmación.
+
+Si el archivo cambia, el PikoQuality anterior queda obsoleto porque su fingerprint ya no coincide.
+
+## 9. Rama de series
+
+Después de PikoScore, una serie sin Plex puede quedar `COMPLETE`. En Plex necesita referencia oficial y diagnóstico episodio a episodio.
+
+### 9.1 `SERIES_SYNC_PENDING`
+Falta crear/reconstruir la referencia oficial de temporadas/episodios.
+
+### 9.2 `SERIES_REVIEW`
+Se revisan:
+- episodios presentes;
+- faltantes accionables en España;
+- disponibilidad desconocida;
+- episodios Plex que no encajan con referencia oficial.
+
+Un episodio ausente no se considera automáticamente “faltante” si no se sabe que está disponible en España.
+
+### 9.3 Detalle `/calidad/series/[ratingKey]`
+Permite navegar por temporada, filtrar estados y marcar manualmente disponibilidad de temporada en España. Muestra PikoScore, PikoQuality agregada y cobertura Plex.
+
+La conversión completa de esta rama a procesos unitarios es una deuda de migración explícita.
+
+## 10. Sagas
+
+Agrupa colecciones, calcula cobertura y prioriza incompletas. Los excluidos no cuentan. La pantalla distingue incompletas, a una película, completas, no iniciadas y todas.
+
+Sagas no registra visionados: representa completitud editorial/física.
+
+## 11. Personas
+
+Las fichas de persona muestran únicamente la filmografía relacionada con el universo PikoFilm y el estado editorial/Plex de esos títulos. No representan consumo.
+
+## 12. Administración `/admin`
+
+Consola de trazabilidad:
+- `pipeline_runs`: procesos, tiempos, contadores, status, errores y summary;
+- sincronizaciones Plex;
+- `admin_events`: acciones unitarias y detalles técnicos.
+
+Toda nueva operación funcional debe dejar evidencia suficiente para explicar qué ocurrió sin depender de logs externos.
+
+Política operativa actual de espacio: se han conservado únicamente los últimos 1.000 eventos Admin y los últimos 1.000 pipeline runs; la automatización de esta retención queda en roadmap.
+
+## 13. Exclusiones
+
+La exclusión tiene precedencia máxima sobre el lifecycle.
+
+Reglas:
+- no participa en Identidad/Datos/Calidad/Series;
+- no reaparece por discovery o Plex mientras siga excluida;
+- se puede restaurar;
+- excluir desde la ficha no elimina el archivo físico;
+- las acciones quedan auditadas.
+
+## 14. Cambios de identidad
+
+Editar IMDb/TMDb/FA es una operación de alto impacto:
+- invalida evidencia derivada de los IDs modificados;
+- obliga a volver a Validación de Identidad;
+- puede invalidar referencia de series;
+- los cálculos derivados deben reconstruirse usando la nueva identidad.
+
+Los IDs confirmados manualmente no deben sobrescribirse silenciosamente.
+
+## 15. Fingerprint de archivo
+
+La validez técnica nunca se almacena como “esta película fue revisada alguna vez”. Se vincula a la versión física actual.
+
+Un fingerprint diferente implica:
+- repetir Validación de película;
+- repetir PikoQuality;
+- conservar histórico únicamente cuando aporte trazabilidad y no bloquee el nuevo flujo.
+
+## 16. Feedback y errores
+
+Los procesos unitarios deben devolver:
+- éxito/fallo;
+- qué fuentes respondieron;
+- qué datos se actualizaron o faltan;
+- estado al que pasa el título.
+
+Un fallo de una fuente secundaria no debe destruir datos buenos existentes. En ratings, la fecha de refresco solo se actualiza cuando las tres fuentes núcleo quedan verificadas.
+
+## 17. Rendimiento funcional
+
+Las páginas son vistas de trabajo, no procesos. Abrir una pantalla no debe provocar miles de recalculados o escrituras. Las operaciones costosas se ejecutan al pulsar una acción concreta sobre un título o mediante mantenimiento explícito.
+
+## 18. Casos de regresión del flujo nuevo
+
+### `tt6720618`
+Caso con archivo Plex usado para validar el recorrido completo:
+`Novedades/Plex → Identidad → Validación → Datos → PikoScore → Validación de archivo → PikoQuality → Complete`.
+
+### `tt21187592`
+Caso sin archivo Plex:
+`Novedades/manual → Identidad → Validación → Datos → PikoScore → Complete`.
+
+Ambos sirven como regresiones conceptuales, no como datos de configuración.
+
+## 19. No objetivos
+
+PikoFilm no debe implementar:
+- historial de reproducciones;
+- visto/no visto;
+- progreso de episodio/película;
+- estadísticas de consumo;
+- recomendaciones basadas en reproducciones propias;
+- control de usuarios Plex o sesiones de reproducción.
+
+Todo ello pertenece a Plex u otras herramientas específicas.
+
+## 20. Aceptación y deployment
+
+1. El código se prepara y mergea en `main`.
+2. **No se despliega automáticamente.**
+3. El usuario decide cuándo ejecutar el deployment manual en Vercel.
+4. El usuario prueba el flujo real.
+5. Una funcionalidad se considera validada tras su prueba funcional/visual.
+
+## 21. Documentación asociada
+
+- `TECHNICAL_SPECIFICATION_V2.md`: arquitectura técnica actual.
+- `ROADMAP_FRONTEND.md`: mejoras visuales/UX detectadas.
+- `ROADMAP_MIGRATION.md`: legado a borrar/adaptar.
+- `ROADMAP_FUNCTIONAL.md`: futuras capacidades.
+- `PROJECT_RULES.md`: reglas operativas permanentes.
+- `PROJECT_STATUS.md`: foto del estado del proyecto.
+
+Los documentos V1/V2/V3 parciales y pilotos anteriores se consideran históricos y no deben prevalecer sobre esta especificación.
