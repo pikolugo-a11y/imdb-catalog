@@ -2,6 +2,27 @@
 
 Este documento es obligatorio para cualquier sesión futura de trabajo sobre PikoFilm. Debe leerse antes de modificar el proyecto.
 
+## Regla 0 — Propósito de PikoFilm
+
+**PikoFilm es una base de datos audiovisual personal maestra.** Su objetivo es construir, mantener y explotar el universo editorial de películas, series y miniseries que el usuario considera relevantes, independientemente de que exista o no una copia física en Plex.
+
+PikoFilm debe permitir:
+
+- saber qué títulos forman parte del universo editorial y cuáles están excluidos;
+- cruzar ese universo con Plex para saber qué existe físicamente, qué falta y qué está en proceso de conseguirse;
+- mantener identidad y metadatos fiables y completos: títulos, año, país, géneros, sinopsis, reparto, sagas y demás información editorial útil;
+- calcular **PikoScore** como valoración propia a partir de fuentes externas persistidas, con reglas y fórmula versionadas;
+- calcular **PikoQuality** como valoración técnica de la copia física disponible, separada de la valoración artística/editorial;
+- detectar y resolver problemas de identidad, datos incompletos, archivos incorrectos o técnicamente mejorables;
+- en series, conocer la referencia oficial de temporadas/episodios, qué existe en Plex, qué falta realmente y cuándo una ausencia no debe considerarse todavía accionable por disponibilidad;
+- consultar y explotar la BBDD mediante Catálogo, Personas, Sagas, búsqueda, filtros, estadísticas y demás vistas derivadas sin crear fuentes de verdad paralelas.
+
+**Plex y PikoFilm tienen responsabilidades distintas:** Plex es la fuente de verdad física y el sistema de reproducción; PikoFilm gobierna la BBDD audiovisual, su selección editorial, enriquecimiento, calidad y coherencia.
+
+**No objetivos permanentes:** PikoFilm no gestiona reproducciones, progreso, visto/no visto, historial de consumo ni hábitos de visionado, y no debe evolucionar hacia un sustituto de Plex para esas funciones.
+
+Toda nueva funcionalidad, propuesta o cambio arquitectónico debe poder justificarse por este propósito. Si no mejora el gobierno, calidad, consulta o explotación de la BBDD audiovisual personal, debe considerarse fuera de alcance salvo decisión explícita del usuario.
+
 ## Reglas de oro
 
 1. **Continuidad de ejecución.** Una vez que el usuario autoriza continuar, ejecutar de forma continuada todo lo posible sin pedir confirmación entre fases. Solo detenerse por finalización, una decisión que realmente requiera al usuario o un bloqueo técnico real.
@@ -36,7 +57,7 @@ Este documento es obligatorio para cualquier sesión futura de trabajo sobre Pik
 
 16. **Seguridad y secretos.** Nunca persistir tokens, credenciales o secretos en código, documentación, issues o logs. Usar variables de entorno/secretos de plataforma.
 
-17. **Despliegues manuales por el usuario.** Los deployments de producción en Vercel los realiza manualmente el usuario. ChatGPT no debe intentar desplegar ni sustituir ese paso. Cuando un hito esté listo para producción, debe avisar de forma explícita indicando qué commit/HEAD debe desplegarse. Después de que el usuario confirme que ha hecho el deploy, ChatGPT debe verificar en Vercel que producción corresponde al commit esperado.
+17. **Merge siempre; deployment nunca por ChatGPT.** Todo bloque de trabajo terminado y técnicamente preparado debe integrarse mediante PR/CI y **merge a `main`**; no debe quedar abandonado en una rama de trabajo. Los deployments de producción en Vercel los realiza **siempre y exclusivamente el usuario**. ChatGPT no debe intentar desplegar ni sustituir ese paso. Tras cada merge debe comunicar de forma explícita el commit/HEAD de `main` preparado para deployment. Después de que el usuario confirme que ha hecho el deploy, ChatGPT debe verificar en Vercel que producción corresponde al commit esperado.
 
 18. **Pruebas de aceptación ejecutadas siempre por el usuario.** ChatGPT no debe ejecutar por su cuenta acciones funcionales o visuales de aceptación sobre la aplicación en producción. Debe generar una batería ordenada, entregar las pruebas de una en una con pasos concretos y resultado esperado, recibir la respuesta del usuario, registrar cada resultado y decidir si procede continuar, diagnosticar o abrir/actualizar una issue. Las comprobaciones técnicas no funcionales necesarias para preparar o interpretar la prueba (commit desplegado, logs, BBDD, código, configuración) sí puede realizarlas ChatGPT.
 
