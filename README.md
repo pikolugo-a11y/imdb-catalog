@@ -58,13 +58,14 @@ GitHub contiene código, no el catálogo masivo. Neon es la fuente de verdad per
 
 - [`docs/FUNCTIONAL_SPECIFICATION_V2.md`](docs/FUNCTIONAL_SPECIFICATION_V2.md) — especificación funcional actual.
 - [`docs/TECHNICAL_SPECIFICATION_V2.md`](docs/TECHNICAL_SPECIFICATION_V2.md) — arquitectura técnica actual.
+- [`docs/CANONICAL_DATA.md`](docs/CANONICAL_DATA.md) — modelo canónico de países y géneros.
 - [`docs/ROADMAP_FRONTEND.md`](docs/ROADMAP_FRONTEND.md) — mejoras del frontal.
 - [`docs/ROADMAP_MIGRATION.md`](docs/ROADMAP_MIGRATION.md) — limpieza/adaptación de legado.
 - [`docs/ROADMAP_FUNCTIONAL.md`](docs/ROADMAP_FUNCTIONAL.md) — futuras evoluciones.
 - [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) — estado operativo.
 - [`docs/PROJECT_RULES.md`](docs/PROJECT_RULES.md) — propósito y reglas permanentes.
 
-Los documentos V1/V2/V3 parciales y pilotos anteriores son históricos y no deben usarse como fuente de verdad frente a las especificaciones canónicas.
+La carpeta `docs/` contiene únicamente documentación vigente. El histórico de versiones anteriores permanece accesible en el historial de Git, no como documentación activa del proyecto.
 
 ## No objetivos
 
