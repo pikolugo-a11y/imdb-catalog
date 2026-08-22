@@ -54,6 +54,8 @@
 14. Ficha de serie permite excluir; excluir no borra Plex.
 15. Las operaciones nuevas dejan traza en Admin.
 16. Neon fue podado/compactado: logs limitados manualmente a 1.000 + 1.000 y snapshots catalogados limpiados; última medición aproximada ~403 MB.
+17. `PROJECT_RULES.md` incorpora el propósito permanente de PikoFilm y la regla explícita merge siempre / deployment nunca por ChatGPT.
+18. Se retiró de `docs/` la documentación histórica V1/V2/V3 y los pilotos obsoletos. La información todavía vigente de países/géneros se consolidó en `CANONICAL_DATA.md`. El histórico queda preservado por Git.
 
 ## Flujo de regresión probado
 
@@ -72,7 +74,6 @@ Caso sin archivo físico:
 - Persisten runners/APIs/workflows batch antiguos que hay que auditar y retirar.
 - PikoQuality conserva funciones batch históricas aunque la película usa ya motor unitario.
 - Dashboard contiene enlace/terminología Plex anterior.
-- Documentos V1/V2/V3 parciales siguen en repo como históricos.
 - Retención de Admin/pipeline todavía no está automatizada.
 - Lifecycle debe evolucionar a lectura 100% materializada/event-driven en todas las vistas grandes.
 
@@ -82,15 +83,14 @@ La lista completa está en `docs/ROADMAP_MIGRATION.md`.
 
 1. `docs/FUNCTIONAL_SPECIFICATION_V2.md` — comportamiento funcional actual.
 2. `docs/TECHNICAL_SPECIFICATION_V2.md` — arquitectura técnica actual.
-3. `docs/ROADMAP_FRONTEND.md` — mejoras de UI/UX por pantalla.
-4. `docs/ROADMAP_MIGRATION.md` — legado a borrar/adaptar.
-5. `docs/ROADMAP_FUNCTIONAL.md` — evoluciones futuras.
-6. `docs/PROJECT_RULES.md` — reglas operativas.
-7. `docs/PROJECT_STATUS.md` — esta foto de estado.
+3. `docs/CANONICAL_DATA.md` — países y géneros canónicos.
+4. `docs/ROADMAP_FRONTEND.md` — mejoras de UI/UX por pantalla.
+5. `docs/ROADMAP_MIGRATION.md` — legado a borrar/adaptar.
+6. `docs/ROADMAP_FUNCTIONAL.md` — evoluciones futuras.
+7. `docs/PROJECT_RULES.md` — propósito y reglas operativas permanentes.
+8. `docs/PROJECT_STATUS.md` — esta foto de estado.
 
-## Estado de documentación histórica
-
-`V1_SCOPE.md`, documentación específica Novedades V1, planes/aceptación V2/V3, `QUALITY_MOVIES_V3.md` y documentos piloto se consideran históricos hasta su archivo/eliminación según roadmap. No deben contradecir ni prevalecer sobre las especificaciones canónicas.
+La carpeta `docs/` ya no mantiene documentos históricos activos de versiones anteriores. Para consultar esas versiones debe usarse el historial de Git.
 
 ## Próxima línea recomendada de trabajo
 
