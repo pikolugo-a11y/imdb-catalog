@@ -1,39 +1,68 @@
-# PikoFilm 2.0
+# PikoFilm
 
-Centro de selección, correlación y control de calidad para una biblioteca Plex.
+Base de datos personal para selección, enriquecimiento, correlación con Plex y control de calidad audiovisual.
 
-## Objetivos
+## Modelo actual
 
-1. Mantener un catálogo curado de películas y series seleccionables para incorporar a Plex.
-2. Correlacionar el catálogo deseado con la biblioteca Plex real.
-3. Auditar Plex: identificaciones, ficheros, películas/sagas faltantes y series episodio a episodio.
+PikoFilm separa cuatro conceptos:
 
-Películas y series comparten catálogo y cruce Plex, pero **no comparten motor de diagnóstico**. En series, un episodio técnicamente ausente solo pasa a ser faltante real cuando existe evidencia de disponibilidad en España.
+- **Catálogo:** universo editorial y punto único de consulta.
+- **Plex:** presencia física real de archivos.
+- **Novedades:** única puerta de entrada para Discovery, Plex y altas manuales.
+- **Lifecycle:** estado materializado que decide qué proceso corresponde a cada título.
 
-## V1
+Flujo común:
 
-- Inicio / centro de control
-- Catálogo con filtros, ficha y estado `Falta / En proceso / En Plex`
-- Plex: inventario y elementos fuera de catálogo
-- Calidad de películas: cola de revisión resoluble
-- Calidad de series: temporada/episodio y disponibilidad efectiva ES
-- Sagas: completitud y detalle título a título
-- Administración: historial de procesos y sincronizaciones
+`Novedades → Identidad → Validación de Identidad → Datos → PikoScore`
 
-## Seguridad operativa
+Después:
 
-GitHub contiene código, no el catálogo masivo. Neon es la fuente de verdad. Vercel sirve la aplicación.
+- sin archivo Plex → `COMPLETE`;
+- película en Plex → `Validación de película → PikoQuality → COMPLETE`;
+- serie en Plex → `Referencia/diagnóstico de episodios → PikoQuality → COMPLETE`.
 
-Actions permitidos en V1:
-- CI de PR: build, solo lectura, timeout 10 min y concurrencia cancelable.
-- Mantenimiento manual: `workflow_dispatch`, solo lectura, timeout 5 min y máximo 10 elementos.
+Las exclusiones están fuera del flujo hasta restauración explícita.
 
-No hay cron, no hay workflows que hagan commits, no hay reintentos infinitos y no se usa Actions como motor de procesamiento masivo. `vercel.json` mantiene `git.deploymentEnabled=false`, por lo que los commits no provocan deployments automáticos.
+## PikoScore
 
-Los despliegues se hacen manualmente y agrupados. Los procesos pesados futuros deberán ser explícitos, limitados, auditables y separados del ciclo Git → Vercel.
+PikoScore 2.0 combina IMDb, FilmAffinity y TMDb con confianza dependiente del volumen de votos, ajuste contextual para cine español, antigüedad, consenso y un modificador limitado de Rotten Tomatoes/Metacritic.
 
-## Arquitectura
+Actualizar ratings y calcular PikoScore son procesos separados. El cálculo de PikoScore se realiza únicamente con datos ya almacenados.
 
-`Web PikoFilm / Vercel → Neon PostgreSQL`
+## Procesamiento
 
-Los procesos pesados futuros podrán consumir trabajos registrados en Neon, sin generar commits ni deployments.
+La arquitectura operativa objetivo es **unitaria**: una película/serie por acción y feedback inmediato. Los procesos masivos que aún existen se consideran legado y están inventariados para migración.
+
+## Stack
+
+- Next.js 15 / React 19.
+- Vercel.
+- Neon PostgreSQL.
+- Plex API.
+- TMDb, OMDb, FilmAffinity e IMDb.
+
+## Seguridad y operación
+
+GitHub contiene código, no el catálogo masivo. Neon es la fuente de verdad persistente.
+
+- CI se ejecuta en Pull Requests.
+- No hay cron operativo activo.
+- Los workflows pesados existentes son manuales y varios son legado pendiente de retirada.
+- Los commits no deben provocar deployment automático.
+- **El deployment de Vercel lo realiza manualmente el usuario.**
+
+## Documentación canónica
+
+- [`docs/FUNCTIONAL_SPECIFICATION_V2.md`](docs/FUNCTIONAL_SPECIFICATION_V2.md) — especificación funcional actual.
+- [`docs/TECHNICAL_SPECIFICATION_V2.md`](docs/TECHNICAL_SPECIFICATION_V2.md) — arquitectura técnica actual.
+- [`docs/ROADMAP_FRONTEND.md`](docs/ROADMAP_FRONTEND.md) — mejoras del frontal.
+- [`docs/ROADMAP_MIGRATION.md`](docs/ROADMAP_MIGRATION.md) — limpieza/adaptación de legado.
+- [`docs/ROADMAP_FUNCTIONAL.md`](docs/ROADMAP_FUNCTIONAL.md) — futuras evoluciones.
+- [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) — estado operativo.
+- [`docs/PROJECT_RULES.md`](docs/PROJECT_RULES.md) — reglas permanentes.
+
+Los documentos V1/V2/V3 parciales y pilotos anteriores son históricos y no deben usarse como fuente de verdad frente a las especificaciones canónicas.
+
+## No objetivos
+
+PikoFilm no gestiona reproducciones, progreso, visto/no visto ni historial de consumo. Esa responsabilidad pertenece a Plex.
