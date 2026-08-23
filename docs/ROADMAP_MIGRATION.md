@@ -15,8 +15,6 @@
 - **M06 — `/api/pikoquality/run`:** eliminado.
 - **M07 — `PikoQualityRunner.js`:** eliminado.
 
-La portada ya cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_PENDING/REVIEW` como fase propia. Esto adelanta parte de M29/M30.
-
 ## P1 — rutas y conceptos antiguos
 
 ### M08–M11 y M15 — COMPLETADO 23/08/2026
@@ -25,7 +23,7 @@ La portada ya cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_P
 - **M09 — “Mi Biblioteca”:** no queda como concepto funcional activo.
 - **M10 — `PlexIntake.js` / `NovedadesPlexShell.js`:** ya no existen en el árbol activo.
 - **M11 — Dashboard:** enlaces Plex legacy sustituidos por `/novedades?source=plex`.
-- **M15 — pilotos PikoQuality:** eliminados `app/calidad/pikoquality-pilot` y `app/admin/pikoquality-probe`.
+- **M15 — pilotos PikoQuality:** eliminados rutas y librerías de prueba/probe sin consumidores.
 
 ### M12–M14 — Documentación histórica — COMPLETADO 22/08/2026
 Se retiraron documentos V1/V2/V3 y pilotos obsoletos. `V3_CANONICAL_DATA.md` se sustituyó por `CANONICAL_DATA.md`. El histórico permanece recuperable mediante Git.
@@ -34,63 +32,31 @@ Se retiraron documentos V1/V2/V3 y pilotos obsoletos. `V3_CANONICAL_DATA.md` se 
 
 ### M16–M27 — COMPLETADO 23/08/2026
 
-Se auditó el árbol completo de GitHub Actions, `app/api` y `worker/` contra los consumidores reales del modelo Lifecycle.
-
-**Retirado:**
-- **M16** `identity-full-refresh.yml` y su dispatcher `lib/identity-run-control.js`.
-- **M17** `identity-validation-refresh.yml`.
-- **M18** `identity-validation-recalculate.yml`.
-- **M19** `series-full-refresh.yml`.
-- **M20** `catalog-enrichment-test.yml` experimental.
-- **M21** `imdb-manual-candidate.yml`, duplicado por Novedades/Server Actions.
-- **M24** `app/api/identity/batch`.
-- **M25** `app/api/identity-validation/batch`.
-- **M26** `app/api/identity/run/[id]`, `wiki-batch` y `brave-probe`.
-- **M27** workers de identidad, validación, series y helpers FilmAffinity que solo servían a esos workflows.
+Se retiraron workflows/APIs/workers batch de identidad, validación, Series, pruebas de enriquecimiento y candidato manual. También se retiraron los dispatchers internos que dependían de ellos.
 
 Tras la limpieza, `worker/` contiene únicamente:
 - `imdb-discovery.mjs` — fuente explícita de Discovery IMDb;
 - `update-imdb-ratings.mjs` — mantenimiento offline del dataset IMDb.
 
-**Conservado deliberadamente:**
-- **M22** `imdb-ratings-refresh.yml`: mantenimiento offline manual del dataset IMDb; no es el flujo unitario de Datos.
-- `imdb-discovery.yml`: Discovery manual con cooldown y límites.
-- `manual-maintenance.yml`: comprobaciones acotadas y de solo lectura.
-- `ci.yml`: único workflow automático asociado a cambios de código.
+Se conservan deliberadamente:
+- `ci.yml` — único workflow automático;
+- `imdb-discovery.yml`, `imdb-ratings-refresh.yml` y `manual-maintenance.yml` — exclusivamente `workflow_dispatch`;
+- `api/fa-search.py` y `api/fa-evidence.py` — endpoints Python unitarios productivos.
 
-**M23:** verificado que los workflows operativos conservados son `workflow_dispatch`; no existe `schedule` ni ejecución masiva automática. CI sigue siendo el único workflow automático.
+## P1 — modelo de datos y Lifecycle
 
-Las funciones Python productivas `api/fa-search.py` y `api/fa-evidence.py` **no son workers batch**: son endpoints unitarios usados por Identidad/Validación y se conservan.
+### M28–M35 — COMPLETADO 23/08/2026
 
-## P1 — modelo de datos y lifecycle
+- **M28 — Lifecycle 100% materializado/event-driven:** `getLifecycleForIds()` queda estrictamente de lectura y ya no recalcula por antigüedad. Las mutaciones unitarias relevantes recalculan el título en la misma operación. `Actualizar Plex`, como mutación global explícita, reconcilia únicamente los estados que pueden verse afectados por presencia/fingerprint Plex, en lotes pequeños. `reconcileLifecycleBatch()` queda reservado a mantenimiento/backfill explícito.
+- **M29 — `PIKOSCORE_PENDING`:** auditado y alineado en la portada canónica de Calidad; forma parte de Datos y se contabiliza separadamente dentro de esa etapa.
+- **M30 — `MOVIE_FILE_*`:** `MOVIE_FILE_PENDING` y `MOVIE_FILE_REVIEW` quedan explícitos como etapa de película y con navegación propia.
+- **M31 — `TECH_REVIEW`:** retirado del Lifecycle. PikoQuality es una puntuación técnica informativa; una nota baja no genera por sí misma revisión funcional. Las incidencias accionables del archivo pertenecen a `MOVIE_FILE_REVIEW`.
+- **M32 — PikoScore antiguo:** un `final_rating` no es vigente sin `pikoscore_version='2.0.0'` y `pikoscore_calculated_at`. Auditoría Neon: 20.444 de 20.446 valores existentes eran legado/no vigente. No se borran a ciegas: se consideran pendientes y las lecturas canónicas de Catálogo no los presentan/ordenan como PikoScore actual hasta su recálculo.
+- **M33 — PikoQuality antiguo:** la vigencia exige `formula_version=QUALITY_VERSION` + `source_fingerprint` coincidente. Auditoría Neon: 63.834 registros evaluados y 0 evaluados sin fórmula/fingerprint.
+- **M34 — `source_status`:** queda formalmente como metadato auxiliar/transitorio, nunca como segunda fuente de verdad de Lifecycle/PikoScore/IDs/campos escalares. No se hace borrado masivo sin auditar consumidores; la poda física de JSON histórico se integra en M42, donde corresponde por almacenamiento.
+- **M35 — findings antiguos:** auditoría actual de `movie_quality_findings` = 0 filas. No existe migración de `waiting_sync`, `exception` o `quality` pendiente. El Lifecycle ya no depende de findings técnicos heredados.
 
-### M28. Lifecycle 100% event-driven
-**Situación:** `getLifecycleForIds()` todavía puede recalcular registros con más de 10 minutos.  
-**Acción:** hacer que todas las mutaciones relevantes llamen a `recomputeLifecycleForIds`; las lecturas solo leen materializado. Dejar `reconcileLifecycleBatch` como mantenimiento manual.
-
-### M29. PIKOSCORE_PENDING incluido en todos los contadores correctos
-**Situación:** la portada de Calidad ya fue corregida en M01, pero falta auditar el resto de vistas.  
-**Acción:** alinear todos los KPIs con la semántica Datos + PikoScore.
-
-### M30. Añadir explícitamente MOVIE_FILE_* a la portada
-**Situación:** ya aplicado en la portada durante M01.  
-**Acción:** confirmar consistencia con el resto de enlaces/contadores antes de marcar globalmente completado.
-
-### M31. Revisar `TECH_REVIEW`
-**Situación:** existe estado para finding técnico heredado tipo `quality`, mientras PikoQuality unitario actualmente genera score y normalmente termina Complete.  
-**Acción:** decidir si PikoQuality bajo umbral debe generar revisión funcional. Si no, retirar estado/findings antiguos; si sí, formalizarlo.
-
-### M32. Limpiar valores PikoScore previos sin versión
-Todo `final_rating` viejo debe considerarse inválido hasta tener `pikoscore_version=2.0.0` y `pikoscore_calculated_at`.
-
-### M33. Invalidar PikoQuality viejo sin fingerprint/versión actual
-No aceptar un score histórico como vigente solo por existir. Debe coincidir `formula_version` + `source_fingerprint`.
-
-### M34. Consolidar `source_status` JSON legado
-Migrar valores útiles a columnas escalares y borrar claves ya sustituidas para ahorrar espacio y evitar dos fuentes de verdad.
-
-### M35. Revisar findings antiguos
-Auditar/migrar definitivamente estados `waiting_sync`, `exception` o findings `quality` pre-Lifecycle.
+Durante este bloque también se retiraron restos internos huérfanos detectados: `identity-validation-run-control.js`, `pikoquality-b-probe.js` y `pikoquality-pilot.js`.
 
 ## P2 — datos derivados y almacenamiento
 
@@ -113,7 +79,7 @@ Revisar índices duplicados/no usados antes de borrar datos funcionales.
 Convertir la limpieza de `source_snapshot` al cerrar candidatos en regla permanente.
 
 ### M42. Revisar payloads JSON grandes
-Buscar `raw`, `payload`, `summary`, `source_snapshot` y blobs históricos. Guardar solo campos escalares o trazas mínimas salvo necesidad de auditoría.
+Buscar `raw`, `payload`, `summary`, `source_snapshot`, `source_status` y blobs históricos. Guardar solo campos escalares o trazas mínimas salvo necesidad de auditoría.
 
 ## P2 — CSS y componentes
 
@@ -143,7 +109,7 @@ Antes de borrar cualquier elemento:
 1. **M01–M07 — completado.**
 2. **M08–M15 — completado.**
 3. **M16–M27 — completado.**
-4. **M28–M35 — siguiente bloque:** cerrar arquitectura Lifecycle.
-5. M36–M45: optimizar Neon y deuda visual.
+4. **M28–M35 — completado.**
+5. **M36–M45 — siguiente bloque:** optimizar Neon y deuda visual/técnica.
 
 El objetivo final es que exista **un solo camino por etapa**, una sola fuente de estado y ninguna operación masiva accidental desde el frontal.
