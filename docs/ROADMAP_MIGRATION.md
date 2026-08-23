@@ -7,81 +7,60 @@
 
 ### M01–M07 — COMPLETADO 23/08/2026
 
-El primer bloque P0 quedó migrado al modelo unitario:
-
 - **M01 — acciones masivas de `/calidad`:** retiradas. La portada es lectura/navegación de colas Lifecycle y no lanza trabajo pesado.
-- **M02 — `QualityRunAutoRefresh`:** eliminado junto con la necesidad de polling batch en Calidad.
-- **M03 — Series unitario:** creado `lib/series-unitary.js` y `app/calidad/series/actions.js`. `/calidad/series` procesa una única serie mediante `Crear referencia` o `Refrescar serie`, actualiza únicamente su referencia/episodios/disponibilidad, audita y recalcula Lifecycle.
-- **M04 — análisis masivo antiguo de películas:** retirado el disparador masivo y eliminado `lib/quality-v2.js`. La ruta operativa vigente es `validateMovieFile(imdbId)` por título y fingerprint.
-- **M05 — PikoQuality unitario:** el producto operativo usa `lib/pikoquality-unitary.js`; `lib/pikoquality.js` conserva primitivas de scoring todavía reutilizadas por código vigente.
-- **M06 — `/api/pikoquality/run`:** eliminado tras confirmar que pertenecía al runner batch antiguo.
-- **M07 — `PikoQualityRunner.js`:** eliminado tras confirmar que la pantalla actual usa `analyzeOnePikoQualityAction`.
+- **M02 — `QualityRunAutoRefresh`:** eliminado junto con el polling batch.
+- **M03 — Series unitario:** `lib/series-unitary.js` + acciones por serie.
+- **M04 — análisis masivo antiguo de películas:** retirado `lib/quality-v2.js`; la ruta vigente es `validateMovieFile(imdbId)` por título/fingerprint.
+- **M05 — PikoQuality unitario:** operativo mediante `lib/pikoquality-unitary.js`; `lib/pikoquality.js` conserva scoring compartido vigente.
+- **M06 — `/api/pikoquality/run`:** eliminado.
+- **M07 — `PikoQualityRunner.js`:** eliminado.
 
-Como parte del mismo ajuste, la portada ya cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_PENDING/REVIEW` como fase propia. Esto adelanta parte de M29/M30, que se volverán a auditar en su bloque antes de darlos por cerrados globalmente.
+La portada ya cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_PENDING/REVIEW` como fase propia. Esto adelanta parte de M29/M30.
 
 ## P1 — rutas y conceptos antiguos
 
 ### M08–M11 y M15 — COMPLETADO 23/08/2026
 
-- **M08 — `/plex`:** deja de tener consumidores internos. Se mantiene únicamente `app/plex/page.js` como redirect temporal de compatibilidad hacia `/novedades?source=plex`. Se eliminó `app/plex/plex-library.css`, ya huérfano.
-- **M09 — “Mi Biblioteca”:** auditado el código activo; no quedan textos funcionales con ese concepto. Plex se expresa como presencia física/origen dentro de Catálogo y Novedades.
-- **M10 — `PlexIntake.js` / `NovedadesPlexShell.js`:** ya no existen en el árbol activo ni tienen consumidores. No queda componente transitorio que retirar.
-- **M11 — Dashboard:** los enlaces `Plex fuera catálogo` y `títulos Plex por incorporar` apuntan directamente a `/novedades?source=plex`; eliminado `mode=uncatalogued` legacy.
-- **M15 — pilotos PikoQuality:** eliminados `app/calidad/pikoquality-pilot` y `app/admin/pikoquality-probe` con sus Server Actions. El diagnóstico operativo queda en las rutas Lifecycle reales y Admin.
+- **M08 — `/plex`:** sin consumidores internos; se mantiene solo como redirect temporal a `/novedades?source=plex`. CSS Plex huérfano eliminado.
+- **M09 — “Mi Biblioteca”:** no queda como concepto funcional activo.
+- **M10 — `PlexIntake.js` / `NovedadesPlexShell.js`:** ya no existen en el árbol activo.
+- **M11 — Dashboard:** enlaces Plex legacy sustituidos por `/novedades?source=plex`.
+- **M15 — pilotos PikoQuality:** eliminados `app/calidad/pikoquality-pilot` y `app/admin/pikoquality-probe`.
 
-El redirect `/plex` se conserva deliberadamente durante una etapa de compatibilidad; podrá eliminarse cuando se confirme que no existen marcadores/enlaces externos útiles que dependan de él.
+### M12–M14 — Documentación histórica — COMPLETADO 22/08/2026
+Se retiraron documentos V1/V2/V3 y pilotos obsoletos. `V3_CANONICAL_DATA.md` se sustituyó por `CANONICAL_DATA.md`. El histórico permanece recuperable mediante Git.
 
-### M12–M14. Documentación histórica — COMPLETADO 22/08/2026
-Se retiraron de la rama activa los documentos de versiones anteriores y pilotos obsoletos:
-- `V1_SCOPE.md`;
-- `NOVEDADES_V1_FUNCTIONAL.md`;
-- `NOVEDADES_V1_TECHNICAL.md`;
-- `V2_ACCEPTANCE_TESTS.md`;
-- `V3_IMPLEMENTATION_PLAN.md`;
-- `QUALITY_MOVIES_V3.md`;
-- `PikoQuality_B_PILOT.md`.
+## P1 — workflows, APIs y workers heredados
 
-`V3_CANONICAL_DATA.md` se sustituyó por `CANONICAL_DATA.md`, eliminando referencias de versión y conservando únicamente las reglas vigentes de países y géneros. El histórico completo permanece recuperable mediante Git.
+### M16–M27 — COMPLETADO 23/08/2026
 
-## P1 — workflows GitHub heredados
+Se auditó el árbol completo de GitHub Actions, `app/api` y `worker/` contra los consumidores reales del modelo Lifecycle.
 
-### M16. Retirar `identity-full-refresh.yml`
-El flujo objetivo de identidad es unitario. Mantener solo si existe un mantenimiento excepcional documentado; en caso contrario eliminar.
+**Retirado:**
+- **M16** `identity-full-refresh.yml` y su dispatcher `lib/identity-run-control.js`.
+- **M17** `identity-validation-refresh.yml`.
+- **M18** `identity-validation-recalculate.yml`.
+- **M19** `series-full-refresh.yml`.
+- **M20** `catalog-enrichment-test.yml` experimental.
+- **M21** `imdb-manual-candidate.yml`, duplicado por Novedades/Server Actions.
+- **M24** `app/api/identity/batch`.
+- **M25** `app/api/identity-validation/batch`.
+- **M26** `app/api/identity/run/[id]`, `wiki-batch` y `brave-probe`.
+- **M27** workers de identidad, validación, series y helpers FilmAffinity que solo servían a esos workflows.
 
-### M17. Retirar `identity-validation-refresh.yml`
-Mismo criterio: validación operativa unitaria.
+Tras la limpieza, `worker/` contiene únicamente:
+- `imdb-discovery.mjs` — fuente explícita de Discovery IMDb;
+- `update-imdb-ratings.mjs` — mantenimiento offline del dataset IMDb.
 
-### M18. Retirar `identity-validation-recalculate.yml`
-Era un recalculado masivo de cache. Sustituir por lifecycle/eventos y mantenimiento explícito si alguna vez se necesita.
+**Conservado deliberadamente:**
+- **M22** `imdb-ratings-refresh.yml`: mantenimiento offline manual del dataset IMDb; no es el flujo unitario de Datos.
+- `imdb-discovery.yml`: Discovery manual con cooldown y límites.
+- `manual-maintenance.yml`: comprobaciones acotadas y de solo lectura.
+- `ci.yml`: único workflow automático asociado a cambios de código.
 
-### M19. Retirar `series-full-refresh.yml`
-Después de M03, no debe quedar un proceso masivo normal de Series en GitHub. Confirmar que no existe consumidor excepcional necesario y retirar junto con su dispatcher/worker correspondiente.
+**M23:** verificado que los workflows operativos conservados son `workflow_dispatch`; no existe `schedule` ni ejecución masiva automática. CI sigue siendo el único workflow automático.
 
-### M20. Retirar `catalog-enrichment-test.yml`
-Workflow experimental con referencias históricas. No debe formar parte del set productivo.
-
-### M21. Revisar `imdb-manual-candidate.yml`
-El alta manual ya se procesa desde Novedades/Server Actions. Confirmar si todavía se despacha; borrar si está duplicado.
-
-### M22. Revisar `imdb-ratings-refresh.yml`
-Ratings se actualizan unitariamente desde Calidad → Datos. Conservar únicamente si se decide que el dataset IMDb necesita mantenimiento offline explícito.
-
-### M23. Mantener CI como único automático
-Verificar periódicamente que ningún workflow operativo tenga `schedule`, `push` masivo, encadenamientos o reintentos infinitos.
-
-## P1 — APIs y workers batch
-
-### M24. Auditar `app/api/identity/batch`
-Ruta heredada del análisis masivo. Borrar si ningún componente/worker la consume.
-
-### M25. Auditar `app/api/identity-validation/batch`
-Mismo objetivo para validación.
-
-### M26. Auditar `app/api/identity/run/[id]`, `wiki-batch` y `brave-probe`
-Separar herramientas de diagnóstico realmente útiles de infraestructura abandonada. Las probes no deberían permanecer expuestas sin necesidad.
-
-### M27. Auditar workers antiguos
-Revisar `worker/` para identificar enriquecimientos/series/identidad sustituidos por Server Actions unitarias. Mantener `imdb-discovery` y cualquier worker que siga siendo fuente explícita real.
+Las funciones Python productivas `api/fa-search.py` y `api/fa-evidence.py` **no son workers batch**: son endpoints unitarios usados por Identidad/Validación y se conservan.
 
 ## P1 — modelo de datos y lifecycle
 
@@ -95,7 +74,7 @@ Revisar `worker/` para identificar enriquecimientos/series/identidad sustituidos
 
 ### M30. Añadir explícitamente MOVIE_FILE_* a la portada
 **Situación:** ya aplicado en la portada durante M01.  
-**Acción pendiente del bloque:** confirmar consistencia con el resto de enlaces/contadores antes de marcar globalmente completado.
+**Acción:** confirmar consistencia con el resto de enlaces/contadores antes de marcar globalmente completado.
 
 ### M31. Revisar `TECH_REVIEW`
 **Situación:** existe estado para finding técnico heredado tipo `quality`, mientras PikoQuality unitario actualmente genera score y normalmente termina Complete.  
@@ -108,31 +87,30 @@ Todo `final_rating` viejo debe considerarse inválido hasta tener `pikoscore_ver
 No aceptar un score histórico como vigente solo por existir. Debe coincidir `formula_version` + `source_fingerprint`.
 
 ### M34. Consolidar `source_status` JSON legado
-**Situación:** hubo metadatos temporales en `source_status`, incluidos scores externos.  
-**Acción:** migrar valores útiles a columnas escalares y borrar claves ya sustituidas para ahorrar espacio y evitar dos fuentes de verdad.
+Migrar valores útiles a columnas escalares y borrar claves ya sustituidas para ahorrar espacio y evitar dos fuentes de verdad.
 
 ### M35. Revisar findings antiguos
-Ya se limpiaron alertas de película no pertenecientes a la fase actual. Añadir auditoría/migración definitiva para estados `waiting_sync`, `exception` o findings `quality` pre-lifecycle.
+Auditar/migrar definitivamente estados `waiting_sync`, `exception` o findings `quality` pre-Lifecycle.
 
 ## P2 — datos derivados y almacenamiento
 
 ### M36. Revisar `series_diagnostics`
-Ocupa espacio significativo y parece derivable. Determinar si se necesita histórico completo o solo diagnóstico actual. Diseñar retención/replace en vez de acumulación.
+Determinar si se necesita histórico completo o solo diagnóstico actual. Diseñar retención/replace en vez de acumulación.
 
 ### M37. Retención automática de `admin_events`
-Actualmente se podó manualmente a 1.000. Implementar mantenimiento seguro que conserve los últimos 1.000 sin crecimiento ilimitado.
+Conservar los últimos 1.000 salvo excepciones justificadas.
 
 ### M38. Retención automática de `pipeline_runs`
-Misma política inicial: últimos 1.000. Mantener fallos importantes más tiempo solo si aporta valor.
+Misma política inicial: últimos 1.000; fallos importantes solo si aportan valor.
 
 ### M39. Compactación/espacio físico
 Documentar cuándo usar `VACUUM`, `VACUUM FULL` o recreación de índices. No ejecutar compactación bloqueante automáticamente desde la web.
 
 ### M40. Auditoría de índices `movie_credits`
-La tabla e índices ocupan una parte grande de Neon. Revisar índices duplicados/no usados antes de borrar datos funcionales.
+Revisar índices duplicados/no usados antes de borrar datos funcionales.
 
 ### M41. Limitar snapshots de candidatos
-La limpieza de `source_snapshot` para candidatos `catalogued` ya se aplicó. Convertirlo en regla de cierre del candidato para impedir que vuelva a crecer.
+Convertir la limpieza de `source_snapshot` al cerrar candidatos en regla permanente.
 
 ### M42. Revisar payloads JSON grandes
 Buscar `raw`, `payload`, `summary`, `source_snapshot` y blobs históricos. Guardar solo campos escalares o trazas mínimas salvo necesidad de auditoría.
@@ -140,13 +118,13 @@ Buscar `raw`, `payload`, `summary`, `source_snapshot` y blobs históricos. Guard
 ## P2 — CSS y componentes
 
 ### M43. Inventario CSS V1/V2/V3
-Hay estilos globales y específicos creados por sucesivas reconstrucciones. Determinar qué selectores están realmente usados y consolidar.
+Determinar qué selectores están realmente usados y consolidar.
 
 ### M44. Eliminar layouts vacíos/transitorios
-Después de eliminar las tablas duplicadas de Películas/PikoQuality, revisar si los `layout.js` children-only son necesarios o se pueden borrar.
+Revisar `layout.js` children-only tras la eliminación de pantallas duplicadas.
 
 ### M45. Unificar componentes ActionButton/status/badges
-Eliminar variantes antiguas que hagan lo mismo con estilos diferentes.
+Eliminar variantes antiguas equivalentes.
 
 ## Criterios para ejecutar el roadmap
 
@@ -163,9 +141,9 @@ Antes de borrar cualquier elemento:
 ## Orden recomendado
 
 1. **M01–M07 — completado.**
-2. **M08–M15 — completado** (incluye M12–M14 documental).
-3. **M16–M27 — siguiente bloque:** reducir GitHub Actions/APIs/workers legacy y riesgo operativo.
-4. M28–M35: cerrar arquitectura lifecycle.
+2. **M08–M15 — completado.**
+3. **M16–M27 — completado.**
+4. **M28–M35 — siguiente bloque:** cerrar arquitectura Lifecycle.
 5. M36–M45: optimizar Neon y deuda visual.
 
 El objetivo final es que exista **un solo camino por etapa**, una sola fuente de estado y ninguna operación masiva accidental desde el frontal.
