@@ -61,6 +61,8 @@ Toda nueva funcionalidad, propuesta o cambio arquitectónico debe poder justific
 
 18. **Pruebas de aceptación ejecutadas siempre por el usuario.** ChatGPT no debe ejecutar por su cuenta acciones funcionales o visuales de aceptación sobre la aplicación en producción. Debe generar una batería ordenada, entregar las pruebas de una en una con pasos concretos y resultado esperado, recibir la respuesta del usuario, registrar cada resultado y decidir si procede continuar, diagnosticar o abrir/actualizar una issue. Las comprobaciones técnicas no funcionales necesarias para preparar o interpretar la prueba (commit desplegado, logs, BBDD, código, configuración) sí puede realizarlas ChatGPT.
 
+19. **Eficiencia y coste de infraestructura.** PikoFilm debe ser eficiente por diseño. PostgreSQL/Neon debe realizar filtrados, agregaciones, conteos y cálculos cerca de los datos y devolver a la aplicación únicamente la información necesaria. Evitar transferencias masivas de filas para procesarlas en Node/Vercel, `SELECT *` innecesarios, lecturas completas sin paginación, almacenamiento duplicado o regenerable sin política de retención e índices sin utilidad demostrable. Antes de crear nuevas tablas, snapshots, históricos o índices debe justificarse su valor y coste. La optimización económica nunca debe sacrificar información editorial valiosa, integridad funcional ni trazabilidad necesaria. La política técnica detallada está en `docs/INFRASTRUCTURE_EFFICIENCY.md`.
+
 ## Regla de cierre de sesión
 
 Antes de terminar una sesión significativa de PikoFilm, actualizar obligatoriamente `PROJECT_STATUS.md`. Si durante la sesión cambió funcionalidad o arquitectura, actualizar también los documentos funcional y técnico antes de considerar el trabajo entregado.
