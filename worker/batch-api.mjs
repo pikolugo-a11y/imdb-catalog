@@ -1,6 +1,7 @@
 import {neon} from '@neondatabase/serverless';
 import {lifecycleAfterDataRefresh} from '../lib/lifecycle-data-stage.mjs';
 import {probePlexCore,syncPlexFastCore} from '../lib/plex-sync-core.mjs';
+import {lookupWikidataByImdb,chooseWikidataTmdb} from '../lib/wikidata-source.mjs';
 
 const DATABASE_URL=process.env.DATABASE_URL;
 const TMDB_API_TOKEN=process.env.TMDB_API_TOKEN;
@@ -13,7 +14,7 @@ const sql=neon(DATABASE_URL);
 const WORKER_ID=String(process.env.BATCH_API_WORKER_ID||`api-${process.pid}`).slice(0,80);
 const POLL_MS=Math.max(2000,Number(process.env.BATCH_POLL_MS)||5000);
 const LEASE_SECONDS=Math.max(30,Math.min(300,Number(process.env.BATCH_LEASE_SECONDS)||120));
-const API_SOURCES=['tmdb','omdb','plex'];
+const API_SOURCES=['tmdb','omdb','plex','wikidata'];
 let stopping=false;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const text=e=>String(e?.message||e||'Error desconocido').slice(0,1000);
@@ -45,6 +46,8 @@ async function leaseOne(){
         AND COALESCE(r.limits->>'source','')=ANY(${ready.sources}::text[])
         AND (
           (COALESCE(r.limits->>'source','') IN ('tmdb','omdb') AND q.stage='DATA_INCOMPLETE' AND EXISTS(SELECT 1 FROM catalog_lifecycle cl WHERE cl.imdb_id=q.entity_id AND cl.lifecycle_state='DATA_INCOMPLETE'))
+          OR
+          (COALESCE(r.limits->>'source','')='wikidata' AND q.stage='IDENTITY_VALIDATION' AND EXISTS(SELECT 1 FROM catalog_lifecycle cl WHERE cl.imdb_id=q.entity_id AND cl.lifecycle_state='IDENTITY_VALIDATION'))
           OR
           (COALESCE(r.limits->>'source','')='plex' AND r.mode='maintenance' AND q.stage='PLEX_SYNC')
         )
@@ -88,10 +91,24 @@ async function executePlexFull(job){
 }
 async function executePlex(job){return job.entity_id==='plex-full-sync'?executePlexFull(job):executePlexProbe();}
 
+async function executeWikidata(job){
+  const[row]=await sql`SELECT m.imdb_id,m.type,m.tmdb_id,iv.tmdb_id iv_tmdb,cl.lifecycle_state FROM movies m JOIN catalog_lifecycle cl USING(imdb_id) LEFT JOIN identity_validation iv USING(imdb_id) WHERE m.imdb_id=${job.entity_id}`;
+  if(!row)throw Object.assign(new Error('Título no encontrado para Wikidata'),{permanent:true});
+  if(row.lifecycle_state!=='IDENTITY_VALIDATION')throw Object.assign(new Error(`Lifecycle no permite Wikidata: ${row.lifecycle_state}`),{permanent:true});
+  const hit=await lookupWikidataByImdb(job.entity_id);
+  const expected=String(row.iv_tmdb||row.tmdb_id||'').trim()||null;
+  const wikidataTmdb=chooseWikidataTmdb(hit,row.type);
+  const tmdbMatch=expected&&wikidataTmdb?expected===wikidataTmdb:null;
+  const evidence={found:Boolean(hit.found),qid:hit.qid||null,label:hit.label||null,imdb_id:job.entity_id,tmdb_id:wikidataTmdb,expected_tmdb_id:expected,tmdb_match:tmdbMatch,checked_at:new Date().toISOString()};
+  await sql`UPDATE movies SET source_status=COALESCE(source_status,'{}'::jsonb)||jsonb_build_object('wikidata',${JSON.stringify(evidence)}::jsonb),source_generated_at=now(),synced_at=now() WHERE imdb_id=${job.entity_id}`;
+  await sql`UPDATE identity_validation SET validation_details=COALESCE(validation_details,'{}'::jsonb)||jsonb_build_object('wikidata',${JSON.stringify(evidence)}::jsonb),updated_at=now() WHERE imdb_id=${job.entity_id}`;
+  return{source:'wikidata',...evidence,lifecycle_state:row.lifecycle_state};
+}
+
 async function reconcileDataStage(imdbId){const[r]=await sql`SELECT m.imdb_id,m.type,m.title_es,m.original_title,m.year,m.runtime,m.country,m.imdb_rating,m.imdb_votes,m.fa_rating,m.fa_votes,m.tmdb_rating,m.tmdb_votes,m.poster_path,mm.overview,COALESCE(m.source_status #>> '{data_quality_external_poster,url}','') external_poster_url,EXISTS(SELECT 1 FROM movie_genres g WHERE g.imdb_id=m.imdb_id) has_genres FROM movies m LEFT JOIN movie_metadata mm USING(imdb_id) WHERE m.imdb_id=${imdbId}`;if(!r)throw new Error('Título no encontrado al reconciliar Lifecycle');const next=lifecycleAfterDataRefresh(r);const[saved]=await sql`UPDATE catalog_lifecycle SET previous_state=CASE WHEN lifecycle_state<>${next.state} THEN lifecycle_state ELSE previous_state END,lifecycle_state=${next.state},blocking_reason=${next.reason},state_changed_at=CASE WHEN lifecycle_state<>${next.state} THEN now() ELSE state_changed_at END,computed_at=now() WHERE imdb_id=${imdbId} RETURNING lifecycle_state`;return saved?.lifecycle_state||next.state;}
 async function executeTmdb(job){const[row]=await sql`SELECT imdb_id,type,title,title_es,year,tmdb_id,source_status FROM movies WHERE imdb_id=${job.entity_id}`;if(!row)throw Object.assign(new Error('Título no encontrado'),{permanent:true});const d=await fetchTmdb(row);await sql`UPDATE movies SET tmdb_id=${d.id},tmdb_rating=${d.rating},tmdb_votes=${d.votes},tmdb_url=${`https://www.themoviedb.org/${d.kind}/${d.id}`},title_es=COALESCE(title_es,${d.title}),original_title=COALESCE(original_title,${d.original_title}),year=COALESCE(year,${d.year}),runtime=COALESCE(runtime,${d.runtime}),country=COALESCE(country,${d.country}),poster_path=COALESCE(${d.poster},poster_path),backdrop_path=COALESCE(${d.backdrop},backdrop_path),artwork_synced_at=now(),artwork_source='tmdb',source_status=COALESCE(source_status,'{}'::jsonb)||jsonb_build_object('tmdb','ok','tmdb_batch_at',now()),source_generated_at=now(),synced_at=now() WHERE imdb_id=${job.entity_id}`;await sql`INSERT INTO movie_metadata(imdb_id,overview,original_language,release_date,metadata_enriched_at,metadata_source) VALUES(${job.entity_id},${d.overview},${d.language},${d.release_date||null},now(),'tmdb') ON CONFLICT(imdb_id) DO UPDATE SET overview=COALESCE(EXCLUDED.overview,movie_metadata.overview),original_language=COALESCE(EXCLUDED.original_language,movie_metadata.original_language),release_date=COALESCE(EXCLUDED.release_date,movie_metadata.release_date),metadata_enriched_at=now(),metadata_source='tmdb'`;const lifecycle_state=await reconcileDataStage(job.entity_id);return{source:'tmdb',tmdb_id:d.id,media_type:d.kind,rating:d.rating,votes:d.votes,lifecycle_state};}
 async function executeOmdb(job){const[row]=await sql`SELECT imdb_id FROM movies WHERE imdb_id=${job.entity_id}`;if(!row)throw Object.assign(new Error('Título no encontrado'),{permanent:true});const d=await fetchOmdb(job.entity_id);await sql`UPDATE movies SET imdb_rating=${d.rating},imdb_votes=${d.votes},rotten_tomatoes_score=COALESCE(${d.rotten_tomatoes},rotten_tomatoes_score),metacritic_score=COALESCE(${d.metacritic},metacritic_score),source_status=COALESCE(source_status,'{}'::jsonb)||jsonb_build_object('omdb','ok','omdb_batch_at',now()),source_generated_at=now(),synced_at=now() WHERE imdb_id=${job.entity_id}`;const lifecycle_state=await reconcileDataStage(job.entity_id);return{source:'omdb',imdb_rating:d.rating,imdb_votes:d.votes,rotten_tomatoes:d.rotten_tomatoes,metacritic:d.metacritic,lifecycle_state};}
-async function execute(job){if(job.source==='tmdb')return executeTmdb(job);if(job.source==='omdb')return executeOmdb(job);if(job.source==='plex')return executePlex(job);throw Object.assign(new Error(`Fuente API no soportada: ${job.source}`),{permanent:true});}
+async function execute(job){if(job.source==='tmdb')return executeTmdb(job);if(job.source==='omdb')return executeOmdb(job);if(job.source==='plex')return executePlex(job);if(job.source==='wikidata')return executeWikidata(job);throw Object.assign(new Error(`Fuente API no soportada: ${job.source}`),{permanent:true});}
 async function finish(job,result){await markSourceSuccess(job.source);await sql`UPDATE batch_jobs SET status='done',result_summary=${JSON.stringify(result)}::jsonb,error_class=NULL,error_message=NULL,finished_at=now(),leased_until=NULL,updated_at=now() WHERE id=${job.id} AND worker_id=${WORKER_ID}`;const[c]=await sql`SELECT count(*) FILTER(WHERE status IN('queued','retry_wait','leased','running'))::int pending FROM batch_jobs WHERE run_id=${job.run_id}`;if(Number(c?.pending||0)===0)await sql`UPDATE batch_runs SET status='completed',finished_at=now(),updated_at=now() WHERE id=${job.run_id} AND status IN('queued','running')`;}
 async function fail(job,error){await markSourceFailure(job.source,error).catch(()=>{});const permanent=Boolean(error?.permanent)||[401,403].includes(Number(error?.status||0)),retry=!permanent&&Number(job.attempt||1)<3;await sql`UPDATE batch_jobs SET status=${retry?'retry_wait':'failed'},error_class=${error?.name||'Error'},error_message=${text(error)},available_at=CASE WHEN ${retry} THEN now()+((30*power(2,GREATEST(0,${Number(job.attempt||1)}-1)))||' seconds')::interval ELSE available_at END,leased_until=NULL,worker_id=NULL,finished_at=CASE WHEN ${retry} THEN NULL ELSE now() END,updated_at=now() WHERE id=${job.id}`;}
 
