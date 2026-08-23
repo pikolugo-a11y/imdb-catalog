@@ -3,4 +3,4 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY worker ./worker
-ENTRYPOINT ["node","worker/batch-api.mjs"]
+ENTRYPOINT ["node","worker/entrypoint.mjs"]
