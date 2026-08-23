@@ -25,6 +25,7 @@ PikoFilm **no sustituye a Plex como reproductor ni como gestor de consumo**. No 
 10. **Toda operación relevante deja traza en Admin.**
 11. **Los despliegues a producción son manuales.** El usuario decide cuándo desplegar y realiza la aceptación funcional/visual.
 12. **La portada de Calidad es navegación, no ejecución.** Abrirla o usarla no lanza procesos masivos; el trabajo se inicia dentro de la cola y sobre un único título.
+13. **Lifecycle es materializado.** Las escrituras relevantes actualizan el estado; las pantallas lo leen y no recalculan por antigüedad al renderizar.
 
 ## 3. Universos de datos
 
@@ -68,9 +69,10 @@ Identidad validada, referencia de series, validación física, PikoQuality, saga
 | `SERIES_SYNC_PENDING` | serie en Plex sin referencia oficial de episodios | Calidad → Series |
 | `SERIES_REVIEW` | serie con faltantes, extras o disponibilidad por confirmar | Calidad → Series |
 | `TECH_PENDING` | PikoQuality pendiente para archivo/episodios actuales | Calidad → PikoQuality / rama Series |
-| `TECH_REVIEW` | incidencia técnica pendiente de decisión | Calidad → Películas |
 | `COMPLETE` | no queda trabajo aplicable | Catálogo |
 | `EXCLUDED` | fuera del flujo por decisión del usuario | Catálogo → Excluidas |
+
+PikoQuality es una valoración técnica. Un score bajo no genera por sí mismo una revisión funcional adicional: si el análisis existe con fórmula/fingerprint actuales, la fase técnica está resuelta. Las incidencias accionables del archivo se deciden antes, en `MOVIE_FILE_REVIEW`.
 
 ### 4.1 Orden de evaluación
 
@@ -119,7 +121,7 @@ Retirar un candidato manual no equivale a excluirlo.
 
 ### 5.5 Restauración de una exclusión
 
-Una exclusión puede restaurarse. Si el título todavía existe en Catálogo se reactiva allí; si era solo un candidato, vuelve a Novedades. La restauración es explícita.
+Una exclusión puede restaurarse. Si el título todavía existe en Catálogo se reactiva allí; si era solo un candidato, vuelve a Novedades. La restauración es explícita y recalcula el lifecycle del título restaurado.
 
 ## 6. Pantallas
 
@@ -169,11 +171,11 @@ Estados de presencia independientes del lifecycle:
 - `En proceso`;
 - `Falta`.
 
-Las acciones de adquisición no deben confundirse con el lifecycle de calidad.
+Las acciones de adquisición no deben confundirse con el lifecycle de calidad. Un `final_rating` histórico sin versión/fecha PikoScore 2.0 no se considera PikoScore vigente en las superficies canónicas.
 
 ## 6.5 Ficha de película `/catalogo/[imdbId]`
 
-Presenta datos editoriales, sinopsis, reparto/equipo, IDs, PikoScore y ratings. Permite actualizar datos, editar identidad y acciones editoriales permitidas.
+Presenta datos editoriales, sinopsis, reparto/equipo, IDs, PikoScore vigente y ratings. Permite actualizar datos, editar identidad y acciones editoriales permitidas.
 
 La ficha no debe recalcular masivamente nada al abrirse.
 
@@ -279,6 +281,8 @@ Se calcula a partir de volumen de votos y consenso entre fuentes. Se almacena po
 
 `ratings_refreshed_at` y `pikoscore_calculated_at` son independientes. Un cambio de fórmula puede obligar a recalcular PikoScore sin volver a consultar Internet si los ratings siguen frescos.
 
+Un score anterior sin `pikoscore_version='2.0.0'` y `pikoscore_calculated_at` puede conservarse físicamente como dato legado hasta su recálculo, pero funcionalmente está pendiente y no es el PikoScore canónico.
+
 ## 8. Rama de película con archivo físico
 
 Después de PikoScore, si no está en Plex → `COMPLETE`.
@@ -314,7 +318,7 @@ Solo una película ya validada puede entrar como `TECH_PENDING`.
 - guarda score + banda + versión + fingerprint;
 - recalcula lifecycle en la misma operación.
 
-Si todo está correcto, pasa directamente a `COMPLETE`. No existe botón adicional de confirmación.
+Si el análisis queda vigente para el fingerprint actual, pasa directamente a `COMPLETE`. No existe botón adicional de confirmación ni fase `TECH_REVIEW` basada únicamente en la nota técnica.
 
 Si el archivo cambia, el PikoQuality anterior queda obsoleto porque su fingerprint ya no coincide.
 
@@ -345,7 +349,7 @@ Un episodio ausente no se considera automáticamente “faltante” si no se sab
 ### 9.3 Detalle `/calidad/series/[ratingKey]`
 Permite navegar por temporada, filtrar estados y marcar manualmente disponibilidad de temporada en España. Muestra PikoScore, PikoQuality agregada y cobertura Plex.
 
-La rama operativa de Series ya es unitaria. Los workflows/workers masivos antiguos que aún existan en el repositorio son legado técnico pendiente de retirada y no constituyen el flujo funcional normal.
+La rama operativa de Series es unitaria y los antiguos workflows/workers masivos fueron retirados.
 
 ## 10. Sagas
 
@@ -377,6 +381,7 @@ Reglas:
 - no reaparece por discovery o Plex mientras siga excluida;
 - se puede restaurar;
 - excluir desde la ficha no elimina el archivo físico;
+- excluir/restaurar recalcula el estado materializado;
 - las acciones quedan auditadas.
 
 ## 14. Cambios de identidad
@@ -385,7 +390,8 @@ Editar IMDb/TMDb/FA es una operación de alto impacto:
 - invalida evidencia derivada de los IDs modificados;
 - obliga a volver a Validación de Identidad;
 - puede invalidar referencia de series;
-- los cálculos derivados deben reconstruirse usando la nueva identidad.
+- los cálculos derivados deben reconstruirse usando la nueva identidad;
+- recalcula el estado materializado del título.
 
 Los IDs confirmados manualmente no deben sobrescribirse silenciosamente.
 
