@@ -2,5 +2,6 @@ FROM node:20-slim
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
+COPY lib/lifecycle-data-stage.mjs ./lib/lifecycle-data-stage.mjs
 COPY worker ./worker
 ENTRYPOINT ["node","worker/entrypoint.mjs"]
