@@ -58,6 +58,26 @@ Se conservan deliberadamente:
 
 Durante este bloque también se retiraron restos internos huérfanos detectados: `identity-validation-run-control.js`, `pikoquality-b-probe.js` y `pikoquality-pilot.js`.
 
+## P0 estratégico — automatización masiva segura
+
+### M46 — Batch Engine / Autopilot Lifecycle — DISEÑO APROBADO 23/08/2026
+
+Lifecycle unitario se mantiene como unidad canónica de trabajo, pero deja de interpretarse como prohibición de automatización masiva. El objetivo es poder procesar grandes backlogs mediante muchas operaciones unitarias, idempotentes y reanudables, sin mantener requests largos de Vercel ni usar GitHub Actions como infraestructura batch continua.
+
+Arquitectura completa: `docs/BATCH_AUTOPILOT_ARCHITECTURE.md`.
+
+Subfases:
+- **M46-A — Control y cola:** `batch_runs`, `batch_jobs`, leases, checkpoints, pausa/cancelación y Admin; sin tráfico externo todavía.
+- **M46-B — FAST worker:** PikoScore, Lifecycle, diagnósticos y agregados locales seguros.
+- **M46-C — API worker:** TMDb/Wikidata/OMDb/Plex con rate limits, presupuestos y circuit breaker.
+- **M46-D — CAUTIOUS worker:** FilmAffinity/fallback web con concurrencia 1, jitter, backoff fuerte y presupuesto diario.
+- **M46-E — Autopilot:** encadenar fases según Lifecycle y detenerse automáticamente ante Review/Excluded/error persistente.
+- **M46-F — tareas offline:** evaluar migrar Discovery IMDb y ratings dataset fuera de GitHub Actions al worker común.
+
+Decisión pendiente antes de M46-B: seleccionar host del worker dedicado. Vercel queda como control plane y GitHub como CI/tareas manuales acotadas; ninguno será el motor batch continuo.
+
+Protecciones obligatorias: idempotencia, concurrencia limitada, rate limit por fuente, backoff, circuit breaker, presupuestos, kill switch, checkpoints, leases y métricas. Un estado `*_REVIEW*` nunca se autoacepta.
+
 ## P2 — datos derivados y almacenamiento
 
 ### M36. Revisar `series_diagnostics`
@@ -104,12 +124,22 @@ Antes de borrar cualquier elemento:
 7. deployment manual cuando el usuario decida;
 8. prueba de regresión del flujo completo.
 
+Para cualquier automatización M46 además:
+1. probar primero con lote pequeño;
+2. demostrar idempotencia/reanudación;
+3. demostrar pausa y circuit breaker;
+4. medir tráfico por fuente;
+5. ampliar límites solo con métricas estables.
+
 ## Orden recomendado
 
 1. **M01–M07 — completado.**
 2. **M08–M15 — completado.**
 3. **M16–M27 — completado.**
 4. **M28–M35 — completado.**
-5. **M36–M45 — siguiente bloque:** optimizar Neon y deuda visual/técnica.
+5. **M46-A — siguiente bloque:** construir control/cola y panel sin ejecutar todavía scraping o APIs masivas.
+6. seleccionar runtime del worker antes de M46-B.
+7. M46-B/C/D/E de forma incremental y con pilotos.
+8. M36–M45: optimizar Neon y deuda visual/técnica, pudiendo intercalarse con M46 cuando no interfiera.
 
-El objetivo final es que exista **un solo camino por etapa**, una sola fuente de estado y ninguna operación masiva accidental desde el frontal.
+El objetivo final es que exista **un solo camino por etapa**, una sola fuente de estado y automatización masiva segura construida sobre operaciones unitarias, nunca procesos masivos accidentales desde el frontal.
