@@ -2,56 +2,34 @@ from http.server import BaseHTTPRequestHandler
 import hashlib, json, os, re, time, unicodedata
 import python_filmaffinity
 
+MIN_ACCEPT_SCORE = 45
 
 def norm(value):
     s = unicodedata.normalize('NFD', str(value or ''))
     s = ''.join(ch for ch in s if unicodedata.category(ch) != 'Mn').lower()
     return re.sub(r'[^a-z0-9]+', ' ', s).strip()
 
-
 def as_year(value):
-    try:
-        return int(value)
-    except Exception:
-        return None
-
+    try: return int(value)
+    except Exception: return None
 
 def title_score(candidate, requested):
-    c = norm(candidate)
-    r = norm(requested)
-    if not c or not r:
-        return 0
-    if c == r:
-        return 70
-    if c.startswith(r) or r.startswith(c):
-        return 56
-    if r in c or c in r:
-        return 44
+    c, r = norm(candidate), norm(requested)
+    if not c or not r: return 0
+    if c == r: return 70
+    if c.startswith(r) or r.startswith(c): return 56
+    if r in c or c in r: return 44
     ct, rt = set(c.split()), set(r.split())
-    if not ct or not rt:
-        return 0
-    overlap = len(ct & rt) / max(len(ct), len(rt))
-    return int(round(overlap * 40))
+    if not ct or not rt: return 0
+    return int(round((len(ct & rt) / max(len(ct), len(rt))) * 40))
 
-
-def candidate_score(movie, titles, year):
-    cand_titles = [movie.get('title'), movie.get('original_title')]
-    tscore = 0
-    for wanted in titles:
-        for candidate in cand_titles:
-            tscore = max(tscore, title_score(candidate, wanted))
-    cy = as_year(movie.get('year'))
-    yscore = 0
+def score(movie, titles, year):
+    t = max([title_score(c, w) for w in titles for c in [movie.get('title'), movie.get('original_title')]] or [0])
+    cy = as_year(movie.get('year')); y = 0
     if year and cy:
-        diff = abs(cy - year)
-        if diff == 0:
-            yscore = 30
-        elif diff == 1:
-            yscore = 14
-        else:
-            yscore = -25
-    return tscore + yscore
-
+        d = abs(cy - year)
+        y = 30 if d == 0 else 14 if d == 1 else -25
+    return t + y
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -64,64 +42,50 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             return self._send(400, {'ok': False, 'error': 'invalid_json'})
 
-        raw_titles = [payload.get('original_title'), payload.get('title_es'), payload.get('title')]
         titles = []
-        for value in raw_titles:
+        for value in [payload.get('original_title'), payload.get('title_es'), payload.get('title')]:
             value = str(value or '').strip()
-            if value and norm(value) not in [norm(x) for x in titles]:
-                titles.append(value)
+            if value and norm(value) not in [norm(x) for x in titles]: titles.append(value)
         titles = titles[:2]
         year = as_year(payload.get('year'))
-        if not titles:
-            return self._send(400, {'ok': False, 'error': 'missing_title'})
+        if not titles: return self._send(400, {'ok': False, 'error': 'missing_title'})
 
         started = time.perf_counter()
         try:
             service = python_filmaffinity.FilmAffinity(lang='es', cache_backend='memory')
-            found = {}
-            queries = []
+            found = {}; queries = []
             for title in titles:
                 kwargs = {'title': title}
                 if year:
-                    kwargs['from_year'] = str(year - 1)
-                    kwargs['to_year'] = str(year + 1)
+                    kwargs['from_year'] = str(year - 1); kwargs['to_year'] = str(year + 1)
                 queries.append({'title': title, 'from_year': kwargs.get('from_year'), 'to_year': kwargs.get('to_year')})
                 rows = service.search(**kwargs) or []
                 for movie in rows[:12]:
                     fa_id = str(movie.get('id') or '').strip()
-                    if fa_id.isdigit():
-                        old = found.get(fa_id)
-                        score = candidate_score(movie, titles, year)
-                        item = {'id': fa_id, 'title': movie.get('title'), 'original_title': movie.get('original_title'), 'year': as_year(movie.get('year')), 'score': score}
-                        if old is None or score > old['score']:
-                            found[fa_id] = item
-                if found:
-                    ranked_now = sorted(found.values(), key=lambda x: x['score'], reverse=True)
-                    if ranked_now[0]['score'] >= 100:
-                        break
+                    if not fa_id.isdigit(): continue
+                    sc = score(movie, titles, year)
+                    cand = {'id': fa_id, 'title': movie.get('title'), 'original_title': movie.get('original_title'), 'year': as_year(movie.get('year')), 'score': sc}
+                    if fa_id not in found or sc > found[fa_id]['score']: found[fa_id] = cand
+                if found and max(x['score'] for x in found.values()) >= 100: break
 
             ranked = sorted(found.values(), key=lambda x: x['score'], reverse=True)
             if not ranked:
                 return self._send(200, {'ok': True, 'status': 'not_found', 'fa_id': None, 'confidence': 0, 'queries': queries, 'candidates': [], 'elapsed_s': round(time.perf_counter() - started, 3)})
 
-            best = ranked[0]
-            second_score = ranked[1]['score'] if len(ranked) > 1 else 0
-            margin = best['score'] - second_score
-            if best['score'] < 92 or (len(ranked) > 1 and margin < 12):
-                return self._send(200, {'ok': True, 'status': 'ambiguous', 'fa_id': None, 'confidence': best['score'], 'margin': margin, 'queries': queries, 'candidates': ranked[:5], 'elapsed_s': round(time.perf_counter() - started, 3)})
+            best = ranked[0]; second = ranked[1]['score'] if len(ranked) > 1 else 0; margin = best['score'] - second
+            if best['score'] < MIN_ACCEPT_SCORE:
+                return self._send(200, {'ok': True, 'status': 'ambiguous', 'fa_id': None, 'best_fa_id': best['id'], 'confidence': best['score'], 'margin': margin, 'candidates': ranked[:5], 'queries': queries, 'elapsed_s': round(time.perf_counter() - started, 3)})
 
             verified = service.get_movie(id=best['id'])
-            if not isinstance(verified, dict) or not verified:
-                raise RuntimeError('No se pudo verificar el candidato')
-            verify_score = candidate_score(verified, titles, year)
-            vy = as_year(verified.get('year'))
-            if verify_score < 92 or (year and vy and abs(vy - year) > 1):
-                return self._send(200, {'ok': True, 'status': 'ambiguous', 'fa_id': None, 'confidence': verify_score, 'margin': margin, 'queries': queries, 'candidates': ranked[:5], 'verified': {'id': best['id'], 'title': verified.get('title'), 'original_title': verified.get('original_title'), 'year': vy}, 'elapsed_s': round(time.perf_counter() - started, 3)})
+            vscore = score(verified, titles, year) if isinstance(verified, dict) else 0
+            vy = as_year(verified.get('year')) if isinstance(verified, dict) else None
+            if not isinstance(verified, dict) or vscore < MIN_ACCEPT_SCORE or (year and vy and abs(vy - year) > 1):
+                return self._send(200, {'ok': True, 'status': 'ambiguous', 'fa_id': None, 'best_fa_id': best['id'], 'confidence': vscore, 'margin': margin, 'candidates': ranked[:5], 'queries': queries, 'verified': {'id': best['id'], 'title': verified.get('title') if isinstance(verified, dict) else None, 'original_title': verified.get('original_title') if isinstance(verified, dict) else None, 'year': vy}, 'elapsed_s': round(time.perf_counter() - started, 3)})
 
-            return self._send(200, {'ok': True, 'status': 'exact' if verify_score >= 100 else 'high', 'fa_id': best['id'], 'confidence': verify_score, 'margin': margin, 'queries': queries, 'candidates': ranked[:5], 'verified': {'id': best['id'], 'title': verified.get('title'), 'original_title': verified.get('original_title'), 'year': vy}, 'elapsed_s': round(time.perf_counter() - started, 3)})
+            status = 'exact' if vscore >= 100 else 'high' if vscore >= 70 else 'probable'
+            return self._send(200, {'ok': True, 'status': status, 'fa_id': best['id'], 'confidence': vscore, 'margin': margin, 'candidates': ranked[:5], 'queries': queries, 'verified': {'id': best['id'], 'title': verified.get('title'), 'original_title': verified.get('original_title'), 'year': vy}, 'elapsed_s': round(time.perf_counter() - started, 3)})
         except Exception as exc:
-            message = str(exc)
-            low = message.lower()
+            message = str(exc); low = message.lower()
             blocked = any(x in low for x in ['429', '403', 'too many requests', 'captcha', 'blocked'])
             return self._send(502, {'ok': False, 'status': 'blocked' if blocked else 'error', 'fa_id': None, 'error': message[:300], 'elapsed_s': round(time.perf_counter() - started, 3)})
 
