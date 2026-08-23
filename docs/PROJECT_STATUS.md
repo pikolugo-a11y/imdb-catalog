@@ -5,7 +5,7 @@
 ## Estado registrado
 
 **Fecha:** 23/08/2026 (Europe/Madrid)  
-**Fase:** arquitectura Lifecycle consolidada; migración M01–M27 completada  
+**Fase:** arquitectura Lifecycle materializada; migración M01–M35 completada  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama productiva preparada:** `main`
 
@@ -37,33 +37,37 @@
 ### Serie con Plex
 `PikoScore → SERIES_SYNC_PENDING → SERIES_REVIEW si procede → TECH_PENDING → COMPLETE`
 
+No existe `TECH_REVIEW`: PikoQuality bajo no constituye por sí solo una incidencia funcional.
+
 ## Hitos cerrados / implementados
 
 1. Lifecycle materializado en `catalog_lifecycle`.
 2. Catálogo muestra la fase de cada título y es la base de consulta única.
 3. Novedades unifica Discovery, Plex y Manual.
 4. `/plex` queda solo como redirect temporal a Novedades origen Plex.
-5. Identidad y Validación de identidad son unitarias.
+5. Identidad, Validación de identidad, Datos, Películas, PikoQuality y Series son unitarios en su operación normal.
 6. Identidad ya no usa GitHub Actions/polling; FA usa el resolver Python productivo.
-7. Datos separa actualización, ratings y PikoScore.
-8. PikoScore 2.0 implantado.
-9. Validación de archivo de película se vincula al fingerprint actual.
-10. PikoQuality y Series operan unitariamente.
-11. `/calidad` es mapa de colas Lifecycle y no lanza acciones masivas.
-12. Retirados runners/batches PikoQuality y validación de películas antiguos.
-13. Dashboard enlaza Plex pendiente directamente a Novedades.
-14. Eliminados pilotos y CSS/rutas Plex huérfanas.
-15. Documentación histórica activa retirada y `CANONICAL_DATA.md` consolidado.
-16. `PROJECT_RULES.md` incorpora propósito, merge siempre/deployment nunca y eficiencia/coste.
-17. `INFRASTRUCTURE_EFFICIENCY.md` fija la política técnica Neon/Vercel.
-18. **M16–M21:** retirados workflows de identidad, validación, series, prueba de enriquecimiento y candidato manual.
-19. **M22:** se conserva `imdb-ratings-refresh.yml` como mantenimiento offline manual del dataset IMDb.
-20. **M23:** CI es el único workflow automático; Discovery, ratings y mantenimiento son únicamente `workflow_dispatch`.
-21. **M24–M26:** eliminadas APIs batch/probes antiguas de identidad y validación.
-22. **M27:** `worker/` queda reducido a `imdb-discovery.mjs` y `update-imdb-ratings.mjs`, las dos fuentes offline reales que siguen vigentes.
-23. `api/fa-search.py` y `api/fa-evidence.py` se conservan como endpoints Python unitarios productivos, no como workers batch.
+7. PikoScore 2.0 implantado y separado de actualización de ratings.
+8. Validación/PikoQuality física se vinculan al fingerprint actual.
+9. `/calidad` es mapa de colas Lifecycle y no lanza acciones masivas.
+10. Retirados runners/batches/workflows/workers antiguos de identidad, validación, películas, PikoQuality y Series.
+11. CI es el único workflow automático; Discovery, ratings offline y mantenimiento son manuales.
+12. `worker/` queda reducido a `imdb-discovery.mjs` y `update-imdb-ratings.mjs`.
+13. `api/fa-search.py` y `api/fa-evidence.py` son endpoints Python unitarios productivos.
+14. **M28:** `getLifecycleForIds()` es estrictamente lectura del snapshot; ya no recalcula por antigüedad. Las mutaciones relevantes recalculan estado explícitamente. Sync Plex reconcilia solo estados físicamente sensibles, en lotes.
+15. **M29/M30:** Calidad cuenta `PIKOSCORE_PENDING` dentro de Datos y representa explícitamente `MOVIE_FILE_PENDING/REVIEW`.
+16. **M31:** retirado `TECH_REVIEW`.
+17. **M32:** PikoScore legado sin versión/fecha actual se considera no vigente. Auditoría: 20.444/20.446 scores existentes eran pre-2.0/no vigentes; se conservan físicamente hasta recálculo, sin tratarlos como score canónico en Catálogo.
+18. **M33:** PikoQuality exige fórmula + fingerprint actuales. Auditoría: 63.834 evaluados, 0 evaluados sin fórmula/fingerprint.
+19. **M34:** `source_status` es auxiliar/transitorio, no fuente canónica. La poda física segura queda integrada en M42.
+20. **M35:** `movie_quality_findings` estaba vacío al auditar; no quedan findings pre-Lifecycle que migrar.
+21. Retirados restos internos huérfanos: `identity-validation-run-control.js`, `pikoquality-b-probe.js`, `pikoquality-pilot.js`.
+22. Especificaciones funcional y técnica actualizadas con el Lifecycle materializado definitivo.
+23. Documentación histórica activa retirada y `CANONICAL_DATA.md` consolidado.
+24. `PROJECT_RULES.md` incorpora propósito, merge siempre/deployment nunca y eficiencia/coste.
+25. `INFRASTRUCTURE_EFFICIENCY.md` fija la política técnica Neon/Vercel.
 
-## Flujo de regresión probado previamente
+## Flujo de regresión de referencia
 
 ### `tt6720618`
 `Plex/Novedades → Identidad → Validación → Datos → PikoScore → Validación película → PikoQuality → Complete`.
@@ -75,10 +79,10 @@ FilmAffinity en Identidad queda aceptado de momento tras recuperar una tasa de a
 
 ## Deuda conocida importante
 
-- **Siguiente bloque:** M28–M35, cerrar Lifecycle como arquitectura 100% materializada/event-driven y limpiar estados/datos heredados.
-- Retención, índices, payloads y almacenamiento Neon siguen en M36–M42.
-- CSS/componentes heredados siguen en M43–M45.
+- **Siguiente bloque:** M36–M42, retención, espacio, índices, snapshots y JSON/payloads en Neon.
+- Después M43–M45: CSS/layouts/componentes heredados.
 - El redirect `/plex` se conserva temporalmente por compatibilidad.
+- Quedan las issues funcionales abiertas ya depuradas; se abordarán después de cerrar la migración técnica.
 
 La lista completa está en `docs/ROADMAP_MIGRATION.md`.
 
@@ -96,8 +100,8 @@ La lista completa está en `docs/ROADMAP_MIGRATION.md`.
 
 ## Próxima línea recomendada de trabajo
 
-1. ejecutar M28–M35;
-2. después M36–M45;
-3. abordar las issues funcionales abiertas por valor.
+1. ejecutar M36–M42 con foco en coste/crecimiento Neon;
+2. ejecutar M43–M45 para deuda visual/técnica;
+3. abordar después las issues funcionales abiertas por valor.
 
 **ChatGPT no realiza deployments.**
