@@ -5,12 +5,9 @@
 ## Estado registrado
 
 **Fecha:** 23/08/2026 (Europe/Madrid)  
-**Fase:** arquitectura Lifecycle consolidada; bloque P0 M01–M07 completado y mergeado  
+**Fase:** arquitectura Lifecycle consolidada; migración P0 y rutas/conceptos P1 iniciales completados  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
-**Rama productiva preparada:** `main`  
-**Merge funcional M01–M07:** PR #133 · CI #149 success · `19824d207c0e30079587184ab0acf539e4fba0bc`  
-**Último deployment confirmado antes de este bloque:** `30a1f581cdc4486538a118577d525eb191c81ae9`  
-**Deployment del bloque M01–M07:** pendiente de ejecución manual por el usuario.
+**Rama productiva preparada:** `main`
 
 ## Reglas operativas innegociables
 
@@ -45,30 +42,26 @@
 1. Lifecycle materializado en `catalog_lifecycle`.
 2. Catálogo muestra la fase de cada título y es la base de consulta única.
 3. Novedades unifica Discovery, Plex y Manual mediante columna Origen.
-4. `/plex` deja de ser una bandeja independiente y redirige a Novedades origen Plex.
+4. `/plex` ya no es una pantalla de producto; queda únicamente como redirect temporal a Novedades origen Plex.
 5. Identidad se procesa de uno en uno.
-6. Validación de Identidad se procesa de uno en uno, con decisión manual.
-7. Datos separa actualización completa, actualización ligera de ratings y cálculo local de PikoScore.
-8. PikoScore 2.0 implantado con votos/confianza, corrección contextual España, RT/Metacritic y frescura dinámica.
-9. FilmAffinity usa un extractor robusto compartido.
+6. La resolución unitaria de Identidad ya no usa GitHub Actions/polling; TMDb/Wikidata son vías rápidas y FilmAffinity reutiliza el resolver Python `python_filmaffinity` probado.
+7. Validación de Identidad se procesa de uno en uno, con decisión manual.
+8. Datos separa actualización completa, actualización ligera de ratings y cálculo local de PikoScore.
+9. PikoScore 2.0 implantado con votos/confianza, corrección contextual España, RT/Metacritic y frescura dinámica.
 10. Validación de archivo de película se vincula al fingerprint actual.
 11. PikoQuality de película se procesa unitariamente después de validar archivo.
 12. PikoQuality recalcula lifecycle en la misma operación y puede pasar directamente a Complete.
-13. Las tablas duplicadas de Películas/PikoQuality se eliminaron de los layouts.
-14. Ficha de serie permite excluir; excluir no borra Plex.
-15. Las operaciones nuevas dejan traza en Admin.
-16. Se retiró documentación histórica activa y se consolidó `CANONICAL_DATA.md`.
-17. `PROJECT_RULES.md` incorpora propósito, merge siempre/deployment nunca y eficiencia/coste.
-18. `INFRASTRUCTURE_EFFICIENCY.md` fija la política técnica Neon/Vercel.
-19. **M01:** `/calidad` queda como mapa de colas y pierde todas las acciones masivas.
-20. **M02:** eliminado `QualityRunAutoRefresh` y el polling asociado a batches.
-21. **M03:** Series dispone de motor `lib/series-unitary.js` y acciones por serie `Crear referencia` / `Refrescar serie`.
-22. **M04:** retirado `lib/quality-v2.js` y el disparador masivo antiguo de validación de películas; la ruta canónica es `validateMovieFile` por título/fingerprint.
-23. **M05:** el flujo operativo PikoQuality queda centrado en `pikoquality-unitary.js`; `pikoquality.js` conserva scoring compartido mientras se limpian pilotos posteriores.
-24. **M06:** retirada `/api/pikoquality/run`.
-25. **M07:** retirado `PikoQualityRunner.js`.
-26. La portada de Calidad cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_*` como etapa propia.
-27. `app/actions.js` quedó desacoplado del motor batch; las decisiones manuales sobre findings usan `lib/movie-quality-actions.js`.
+13. Series dispone de motor unitario y acciones por serie `Crear referencia` / `Refrescar serie`.
+14. `/calidad` es mapa de colas Lifecycle y no lanza acciones masivas.
+15. Se eliminaron `QualityRunAutoRefresh`, `lib/quality-v2.js`, `/api/pikoquality/run` y `PikoQualityRunner.js`.
+16. Dashboard cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_*` como etapa propia.
+17. Dashboard ya envía `Plex fuera catálogo` directamente a `/novedades?source=plex`.
+18. No quedan componentes transitorios `PlexIntake.js` / `NovedadesPlexShell.js` ni terminología funcional “Mi Biblioteca”.
+19. Eliminado CSS legado exclusivo de la antigua pantalla Plex.
+20. Eliminadas las rutas de prueba `calidad/pikoquality-pilot` y `admin/pikoquality-probe` con sus acciones.
+21. Se retiró documentación histórica activa y se consolidó `CANONICAL_DATA.md`.
+22. `PROJECT_RULES.md` incorpora propósito, merge siempre/deployment nunca y eficiencia/coste.
+23. `INFRASTRUCTURE_EFFICIENCY.md` fija la política técnica Neon/Vercel.
 
 ## Flujo de regresión probado previamente
 
@@ -80,16 +73,15 @@ Caso con archivo físico:
 Caso sin archivo físico:
 `Novedades → Identidad → Validación → Datos → PikoScore → Complete`.
 
-Estos casos deben volver a utilizarse de forma proporcional después del deployment del bloque M01–M07, ejecutado por el usuario.
+FilmAffinity en Identidad queda aceptado de momento tras recuperar una tasa de acierto razonable con el resolver Python probado; no bloquea la migración.
 
 ## Deuda conocida importante
 
-- Quedan conceptos/rutas/pilotos P1 de M08–M15.
-- Persisten workflows/APIs/workers batch heredados a auditar en M16–M27, incluido el workflow/worker histórico de refresco completo de Series, ya sin consumidor desde el frontal normal.
+- **Siguiente bloque:** M16–M27, workflows GitHub, APIs y workers batch heredados.
 - Lifecycle todavía debe cerrarse como 100% event-driven/materializado en M28–M35.
 - Retención, índices, payloads y almacenamiento Neon siguen en M36–M42.
 - CSS/componentes heredados siguen en M43–M45.
-- Dashboard contiene enlace/terminología Plex anterior.
+- El redirect `/plex` se conserva temporalmente por compatibilidad y se podrá retirar en una fase posterior.
 
 La lista completa está en `docs/ROADMAP_MIGRATION.md`.
 
@@ -107,11 +99,9 @@ La lista completa está en `docs/ROADMAP_MIGRATION.md`.
 
 ## Próxima línea recomendada de trabajo
 
-Después del deployment manual y la regresión del bloque M01–M07:
-1. ejecutar M08–M11 y M15;
-2. después M16–M27;
-3. cerrar Lifecycle con M28–M35;
-4. optimizar almacenamiento/índices y deuda visual con M36–M45;
-5. entonces abordar las issues funcionales abiertas por valor.
+1. ejecutar M16–M27;
+2. cerrar Lifecycle con M28–M35;
+3. optimizar almacenamiento/índices y deuda visual con M36–M45;
+4. abordar después las issues funcionales abiertas por valor.
 
-**ChatGPT no ha realizado ningún deployment.**
+**ChatGPT no realiza deployments.**
