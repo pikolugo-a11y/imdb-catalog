@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "worker:batch-fast": "node worker/batch-fast.mjs",
+    "worker:batch-api": "node worker/batch-api.mjs",
     "worker:imdb-discovery": "node worker/imdb-discovery.mjs",
     "worker:imdb-ratings": "node worker/update-imdb-ratings.mjs"
   },
