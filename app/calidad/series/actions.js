@@ -2,7 +2,7 @@
 import {revalidatePath} from 'next/cache';
 import {refreshSeriesUnitary} from '@/lib/series-unitary';
 
-export async function refreshOneSeriesAction(formData){
+export async function refreshOneSeriesAction(_previousState,formData){
   try{
     const imdbId=String(formData.get('imdbId')||'').trim()||null;
     const ratingKey=String(formData.get('ratingKey')||'').trim()||null;
