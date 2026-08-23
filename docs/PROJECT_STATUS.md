@@ -5,7 +5,7 @@
 ## Estado registrado
 
 **Fecha:** 23/08/2026 (Europe/Madrid)  
-**Fase:** arquitectura Lifecycle materializada; M01–M35 completado; M46 Batch Autopilot diseñado y priorizado  
+**Fase:** arquitectura Lifecycle materializada; M01–M35 completado; M46-A Batch Control/Queue implementado  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama productiva preparada:** `main`
 
@@ -71,6 +71,9 @@ No existe `TECH_REVIEW`: PikoQuality bajo no constituye por sí solo una inciden
 26. **M46 diseñado:** Batch Engine / Autopilot Lifecycle permitirá automatización masiva mediante operaciones unitarias, cola/checkpoint, leases, rate limit por fuente, backoff, circuit breaker, presupuestos y kill switch.
 27. M46 separa control plane (Vercel), state plane (Neon) y execution plane (worker dedicado pendiente de seleccionar).
 28. Estados de revisión humana (`IDENTITY_REVIEW_REQUIRED`, `MOVIE_FILE_REVIEW`, `SERIES_REVIEW`) serán barreras obligatorias del Autopilot.
+29. **M46-A implementado:** Neon principal dispone de `batch_runs`, `batch_jobs`, control global y límites por fuente. La migración fue probada en rama temporal y aplicada después de aprobación explícita del usuario.
+30. M46-A nace en estado seguro: 0 runs, 0 jobs, kill switch global pausado y todas las fuentes deshabilitadas. No existe worker consumidor ni tráfico batch externo.
+31. `/admin/batch` permite preparar lotes por etapa Lifecycle, ver backlog/jobs, pausar/reanudar/cancelar runs y configurar límites por fuente. Preparar un lote no ejecuta el trabajo.
 
 ## Flujo de regresión de referencia
 
@@ -91,7 +94,7 @@ La nueva estrategia es ejecutar muchas unidades canónicas de forma controlada. 
 Documento canónico: `docs/BATCH_AUTOPILOT_ARCHITECTURE.md`.
 
 Orden M46 aprobado:
-1. M46-A: control + cola + Admin sin tráfico batch externo;
+1. M46-A: control + cola + Admin sin tráfico batch externo — **implementado**;
 2. elegir host del worker;
 3. M46-B: FAST worker local/SQL;
 4. M46-C: APIs oficiales/controlables;
@@ -101,8 +104,7 @@ Orden M46 aprobado:
 
 ## Deuda conocida importante
 
-- **Siguiente bloque prioritario:** M46-A, construir infraestructura de control y cola sin lanzar aún procesos masivos externos.
-- Antes de M46-B hay que seleccionar el host del execution plane.
+- **Siguiente decisión prioritaria:** seleccionar el host del execution plane antes de implementar M46-B.
 - M36–M42 siguen pendientes: retención, espacio, índices, snapshots y JSON/payloads en Neon.
 - M43–M45: CSS/layouts/componentes heredados.
 - El redirect `/plex` se conserva temporalmente por compatibilidad.
@@ -125,10 +127,10 @@ La lista completa está en `docs/ROADMAP_MIGRATION.md`.
 
 ## Próxima línea recomendada de trabajo
 
-1. implementar M46-A sin ejecución batch real;
+1. desplegar manualmente M46-A y validar `/admin/batch` sin activar ninguna fuente;
 2. comparar y seleccionar runtime dedicado para el worker;
-3. validar cola, leases, pausa, cancelación e idempotencia con jobs FAST;
-4. ampliar de forma incremental a APIs y después fuentes sensibles;
-5. continuar M36–M45 en paralelo cuando no interfiera.
+3. implementar M46-B con jobs FAST/locales y lote piloto pequeño;
+4. demostrar lease, pausa, cancelación, idempotencia y recuperación antes de ampliar límites;
+5. ampliar después a APIs oficiales y finalmente fuentes sensibles.
 
 **ChatGPT no realiza deployments.**
