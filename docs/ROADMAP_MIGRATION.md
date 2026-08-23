@@ -1,37 +1,25 @@
 # PikoFilm — Roadmap de Migración / Limpieza de legado
 
-**Fecha:** 22/08/2026  
+**Fecha:** 23/08/2026  
 **Objetivo:** inventariar piezas de versiones anteriores que deben eliminarse, adaptarse o confirmarse antes de considerarlas parte de la arquitectura Lifecycle. Cada eliminación debe verificar dependencias y pasar CI.
 
 ## P0 — contradicen el modelo unitario actual
 
-### M01. Retirar acciones masivas de `/calidad`
-**Situación:** la portada todavía ofrece “Actualizar todo” de Identidad, “Actualizar validación”, “Actualizar todas” de Series y “Analizar películas”.  
-**Acción:** eliminar esos botones y los estados de progreso asociados. La portada debe limitarse a lectura/navegación de colas lifecycle.
+### M01–M07 — COMPLETADO 23/08/2026
 
-### M02. Eliminar `QualityRunAutoRefresh`
-**Situación:** componente creado para refrescar procesos masivos en curso.  
-**Acción:** retirar cuando M01 esté cerrada. Los procesos unitarios actualizan la ruta tras cada acción.
+El primer bloque P0 quedó migrado al modelo unitario:
 
-### M03. Convertir Series a unitario
-**Situación:** `/calidad/series` usa `refreshSeriesFromQuality` / “Actualizar todas las series”.  
-**Acción:** crear acción por serie para construir/refrescar referencia oficial y diagnóstico; después eliminar el masivo del frontal.
+- **M01 — acciones masivas de `/calidad`:** retiradas. La portada es lectura/navegación de colas Lifecycle y no lanza trabajo pesado.
+- **M02 — `QualityRunAutoRefresh`:** eliminado junto con la necesidad de polling batch en Calidad.
+- **M03 — Series unitario:** creado `lib/series-unitary.js` y `app/calidad/series/actions.js`. `/calidad/series` procesa una única serie mediante `Crear referencia` o `Refrescar serie`, actualiza únicamente su referencia/episodios/disponibilidad, audita y recalcula Lifecycle.
+- **M04 — análisis masivo antiguo de películas:** retirado el disparador masivo y eliminado `lib/quality-v2.js`. La ruta operativa vigente es `validateMovieFile(imdbId)` por título y fingerprint.
+- **M05 — PikoQuality unitario:** el producto operativo usa `lib/pikoquality-unitary.js`; `lib/pikoquality.js` conserva las primitivas de scoring y compatibilidad aún requerida por piezas que se revisarán en M15/M27. No existe runner batch en la pantalla normal.
+- **M06 — `/api/pikoquality/run`:** eliminado tras confirmar que pertenecía al runner batch antiguo.
+- **M07 — `PikoQualityRunner.js`:** eliminado tras confirmar que la pantalla actual usa `analyzeOnePikoQualityAction`.
 
-### M04. Retirar análisis masivo antiguo de películas
-**Situación:** existen `analyzeMovieQuality`, `refreshMoviesFromQuality` y motores anteriores además de `validateMovieFile(imdbId)`.  
-**Acción:** confirmar qué piezas siguen alimentando findings vigentes y conservar solo el motor unitario por fingerprint.
+Como parte del mismo ajuste, la portada ya cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_PENDING/REVIEW` como fase propia. Esto adelanta parte de M29/M30, que se volverán a auditar en su bloque antes de darlos por cerrados globalmente.
 
-### M05. Consolidar PikoQuality en el motor unitario
-**Situación:** `lib/pikoquality.js` aún contiene procesamiento A/B, batches, retries y agregados históricos; películas usan `lib/pikoquality-unitary.js`.  
-**Acción:** separar claramente funciones de scoring reutilizables de runners masivos. Eliminar runners de película que ya no se usan.
-
-### M06. Retirar API `/api/pikoquality/run` si queda sin consumidores
-**Situación:** pertenecía al `PikoQualityRunner` por lotes.  
-**Acción:** buscar consumidores; borrar ruta al quedar huérfana.
-
-### M07. Eliminar `PikoQualityRunner.js` si ya no se importa
-**Situación:** el frontal nuevo usa `analyzeOnePikoQualityAction`.  
-**Acción:** confirmar con búsqueda estática y borrar componente legado.
+**Nota:** `.github/workflows/series-full-refresh.yml` y `worker/series-full-refresh.mjs` permanecen temporalmente como legado sin consumidor desde el frontal normal. Su retirada se decide en M19/M27 para no mezclar la limpieza de workflows/workers con este bloque.
 
 ## P1 — rutas y conceptos antiguos
 
@@ -79,7 +67,7 @@ Mismo criterio: validación operativa unitaria.
 Era un recalculado masivo de cache. Sustituir por lifecycle/eventos y mantenimiento explícito si alguna vez se necesita.
 
 ### M19. Retirar `series-full-refresh.yml`
-Después de M03, no debe quedar un proceso masivo normal de Series en GitHub.
+Después de M03, no debe quedar un proceso masivo normal de Series en GitHub. Confirmar que no existe consumidor excepcional necesario y retirar junto con su dispatcher/worker correspondiente.
 
 ### M20. Retirar `catalog-enrichment-test.yml`
 Workflow experimental con referencias históricas. No debe formar parte del set productivo.
@@ -114,11 +102,12 @@ Revisar `worker/` para identificar enriquecimientos/series/identidad sustituidos
 **Acción:** hacer que todas las mutaciones relevantes llamen a `recomputeLifecycleForIds`; las lecturas solo leen materializado. Dejar `reconcileLifecycleBatch` como mantenimiento manual.
 
 ### M29. PIKOSCORE_PENDING incluido en todos los contadores correctos
-**Situación:** algunas vistas de Calidad calculan “Datos” solo con `DATA_INCOMPLETE`.  
-**Acción:** alinear todos los KPIs con la nueva semántica Datos + PikoScore.
+**Situación:** la portada de Calidad ya fue corregida en M01, pero falta auditar el resto de vistas.  
+**Acción:** alinear todos los KPIs con la semántica Datos + PikoScore.
 
 ### M30. Añadir explícitamente MOVIE_FILE_* a la portada
-Evitar que `MOVIE_FILE_PENDING/REVIEW` desaparezcan dentro de una categoría técnica antigua.
+**Situación:** ya aplicado en la portada durante M01.  
+**Acción pendiente del bloque:** confirmar consistencia con el resto de enlaces/contadores antes de marcar globalmente completado.
 
 ### M31. Revisar `TECH_REVIEW`
 **Situación:** existe estado para finding técnico heredado tipo `quality`, mientras PikoQuality unitario actualmente genera score y normalmente termina Complete.  
@@ -185,7 +174,7 @@ Antes de borrar cualquier elemento:
 
 ## Orden recomendado
 
-1. M01–M07: eliminar duplicidad operativa más peligrosa.
+1. **M01–M07 — completado.**
 2. M08–M11 y M15: limpiar conceptos/rutas/pilotos restantes.
 3. M16–M27: reducir GitHub Actions/APIs legacy y riesgo operativo.
 4. M28–M35: cerrar arquitectura lifecycle.

@@ -1,7 +1,7 @@
 # PikoFilm — Especificación técnica canónica
 
 **Versión documental:** Lifecycle + PikoScore 2.0  
-**Fecha:** 22/08/2026  
+**Fecha:** 23/08/2026  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`
 
 ## 1. Arquitectura general
@@ -51,13 +51,13 @@ Los secretos nunca deben persistirse en Neon, logs, documentación o navegador.
 | `/catalogo` | consulta maestra del catálogo |
 | `/catalogo/[imdbId]` | ficha película/serie |
 | `/catalogo/excluidas` | archivo reversible |
-| `/calidad` | mapa de colas lifecycle |
+| `/calidad` | mapa de colas lifecycle; solo lectura/navegación |
 | `/calidad/identidad` | `IDENTITY_PENDING` |
 | `/calidad/validacion-identidad` | validación/revisión de IDs |
 | `/calidad/datos` | datos + PikoScore |
-| `/calidad/peliculas` | validación física de películas |
+| `/calidad/peliculas` | validación física unitaria de películas |
 | `/calidad/pikoquality` | PikoQuality unitario de películas |
-| `/calidad/series` | referencia/diagnóstico series |
+| `/calidad/series` | referencia/diagnóstico unitario de series |
 | `/calidad/series/[ratingKey]` | detalle episodio a episodio |
 | `/sagas` / `/sagas/[id]` | colecciones |
 | `/personas/[id]` | filmografía PikoFilm |
@@ -316,7 +316,7 @@ Consecuencia: sustituir un fichero invalida validación/PikoQuality sin obligar 
 
 ## 14. Validación de película
 
-`lib/movie-file-validation.js`.
+`lib/movie-file-validation.js` es la ruta operativa canónica y unitaria.
 
 ### 14.1 Duración
 Compara `duration_ms` Plex con `movies.runtime`. Solo crea finding si supera simultáneamente el umbral absoluto y relativo configurado.
@@ -333,7 +333,7 @@ Más de un elemento físico activo asociado al mismo IMDb genera finding de posi
 
 `movie_quality_findings` guarda findings activos/resueltos/excepciones.
 
-La operación recalcula lifecycle y audita inicio/fin.
+La operación recalcula lifecycle y audita inicio/fin. El análisis masivo antiguo ya no tiene entrada desde `/calidad`.
 
 ## 15. PikoQuality unitario de películas
 
@@ -354,6 +354,8 @@ Proceso:
 
 Un éxito puede pasar a `COMPLETE` en la misma transacción lógica; no hay segundo botón.
 
+La API batch `/api/pikoquality/run` y `PikoQualityRunner.js` fueron retirados. El frontal operativo usa exclusivamente `analyzeOnePikoQualityAction`.
+
 ## 16. Motor PikoQuality
 
 `lib/pikoquality.js`, `QUALITY_VERSION='1.0.0'`.
@@ -369,11 +371,15 @@ Un éxito puede pasar a `COMPLETE` en la misma transacción lógica; no hay segu
 - integridad básica (tamaño/duración/rating key);
 - metadatos técnicos adicionales.
 
-Las funciones batch históricas siguen presentes por compatibilidad, pero el flujo de películas objetivo usa `pikoquality-unitary.js`.
+`lib/pikoquality.js` conserva las primitivas compartidas de scoring y compatibilidad necesaria mientras se completa la limpieza de pilotos/legado. Los runners batch ya no forman parte del flujo operativo normal.
 
 ## 17. Series
 
 La referencia oficial se construye a partir de fuentes externas y se cruza con la jerarquía Plex.
+
+`lib/series-unitary.js` es la ruta operativa canónica para crear o refrescar una serie. La acción trabaja sobre un único `imdb_id`/`rating_key`, reutiliza `reconcileSeriesReferencesFromPlex()`, consulta TMDb para esa serie y sus temporadas, actualiza `series_reference`, `series_reference_episodes` y `series_season_availability`, recalcula Lifecycle y audita el resultado.
+
+`/calidad/series` no ofrece actualización masiva: cada fila tiene su propia acción `Crear referencia` o `Refrescar serie`.
 
 Estados efectivos de episodio:
 - `present`;
@@ -385,7 +391,7 @@ La disponibilidad España impide considerar automáticamente faltante cualquier 
 
 Los agregados PikoQuality de temporada/serie se almacenan en `piko_quality_aggregates`.
 
-La rama todavía contiene refrescos masivos heredados; su migración a acciones unitarias figura en `ROADMAP_MIGRATION.md`.
+El workflow histórico `series-full-refresh.yml` y su worker permanecen temporalmente como legado sin consumidor desde el frontal; su retirada corresponde a M19/M27 del roadmap de migración.
 
 ## 18. Exclusión
 
@@ -416,7 +422,7 @@ Acciones unitarias: fuente, entidad, acción y payload técnico acotado.
 ### Retención actual
 Tras mantenimiento manual se conservaron los últimos 1.000 `admin_events` y 1.000 `pipeline_runs`. La retención automática está pendiente.
 
-## 22. Rendimiento
+## 22. Rendimiento y coste
 
 Reglas:
 1. no hacer writes masivos al renderizar;
@@ -426,13 +432,14 @@ Reglas:
 5. reutilizar datos frescos antes de llamar APIs;
 6. no almacenar payloads brutos de APIs;
 7. separar refresco de ratings de metadata completa;
-8. usar fingerprints para invalidación selectiva.
+8. usar fingerprints para invalidación selectiva;
+9. minimizar transferencia Neon → Vercel y almacenamiento regenerable, según `INFRASTRUCTURE_EFFICIENCY.md`.
 
 El incidente de PikoQuality que cargaba ~69k elementos y recalculaba lifecycle durante render se considera regresión a impedir.
 
 ## 23. Capacidad Neon
 
-La instalación actual opera con un límite de 500 MB. Después de poda/compactación manual la base quedó alrededor de 403 MB en la última medición conocida.
+La instalación usa Neon de pago con 500 GB de transferencia pública incluidos por proyecto. El coste variable debe mantenerse controlado mediante la política `INFRASTRUCTURE_EFFICIENCY.md`.
 
 Zonas de crecimiento a vigilar:
 - `movie_credits` e índices;
@@ -469,7 +476,7 @@ Flujo de desarrollo:
 
 ## 27. Compatibilidad y legado
 
-Aún existen rutas/APIs/componentes batch anteriores. No son la arquitectura objetivo y se inventarían en `ROADMAP_MIGRATION.md` antes de borrarlos para evitar eliminar dependencias todavía usadas.
+La portada de Calidad y sus ramas operativas de película/PikoQuality/Series ya son unitarias. Aún existen workflows, workers, APIs, pilotos y componentes heredados fuera de ese camino normal; se inventarían y eliminan gradualmente mediante `ROADMAP_MIGRATION.md`, verificando consumidores antes de borrar.
 
 ## 28. Regresiones técnicas esenciales
 
@@ -484,8 +491,10 @@ Aún existen rutas/APIs/componentes batch anteriores. No son la arquitectura obj
 9. excluidos no entran en colas;
 10. series Plex inactivas no contaminan diagnósticos;
 11. una identidad editada invalida derivados apropiados;
-12. toda operación unitaria relevante aparece en Admin.
+12. toda operación unitaria relevante aparece en Admin;
+13. `/calidad` no contiene botones masivos ni polling de procesos batch;
+14. refrescar Series afecta solo a la serie seleccionada.
 
 ## 29. Gobernanza documental
 
-Esta especificación y `FUNCTIONAL_SPECIFICATION_V2.md` son las fuentes canónicas actuales. Los documentos V1/V2/V3 parciales, pilotos y planes antiguos se consideran históricos hasta su archivo/eliminación durante la migración.
+Esta especificación y `FUNCTIONAL_SPECIFICATION_V2.md` son las fuentes canónicas actuales. La política transversal de eficiencia está en `INFRASTRUCTURE_EFFICIENCY.md`. Los documentos históricos son recuperables desde Git y no gobiernan el comportamiento actual.

@@ -1,7 +1,7 @@
 # PikoFilm — Especificación funcional canónica
 
 **Versión documental:** Lifecycle + PikoScore 2.0  
-**Fecha:** 22/08/2026  
+**Fecha:** 23/08/2026  
 **Estado:** documentación de la versión actual validada mediante un flujo completo de película.  
 **Ámbito:** comportamiento funcional vigente. Los cambios futuros se registran en los roadmaps, no aquí.
 
@@ -24,6 +24,7 @@ PikoFilm **no sustituye a Plex como reproductor ni como gestor de consumo**. No 
 9. **La validez física es por archivo/fingerprint, no eterna por IMDb.** Si cambia el archivo, se repiten las comprobaciones físicas.
 10. **Toda operación relevante deja traza en Admin.**
 11. **Los despliegues a producción son manuales.** El usuario decide cuándo desplegar y realiza la aceptación funcional/visual.
+12. **La portada de Calidad es navegación, no ejecución.** Abrirla o usarla no lanza procesos masivos; el trabajo se inicia dentro de la cola y sobre un único título.
 
 ## 3. Universos de datos
 
@@ -195,9 +196,9 @@ Archivo reversible con búsqueda, tipo, motivo, rango de fechas, orden y grid/li
 
 ## 6.8 Calidad `/calidad`
 
-Debe ser un **mapa de colas del lifecycle**, no un motor paralelo. Sus contadores se basan en `catalog_lifecycle` y cada bloque lleva a la cola correspondiente.
+Es un **mapa de colas del lifecycle**, no un motor paralelo. Sus contadores se basan en `catalog_lifecycle` y cada bloque lleva a la cola correspondiente.
 
-La versión objetivo es unitaria. Los botones masivos que todavía quedan visibles se consideran legado y están inventariados en `ROADMAP_MIGRATION.md`.
+La portada no contiene acciones masivas, polling ni botones de “Actualizar todo”. Separa explícitamente Identidad, Validación, Datos + PikoScore, Series, Validación de película y PikoQuality. `PIKOSCORE_PENDING` forma parte del contador de Datos y `MOVIE_FILE_PENDING/REVIEW` aparece como etapa propia.
 
 ## 6.9 Identidad `/calidad/identidad`
 
@@ -300,7 +301,7 @@ Comprueba:
 2. **Incidencia + Es correcta**: se acepta la excepción y pasa a PikoQuality.
 3. **Ya la corregí**: significa que el usuario modificó referencia/nombre/archivo. Se elimina la referencia catalogada dependiente y la siguiente sincronización Plex debe volver a introducirla por Novedades para rehacer el ciclo.
 
-Ninguna acción borra físicamente archivos de Plex.
+Ninguna acción borra físicamente archivos de Plex. El flujo normal analiza una película cada vez; ya no existe disparador masivo desde la portada de Calidad.
 
 ## 8.2 PikoQuality `/calidad/pikoquality`
 
@@ -317,12 +318,20 @@ Si todo está correcto, pasa directamente a `COMPLETE`. No existe botón adicion
 
 Si el archivo cambia, el PikoQuality anterior queda obsoleto porque su fingerprint ya no coincide.
 
+El runner y la API batch antiguos ya no forman parte del producto operativo.
+
 ## 9. Rama de series
 
 Después de PikoScore, una serie sin Plex puede quedar `COMPLETE`. En Plex necesita referencia oficial y diagnóstico episodio a episodio.
 
 ### 9.1 `SERIES_SYNC_PENDING`
 Falta crear/reconstruir la referencia oficial de temporadas/episodios.
+
+En `/calidad/series`, cada serie se procesa de forma **unitaria**:
+- `Crear referencia` para una serie aún sin referencia oficial;
+- `Refrescar serie` para reconstruir únicamente esa serie.
+
+La acción obtiene TMDb de la serie elegida, actualiza sus temporadas/episodios y disponibilidad, recalcula Lifecycle y devuelve feedback inmediato. No existe “Actualizar todas las series” en el flujo normal.
 
 ### 9.2 `SERIES_REVIEW`
 Se revisan:
@@ -336,7 +345,7 @@ Un episodio ausente no se considera automáticamente “faltante” si no se sab
 ### 9.3 Detalle `/calidad/series/[ratingKey]`
 Permite navegar por temporada, filtrar estados y marcar manualmente disponibilidad de temporada en España. Muestra PikoScore, PikoQuality agregada y cobertura Plex.
 
-La conversión completa de esta rama a procesos unitarios es una deuda de migración explícita.
+La rama operativa de Series ya es unitaria. Los workflows/workers masivos antiguos que aún existan en el repositorio son legado técnico pendiente de retirada y no constituyen el flujo funcional normal.
 
 ## 10. Sagas
 
@@ -403,6 +412,8 @@ Un fallo de una fuente secundaria no debe destruir datos buenos existentes. En r
 
 Las páginas son vistas de trabajo, no procesos. Abrir una pantalla no debe provocar miles de recalculados o escrituras. Las operaciones costosas se ejecutan al pulsar una acción concreta sobre un título o mediante mantenimiento explícito.
 
+La eficiencia de Neon/Vercel forma parte del contrato funcional no visible: las pantallas deben solicitar únicamente los datos necesarios y no utilizar descargas masivas para resolver contadores o agregados.
+
 ## 18. Casos de regresión del flujo nuevo
 
 ### `tt6720618`
@@ -438,10 +449,11 @@ Todo ello pertenece a Plex u otras herramientas específicas.
 ## 21. Documentación asociada
 
 - `TECHNICAL_SPECIFICATION_V2.md`: arquitectura técnica actual.
+- `INFRASTRUCTURE_EFFICIENCY.md`: política transversal de coste/eficiencia.
 - `ROADMAP_FRONTEND.md`: mejoras visuales/UX detectadas.
 - `ROADMAP_MIGRATION.md`: legado a borrar/adaptar.
 - `ROADMAP_FUNCTIONAL.md`: futuras capacidades.
 - `PROJECT_RULES.md`: reglas operativas permanentes.
 - `PROJECT_STATUS.md`: foto del estado del proyecto.
 
-Los documentos V1/V2/V3 parciales y pilotos anteriores se consideran históricos y no deben prevalecer sobre esta especificación.
+Los documentos históricos no deben prevalecer sobre esta especificación.
