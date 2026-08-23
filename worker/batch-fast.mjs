@@ -61,7 +61,7 @@ async function recomputeSimpleLifecycle(imdbId){
 
 async function finish(job,result){
   await recomputeSimpleLifecycle(job.entity_id);
-  await sql`UPDATE batch_jobs SET status='done',result_summary=${JSON.stringify(result)}::jsonb,finished_at=now(),leased_until=NULL,updated_at=now() WHERE id=${job.id} AND worker_id=${WORKER_ID}`;
+  await sql`UPDATE batch_jobs SET status='done',result_summary=${JSON.stringify(result)}::jsonb,error_class=NULL,error_message=NULL,finished_at=now(),leased_until=NULL,updated_at=now() WHERE id=${job.id} AND worker_id=${WORKER_ID}`;
   const[c]=await sql`SELECT count(*) FILTER(WHERE status IN('queued','retry_wait','leased','running'))::int pending FROM batch_jobs WHERE run_id=${job.run_id}`;
   if(Number(c?.pending||0)===0)await sql`UPDATE batch_runs SET status='completed',finished_at=now(),updated_at=now() WHERE id=${job.run_id} AND status IN('queued','running')`;
 }
