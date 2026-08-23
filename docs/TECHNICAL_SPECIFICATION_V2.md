@@ -27,7 +27,7 @@ El frontal usa principalmente Server Components para lectura y Server Actions pa
 - Plex API como fuente física.
 - TMDb API, OMDb API y FilmAffinity como fuentes externas principales de enriquecimiento/ratings.
 - datasets públicos IMDb como fallback/discovery donde corresponda.
-- GitHub Actions únicamente para CI y procesos manuales heredados/discovery explícito; no como scheduler permanente.
+- GitHub Actions para CI y tareas offline/manuales explícitas; no como scheduler permanente ni como motor del Lifecycle unitario.
 
 ## 3. Configuración
 
@@ -96,7 +96,7 @@ Los secretos nunca deben persistirse en Neon, logs, documentación o navegador.
 
 ### 5.6 Validación física
 - `movie_file_validation`: último fingerprint validado por `rating_key`.
-- `movie_quality_findings`: incidencias duration/filename/duplicate/quality heredada donde aplique.
+- `movie_quality_findings`: incidencias funcionales de archivo (`duration`, `filename`, `duplicate`) y sus decisiones manuales cuando existan.
 
 ### 5.7 PikoQuality
 - `piko_quality`: score técnico por `rating_key`, versión y `source_fingerprint`.
@@ -117,7 +117,9 @@ Los secretos nunca deben persistirse en Neon, logs, documentación o navegador.
 
 ### 6.1 Estados
 
-`IDENTITY_PENDING`, `IDENTITY_VALIDATION`, `IDENTITY_REVIEW_REQUIRED`, `DATA_INCOMPLETE`, `PIKOSCORE_PENDING`, `MOVIE_FILE_PENDING`, `MOVIE_FILE_REVIEW`, `SERIES_SYNC_PENDING`, `SERIES_REVIEW`, `TECH_PENDING`, `TECH_REVIEW`, `COMPLETE`, `EXCLUDED`.
+`IDENTITY_PENDING`, `IDENTITY_VALIDATION`, `IDENTITY_REVIEW_REQUIRED`, `DATA_INCOMPLETE`, `PIKOSCORE_PENDING`, `MOVIE_FILE_PENDING`, `MOVIE_FILE_REVIEW`, `SERIES_SYNC_PENDING`, `SERIES_REVIEW`, `TECH_PENDING`, `COMPLETE`, `EXCLUDED`.
+
+`TECH_REVIEW` se retiró: PikoQuality es una medida técnica informativa y un score bajo no crea por sí mismo una revisión funcional. La revisión de archivo pertenece a `MOVIE_FILE_REVIEW` cuando existe un finding funcional de validación.
 
 ### 6.2 Prioridad de clasificación
 
@@ -146,13 +148,15 @@ Los secretos nunca deben persistirse en Neon, logs, documentación o navegador.
 - sinopsis;
 - poster TMDb o poster externo.
 
-### 6.4 Materialización
+### 6.4 Materialización y eventos
 
 `recomputeLifecycleForIds(ids)` calcula y hace UPSERT en `catalog_lifecycle`, conservando `previous_state` cuando cambia.
 
-`getLifecycleForIds()` puede refrescar entradas ausentes/antiguas. La arquitectura objetivo debe evitar que grandes páginas provoquen miles de recalculados; por ello las pantallas operativas pesadas leen el snapshot materializado.
+`getLifecycleForIds()` es **estrictamente de lectura**: devuelve el estado ya materializado y no recalcula por antigüedad ni escribe durante render. Las mutaciones unitarias que alteran una precondición del Lifecycle deben llamar a `recomputeLifecycleForIds()` en la misma operación lógica.
 
-`reconcileLifecycleBatch()` existe para mantenimiento/backfill explícito, no como operación de render.
+`reconcileLifecycleBatch()` existe únicamente para mantenimiento/backfill explícito o para reconciliar una mutación global deliberada; nunca se ejecuta como efecto secundario de abrir una pantalla.
+
+La regla arquitectónica es: **las escrituras cambian el estado; las lecturas lo consumen**.
 
 ## 7. Novedades
 
@@ -172,11 +176,12 @@ El origen es un atributo de la misma cola, no una tabla/pantalla distinta.
 
 La etapa de identidad es exclusivamente unitaria en el flujo canónico.
 
-- `lib/identity.js` concentra resolución/corrección.
+- `lib/identity-unitary.js` resuelve la identidad operativa título a título.
+- TMDb/Wikidata son vías rápidas y `api/fa-search.py` aporta el resolver FilmAffinity Python probado cuando hace falta.
 - `/calidad/identidad` filtra solo `IDENTITY_PENDING`.
 - la edición manual puede cambiar IMDb/TMDb/FA.
 
-Cambiar un ID debe invalidar evidencia derivada y forzar revalidación. En series puede invalidar referencias oficiales previas.
+Cambiar un ID invalida evidencia derivada y fuerza revalidación. En series puede invalidar referencias oficiales previas.
 
 ## 9. Validación de identidad
 
@@ -287,7 +292,7 @@ Metacritic y RT se transforman en señales centradas en 60 y generan un modifica
 
 Combina confianza ponderada de votos con un factor de consenso calculado desde la dispersión entre ratings ajustados.
 
-### 12.7 Persistencia
+### 12.7 Persistencia y vigencia
 
 En `movies`:
 - `final_rating`;
@@ -296,6 +301,8 @@ En `movies`:
 - `pikoscore_confidence`;
 - votos de las tres fuentes usados en el cálculo;
 - `pikoscore_critics_modifier`.
+
+Un `final_rating` histórico no es un PikoScore vigente por el mero hecho de existir. Para considerarlo actual debe tener `pikoscore_version='2.0.0'` y `pikoscore_calculated_at`, además de superar las reglas de frescura. Los valores anteriores pueden conservarse físicamente hasta su recálculo, pero las superficies canónicas no deben tratarlos como score vigente.
 
 ### 12.8 Caducidad
 
@@ -331,7 +338,7 @@ Más de un elemento físico activo asociado al mismo IMDb genera finding de posi
 
 `movie_file_validation` guarda `rating_key`, `imdb_id`, `source_fingerprint`, `checked_at` y status.
 
-`movie_quality_findings` guarda findings activos/resueltos/excepciones.
+`movie_quality_findings` guarda findings funcionales activos/resueltos/excepciones de validación física.
 
 La operación recalcula lifecycle y audita inicio/fin. El análisis masivo antiguo ya no tiene entrada desde `/calidad`.
 
@@ -352,7 +359,7 @@ Proceso:
 8. recalcular lifecycle;
 9. auditar.
 
-Un éxito puede pasar a `COMPLETE` en la misma transacción lógica; no hay segundo botón.
+Un éxito puede pasar a `COMPLETE` en la misma transacción lógica; no hay segundo botón. Un score PikoQuality bajo no crea por sí mismo una fase de revisión Lifecycle.
 
 La API batch `/api/pikoquality/run` y `PikoQualityRunner.js` fueron retirados. El frontal operativo usa exclusivamente `analyzeOnePikoQualityAction`.
 
@@ -371,7 +378,7 @@ La API batch `/api/pikoquality/run` y `PikoQualityRunner.js` fueron retirados. E
 - integridad básica (tamaño/duración/rating key);
 - metadatos técnicos adicionales.
 
-`lib/pikoquality.js` conserva las primitivas compartidas de scoring y compatibilidad necesaria mientras se completa la limpieza de pilotos/legado. Los runners batch ya no forman parte del flujo operativo normal.
+Un registro técnico solo es vigente cuando su `formula_version` coincide con `QUALITY_VERSION` y su `source_fingerprint` coincide con el archivo físico actual. La mera existencia de un score histórico no satisface Lifecycle.
 
 ## 17. Series
 
@@ -391,15 +398,15 @@ La disponibilidad España impide considerar automáticamente faltante cualquier 
 
 Los agregados PikoQuality de temporada/serie se almacenan en `piko_quality_aggregates`.
 
-El workflow histórico `series-full-refresh.yml` y su worker permanecen temporalmente como legado sin consumidor desde el frontal; su retirada corresponde a M19/M27 del roadmap de migración.
+Los antiguos workflow/worker `series-full-refresh` fueron retirados; Series ya no depende de GitHub Actions para su operación normal.
 
 ## 18. Exclusión
 
-`excludeTitle` hace UPSERT en `catalog_exclusions`, limpia `acquisition_status`, resuelve findings físicos activos aplicables, audita y revalida rutas.
+`excludeTitle` hace UPSERT en `catalog_exclusions`, limpia `acquisition_status`, resuelve findings físicos activos aplicables, recalcula Lifecycle, audita y revalida rutas.
 
 No elimina `plex_items` ni ficheros físicos.
 
-La clasificación lifecycle comprueba exclusión en primer lugar.
+La clasificación lifecycle comprueba exclusión en primer lugar. Restaurar un título también recalcula su estado antes de volver al flujo.
 
 ## 19. Reset “Ya la corregí”
 
@@ -451,6 +458,8 @@ Zonas de crecimiento a vigilar:
 
 `catalog_candidates.source_snapshot` se vació para candidatos ya catalogados porque el snapshot dejó de ser necesario.
 
+`source_status` es metadato auxiliar/transitorio, no una segunda fuente de verdad para Lifecycle, PikoScore, IDs canónicos o campos que ya tienen columna escalar. La poda física de claves históricas grandes se realiza únicamente tras auditoría de consumidores y forma parte de la optimización de payloads/almacenamiento.
+
 ## 24. Seguridad
 
 - credenciales únicamente server-side;
@@ -465,7 +474,12 @@ Zonas de crecimiento a vigilar:
 Automático vigente:
 - **CI de Pull Request**: instalación, validación y build; lectura; cancelación por concurrencia.
 
-Workflows manuales existentes incluyen discovery y varios procesos heredados de identidad/series/ratings/mantenimiento. No existe cron/schedule activo. Los workflows masivos obsoletos deben retirarse según roadmap de migración.
+Manuales vigentes:
+- `imdb-discovery.yml` — Discovery IMDb con límites/cooldown;
+- `imdb-ratings-refresh.yml` — mantenimiento offline explícito del dataset IMDb;
+- `manual-maintenance.yml` — comprobaciones acotadas de solo lectura.
+
+No existe cron/schedule operativo ni workflows de identidad, validación o Series en el camino Lifecycle.
 
 ## 26. Deployment
 
@@ -476,11 +490,11 @@ Flujo de desarrollo:
 
 ## 27. Compatibilidad y legado
 
-La portada de Calidad y sus ramas operativas de película/PikoQuality/Series ya son unitarias. Aún existen workflows, workers, APIs, pilotos y componentes heredados fuera de ese camino normal; se inventarían y eliminan gradualmente mediante `ROADMAP_MIGRATION.md`, verificando consumidores antes de borrar.
+El camino normal Lifecycle es unitario y las antiguas rutas/workflows/workers batch de identidad, validación, película, PikoQuality y Series fueron retiradas. El redirect `/plex` se conserva temporalmente por compatibilidad. La deuda restante se concentra en datos derivados/retención/índices y CSS/componentes, documentada en `ROADMAP_MIGRATION.md`.
 
 ## 28. Regresiones técnicas esenciales
 
-1. una página de listado no escribe lifecycle masivamente al abrirse;
+1. una página de listado no escribe lifecycle al abrirse;
 2. `Calcular PikoScore` no llama APIs;
 3. `Actualizar notas` no descarga metadata completa;
 4. FA utiliza el extractor robusto compartido;
@@ -493,7 +507,10 @@ La portada de Calidad y sus ramas operativas de película/PikoQuality/Series ya 
 11. una identidad editada invalida derivados apropiados;
 12. toda operación unitaria relevante aparece en Admin;
 13. `/calidad` no contiene botones masivos ni polling de procesos batch;
-14. refrescar Series afecta solo a la serie seleccionada.
+14. refrescar Series afecta solo a la serie seleccionada;
+15. `getLifecycleForIds()` no recalcula ni escribe durante render;
+16. un PikoScore sin versión/fecha vigente no se presenta como PikoScore canónico;
+17. PikoQuality solo cuenta como actual con fórmula + fingerprint actuales.
 
 ## 29. Gobernanza documental
 
