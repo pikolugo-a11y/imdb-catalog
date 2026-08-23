@@ -5,10 +5,12 @@
 ## Estado registrado
 
 **Fecha:** 23/08/2026 (Europe/Madrid)  
-**Fase:** arquitectura Lifecycle consolidada; bloque P0 M01–M07 implementado en rama y pendiente de CI/merge  
+**Fase:** arquitectura Lifecycle consolidada; bloque P0 M01–M07 completado y mergeado  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
 **Rama productiva preparada:** `main`  
-**Último deployment confirmado antes de este bloque:** `30a1f581cdc4486538a118577d525eb191c81ae9`
+**Merge funcional M01–M07:** PR #133 · CI #149 success · `19824d207c0e30079587184ab0acf539e4fba0bc`  
+**Último deployment confirmado antes de este bloque:** `30a1f581cdc4486538a118577d525eb191c81ae9`  
+**Deployment del bloque M01–M07:** pendiente de ejecución manual por el usuario.
 
 ## Reglas operativas innegociables
 
@@ -66,6 +68,7 @@
 24. **M06:** retirada `/api/pikoquality/run`.
 25. **M07:** retirado `PikoQualityRunner.js`.
 26. La portada de Calidad cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_*` como etapa propia.
+27. `app/actions.js` quedó desacoplado del motor batch; las decisiones manuales sobre findings usan `lib/movie-quality-actions.js`.
 
 ## Flujo de regresión probado previamente
 
@@ -76,6 +79,8 @@ Caso con archivo físico:
 ### `tt21187592`
 Caso sin archivo físico:
 `Novedades → Identidad → Validación → Datos → PikoScore → Complete`.
+
+Estos casos deben volver a utilizarse de forma proporcional después del deployment del bloque M01–M07, ejecutado por el usuario.
 
 ## Deuda conocida importante
 
@@ -102,11 +107,11 @@ La lista completa está en `docs/ROADMAP_MIGRATION.md`.
 
 ## Próxima línea recomendada de trabajo
 
-Tras CI, merge, deployment manual y prueba de regresión de este bloque:
+Después del deployment manual y la regresión del bloque M01–M07:
 1. ejecutar M08–M11 y M15;
 2. después M16–M27;
 3. cerrar Lifecycle con M28–M35;
 4. optimizar almacenamiento/índices y deuda visual con M36–M45;
 5. entonces abordar las issues funcionales abiertas por valor.
 
-**No se ha realizado deployment desde ChatGPT.**
+**ChatGPT no ha realizado ningún deployment.**
