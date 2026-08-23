@@ -1,5 +1,6 @@
 import {neon} from '@neondatabase/serverless';
 import {lifecycleAfterDataRefresh} from '../lib/lifecycle-data-stage.mjs';
+import {probePlexCore,syncPlexFastCore} from '../lib/plex-sync-core.mjs';
 
 const DATABASE_URL=process.env.DATABASE_URL;
 const TMDB_API_TOKEN=process.env.TMDB_API_TOKEN;
@@ -67,33 +68,30 @@ function omdbNumber(v){if(v==null)return null;const s=String(v).trim();if(!s||s=
 function omdbVotes(v){if(v==null||v==='N/A')return null;const digits=String(v).replace(/[^0-9]/g,'');const n=Number(digits);return Number.isInteger(n)&&n>0?n:null;}
 async function fetchOmdb(imdbId){if(!OMDB_API_KEY)throw Object.assign(new Error('OMDB_API_KEY no está configurada en Railway'),{permanent:true,status:401});const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);try{const r=await fetch(`https://www.omdbapi.com/?apikey=${encodeURIComponent(OMDB_API_KEY)}&i=${encodeURIComponent(imdbId)}&plot=short&r=json`,{headers:{'User-Agent':'PikoFilm/3.0'},signal:controller.signal});if(!r.ok){const e=new Error(`OMDb HTTP ${r.status}`);e.status=r.status;throw e}const j=await r.json();if(j?.Response==='False'){const raw=String(j?.Error||'OMDb no encontró el título');const lower=raw.toLowerCase();const status=lower.includes('api key')?401:(lower.includes('limit')||lower.includes('request'))?429:0;throw Object.assign(new Error(`OMDb: ${raw}`),{permanent:status!==429,status})}const rating=omdbNumber(j?.imdbRating),votes=omdbVotes(j?.imdbVotes),rt=omdbNumber(String((j?.Ratings||[]).find(x=>x?.Source==='Rotten Tomatoes')?.Value||'').replace('%','')),meta=omdbNumber(j?.Metascore);if(!(rating>0&&votes>0))throw Object.assign(new Error('OMDb no devolvió IMDb nota/votos válidos'),{permanent:true});return{rating,votes,rotten_tomatoes:rt,metacritic:meta};}finally{clearTimeout(timer)}}
 
-function plexAttrs(s){const out={};for(const m of String(s||'').matchAll(/([\w:-]+)="([^"]*)"/g))out[m[1]]=m[2].replaceAll('&amp;','&');return out;}
-async function discoverPlexBase(){
-  if(PLEX_URL)return PLEX_URL;
-  if(!PLEX_TOKEN)throw Object.assign(new Error('PLEX_TOKEN no está configurado en Railway'),{permanent:true,status:401});
-  const r=await fetch('https://plex.tv/api/resources?includeHttps=1',{headers:{'X-Plex-Token':PLEX_TOKEN,'X-Plex-Client-Identifier':'pikofilm-batch-api'},signal:AbortSignal.timeout(15000)});
-  if(!r.ok){const e=new Error(`Plex discovery HTTP ${r.status}`);e.status=r.status;throw e;}
-  const xml=await r.text();
-  const devices=[...xml.matchAll(/<Device\b([^>]*)>([\s\S]*?)<\/Device>/g)];
-  for(const d of devices){const a=plexAttrs(d[1]);if(!String(a.provides||'').includes('server'))continue;const cons=[...d[2].matchAll(/<Connection\b([^>]*)\/?\s*>/g)].map(x=>plexAttrs(x[1]));const best=cons.find(x=>x.local==='0'&&x.relay!=='1'&&String(x.uri||'').startsWith('https://'))||cons.find(x=>x.local==='0'&&x.relay!=='1')||cons.find(x=>x.relay==='1')||cons[0];if(best?.uri)return String(best.uri).replace(/\/$/,'');}
-  throw Object.assign(new Error('Plex no publica una conexión remota accesible'),{permanent:true});
+async function executePlexProbe(){return probePlexCore({token:PLEX_TOKEN,baseUrl:PLEX_URL});}
+async function executePlexFull(job){
+  const[current]=await sql`SELECT result_summary FROM batch_jobs WHERE id=${job.id}`;
+  const completed=Array.isArray(current?.result_summary?.completed_sections)?current.result_summary.completed_sections:[];
+  const heartbeat=async()=>{
+    const open=await runtimeOpen();
+    if(!open)return true;
+    await sql`UPDATE batch_jobs SET leased_until=now()+interval '300 seconds',updated_at=now() WHERE id=${job.id} AND worker_id=${WORKER_ID} AND status='leased'`;
+    return false;
+  };
+  await sql`UPDATE batch_jobs SET leased_until=now()+interval '300 seconds',result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify({source:'plex',sync:true,checkpoint:true,completed_sections:completed})}::jsonb,updated_at=now() WHERE id=${job.id} AND worker_id=${WORKER_ID}`;
+  return syncPlexFastCore({
+    sql,token:PLEX_TOKEN,baseUrl:PLEX_URL,completedSectionKeys:completed,shouldStop:heartbeat,
+    onCheckpoint:async checkpoint=>{
+      await sql`UPDATE batch_jobs SET leased_until=now()+interval '300 seconds',result_summary=${JSON.stringify({source:'plex',sync:true,checkpoint:true,...checkpoint})}::jsonb,updated_at=now() WHERE id=${job.id} AND worker_id=${WORKER_ID}`;
+    }
+  });
 }
-async function executePlexProbe(){
-  if(!PLEX_TOKEN)throw Object.assign(new Error('PLEX_TOKEN no está configurado en Railway'),{permanent:true,status:401});
-  const base=await discoverPlexBase();
-  const r=await fetch(`${base}/library/sections`,{headers:{Accept:'application/json','X-Plex-Token':PLEX_TOKEN,'X-Plex-Client-Identifier':'pikofilm-batch-api','X-Plex-Product':'PikoFilm','X-Plex-Version':'2'},signal:AbortSignal.timeout(15000)});
-  if(!r.ok){const e=new Error(`Plex /library/sections HTTP ${r.status}`);e.status=r.status;throw e;}
-  const j=await r.json();
-  const dirs=j?.MediaContainer?.Directory||[];
-  const sections=dirs.filter(x=>x.type==='movie'||x.type==='show').map(x=>({key:String(x.key||''),title:x.title||null,type:x.type||null}));
-  if(!sections.length)throw Object.assign(new Error('Plex no devolvió bibliotecas de películas/series'),{permanent:true});
-  return{source:'plex',probe:true,sections,section_count:sections.length};
-}
+async function executePlex(job){return job.entity_id==='plex-full-sync'?executePlexFull(job):executePlexProbe();}
 
 async function reconcileDataStage(imdbId){const[r]=await sql`SELECT m.imdb_id,m.type,m.title_es,m.original_title,m.year,m.runtime,m.country,m.imdb_rating,m.imdb_votes,m.fa_rating,m.fa_votes,m.tmdb_rating,m.tmdb_votes,m.poster_path,mm.overview,COALESCE(m.source_status #>> '{data_quality_external_poster,url}','') external_poster_url,EXISTS(SELECT 1 FROM movie_genres g WHERE g.imdb_id=m.imdb_id) has_genres FROM movies m LEFT JOIN movie_metadata mm USING(imdb_id) WHERE m.imdb_id=${imdbId}`;if(!r)throw new Error('Título no encontrado al reconciliar Lifecycle');const next=lifecycleAfterDataRefresh(r);const[saved]=await sql`UPDATE catalog_lifecycle SET previous_state=CASE WHEN lifecycle_state<>${next.state} THEN lifecycle_state ELSE previous_state END,lifecycle_state=${next.state},blocking_reason=${next.reason},state_changed_at=CASE WHEN lifecycle_state<>${next.state} THEN now() ELSE state_changed_at END,computed_at=now() WHERE imdb_id=${imdbId} RETURNING lifecycle_state`;return saved?.lifecycle_state||next.state;}
 async function executeTmdb(job){const[row]=await sql`SELECT imdb_id,type,title,title_es,year,tmdb_id,source_status FROM movies WHERE imdb_id=${job.entity_id}`;if(!row)throw Object.assign(new Error('Título no encontrado'),{permanent:true});const d=await fetchTmdb(row);await sql`UPDATE movies SET tmdb_id=${d.id},tmdb_rating=${d.rating},tmdb_votes=${d.votes},tmdb_url=${`https://www.themoviedb.org/${d.kind}/${d.id}`},title_es=COALESCE(title_es,${d.title}),original_title=COALESCE(original_title,${d.original_title}),year=COALESCE(year,${d.year}),runtime=COALESCE(runtime,${d.runtime}),country=COALESCE(country,${d.country}),poster_path=COALESCE(${d.poster},poster_path),backdrop_path=COALESCE(${d.backdrop},backdrop_path),artwork_synced_at=now(),artwork_source='tmdb',source_status=COALESCE(source_status,'{}'::jsonb)||jsonb_build_object('tmdb','ok','tmdb_batch_at',now()),source_generated_at=now(),synced_at=now() WHERE imdb_id=${job.entity_id}`;await sql`INSERT INTO movie_metadata(imdb_id,overview,original_language,release_date,metadata_enriched_at,metadata_source) VALUES(${job.entity_id},${d.overview},${d.language},${d.release_date||null},now(),'tmdb') ON CONFLICT(imdb_id) DO UPDATE SET overview=COALESCE(EXCLUDED.overview,movie_metadata.overview),original_language=COALESCE(EXCLUDED.original_language,movie_metadata.original_language),release_date=COALESCE(EXCLUDED.release_date,movie_metadata.release_date),metadata_enriched_at=now(),metadata_source='tmdb'`;const lifecycle_state=await reconcileDataStage(job.entity_id);return{source:'tmdb',tmdb_id:d.id,media_type:d.kind,rating:d.rating,votes:d.votes,lifecycle_state};}
 async function executeOmdb(job){const[row]=await sql`SELECT imdb_id FROM movies WHERE imdb_id=${job.entity_id}`;if(!row)throw Object.assign(new Error('Título no encontrado'),{permanent:true});const d=await fetchOmdb(job.entity_id);await sql`UPDATE movies SET imdb_rating=${d.rating},imdb_votes=${d.votes},rotten_tomatoes_score=COALESCE(${d.rotten_tomatoes},rotten_tomatoes_score),metacritic_score=COALESCE(${d.metacritic},metacritic_score),source_status=COALESCE(source_status,'{}'::jsonb)||jsonb_build_object('omdb','ok','omdb_batch_at',now()),source_generated_at=now(),synced_at=now() WHERE imdb_id=${job.entity_id}`;const lifecycle_state=await reconcileDataStage(job.entity_id);return{source:'omdb',imdb_rating:d.rating,imdb_votes:d.votes,rotten_tomatoes:d.rotten_tomatoes,metacritic:d.metacritic,lifecycle_state};}
-async function execute(job){if(job.source==='tmdb')return executeTmdb(job);if(job.source==='omdb')return executeOmdb(job);if(job.source==='plex')return executePlexProbe();throw Object.assign(new Error(`Fuente API no soportada: ${job.source}`),{permanent:true});}
+async function execute(job){if(job.source==='tmdb')return executeTmdb(job);if(job.source==='omdb')return executeOmdb(job);if(job.source==='plex')return executePlex(job);throw Object.assign(new Error(`Fuente API no soportada: ${job.source}`),{permanent:true});}
 async function finish(job,result){await markSourceSuccess(job.source);await sql`UPDATE batch_jobs SET status='done',result_summary=${JSON.stringify(result)}::jsonb,error_class=NULL,error_message=NULL,finished_at=now(),leased_until=NULL,updated_at=now() WHERE id=${job.id} AND worker_id=${WORKER_ID}`;const[c]=await sql`SELECT count(*) FILTER(WHERE status IN('queued','retry_wait','leased','running'))::int pending FROM batch_jobs WHERE run_id=${job.run_id}`;if(Number(c?.pending||0)===0)await sql`UPDATE batch_runs SET status='completed',finished_at=now(),updated_at=now() WHERE id=${job.run_id} AND status IN('queued','running')`;}
 async function fail(job,error){await markSourceFailure(job.source,error).catch(()=>{});const permanent=Boolean(error?.permanent)||[401,403].includes(Number(error?.status||0)),retry=!permanent&&Number(job.attempt||1)<3;await sql`UPDATE batch_jobs SET status=${retry?'retry_wait':'failed'},error_class=${error?.name||'Error'},error_message=${text(error)},available_at=CASE WHEN ${retry} THEN now()+((30*power(2,GREATEST(0,${Number(job.attempt||1)}-1)))||' seconds')::interval ELSE available_at END,leased_until=NULL,worker_id=NULL,finished_at=CASE WHEN ${retry} THEN NULL ELSE now() END,updated_at=now() WHERE id=${job.id}`;}
 
