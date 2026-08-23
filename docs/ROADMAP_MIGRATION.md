@@ -13,31 +13,23 @@ El primer bloque P0 quedó migrado al modelo unitario:
 - **M02 — `QualityRunAutoRefresh`:** eliminado junto con la necesidad de polling batch en Calidad.
 - **M03 — Series unitario:** creado `lib/series-unitary.js` y `app/calidad/series/actions.js`. `/calidad/series` procesa una única serie mediante `Crear referencia` o `Refrescar serie`, actualiza únicamente su referencia/episodios/disponibilidad, audita y recalcula Lifecycle.
 - **M04 — análisis masivo antiguo de películas:** retirado el disparador masivo y eliminado `lib/quality-v2.js`. La ruta operativa vigente es `validateMovieFile(imdbId)` por título y fingerprint.
-- **M05 — PikoQuality unitario:** el producto operativo usa `lib/pikoquality-unitary.js`; `lib/pikoquality.js` conserva las primitivas de scoring y compatibilidad aún requerida por piezas que se revisarán en M15/M27. No existe runner batch en la pantalla normal.
+- **M05 — PikoQuality unitario:** el producto operativo usa `lib/pikoquality-unitary.js`; `lib/pikoquality.js` conserva primitivas de scoring todavía reutilizadas por código vigente.
 - **M06 — `/api/pikoquality/run`:** eliminado tras confirmar que pertenecía al runner batch antiguo.
 - **M07 — `PikoQualityRunner.js`:** eliminado tras confirmar que la pantalla actual usa `analyzeOnePikoQualityAction`.
 
 Como parte del mismo ajuste, la portada ya cuenta `PIKOSCORE_PENDING` dentro de Datos y muestra `MOVIE_FILE_PENDING/REVIEW` como fase propia. Esto adelanta parte de M29/M30, que se volverán a auditar en su bloque antes de darlos por cerrados globalmente.
 
-**Nota:** `.github/workflows/series-full-refresh.yml` y `worker/series-full-refresh.mjs` permanecen temporalmente como legado sin consumidor desde el frontal normal. Su retirada se decide en M19/M27 para no mezclar la limpieza de workflows/workers con este bloque.
-
 ## P1 — rutas y conceptos antiguos
 
-### M08. Retirar `/plex` como pantalla conceptual
-**Situación:** ahora solo redirige a `/novedades?source=plex`.  
-**Acción:** cambiar todos los enlaces internos al destino nuevo; mantener redirect temporal una versión y después valorar eliminarlo.
+### M08–M11 y M15 — COMPLETADO 23/08/2026
 
-### M09. Eliminar terminología “Mi Biblioteca”
-**Situación:** puede persistir en componentes o textos heredados. La entrada Plex ya vive en Novedades.  
-**Acción:** sustituir por “Novedades · origen Plex” donde corresponda.
+- **M08 — `/plex`:** deja de tener consumidores internos. Se mantiene únicamente `app/plex/page.js` como redirect temporal de compatibilidad hacia `/novedades?source=plex`. Se eliminó `app/plex/plex-library.css`, ya huérfano.
+- **M09 — “Mi Biblioteca”:** auditado el código activo; no quedan textos funcionales con ese concepto. Plex se expresa como presencia física/origen dentro de Catálogo y Novedades.
+- **M10 — `PlexIntake.js` / `NovedadesPlexShell.js`:** ya no existen en el árbol activo ni tienen consumidores. No queda componente transitorio que retirar.
+- **M11 — Dashboard:** los enlaces `Plex fuera catálogo` y `títulos Plex por incorporar` apuntan directamente a `/novedades?source=plex`; eliminado `mode=uncatalogued` legacy.
+- **M15 — pilotos PikoQuality:** eliminados `app/calidad/pikoquality-pilot` y `app/admin/pikoquality-probe` con sus Server Actions. El diagnóstico operativo queda en las rutas Lifecycle reales y Admin.
 
-### M10. Revisar `PlexIntake.js` y `NovedadesPlexShell.js`
-**Situación:** componentes nacidos durante la transición de Plex a Novedades.  
-**Acción:** confirmar si `page.js` actual los importa. Si no, borrar junto a CSS específico huérfano.
-
-### M11. Corregir enlaces antiguos del Dashboard
-**Situación:** KPIs todavía enlazan a `/plex?mode=uncatalogued`.  
-**Acción:** apuntar a `/novedades?source=plex` y eliminar parámetros legacy.
+El redirect `/plex` se conserva deliberadamente durante una etapa de compatibilidad; podrá eliminarse cuando se confirme que no existen marcadores/enlaces externos útiles que dependan de él.
 
 ### M12–M14. Documentación histórica — COMPLETADO 22/08/2026
 Se retiraron de la rama activa los documentos de versiones anteriores y pilotos obsoletos:
@@ -50,10 +42,6 @@ Se retiraron de la rama activa los documentos de versiones anteriores y pilotos 
 - `PikoQuality_B_PILOT.md`.
 
 `V3_CANONICAL_DATA.md` se sustituyó por `CANONICAL_DATA.md`, eliminando referencias de versión y conservando únicamente las reglas vigentes de países y géneros. El histórico completo permanece recuperable mediante Git.
-
-### M15. Revisar `pikoquality-pilot` y `admin/pikoquality-probe`
-**Situación:** rutas de pruebas conservadas.  
-**Acción:** si no son necesarias para diagnóstico productivo, borrarlas y sus Server Actions.
 
 ## P1 — workflows GitHub heredados
 
@@ -175,8 +163,8 @@ Antes de borrar cualquier elemento:
 ## Orden recomendado
 
 1. **M01–M07 — completado.**
-2. M08–M11 y M15: limpiar conceptos/rutas/pilotos restantes.
-3. M16–M27: reducir GitHub Actions/APIs legacy y riesgo operativo.
+2. **M08–M15 — completado** (incluye M12–M14 documental).
+3. **M16–M27 — siguiente bloque:** reducir GitHub Actions/APIs/workers legacy y riesgo operativo.
 4. M28–M35: cerrar arquitectura lifecycle.
 5. M36–M45: optimizar Neon y deuda visual.
 
