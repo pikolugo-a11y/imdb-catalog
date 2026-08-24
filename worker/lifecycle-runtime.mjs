@@ -90,6 +90,8 @@ export async function finishLifecycleJob(sql,job,{before,steps=[],forceReview=fa
 
 export async function markLifecycleJobSkipped(sql,job,decision){
   await sql`UPDATE batch_jobs SET status='skipped',functional_outcome='SIN_CAMBIOS',lifecycle_before=${decision?.before?.lifecycle_state||null},lifecycle_after=${decision?.before?.lifecycle_state||null},context_signature=${decision?.signature||null},result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify({process_stage:job.stage,functional_outcome:'SIN_CAMBIOS',skipped_by_retry_policy:true,reason:decision?.reason||'No elegible'})}::jsonb,finished_at=now(),leased_until=NULL,updated_at=now() WHERE id=${job.id}`;
+  const[r]=await sql`SELECT count(*) FILTER(WHERE status IN('queued','retry_wait','leased','running'))::int pending,count(*) FILTER(WHERE status='failed')::int failed FROM batch_jobs WHERE run_id=${job.run_id}`;
+  if(Number(r?.pending||0)===0)await sql`UPDATE batch_runs SET status=CASE WHEN ${Number(r?.failed||0)}>0 THEN 'failed' ELSE 'completed' END,finished_at=now(),updated_at=now() WHERE id=${job.run_id} AND status IN('queued','running')`;
 }
 
 export async function markLifecycleJobError(sql,job,{before,error}={}){
