@@ -32,6 +32,12 @@ def score(movie, titles, year):
         y = 30 if d == 0 else 14 if d == 1 else -25
     return t + y
 
+def sanitize_error(exc):
+    msg = str(exc or '').replace('\n', ' ').replace('\r', ' ')
+    msg = re.sub(r'postgres(?:ql)?://[^\s]+', 'postgresql://<redacted>', msg, flags=re.I)
+    msg = re.sub(r'password\s*=\s*[^\s]+', 'password=<redacted>', msg, flags=re.I)
+    return msg[:240]
+
 def authorize(headers, payload):
     db_url = str(os.environ.get('DATABASE_URL', ''))
     if not db_url:
@@ -65,7 +71,8 @@ def authorize(headers, payload):
                     return True, 'leased_job'
                 return False, 'fingerprint_mismatch_and_job_not_found' if supplied_worker else 'job_not_found'
     except Exception as exc:
-        print(f'[fa-search-auth] database validation failed: {type(exc).__name__}')
+        detail = sanitize_error(exc)
+        print(f'[fa-search-auth] database validation failed: {type(exc).__name__}: {detail}')
         return False, 'database_validation_error'
 
 class handler(BaseHTTPRequestHandler):
