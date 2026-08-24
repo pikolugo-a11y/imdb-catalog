@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {getLifecycleForIds} from '@/lib/lifecycle';
 import './lifecycle-detail.css';
+import './series-command-v3.css';
 
 export default async function CatalogDetailLayout({children,params}){
   const {imdbId}=await params;
