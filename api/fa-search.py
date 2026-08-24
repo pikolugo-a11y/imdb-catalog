@@ -64,7 +64,7 @@ def authorize(headers, payload):
                       AND status IN ('leased','running')
                       AND leased_until IS NOT NULL
                       AND leased_until > now() - interval '30 seconds'
-                      AND worker_id LIKE 'lifecycle-%'
+                      AND worker_id LIKE 'lifecycle-%%'
                     LIMIT 1
                 """, (int(job_id), job_token, imdb_id))
                 if cur.fetchone() is not None:
