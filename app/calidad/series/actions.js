@@ -20,6 +20,22 @@ export async function refreshOneSeriesAction(_previousState,formData){
   }
 }
 
+export async function resetSeasonAvailabilityAction(formData){
+  const ratingKey=String(formData.get('ratingKey')||'').trim();
+  const season=Number(formData.get('season'));
+  if(!ratingKey||!Number.isInteger(season)||season<1)throw new Error('Temporada inválida');
+  const sql=db();
+  const[s]=await sql`SELECT imdb_id FROM series_reference WHERE show_rating_key=${ratingKey} LIMIT 1`;
+  if(!s?.imdb_id)throw new Error('Serie no encontrada');
+  await sql`UPDATE series_season_availability SET manual_override=false,status='UNKNOWN',source='manual_reset',confidence='unknown',checked_at=now(),note='Override manual retirado; pendiente de refresco automático' WHERE show_rating_key=${ratingKey} AND season_number=${season} AND country_code='ES'`;
+  await refreshSeriesUnitary({ratingKey});
+  await recomputeLifecycleForIds([s.imdb_id]);
+  revalidatePath('/calidad');
+  revalidatePath('/calidad/series');
+  revalidatePath(`/calidad/series/${ratingKey}`);
+  revalidatePath(`/catalogo/${s.imdb_id}`);
+}
+
 export async function reviewSeriesExtraAction(formData){
   const ratingKey=String(formData.get('ratingKey')||'').trim();
   const season=Number(formData.get('season'));
