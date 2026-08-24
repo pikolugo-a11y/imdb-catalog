@@ -21,6 +21,7 @@ async function leaseOne(){
       SELECT q.id FROM batch_jobs q JOIN batch_runs r ON r.id=q.run_id
       WHERE q.status IN('queued','retry_wait') AND q.available_at<=now() AND (q.leased_until IS NULL OR q.leased_until<now())
         AND r.status IN('queued','running') AND q.stage='PIKOSCORE_PENDING'
+        AND COALESCE(r.limits->>'orchestration','')<>'lifecycle'
       ORDER BY q.priority DESC,q.created_at,q.id LIMIT 1 FOR UPDATE SKIP LOCKED
     )
     RETURNING j.id,j.run_id,j.entity_id,j.stage,j.attempt`;
