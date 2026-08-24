@@ -32,16 +32,19 @@ def score(movie, titles, year):
         y = 30 if d == 0 else 14 if d == 1 else -25
     return t + y
 
-def authorized(headers, payload):
+def authorize(headers, payload):
     db_url = str(os.environ.get('DATABASE_URL', ''))
-    expected = hashlib.sha256(db_url.encode()).hexdigest() if db_url else ''
-    if expected and headers.get('x-pikofilm-worker') == expected:
-        return True
+    if not db_url:
+        return False, 'missing_database_url'
+    expected = hashlib.sha256(db_url.encode()).hexdigest()
+    supplied_worker = str(headers.get('x-pikofilm-worker') or '').strip()
+    if supplied_worker and supplied_worker == expected:
+        return True, 'worker_fingerprint'
     job_id = str(headers.get('x-pikofilm-job-id') or '').strip()
     job_token = str(headers.get('x-pikofilm-job-token') or '').strip()
     imdb_id = str(payload.get('imdb_id') or '').strip()
-    if not (db_url and job_id.isdigit() and len(job_token) >= 20 and re.fullmatch(r'tt\d+', imdb_id)):
-        return False
+    if not (job_id.isdigit() and len(job_token) >= 20 and re.fullmatch(r'tt\d+', imdb_id)):
+        return False, 'invalid_job_headers' if supplied_worker else 'fingerprint_mismatch_and_invalid_job_headers'
     try:
         with psycopg.connect(db_url, connect_timeout=5) as conn:
             with conn.cursor() as cur:
@@ -58,9 +61,12 @@ def authorized(headers, payload):
                       AND worker_id LIKE 'lifecycle-%'
                     LIMIT 1
                 """, (int(job_id), job_token, imdb_id))
-                return cur.fetchone() is not None
-    except Exception:
-        return False
+                if cur.fetchone() is not None:
+                    return True, 'leased_job'
+                return False, 'fingerprint_mismatch_and_job_not_found' if supplied_worker else 'job_not_found'
+    except Exception as exc:
+        print(f'[fa-search-auth] database validation failed: {type(exc).__name__}')
+        return False, 'database_validation_error'
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -69,8 +75,10 @@ class handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b'{}')
         except Exception:
             return self._send(400, {'ok': False, 'error': 'invalid_json'})
-        if not authorized(self.headers, payload):
-            return self._send(401, {'ok': False, 'error': 'unauthorized'})
+        allowed, auth_reason = authorize(self.headers, payload)
+        if not allowed:
+            print(f'[fa-search-auth] denied: {auth_reason}')
+            return self._send(401, {'ok': False, 'error': 'unauthorized', 'auth_reason': auth_reason})
 
         titles = []
         for value in [payload.get('original_title'), payload.get('title_es'), payload.get('title')]:
