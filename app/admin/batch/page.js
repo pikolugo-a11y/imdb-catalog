@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import {BATCH_STAGES,getBatchControlOverview} from '@/lib/batch-control';
 import {getFlexibleBatchPreview,getBatchTiming,positiveBatchLimit} from '@/lib/batch-ui-metrics';
-import {createBatchRunAction,previewBatchRunAction,pauseBatchAction,resumeBatchAction,pauseRunAction,resumeRunAction,cancelRunAction,updateSourceLimitAction} from './actions';
+import {createBatchRunAction,previewBatchRunAction,pauseBatchAction,resumeBatchAction,pauseRunAction,resumeRunAction,cancelRunAction,updateSourceLimitAction,testSourceAction,closeSourceBreakerAction} from './actions';
 import AutoRefresh from './AutoRefresh';
 
 export const dynamic='force-dynamic';
@@ -24,6 +24,7 @@ export default async function BatchAdmin({searchParams}){
   const recentJobs=d.jobs.slice(0,50),recentRuns=d.runs.slice(0,12),selectedCount=Math.min(preview.eligible,limit);
   const historicalAvg=timing.historical.avg_ms,estimatedTotal=historicalAvg?historicalAvg*selectedCount:null;
   const liveAvg=timing.active?.avg_ms||historicalAvg,liveEta=liveAvg&&timing.active?liveAvg*timing.active.remaining:null;
+  const sourceTest=sp.sourceTest?{source:sp.sourceTest,ok:sp.sourceStatus==='ok',message:sp.sourceMessage||'',http:sp.sourceHttp||null,ms:sp.sourceMs||null}:null;
 
   return <>
     <AutoRefresh active={hasLive}/>
@@ -59,6 +60,10 @@ export default async function BatchAdmin({searchParams}){
 
     <details className="section batch-fold"><summary><b>Historial de runs</b> · últimos {recentRuns.length}</summary><div className="table-wrap"><table><thead><tr><th>Run</th><th>Etapa</th><th>Estado</th><th>Jobs</th><th>Corregidos</th><th>No encontrados</th><th>Errores</th><th>Fecha</th></tr></thead><tbody>{recentRuns.map(r=><tr key={r.id}><td>#{r.id}</td><td>{label(r.target_stage)}</td><td>{r.status}</td><td>{r.jobs}</td><td>{r.corrected}</td><td>{r.not_found}</td><td>{r.functional_error}</td><td>{dt(r.created_at)}</td></tr>)}</tbody></table></div></details>
 
-    <details className="section batch-fold"><summary><b>Fuentes y límites</b> · {d.limits.length} fuentes</summary><div className="source-grid compact-sources">{d.limits.map(x=><div className="source-card" key={x.source}><div><b>{x.source}</b><span className={`status ${x.enabled&&x.breaker_state!=='open'?'ok':'warn'}`}>{x.enabled?x.breaker_state:'deshabilitada'}</span></div><p>{x.usage?.attempts||0} intentos hoy · {x.usage?.failures||0} fallos · media {x.usage?.avg_ms??'—'} ms</p><form action={updateSourceLimitAction} className="source-form"><input type="hidden" name="source" value={x.source}/><label><span>Presupuesto</span><input name="dailyBudget" type="number" min="0" defaultValue={x.daily_budget??''}/></label><label><span>Intervalo ms</span><input name="minIntervalMs" type="number" min="0" defaultValue={x.min_interval_ms??0}/></label><label><span>Concurrencia</span><input name="maxConcurrency" type="number" min="1" defaultValue={x.max_concurrency??1}/></label><label className="source-check"><input name="enabled" type="checkbox" defaultChecked={x.enabled}/><span>Activa</span></label><button>Guardar</button></form></div>)}</div></details>
+    <details className="section batch-fold" id="sources" open={Boolean(sourceTest)}><summary><b>Fuentes, límites y breakers</b> · {d.limits.length} fuentes</summary>
+      {sourceTest&&<div className={`batch-time-strip ${sourceTest.ok?'':'source-test-error'}`}><span><b>{sourceTest.source}:</b> {sourceTest.ok?'✅ Comunicación correcta':'❌ Prueba fallida'}</span><span>{sourceTest.message}</span>{sourceTest.http&&<span><b>HTTP:</b> {sourceTest.http}</span>}{sourceTest.ms&&<span><b>Tiempo:</b> {sourceTest.ms} ms</span>}</div>}
+      <div className="source-grid compact-sources">{d.limits.map(x=><div className="source-card" key={x.source}><div><b>{x.source}</b><span className={`status ${x.enabled&&x.breaker_state!=='open'?'ok':'warn'}`}>{x.enabled?x.breaker_state:'deshabilitada'}</span></div><p>{x.usage?.attempts||0} intentos hoy · {x.usage?.failures||0} fallos · media {x.usage?.avg_ms??'—'} ms</p><p><b>Breaker:</b> {x.breaker_state||'—'} · errores consecutivos {x.consecutive_errors||0}{x.blocked_until?` · bloqueado hasta ${dt(x.blocked_until)}`:''}</p>
+        <div className="quick-actions"><form action={testSourceAction}><input type="hidden" name="source" value={x.source}/><button>Probar ahora</button></form>{x.breaker_state==='open'&&<form action={closeSourceBreakerAction}><input type="hidden" name="source" value={x.source}/><button className="ghost">Cerrar breaker</button></form>}</div>
+        <form action={updateSourceLimitAction} className="source-form"><input type="hidden" name="source" value={x.source}/><label><span>Presupuesto</span><input name="dailyBudget" type="number" min="0" defaultValue={x.daily_budget??''}/></label><label><span>Intervalo ms</span><input name="minIntervalMs" type="number" min="0" defaultValue={x.min_interval_ms??0}/></label><label><span>Concurrencia</span><input name="maxConcurrency" type="number" min="1" defaultValue={x.max_concurrency??1}/></label><label className="source-check"><input name="enabled" type="checkbox" defaultChecked={x.enabled}/><span>Activa</span></label><button>Guardar</button></form></div>)}</div></details>
   </>;
 }
