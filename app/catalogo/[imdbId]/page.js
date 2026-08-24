@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
-import {getCatalogItem,getSeriesDetail} from '@/lib/queries';
+import {getCatalogItem,getSeriesDetail,getSagaDetail} from '@/lib/queries';
 import {getCatalogRatings} from '@/lib/catalog-ratings';
 import {getSeriesDashboard} from '@/lib/series-dashboard';
+import {getMovieDetailExtras} from '@/lib/movie-detail-extras';
 import EnrichTitleButton from '@/components/EnrichTitleButton';
 import {markAcquiring,clearAcquiring,excludeTitle,saveIdentityAction} from '@/app/actions';
 import './detail-editorial.css';
@@ -26,6 +27,8 @@ const score1=v=>v==null?'—':Number(v).toFixed(1);
 const score2=v=>v==null?'—':Number(v).toFixed(2);
 const dateShort=v=>v?new Date(v).toLocaleDateString('es-ES'):'—';
 const runtimeLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';const h=Math.floor(x/60),m=x%60;return h?`${h} h ${m?`${m} min`:''}`:`${m} min`;};
+const bitrateLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';return x>=1000?`${(x/1000).toFixed(1)} Mbps`:`${x} Kbps`;};
+const sizeLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';return `${(x/1073741824).toFixed(1)} GB`;};
 
 function EditorialSeries({item,back,notice,operational,dashboard,ratingsData}){
   const cast=item.credits.filter(c=>c.credit_type==='cast').slice(0,8);
@@ -83,7 +86,7 @@ function EditorialSeries({item,back,notice,operational,dashboard,ratingsData}){
   </>;
 }
 
-function EditorialMovie({item,back,notice,ratingsData}){
+function EditorialMovie({item,back,notice,ratingsData,qualityData,saga}){
   const cast=item.credits.filter(c=>c.credit_type==='cast').slice(0,12);
   const crew=item.credits.filter(c=>c.credit_type!=='cast').slice(0,8);
   const director=crew.find(c=>/director/i.test(String(c.job||'')))||crew[0]||null;
@@ -94,6 +97,9 @@ function EditorialMovie({item,back,notice,ratingsData}){
   const release=item.release_date?new Date(item.release_date).toLocaleDateString('es-ES'):item.year||'—';
   const plex=item.effective_status==='in_plex';
   const acquiring=item.effective_status==='acquiring';
+  const qualityReady=qualityData?.score!=null;
+  const sagaTitles=saga?.titles||[];
+  const sagaOwned=sagaTitles.filter(x=>x.effective_status==='in_plex').length;
   return <div className="movie-v3">
     <div className="editorial-crumbs"><Link href={back}>Catálogo</Link><span>›</span><span>Películas</span><span>›</span><b>{item.display_title}</b></div>
     {notice==='identity_saved'&&<div className="toast success">Identificadores guardados.</div>}
@@ -116,11 +122,16 @@ function EditorialMovie({item,back,notice,ratingsData}){
       </div>
     </section>
 
-    <section className="movie-status-grid">
+    <section className="movie-status-grid movie-status-grid-4">
       <div className={`movie-status-card ${plex?'ok':'warn'}`}><span>PLEX</span><strong>{plex?'Disponible en Plex':acquiring?'En proceso':'No está en Plex'}</strong><small>{item.resolution?`Resolución detectada: ${item.resolution}`:'Estado sincronizado con tu biblioteca'}</small></div>
+      <div className={`movie-status-card pikoquality-card ${qualityReady?qClass(qualityData.band):plex?'warn':''}`}><span>PIKOQUALITY</span><div className="movie-quality-inline"><strong>{qualityReady?Math.round(Number(qualityData.score)):'—'}</strong><div><b>{qualityReady?qBand(qualityData.band):plex?'Pendiente de análisis':'Solo disponible en Plex'}</b><small>{qualityReady?[qualityData.resolution,qualityData.video_codec].filter(Boolean).join(' · '):'Calidad técnica de tu copia'}</small></div></div></div>
       <div className={`movie-status-card ${item.imdb_id&&item.tmdb_id?'ok':'warn'}`}><span>IDENTIDAD</span><strong>{item.imdb_id&&item.tmdb_id?'Verificada':'Pendiente'}</strong><small>IMDb {item.imdb_id} · TMDb {item.tmdb_id||'falta'}</small></div>
       <div className="movie-status-card"><span>PIKOSCORE</span><strong>{pikoReady?`v${String(ratingsData?.version||'3.0').replace('3.0.0-experimental.','3.0.')}`:'Pendiente'}</strong><small>{ratingsData?.calculatedAt?`Calculado ${dateShort(ratingsData.calculatedAt)}`:'Todavía sin cálculo vigente'}</small></div>
     </section>
+
+    {qualityData&&<section className="movie-panel movie-copy-quality"><div className="movie-panel-head"><div><span>TU COPIA</span><h2>PikoQuality</h2></div><div className={`movie-quality-dial ${qClass(qualityData.band)}`}><strong>{qualityReady?Math.round(Number(qualityData.score)):'—'}</strong><small>/100</small></div></div><div className="movie-copy-quality-grid"><div><b>Valoración</b><span>{qualityReady?qBand(qualityData.band):'Pendiente'}</span></div><div><b>Resolución</b><span>{qualityData.resolution||'—'}</span></div><div><b>Vídeo</b><span>{qualityData.video_codec||'—'}</span></div><div><b>Bitrate</b><span>{bitrateLabel(qualityData.bitrate)}</span></div><div><b>Audio</b><span>{qualityData.audio_codec||'—'}{qualityData.audio_channels?` · ${qualityData.audio_channels} canales`:''}</span></div><div><b>Tamaño</b><span>{sizeLabel(qualityData.file_size_bytes)}</span></div></div><Link className="movie-quality-link" href="/calidad/pikoquality">Abrir PikoQuality completo →</Link></section>}
+
+    {saga&&sagaTitles.length>0&&<section className="movie-panel movie-saga-panel"><div className="movie-saga-head"><div><span>SAGA / COLECCIÓN</span><h2>{saga.name||item.collection_name}</h2><small>{sagaOwned}/{sagaTitles.length} en Plex</small></div><Link href={`/sagas/${item.tmdb_collection_id}`}>Ver saga completa →</Link></div><div className="movie-saga-strip">{sagaTitles.map((x,i)=>{const current=x.imdb_id===item.imdb_id,poster=x.catalog_poster||x.poster_path;const body=<><div className="movie-saga-poster-wrap">{poster?<img src={img(poster)} alt=""/>:<div className="movie-saga-ph"/>}<span className="movie-saga-order">{i+1}</span><span className={`movie-saga-state ${x.effective_status==='in_plex'?'owned':x.effective_status==='acquiring'?'acquiring':'missing'}`}>{x.effective_status==='in_plex'?'✓':x.effective_status==='acquiring'?'…':'!'}</span></div><b>{x.display_title||x.title}</b><small>{x.year||'—'} · PikoScore {x.final_rating!=null?score1(x.final_rating):'—'}</small></>;return x.imdb_id?<Link className={`movie-saga-card ${current?'current':''}`} href={`/catalogo/${x.imdb_id}`} key={`${x.imdb_id}-${i}`}>{body}</Link>:<div className={`movie-saga-card ${current?'current':''}`} key={`${x.title}-${i}`}>{body}</div>})}</div></section>}
 
     <div className="movie-grid">
       <section className="movie-panel"><h2>Información</h2><div className="movie-info"><div><b>Director</b><span>{director?.name||'—'}</span></div><div><b>País</b><span>{item.country||'—'}</span></div><div><b>Estreno</b><span>{release}</span></div><div><b>Duración</b><span>{runtimeLabel(item.runtime)}</span></div><div><b>Idioma original</b><span>{item.original_language||'—'}</span></div><div><b>Clasificación</b><span>{item.certification||'—'}</span></div><div><b>Géneros</b><span>{(item.genres||[]).join(', ')||'—'}</span></div><div><b>Saga</b><span>{item.collection_name&&item.tmdb_collection_id?<Link className="movie-saga-link" href={`/sagas/${item.tmdb_collection_id}`}>{item.collection_name} →</Link>:item.collection_name||'—'}</span></div></div></section>
@@ -136,6 +147,6 @@ function EditorialMovie({item,back,notice,ratingsData}){
 export default async function Ficha({params,searchParams}){
   const{imdbId}=await params,p=await searchParams,item=await getCatalogItem(imdbId);if(!item)notFound();const back=p.from&&String(p.from).startsWith('/catalogo')?p.from:'/catalogo';
   if(isSeries(item.type)){const[operational,dashboard,ratingsData]=await Promise.all([item.series?.show_rating_key?getSeriesDetail(item.series.show_rating_key):null,item.series?.show_rating_key?getSeriesDashboard(item.series.show_rating_key):null,getCatalogRatings(imdbId)]);return <EditorialSeries item={item} back={back} notice={p.notice} operational={operational} dashboard={dashboard} ratingsData={ratingsData}/>;}
-  const ratingsData=await getCatalogRatings(imdbId);
-  return <EditorialMovie item={item} back={back} notice={p.notice} ratingsData={ratingsData}/>;
+  const[ratingsData,qualityData,saga]=await Promise.all([getCatalogRatings(imdbId),getMovieDetailExtras(imdbId),item.tmdb_collection_id?getSagaDetail(item.tmdb_collection_id):null]);
+  return <EditorialMovie item={item} back={back} notice={p.notice} ratingsData={ratingsData} qualityData={qualityData} saga={saga}/>;
 }
