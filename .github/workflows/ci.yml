@@ -28,6 +28,8 @@ jobs:
         run: |
           node --check worker/imdb-discovery.mjs
           node --check worker/update-imdb-ratings.mjs
+      - name: Validar PikoScore 3 experimental
+        run: node scripts/pikoscore-v3-selfcheck.mjs
       - name: Build
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
