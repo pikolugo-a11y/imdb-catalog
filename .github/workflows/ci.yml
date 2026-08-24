@@ -28,7 +28,10 @@ jobs:
         run: |
           node --check worker/imdb-discovery.mjs
           node --check worker/update-imdb-ratings.mjs
-      - name: Validar PikoScore 3 experimental
+          node --check worker/lifecycle-pikoscore-executor.mjs
+          node --check worker/lifecycle-worker.mjs
+          node --check lib/lifecycle-data-stage.mjs
+      - name: Validar PikoScore 3
         run: node scripts/pikoscore-v3-selfcheck.mjs
       - name: Build
         env:
