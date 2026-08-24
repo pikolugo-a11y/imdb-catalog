@@ -33,11 +33,18 @@ export async function lifecycleAttemptDecision(sql,job,retryMode='new_only'){
   const contextChanged=Boolean(ps.context_signature&&ps.context_signature!==signature);
   const technicalDue=ps.last_outcome==='ERROR'&&(!ps.next_retry_at||new Date(ps.next_retry_at)<=new Date());
   if(retryMode==='all')return{eligible:true,reason:'Forzado: todos',before,signature,contextChanged};
+  if(retryMode==='new_only')return{eligible:false,reason:`Solo nuevos: ya existe un intento (${ps.last_outcome||'sin resultado'})`,before,signature,contextChanged};
   if(ps.manual_review&&!contextChanged)return{eligible:false,reason:'En revisión manual sin cambio de contexto',before,signature,contextChanged};
-  if(contextChanged)return{eligible:true,reason:'Contexto cambiado',before,signature,contextChanged};
-  if(retryMode==='new_and_technical'&&technicalDue)return{eligible:true,reason:'Reintento técnico vencido',before,signature};
-  if(retryMode==='include_unresolved'&&ps.last_outcome!=='REVISION_MANUAL')return{eligible:true,reason:'Reintento no resuelto solicitado explícitamente',before,signature};
-  return{eligible:false,reason:`Ya intentado (${ps.last_outcome||'sin resultado'}) con el mismo contexto`,before,signature};
+  if(retryMode==='new_and_technical'){
+    if(technicalDue)return{eligible:true,reason:'Reintento técnico vencido',before,signature,contextChanged};
+    return{eligible:false,reason:`Nuevos + errores técnicos: ya intentado (${ps.last_outcome||'sin resultado'})`,before,signature,contextChanged};
+  }
+  if(retryMode==='include_unresolved'){
+    if(ps.last_outcome==='ERROR'&&!technicalDue)return{eligible:false,reason:'Error técnico todavía en cooldown',before,signature,contextChanged};
+    if(ps.manual_review&&!contextChanged)return{eligible:false,reason:'En revisión manual sin cambio de contexto',before,signature,contextChanged};
+    return{eligible:true,reason:contextChanged?'Contexto cambiado':'Reintento no resuelto solicitado explícitamente',before,signature,contextChanged};
+  }
+  return{eligible:false,reason:`Ya intentado (${ps.last_outcome||'sin resultado'}) con el mismo contexto`,before,signature,contextChanged};
 }
 
 export async function beginLifecycleJob(sql,job,{retryMode='new_only'}={}){
@@ -73,7 +80,7 @@ export async function finishLifecycleJob(sql,job,{before,steps=[],forceReview=fa
   const after=await lifecycleContext(sql,job.entity_id);
   const changed=steps.some(s=>s?.changed),errors=steps.filter(s=>s&&!s.ok&&!s.skipped),notFound=steps.some(s=>s?.found===false&&!s?.error);
   const review=forceReview||['IDENTITY_REVIEW_REQUIRED','MOVIE_FILE_REVIEW','SERIES_REVIEW'].includes(String(after?.lifecycle_state||''));
-  const outcome=classifyFunctionalOutcome({beforeState:before?.lifecycle_state,afterState:after?.lifecycle_state,changed,found:notFound?false:found,complete:complete&&errors.length===0,review,error:false});
+  const outcome=classifyFunctionalOutcome({beforeState:before?.lifecycle_state,afterState:after?.lifecycle_state,changed,found:notFound?false:found,complete:complete&&errors.length===0,review,error:errors.length>0&&after?.lifecycle_state===before?.lifecycle_state});
   const summary={process_stage:job.stage,functional_outcome:outcome,lifecycle_before:before?.lifecycle_state||null,lifecycle_after:after?.lifecycle_state||null,changed,steps:steps.map(s=>({key:s.key,source:s.source,ok:s.ok,skipped:Boolean(s.skipped),found:s.found,changed:Boolean(s.changed),reason:s.reason||null,error:s.error_message||null})),review_reason:reviewReason||null,...extra};
   await sql`UPDATE batch_jobs SET functional_outcome=${outcome},lifecycle_after=${after?.lifecycle_state||null},manual_review_reason=${reviewReason||null},result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify(summary)}::jsonb,updated_at=now() WHERE id=${job.id}`;
   const noProgress=outcome==='CORREGIDO'?0:1,manual=outcome==='REVISION_MANUAL';
