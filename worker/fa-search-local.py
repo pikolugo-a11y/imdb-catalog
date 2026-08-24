@@ -1,0 +1,50 @@
+import json,re,sys,time,unicodedata
+import python_filmaffinity
+MIN_ACCEPT_SCORE=45
+def norm(v):
+ s=unicodedata.normalize('NFD',str(v or ''));s=''.join(ch for ch in s if unicodedata.category(ch)!='Mn').lower();return re.sub(r'[^a-z0-9]+',' ',s).strip()
+def as_year(v):
+ try:return int(v)
+ except:return None
+def title_score(c,r):
+ c,r=norm(c),norm(r)
+ if not c or not r:return 0
+ if c==r:return 70
+ if c.startswith(r) or r.startswith(c):return 56
+ if r in c or c in r:return 44
+ ct,rt=set(c.split()),set(r.split())
+ return int(round((len(ct&rt)/max(len(ct),len(rt)))*40)) if ct and rt else 0
+def score(movie,titles,year):
+ t=max([title_score(c,w) for w in titles for c in [movie.get('title'),movie.get('original_title')]] or [0]);cy=as_year(movie.get('year'));y=0
+ if year and cy:
+  d=abs(cy-year);y=30 if d==0 else 14 if d==1 else -25
+ return t+y
+def main():
+ payload=json.loads(sys.stdin.read() or '{}');titles=[]
+ for value in [payload.get('original_title'),payload.get('title_es'),payload.get('title')]:
+  value=str(value or '').strip()
+  if value and norm(value) not in [norm(x) for x in titles]:titles.append(value)
+ titles=titles[:2];year=as_year(payload.get('year'));started=time.perf_counter()
+ if not titles:return {'ok':False,'status':'error','fa_id':None,'error':'missing_title'}
+ service=python_filmaffinity.FilmAffinity(lang='es',cache_backend='memory');found={};queries=[]
+ for title in titles:
+  kwargs={'title':title}
+  if year:kwargs['from_year']=str(year-1);kwargs['to_year']=str(year+1)
+  queries.append({'title':title,'from_year':kwargs.get('from_year'),'to_year':kwargs.get('to_year')})
+  for movie in (service.search(**kwargs) or [])[:12]:
+   fa_id=str(movie.get('id') or '').strip()
+   if not fa_id.isdigit():continue
+   sc=score(movie,titles,year);cand={'id':fa_id,'title':movie.get('title'),'original_title':movie.get('original_title'),'year':as_year(movie.get('year')),'score':sc}
+   if fa_id not in found or sc>found[fa_id]['score']:found[fa_id]=cand
+  if found and max(x['score'] for x in found.values())>=100:break
+ ranked=sorted(found.values(),key=lambda x:x['score'],reverse=True)
+ if not ranked:return {'ok':True,'status':'not_found','fa_id':None,'confidence':0,'queries':queries,'candidates':[],'elapsed_s':round(time.perf_counter()-started,3)}
+ best=ranked[0];second=ranked[1]['score'] if len(ranked)>1 else 0;margin=best['score']-second
+ if best['score']<MIN_ACCEPT_SCORE:return {'ok':True,'status':'ambiguous','fa_id':None,'best_fa_id':best['id'],'confidence':best['score'],'margin':margin,'candidates':ranked[:5],'queries':queries,'elapsed_s':round(time.perf_counter()-started,3)}
+ verified=service.get_movie(id=best['id']);vscore=score(verified,titles,year) if isinstance(verified,dict) else 0;vy=as_year(verified.get('year')) if isinstance(verified,dict) else None
+ if not isinstance(verified,dict) or vscore<MIN_ACCEPT_SCORE or (year and vy and abs(vy-year)>1):return {'ok':True,'status':'ambiguous','fa_id':None,'best_fa_id':best['id'],'confidence':vscore,'margin':margin,'candidates':ranked[:5],'queries':queries,'verified':{'id':best['id'],'title':verified.get('title') if isinstance(verified,dict) else None,'original_title':verified.get('original_title') if isinstance(verified,dict) else None,'year':vy},'elapsed_s':round(time.perf_counter()-started,3)}
+ status='exact' if vscore>=100 else 'high' if vscore>=70 else 'probable';return {'ok':True,'status':status,'fa_id':best['id'],'confidence':vscore,'margin':margin,'candidates':ranked[:5],'queries':queries,'verified':{'id':best['id'],'title':verified.get('title'),'original_title':verified.get('original_title'),'year':vy},'elapsed_s':round(time.perf_counter()-started,3)}
+if __name__=='__main__':
+ try:print(json.dumps(main(),ensure_ascii=False))
+ except Exception as exc:
+  msg=str(exc);low=msg.lower();blocked=any(x in low for x in ['429','403','too many requests','captcha','blocked']);print(json.dumps({'ok':False,'status':'blocked' if blocked else 'error','fa_id':None,'error':msg[:300]},ensure_ascii=False));sys.exit(2)
