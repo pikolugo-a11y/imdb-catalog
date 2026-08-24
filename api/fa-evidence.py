@@ -1,14 +1,46 @@
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse,parse_qs
-import hashlib,json,os,time
+import hashlib,json,os,time,re
+import psycopg
 import python_filmaffinity
+
+def authorized(headers,query):
+    db_url=str(os.environ.get('DATABASE_URL',''))
+    if not db_url:
+        return False
+    expected=hashlib.sha256(db_url.encode()).hexdigest()
+    supplied=str(headers.get('x-pikofilm-worker') or '').strip()
+    if supplied and supplied==expected:
+        return True
+    job_id=str(headers.get('x-pikofilm-job-id') or '').strip()
+    job_token=str(headers.get('x-pikofilm-job-token') or '').strip()
+    imdb_id=str((query.get('imdb_id') or [''])[0]).strip()
+    if not(job_id.isdigit() and len(job_token)>=20 and re.fullmatch(r'tt\d+',imdb_id)):
+        return False
+    try:
+        with psycopg.connect(db_url,connect_timeout=5) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 1 FROM batch_jobs
+                    WHERE id=%s AND idempotency_key=%s AND entity_id=%s
+                      AND stage='IDENTITY_VALIDATION'
+                      AND status IN ('leased','running')
+                      AND leased_until IS NOT NULL
+                      AND leased_until > now() - interval '30 seconds'
+                      AND worker_id LIKE 'lifecycle-%%'
+                    LIMIT 1
+                """,(int(job_id),job_token,imdb_id))
+                return cur.fetchone() is not None
+    except Exception as exc:
+        print(f'[fa-evidence-auth] database validation failed: {type(exc).__name__}: {str(exc)[:180]}')
+        return False
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        expected=hashlib.sha256(str(os.environ.get('DATABASE_URL','')).encode()).hexdigest()
-        if not expected or self.headers.get('x-pikofilm-worker')!=expected:
+        query=parse_qs(urlparse(self.path).query)
+        if not authorized(self.headers,query):
             return self._send(401,{'ok':False,'error':'unauthorized'})
-        fa_id=(parse_qs(urlparse(self.path).query).get('id') or [''])[0].strip()
+        fa_id=(query.get('id') or [''])[0].strip()
         if not fa_id.isdigit():
             return self._send(400,{'ok':False,'error':'invalid_fa_id'})
         t=time.perf_counter()
