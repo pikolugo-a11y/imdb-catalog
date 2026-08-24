@@ -24,7 +24,7 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Validar workers canónicos
+      - name: Validar workers canónicos y PikoScore MDBList-only
         run: |
           node --check worker/imdb-discovery.mjs
           node --check worker/update-imdb-ratings.mjs
