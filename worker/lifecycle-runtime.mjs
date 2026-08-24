@@ -11,24 +11,19 @@ export async function lifecycleContext(sql,entityId){
 
 export function makeContextSignature(context){
   if(!context)return null;
-  const stable={
-    state:context.lifecycle_state||null,blocking:context.blocking_reason||null,type:context.type||null,
-    tmdb_id:context.tmdb_id||null,fa_id:context.fa_id||null,validation_status:context.validation_status||null,
-    title_es:context.title_es||null,original_title:context.original_title||null,year:clean(context.year),runtime:clean(context.runtime),country:context.country||null,
-    imdb_rating:clean(context.imdb_rating),imdb_votes:clean(context.imdb_votes),fa_rating:clean(context.fa_rating),fa_votes:clean(context.fa_votes),tmdb_rating:clean(context.tmdb_rating),tmdb_votes:clean(context.tmdb_votes),
-    poster:context.poster_path||null,overview:Boolean(context.overview),genres:Boolean(context.has_genres),ratings_refreshed_at:context.ratings_refreshed_at||null,
-    pikoscore_calculated_at:context.pikoscore_calculated_at||null,pikoscore_version:context.pikoscore_version||null,rating_key:context.rating_key||null,fingerprint:context.fingerprint||null,
-    has_series_reference:Boolean(context.has_series_reference)
-  };
+  const stable={state:context.lifecycle_state||null,blocking:context.blocking_reason||null,type:context.type||null,tmdb_id:context.tmdb_id||null,fa_id:context.fa_id||null,validation_status:context.validation_status||null,title_es:context.title_es||null,original_title:context.original_title||null,year:clean(context.year),runtime:clean(context.runtime),country:context.country||null,imdb_rating:clean(context.imdb_rating),imdb_votes:clean(context.imdb_votes),fa_rating:clean(context.fa_rating),fa_votes:clean(context.fa_votes),tmdb_rating:clean(context.tmdb_rating),tmdb_votes:clean(context.tmdb_votes),poster:context.poster_path||null,overview:Boolean(context.overview),genres:Boolean(context.has_genres),ratings_refreshed_at:context.ratings_refreshed_at||null,pikoscore_calculated_at:context.pikoscore_calculated_at||null,pikoscore_version:context.pikoscore_version||null,rating_key:context.rating_key||null,fingerprint:context.fingerprint||null,has_series_reference:Boolean(context.has_series_reference)};
   return crypto.createHash('sha256').update(JSON.stringify(stable)).digest('hex');
 }
 
 export async function lifecycleAttemptDecision(sql,job,retryMode='new_only'){
-  const before=await lifecycleContext(sql,job.entity_id);
+  const[before,psRows]=await Promise.all([
+    lifecycleContext(sql,job.entity_id),
+    sql`SELECT attempt_count,no_progress_count,last_outcome,next_retry_at,context_signature,manual_review FROM batch_process_state WHERE entity_type=${job.entity_type||'title'} AND entity_id=${job.entity_id} AND stage=${job.stage}`
+  ]);
+  const ps=psRows?.[0];
   if(!before)return{eligible:false,reason:'Título no encontrado',before:null,signature:null};
   if(String(before.lifecycle_state)!==String(job.stage))return{eligible:false,reason:`Lifecycle cambió a ${before.lifecycle_state}`,before,signature:makeContextSignature(before),stale:true};
   const signature=makeContextSignature(before);
-  const[ps]=await sql`SELECT attempt_count,no_progress_count,last_outcome,next_retry_at,context_signature,manual_review FROM batch_process_state WHERE entity_type=${job.entity_type||'title'} AND entity_id=${job.entity_id} AND stage=${job.stage}`;
   if(!ps)return{eligible:true,reason:'Nunca intentado',before,signature};
   const contextChanged=Boolean(ps.context_signature&&ps.context_signature!==signature);
   const technicalDue=ps.last_outcome==='ERROR'&&(!ps.next_retry_at||new Date(ps.next_retry_at)<=new Date());
@@ -51,8 +46,10 @@ export async function beginLifecycleJob(sql,job,{retryMode='new_only'}={}){
   const decision=await lifecycleAttemptDecision(sql,job,retryMode);
   if(!decision.eligible)return decision;
   const{before,signature}=decision;
-  await sql`UPDATE batch_jobs SET lifecycle_before=${before.lifecycle_state},context_signature=${signature},updated_at=now() WHERE id=${job.id}`;
-  await sql`INSERT INTO batch_process_state(entity_type,entity_id,stage,attempt_count,last_attempt_at,context_signature,last_job_id,updated_at) VALUES(${job.entity_type||'title'},${job.entity_id},${job.stage},1,now(),${signature},${job.id},now()) ON CONFLICT(entity_type,entity_id,stage) DO UPDATE SET attempt_count=batch_process_state.attempt_count+1,last_attempt_at=now(),context_signature=EXCLUDED.context_signature,last_job_id=EXCLUDED.last_job_id,updated_at=now()`;
+  await Promise.all([
+    sql`UPDATE batch_jobs SET lifecycle_before=${before.lifecycle_state},context_signature=${signature},updated_at=now() WHERE id=${job.id}`,
+    sql`INSERT INTO batch_process_state(entity_type,entity_id,stage,attempt_count,last_attempt_at,context_signature,last_job_id,updated_at) VALUES(${job.entity_type||'title'},${job.entity_id},${job.stage},1,now(),${signature},${job.id},now()) ON CONFLICT(entity_type,entity_id,stage) DO UPDATE SET attempt_count=batch_process_state.attempt_count+1,last_attempt_at=now(),context_signature=EXCLUDED.context_signature,last_job_id=EXCLUDED.last_job_id,updated_at=now()`
+  ]);
   return{eligible:true,before,signature,reason:decision.reason,contextChanged:decision.contextChanged};
 }
 
@@ -82,20 +79,22 @@ export async function finishLifecycleJob(sql,job,{before,steps=[],forceReview=fa
   const review=forceReview||['IDENTITY_REVIEW_REQUIRED','MOVIE_FILE_REVIEW','SERIES_REVIEW'].includes(String(after?.lifecycle_state||''));
   const outcome=classifyFunctionalOutcome({beforeState:before?.lifecycle_state,afterState:after?.lifecycle_state,changed,found:notFound?false:found,complete:complete&&errors.length===0,review,error:errors.length>0&&after?.lifecycle_state===before?.lifecycle_state});
   const summary={process_stage:job.stage,functional_outcome:outcome,lifecycle_before:before?.lifecycle_state||null,lifecycle_after:after?.lifecycle_state||null,changed,steps:steps.map(s=>({key:s.key,source:s.source,ok:s.ok,skipped:Boolean(s.skipped),found:s.found,changed:Boolean(s.changed),reason:s.reason||null,error:s.error_message||null})),review_reason:reviewReason||null,...extra};
-  await sql`UPDATE batch_jobs SET functional_outcome=${outcome},lifecycle_after=${after?.lifecycle_state||null},manual_review_reason=${reviewReason||null},result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify(summary)}::jsonb,updated_at=now() WHERE id=${job.id}`;
   const noProgress=outcome==='CORREGIDO'?0:1,manual=outcome==='REVISION_MANUAL';
-  await sql`UPDATE batch_process_state SET last_outcome=${outcome},no_progress_count=CASE WHEN ${outcome}='CORREGIDO' THEN 0 ELSE no_progress_count+${noProgress} END,manual_review=${manual},manual_review_reason=${reviewReason||null},next_retry_at=CASE WHEN ${outcome}='ERROR' THEN now()+interval '1 hour' ELSE NULL END,last_result=${JSON.stringify(summary)}::jsonb,updated_at=now() WHERE entity_type=${job.entity_type||'title'} AND entity_id=${job.entity_id} AND stage=${job.stage}`;
+  await Promise.all([
+    sql`UPDATE batch_jobs SET functional_outcome=${outcome},lifecycle_after=${after?.lifecycle_state||null},manual_review_reason=${reviewReason||null},result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify(summary)}::jsonb,updated_at=now() WHERE id=${job.id}`,
+    sql`UPDATE batch_process_state SET last_outcome=${outcome},no_progress_count=CASE WHEN ${outcome}='CORREGIDO' THEN 0 ELSE no_progress_count+${noProgress} END,manual_review=${manual},manual_review_reason=${reviewReason||null},next_retry_at=CASE WHEN ${outcome}='ERROR' THEN now()+interval '1 hour' ELSE NULL END,last_result=${JSON.stringify(summary)}::jsonb,updated_at=now() WHERE entity_type=${job.entity_type||'title'} AND entity_id=${job.entity_id} AND stage=${job.stage}`
+  ]);
   return{outcome,after,summary,retryPolicy:retryDefaultForOutcome(outcome)};
 }
 
 export async function markLifecycleJobSkipped(sql,job,decision){
-  await sql`UPDATE batch_jobs SET status='skipped',functional_outcome='SIN_CAMBIOS',lifecycle_before=${decision?.before?.lifecycle_state||null},lifecycle_after=${decision?.before?.lifecycle_state||null},context_signature=${decision?.signature||null},result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify({process_stage:job.stage,functional_outcome:'SIN_CAMBIOS',skipped_by_retry_policy:true,reason:decision?.reason||'No elegible'})}::jsonb,finished_at=now(),leased_until=NULL,updated_at=now() WHERE id=${job.id}`;
-  const[r]=await sql`SELECT count(*) FILTER(WHERE status IN('queued','retry_wait','leased','running'))::int pending,count(*) FILTER(WHERE status='failed')::int failed FROM batch_jobs WHERE run_id=${job.run_id}`;
-  if(Number(r?.pending||0)===0)await sql`UPDATE batch_runs SET status=CASE WHEN ${Number(r?.failed||0)}>0 THEN 'failed' ELSE 'completed' END,finished_at=now(),updated_at=now() WHERE id=${job.run_id} AND status IN('queued','running')`;
+  await sql`WITH done AS (UPDATE batch_jobs SET status='skipped',functional_outcome='SIN_CAMBIOS',lifecycle_before=${decision?.before?.lifecycle_state||null},lifecycle_after=${decision?.before?.lifecycle_state||null},context_signature=${decision?.signature||null},result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify({process_stage:job.stage,functional_outcome:'SIN_CAMBIOS',skipped_by_retry_policy:true,reason:decision?.reason||'No elegible'})}::jsonb,finished_at=now(),leased_until=NULL,updated_at=now() WHERE id=${job.id} RETURNING run_id) UPDATE batch_runs r SET status=CASE WHEN EXISTS(SELECT 1 FROM batch_jobs f WHERE f.run_id=r.id AND f.status='failed') THEN 'failed' ELSE 'completed' END,finished_at=now(),updated_at=now() WHERE r.id=(SELECT run_id FROM done) AND r.status IN('queued','running') AND NOT EXISTS(SELECT 1 FROM batch_jobs p WHERE p.run_id=r.id AND p.status IN('queued','retry_wait','leased','running'))`;
 }
 
 export async function markLifecycleJobError(sql,job,{before,error}={}){
   const message=errText(error),signature=before?makeContextSignature(before):null;
-  await sql`UPDATE batch_jobs SET functional_outcome='ERROR',lifecycle_before=COALESCE(lifecycle_before,${before?.lifecycle_state||null}),context_signature=COALESCE(context_signature,${signature}),result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify({process_stage:job.stage,functional_outcome:'ERROR',error:message})}::jsonb,updated_at=now() WHERE id=${job.id}`;
-  await sql`INSERT INTO batch_process_state(entity_type,entity_id,stage,attempt_count,no_progress_count,last_attempt_at,last_outcome,next_retry_at,context_signature,manual_review,last_job_id,last_result,updated_at) VALUES(${job.entity_type||'title'},${job.entity_id},${job.stage},1,1,now(),'ERROR',now()+interval '1 hour',${signature},false,${job.id},${JSON.stringify({error:message})}::jsonb,now()) ON CONFLICT(entity_type,entity_id,stage) DO UPDATE SET last_outcome='ERROR',next_retry_at=now()+interval '1 hour',last_job_id=EXCLUDED.last_job_id,last_result=EXCLUDED.last_result,updated_at=now()`;
+  await Promise.all([
+    sql`UPDATE batch_jobs SET functional_outcome='ERROR',lifecycle_before=COALESCE(lifecycle_before,${before?.lifecycle_state||null}),context_signature=COALESCE(context_signature,${signature}),result_summary=COALESCE(result_summary,'{}'::jsonb)||${JSON.stringify({process_stage:job.stage,functional_outcome:'ERROR',error:message})}::jsonb,updated_at=now() WHERE id=${job.id}`,
+    sql`INSERT INTO batch_process_state(entity_type,entity_id,stage,attempt_count,no_progress_count,last_attempt_at,last_outcome,next_retry_at,context_signature,manual_review,last_job_id,last_result,updated_at) VALUES(${job.entity_type||'title'},${job.entity_id},${job.stage},1,1,now(),'ERROR',now()+interval '1 hour',${signature},false,${job.id},${JSON.stringify({error:message})}::jsonb,now()) ON CONFLICT(entity_type,entity_id,stage) DO UPDATE SET last_outcome='ERROR',next_retry_at=now()+interval '1 hour',last_job_id=EXCLUDED.last_job_id,last_result=EXCLUDED.last_result,updated_at=now()`
+  ]);
 }
