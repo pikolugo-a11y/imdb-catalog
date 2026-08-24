@@ -25,7 +25,13 @@ assert.equal(cinephile.weight,0.25);
 assert.equal(critics.weight,0.25);
 const imdb=audience.sources.find(x=>x.source==='imdb');
 const tmdb=audience.sources.find(x=>x.source==='tmdb');
-assert.ok(imdb.effectiveWeight/tmdb.effectiveWeight<1.6);
+assert.equal(imdb.baseWeight,1);
+assert.equal(tmdb.baseWeight,0.9);
+
+// Cambiar solo el volumen de votos no puede cambiar el PikoScore.
+const hugeImdb=baseRatings.map(r=>r.source==='imdb'?{...r,votes:5000000}:r);
+const tinyImdb=baseRatings.map(r=>r.source==='imdb'?{...r,votes:500}:r);
+assert.equal(computePikoScoreV3({ratings:hugeImdb,country:'United States',year:2020}).score,computePikoScoreV3({ratings:tinyImdb,country:'United States',year:2020}).score);
 
 // Una española con menos votos debe ganar confianza relativa sin recibir bonus de nota.
 const lowVoteRatings=baseRatings.map(r=>r.source==='imdb'?{...r,votes:9000}:r.source==='tmdb'?{...r,votes:900}:r);
