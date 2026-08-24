@@ -1,0 +1,1 @@
+Temporary CI trigger for FA-free catalog series detail validation.
