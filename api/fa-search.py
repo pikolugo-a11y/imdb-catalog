@@ -1,5 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 import hashlib, json, os, re, time, unicodedata
+import psycopg
 import python_filmaffinity
 
 MIN_ACCEPT_SCORE = 45
@@ -31,16 +32,45 @@ def score(movie, titles, year):
         y = 30 if d == 0 else 14 if d == 1 else -25
     return t + y
 
+def authorized(headers, payload):
+    db_url = str(os.environ.get('DATABASE_URL', ''))
+    expected = hashlib.sha256(db_url.encode()).hexdigest() if db_url else ''
+    if expected and headers.get('x-pikofilm-worker') == expected:
+        return True
+    job_id = str(headers.get('x-pikofilm-job-id') or '').strip()
+    job_token = str(headers.get('x-pikofilm-job-token') or '').strip()
+    imdb_id = str(payload.get('imdb_id') or '').strip()
+    if not (db_url and job_id.isdigit() and len(job_token) >= 20 and re.fullmatch(r'tt\d+', imdb_id)):
+        return False
+    try:
+        with psycopg.connect(db_url, connect_timeout=5) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 1
+                    FROM batch_jobs
+                    WHERE id=%s
+                      AND idempotency_key=%s
+                      AND entity_id=%s
+                      AND stage='IDENTITY_PENDING'
+                      AND status IN ('leased','running')
+                      AND leased_until IS NOT NULL
+                      AND leased_until > now() - interval '30 seconds'
+                      AND worker_id LIKE 'lifecycle-%'
+                    LIMIT 1
+                """, (int(job_id), job_token, imdb_id))
+                return cur.fetchone() is not None
+    except Exception:
+        return False
+
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        expected = hashlib.sha256(str(os.environ.get('DATABASE_URL', '')).encode()).hexdigest()
-        if not expected or self.headers.get('x-pikofilm-worker') != expected:
-            return self._send(401, {'ok': False, 'error': 'unauthorized'})
         try:
             length = int(self.headers.get('content-length') or '0')
             payload = json.loads(self.rfile.read(length) or b'{}')
         except Exception:
             return self._send(400, {'ok': False, 'error': 'invalid_json'})
+        if not authorized(self.headers, payload):
+            return self._send(401, {'ok': False, 'error': 'unauthorized'})
 
         titles = []
         for value in [payload.get('original_title'), payload.get('title_es'), payload.get('title')]:
