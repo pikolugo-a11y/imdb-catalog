@@ -1,0 +1,37 @@
+import {neon} from '@neondatabase/serverless';
+import {recipeFor} from '../lib/lifecycle-processes.mjs';
+import {beginLifecycleJob,finishLifecycleJob,markLifecycleJobError,markLifecycleJobSkipped,runLifecycleStep,skipLifecycleStep} from './lifecycle-runtime.mjs';
+import {dataTmdb,dataOmdb,dataFilmAffinity,finalizeDataStage} from './lifecycle-data-executor.mjs';
+
+const DATABASE_URL=process.env.DATABASE_URL;if(!DATABASE_URL)throw new Error('DATABASE_URL no está configurada');
+const sql=neon(DATABASE_URL),WORKER_ID=String(process.env.BATCH_LIFECYCLE_WORKER_ID||`lifecycle-${process.pid}`).slice(0,80),POLL_MS=Math.max(2000,Number(process.env.BATCH_POLL_MS)||5000),LEASE_SECONDS=180;
+let stopping=false;const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function runtimeOpen(){const[r]=await sql`SELECT paused FROM batch_runtime_control WHERE singleton=true`;return Boolean(r&&!r.paused)}
+async function sourceConfig(source){const[r]=await sql`SELECT source,enabled,max_concurrency,min_interval_ms,daily_budget,breaker_state,blocked_until,consecutive_errors,updated_at FROM batch_source_limits WHERE source=${source}`;return r||null}
+async function sourceUsageToday(source){const[r]=await sql`SELECT count(*)::int n FROM batch_job_steps WHERE source=${source} AND attempted=true AND started_at>=date_trunc('day',now())`;return Number(r?.n||0)}
+async function waitForSource(source){if(source==='internal')return;while(!stopping){if(!(await runtimeOpen()))throw Object.assign(new Error('Motor pausado'),{paused:true});const cfg=await sourceConfig(source);if(!cfg||!cfg.enabled)throw Object.assign(new Error(`Fuente ${source} deshabilitada`),{sourceDisabled:true});if(cfg.breaker_state==='open'&&cfg.blocked_until&&new Date(cfg.blocked_until)>new Date())throw Object.assign(new Error(`Circuit breaker abierto para ${source}`),{sourceDisabled:true});if(cfg.daily_budget!=null&&await sourceUsageToday(source)>=Number(cfg.daily_budget))throw Object.assign(new Error(`Presupuesto diario agotado para ${source}`),{sourceBudget:true});const elapsed=Date.now()-new Date(cfg.updated_at).getTime(),wait=Math.max(0,Number(cfg.min_interval_ms||0)-elapsed);if(wait>0){await sleep(Math.min(wait,5000));continue}return}}
+async function sourceSuccess(source){if(source==='internal')return;await sql`UPDATE batch_source_limits SET consecutive_errors=0,breaker_state='closed',blocked_until=NULL,updated_at=now() WHERE source=${source}`}
+async function sourceFailure(source,error){if(source==='internal')return;const status=Number(error?.status||0),hard=[401,403,429].includes(status);const[r]=await sql`UPDATE batch_source_limits SET consecutive_errors=consecutive_errors+1,updated_at=now() WHERE source=${source} RETURNING consecutive_errors`;const n=Number(r?.consecutive_errors||1);if(hard||n>=5){const mins=status===429?60:15;await sql`UPDATE batch_source_limits SET breaker_state='open',blocked_until=now()+(${mins}||' minutes')::interval,updated_at=now() WHERE source=${source}`}}
+
+async function guardedStep(job,step,fn){try{await waitForSource(step.source)}catch(e){return runLifecycleStep(sql,job,step,async()=>{throw e})}const r=await runLifecycleStep(sql,job,step,fn);if(r.ok)await sourceSuccess(step.source);else await sourceFailure(step.source,r.error);return r}
+
+async function leaseOne(){if(!(await runtimeOpen()))return null;const rows=await sql`UPDATE batch_jobs j SET status='leased',worker_id=${WORKER_ID},leased_until=now()+(${LEASE_SECONDS}||' seconds')::interval,attempt=j.attempt+1,started_at=COALESCE(j.started_at,now()),updated_at=now() WHERE j.id=(SELECT q.id FROM batch_jobs q JOIN batch_runs r ON r.id=q.run_id WHERE q.status IN('queued','retry_wait') AND q.available_at<=now() AND (q.leased_until IS NULL OR q.leased_until<now()) AND r.status IN('queued','running') AND COALESCE(r.limits->>'orchestration','')='lifecycle' AND q.stage='DATA_INCOMPLETE' AND EXISTS(SELECT 1 FROM catalog_lifecycle cl WHERE cl.imdb_id=q.entity_id AND cl.lifecycle_state=q.stage) ORDER BY q.priority DESC,q.created_at,q.id LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING j.id,j.run_id,j.entity_type,j.entity_id,j.stage,j.attempt`;const job=rows[0];if(!job)return null;const[run]=await sql`SELECT limits FROM batch_runs WHERE id=${job.run_id}`;await sql`UPDATE batch_runs SET status='running',started_at=COALESCE(started_at,now()),updated_at=now() WHERE id=${job.run_id} AND status='queued'`;return{...job,retryMode:run?.limits?.retry_mode||'new_only'}}
+async function finishPhysical(job,status){await sql`UPDATE batch_jobs SET status=${status},finished_at=now(),leased_until=NULL,updated_at=now() WHERE id=${job.id}`;const[r]=await sql`SELECT count(*) FILTER(WHERE status IN('queued','retry_wait','leased','running'))::int pending,count(*) FILTER(WHERE status='failed')::int failed FROM batch_jobs WHERE run_id=${job.run_id}`;if(Number(r?.pending||0)===0)await sql`UPDATE batch_runs SET status=CASE WHEN ${Number(r?.failed||0)}>0 THEN 'failed' ELSE 'completed' END,finished_at=now(),updated_at=now() WHERE id=${job.run_id} AND status IN('queued','running')`}
+
+async function executeData(job){const recipe=recipeFor(job.stage),begin=await beginLifecycleJob(sql,job,{retryMode:job.retryMode});if(!begin.eligible){await markLifecycleJobSkipped(sql,job,begin);return}
+ const steps=[];const byKey=Object.fromEntries(recipe.steps.map((s,i)=>[s.key,{...s,order:i+1}]));
+ steps.push(await guardedStep(job,byKey.data_tmdb,()=>dataTmdb(sql,job.entity_id)));
+ steps.push(await guardedStep(job,byKey.data_omdb,()=>dataOmdb(sql,job.entity_id)));
+ steps.push(await skipLifecycleStep(sql,job,byKey.data_imdb_fallback,'OMDb ya cubre IMDb en el proceso unitario; fallback solo si OMDb falla'));
+ steps.push(await guardedStep(job,byKey.data_filmaffinity,()=>dataFilmAffinity(sql,job.entity_id)));
+ steps.push(await guardedStep(job,byKey.finalize_ratings,()=>finalizeDataStage(sql,job.entity_id)));
+ const criticalFailed=steps.some(s=>!s.ok&&['data_tmdb','data_filmaffinity','finalize_ratings'].includes(s.key));
+ const result=await finishLifecycleJob(sql,job,{before:begin.before,steps,complete:!criticalFailed,extra:{recipe:'DATA_INCOMPLETE',unitary_reference:'updateDataQualityTitle'}});
+ await finishPhysical(job,result.outcome==='ERROR'?'failed':result.outcome==='REVISION_MANUAL'?'review':'done')}
+
+async function processJob(job){try{if(job.stage==='DATA_INCOMPLETE')return await executeData(job);throw Object.assign(new Error(`Etapa aún no conectada al worker Lifecycle: ${job.stage}`),{permanent:true})}catch(e){await markLifecycleJobError(sql,job,{error:e});await sql`UPDATE batch_jobs SET status=${e?.paused||e?.sourceDisabled||e?.sourceBudget?'retry_wait':'failed'},available_at=CASE WHEN ${Boolean(e?.paused||e?.sourceDisabled||e?.sourceBudget)} THEN now()+interval '10 minutes' ELSE available_at END,error_class=${e?.permanent?'permanent':'technical'},error_message=${String(e?.message||e).slice(0,1000)},finished_at=CASE WHEN ${Boolean(e?.paused||e?.sourceDisabled||e?.sourceBudget)} THEN NULL ELSE now() END,leased_until=NULL,updated_at=now() WHERE id=${job.id}`}}
+
+process.on('SIGTERM',()=>{stopping=true});process.on('SIGINT',()=>{stopping=true});
+console.log(`[lifecycle-worker] ${WORKER_ID} listo; etapa inicial=DATA_INCOMPLETE`);
+while(!stopping){try{const job=await leaseOne();if(!job){await sleep(POLL_MS);continue}await processJob(job)}catch(e){console.error('[lifecycle-worker]',e?.message||e);await sleep(POLL_MS)}}
