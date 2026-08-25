@@ -33,6 +33,8 @@ jobs:
           node --check lib/lifecycle-data-stage.mjs
       - name: Validar PikoScore 3
         run: node scripts/pikoscore-v3-selfcheck.mjs
+      - name: Validar Calidad global
+        run: npm run test:quality
       - name: Build
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
