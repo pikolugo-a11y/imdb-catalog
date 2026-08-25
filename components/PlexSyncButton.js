@@ -1,15 +1,10 @@
-'use client';
-import {useActionState} from 'react';
-import {syncPlexFromNews} from '@/app/novedades/plex-actions';
+import {db} from '@/lib/db';
+import PlexSyncButtonClient from './PlexSyncButtonClient';
 
-const initialState={ok:null,message:''};
-export default function PlexSyncButton({defaultReviewFrom=''}){
-  const[state,formAction,pending]=useActionState(syncPlexFromNews,initialState);
-  return <div className="process-title-action">
-    <form action={formAction} style={{display:'flex',gap:8,alignItems:'end',flexWrap:'wrap'}}>
-      <label style={{display:'grid',gap:3,fontSize:12}}><span>Revisar cambios Plex desde</span><input type="date" name="reviewFrom" defaultValue={defaultReviewFrom} disabled={pending}/></label>
-      <button disabled={pending}>{pending?'Actualizando Plex…':'Actualizar Plex'}</button>
-    </form>
-    {state?.message&&<small className={state.ok?'process-result ok':'process-result error'}>{state.message}</small>}
-  </div>
+export default async function PlexSyncButton(){
+  const sql=db();
+  const [lastComplete]=await sql`SELECT started_at FROM pipeline_runs WHERE job_type='plex_fast_sync' AND status='success' AND finished_at IS NOT NULL AND COALESCE((summary->>'identity_review_complete')::boolean,false)=true ORDER BY finished_at DESC LIMIT 1`;
+  const fallback='2026-08-01';
+  const value=lastComplete?.started_at?new Date(lastComplete.started_at).toISOString().slice(0,10):fallback;
+  return <PlexSyncButtonClient defaultReviewFrom={value}/>;
 }
