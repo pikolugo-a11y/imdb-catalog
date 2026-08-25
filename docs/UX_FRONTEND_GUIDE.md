@@ -156,6 +156,21 @@ Para pantallas con muchos elementos:
 - acceso claro al detalle;
 - acciones rápidas cuando aporten valor.
 
+### Buscadores de películas y títulos audiovisuales
+
+**Patrón aprobado:** todo buscador cuyo objeto sean películas, series o títulos audiovisuales debe buscar, como mínimo, de forma independiente sobre:
+
+- título en español/localizado;
+- título principal;
+- título original;
+- IMDb ID.
+
+La existencia de un título localizado no puede impedir encontrar el elemento mediante su título principal u original. No debe implementarse esta búsqueda mediante un `COALESCE` que reduzca los campos a un único valor buscable.
+
+La búsqueda textual debe ser parcial y no sensible a mayúsculas/minúsculas. Cuando la entrada tenga formato de IMDb ID (`tt...`), el sistema debe permitir localizar directamente ese identificador. El placeholder y la ayuda del buscador deben describir únicamente capacidades que realmente estén implementadas.
+
+Esta regla se aplica transversalmente a Catálogo, Calidad y cualquier pantalla presente o futura que permita buscar títulos audiovisuales, salvo que exista una excepción funcional expresamente justificada.
+
 ### Estados
 
 Una pantalla no debería esconder elementos porque tengan un estado anómalo. Si un elemento requiere intervención, debe existir una cola, filtro o señal que permita encontrarlo.
@@ -204,6 +219,7 @@ Al revisar cada pantalla responderemos, como mínimo:
 10. ¿Funciona correctamente en escritorio y móvil?
 11. ¿Es coherente con el lenguaje visual aprobado de PikoFilm?
 12. ¿Existe algún estado o incidencia que pueda quedar invisible para el usuario?
+13. Si existe buscador de títulos, ¿busca realmente por título localizado, principal, original e IMDb ID?
 
 ---
 
@@ -228,6 +244,10 @@ Estas conclusiones son **inferidas** y deberán consolidarse o corregirse durant
 ### 2026-08-25 — Referencia inicial
 
 El usuario establece **Catálogo** como única pantalla de referencia inicial para construir la guía UX del frontal. Las siguientes conclusiones y reglas se irán añadiendo durante la revisión pantalla a pantalla.
+
+### 2026-08-25 — Buscadores de películas y títulos audiovisuales
+
+Durante la revisión de **Calidad → Identidad**, el usuario establece como regla transversal que los buscadores de películas/títulos deben permitir encontrar un elemento por título localizado, título principal, título original e IMDb ID. Esta decisión pasa a formar parte del patrón UX aprobado y debe comprobarse también al revisar pantallas existentes.
 
 ---
 
