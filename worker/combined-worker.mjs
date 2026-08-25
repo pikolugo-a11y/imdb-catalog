@@ -1,5 +1,7 @@
 import {spawn} from 'node:child_process';
 
+// Combined Railway worker: Lifecycle + Personas. Keep this entrypoint change-visible
+// so Railway's GitHub integration deploys the current main revision.
 const children=new Set();
 let stopping=false;
 
