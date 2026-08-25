@@ -26,6 +26,7 @@ function Summary({home}){
       <div className="qh-summary-label">Lifecycle completado</div>
       <div className="qh-progress-value"><strong>{pct(home.progressPct)}</strong><span>{nf(home.complete)} de {nf(home.activeTotal)}</span></div>
       <progress max="100" value={home.progressPct} aria-label={`Lifecycle completado al ${pct(home.progressPct)}`}/>
+      {home.excluded>0&&<small className="qh-progress-note">{nf(home.excluded)} excluidos no computan en el progreso activo</small>}
     </div>
     <div className="qh-summary-stat"><span>Estado</span><StatusPill status={home.globalStatus}/></div>
     <div className="qh-summary-stat"><span>Pendientes</span><strong>{nf(home.pending)}</strong></div>
@@ -33,6 +34,7 @@ function Summary({home}){
     <Link href="/calidad/sin-estado" className={`qh-summary-stat qh-integrity ${home.integrity.ok?'ok':'bad'}`}>
       <span>Integridad Lifecycle</span>
       <strong>{home.integrity.ok?'✓':`${nf(home.integrity.total)} anomalías`}</strong>
+      <small>{nf(home.materialized)} estados materializados</small>
     </Link>
   </section>;
 }
@@ -40,10 +42,9 @@ function Summary({home}){
 export default async function Calidad(){
   const home=await getQualityHomeSnapshot();
   const byId=Object.fromEntries(home.stages.map(stage=>[stage.id,stage]));
-  return <main className="quality-home qh-page">
+  return <div className="quality-home qh-page">
     <header className="qh-head">
       <div><div className="eyebrow">Centro de control · Lifecycle</div><h1>Calidad</h1><p>Salud, integridad y avance del catálogo audiovisual.</p></div>
-      <span className="qh-materialized">{nf(home.materialized)} estados materializados</span>
     </header>
 
     <Summary home={home}/>
@@ -69,6 +70,6 @@ export default async function Calidad(){
       <div className="qh-flow-final"><span className="qh-arrow qh-arrow-down" aria-hidden="true">↓</span><StageCard stage={byId.pikoquality}/></div>
     </section>
 
-    <footer className="qh-foot"><span>{home.excluded>0?`${nf(home.excluded)} títulos excluidos no computan en el progreso activo.`:'El progreso se calcula sobre el catálogo activo.'}</span><Link href="/catalogo">Ver Catálogo →</Link></footer>
-  </main>;
+    <footer className="qh-foot"><span>El progreso se calcula sobre el catálogo activo y el estado terminal real del Lifecycle.</span><Link href="/catalogo">Ver Catálogo →</Link></footer>
+  </div>;
 }
