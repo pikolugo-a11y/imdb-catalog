@@ -1,0 +1,2 @@
+import './identity.css';
+export default function LoadingIdentidad(){return <div className="identity-loading" aria-busy="true"><div className="identity-loading-head"><span/><span/></div><div className="identity-loading-kpis">{[0,1,2].map(x=><i key={x}/>)}</div><div className="identity-loading-toolbar"/><div className="identity-loading-table">{Array.from({length:8},(_,i)=><div className="identity-loading-row" key={i}><i/><i/><i/><i/></div>)}</div></div>}
