@@ -171,6 +171,49 @@ La búsqueda textual debe ser parcial y no sensible a mayúsculas/minúsculas. C
 
 Esta regla se aplica transversalmente a Catálogo, Calidad y cualquier pantalla presente o futura que permita buscar títulos audiovisuales, salvo que exista una excepción funcional expresamente justificada.
 
+### Paginación, rendimiento y fluidez
+
+**Patrón aprobado:** la velocidad de navegación es un requisito UX de primer nivel. Una mejora visual o funcional no se considera correcta si degrada perceptiblemente el rendimiento.
+
+En colecciones potencialmente grandes:
+
+- paginar en servidor cuando corresponda;
+- devolver únicamente los datos necesarios de la página actual;
+- conservar búsqueda, filtros, orden y página al navegar al detalle y volver;
+- evitar N+1, cargas completas de colecciones y llamadas externas durante la renderización de listados;
+- minimizar consultas redundantes, payload y trabajo de renderizado;
+- optimizar primero las rutas frecuentes y medir antes de introducir índices, cachés, vistas materializadas o datos duplicados;
+- hacer que búsqueda, filtros, ordenación y cambio de página se sientan ágiles.
+
+La paginación debe comunicar claramente la posición dentro del conjunto y no debe obligar a recargar o reconstruir contexto innecesariamente.
+
+### Navegación móvil
+
+**Patrón aprobado:** toda pantalla y toda evolución deben diseñarse y validarse también para móvil. Responsive significa reorganizar jerarquía, controles y acciones para uso táctil; no simplemente reducir la versión de escritorio.
+
+- Ninguna acción o información operativa esencial puede desaparecer porque no quepa.
+- Debe evitarse el scroll horizontal innecesario.
+- Los filtros deben seguir siendo comprensibles y manejables.
+- Los paneles/popovers de escritorio deben transformarse en superficies móviles adecuadas cuando sea necesario.
+- Debe conservarse contexto al entrar y salir de detalle también en móvil.
+- La navegación debe mantenerse fluida y rápida en anchos pequeños.
+
+### Consistencia de acciones globales
+
+**Patrón aprobado:** una acción de dominio con el mismo nombre y significado debe ejecutar la misma operación canónica y producir las mismas consecuencias funcionales independientemente de la pantalla desde la que se invoque.
+
+Las pantallas no deben implementar variantes locales de una misma acción de dominio. Esto aplica, entre otras, a acciones como **Excluir**, **Restaurar** o cambios de estado equivalentes cuando existan en varias superficies.
+
+#### Contrato transversal de Excluir
+
+- **Excluir no significa borrar.**
+- Debe utilizar la misma operación canónica desde cualquier pantalla.
+- Debe sacar el elemento del catálogo operativo y de los flujos/colas que correspondan según Lifecycle.
+- Debe conservar los datos, identificadores, histórico, auditoría y referencias existentes.
+- No debe borrar ni modificar el archivo físico de Plex.
+- Debe funcionar de forma coherente para películas y series.
+- Debe ofrecer feedback claro y, cuando sea razonable, posibilidad de **Deshacer** o restauración equivalente.
+
 ### Estados
 
 Una pantalla no debería esconder elementos porque tengan un estado anómalo. Si un elemento requiere intervención, debe existir una cola, filtro o señal que permita encontrarlo.
@@ -220,6 +263,11 @@ Al revisar cada pantalla responderemos, como mínimo:
 11. ¿Es coherente con el lenguaje visual aprobado de PikoFilm?
 12. ¿Existe algún estado o incidencia que pueda quedar invisible para el usuario?
 13. Si existe buscador de títulos, ¿busca realmente por título localizado, principal, original e IMDb ID?
+14. ¿La colección está paginada cuando corresponde y comunica claramente posición/rango?
+15. ¿La navegación entre páginas, filtros, búsqueda y orden mantiene una respuesta ágil?
+16. ¿Se han evitado N+1, cargas completas y llamadas externas innecesarias en listados?
+17. ¿La versión móvil reorganiza realmente la interfaz sin perder acciones o información esencial?
+18. Si una acción de dominio existe en varias pantallas, ¿todas invocan la misma operación canónica y producen el mismo comportamiento funcional?
 
 ---
 
@@ -248,6 +296,18 @@ El usuario establece **Catálogo** como única pantalla de referencia inicial pa
 ### 2026-08-25 — Buscadores de películas y títulos audiovisuales
 
 Durante la revisión de **Calidad → Identidad**, el usuario establece como regla transversal que los buscadores de películas/títulos deben permitir encontrar un elemento por título localizado, título principal, título original e IMDb ID. Esta decisión pasa a formar parte del patrón UX aprobado y debe comprobarse también al revisar pantallas existentes.
+
+### 2026-08-25 — Paginación, rendimiento y fluidez
+
+El usuario establece que la **velocidad es primordial**. Las colecciones deben paginarse cuando corresponda y la navegación entre búsqueda, filtros, orden, páginas y detalle debe sentirse muy ágil. Rendimiento real y percibido pasan a ser criterio de aceptación UX.
+
+### 2026-08-25 — Consistencia de acciones globales
+
+Durante la revisión de **Calidad → Identidad**, el usuario establece que acciones globales como **Excluir** deben hacer siempre lo mismo, independientemente de la pantalla. Se fija el principio de una única operación canónica por acción de dominio y se documenta expresamente el contrato funcional de Excluir.
+
+### 2026-08-25 — Navegación móvil
+
+El usuario establece que la navegación móvil debe tenerse siempre en cuenta. Toda pantalla y evolución debe diseñarse y validarse también para móvil, reorganizando la interfaz sin perder información ni acciones esenciales.
 
 ---
 
