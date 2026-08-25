@@ -1,20 +1,67 @@
 import Link from 'next/link';
-import Segmented from '@/components/Segmented';
 import IdentityRetryButton from '@/components/IdentityRetryButton';
-import {getIdentityCatalogPage,getIdentityWorkflowStats} from '@/lib/identity-page';
-import {saveIdentityPageAction} from './actions';
+import IdentityCorrectionPanel from '@/components/IdentityCorrectionPanel';
+import IdentityExcludeButton from '@/components/IdentityExcludeButton';
+import IdentityAutoRefresh from '@/components/IdentityAutoRefresh';
+import {restoreTitle} from '@/app/actions';
+import {getIdentityCatalogPage,getIdentityWorkflowStats,parseIdentityFilters} from '@/lib/identity-page';
 import './identity.css';
 export const dynamic='force-dynamic';
 const nf=n=>Number(n||0).toLocaleString('es-ES');
-function qs(p,patch={}){const x=new URLSearchParams();for(const[k,v]of Object.entries({...p,...patch}))if(v!==undefined&&v!==null&&v!=='')x.set(k,String(v));return x.toString()}
-function Pager({p,page,pages}){if(pages<=1)return null;const prev=Math.max(1,page-1),next=Math.min(pages,page+1);return <div className="identity-pager"><Link className={page<=1?'disabled':''} href={'/calidad/identidad?'+qs(p,{page:prev})}>← Anterior</Link><span>Página <b>{page}</b> de <b>{pages}</b></span><Link className={page>=pages?'disabled':''} href={'/calidad/identidad?'+qs(p,{page:next})}>Siguiente →</Link></div>}
+const statusMeta={untried:['Sin intentar','neutral'],not_found:['Sin coincidencia','warn'],error:['Error técnico','bad'],review:['Requiere revisión','review'],processing:['Procesando','processing']};
+function qs(p,patch={}){const x=new URLSearchParams();for(const[k,v]of Object.entries({...p,...patch})){const value=Array.isArray(v)?v[0]:v;if(value!==undefined&&value!==null&&value!=='')x.set(k,String(value))}return x.toString()}
+function posterSrc(path){if(!path)return null;return /^https?:\/\//.test(path)?path:`https://image.tmdb.org/t/p/w92${path}`}
+function fmtDate(v){if(!v)return'';try{return new Intl.DateTimeFormat('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(v))}catch{return''}}
+function Pager({p,catalog}){if(catalog.pages<=1)return null;const prev=Math.max(1,catalog.page-1),next=Math.min(catalog.pages,catalog.page+1);return <nav className="identity-pager" aria-label="Paginación"><Link className={catalog.page<=1?'disabled':''} href={'/calidad/identidad?'+qs(p,{page:prev,notice:'',message:'',undo:''})}>← Anterior</Link><span>Página <b>{catalog.page}</b> de <b>{catalog.pages}</b></span><Link className={catalog.page>=catalog.pages?'disabled':''} href={'/calidad/identidad?'+qs(p,{page:next,notice:'',message:'',undo:''})}>Siguiente →</Link></nav>}
+function FilterChip({label,p,patch}){return <Link className="identity-chip" href={'/calidad/identidad?'+qs(p,{...patch,page:1,notice:'',message:'',undo:''})}>{label} ×</Link>}
+function Kpi({label,value,active,href,sub}){return <Link className={`identity-kpi ${active?'active':''}`} href={href}><strong>{nf(value)}</strong><span>{label}</span>{sub&&<small>{sub}</small>}</Link>}
+
 export default async function Identidad({searchParams}){
-  const p=await searchParams,type=['','movie','series'].includes(p.type||'')?(p.type||''):'',q=p.q||'',page=Math.max(1,Number(p.page)||1),pageSize=50;
-  const [stats,catalog]=await Promise.all([getIdentityWorkflowStats(),getIdentityCatalogPage({type,q,page,pageSize})]);
-  return <><div className="breadcrumbs"><Link href="/calidad">Calidad</Link><span>›</span><b>Identidad</b></div>
-  <div className="identity-head"><div><div className="eyebrow">Integridad maestra</div><h1>Identidad</h1><p>IMDb + TMDb forman la identidad canónica. Esta cola contiene únicamente títulos cuyo TMDb todavía falta.</p></div><div><b>{nf(stats.affected_catalog)} pendientes</b></div></div>
-  <div className="identity-toolbar"><form method="get"><input type="hidden" name="type" value={type}/><input name="q" defaultValue={q} placeholder="Buscar título o IMDb…"/><button>Buscar</button>{q&&<Link href={'/calidad/identidad?'+qs(p,{q:'',page:1})}>Limpiar</Link>}</form><Segmented value={type} items={[{value:'',label:`Todos (${nf(stats.affected_catalog)})`,href:'/calidad/identidad?'+qs(p,{type:'',page:1})},{value:'movie',label:`Películas (${nf(stats.movies)})`,href:'/calidad/identidad?'+qs(p,{type:'movie',page:1})},{value:'series',label:`Series (${nf(stats.series)})`,href:'/calidad/identidad?'+qs(p,{type:'series',page:1})}]}/></div>
-  <section className="identity-table-wrap"><div className="identity-panel-head"><div><b>Identidad pendiente</b><span>{nf(catalog.total)} resultados · 50 por página</span></div></div>
-  <table className="identity-table"><thead><tr><th>Título</th><th>Clasificación</th><th>IMDb</th><th>TMDb</th><th>Acciones</th></tr></thead><tbody>{catalog.rows.map(r=><tr key={r.imdb_id}><td><b>{r.display_title}</b><small>{r.year||'—'}{r.original_title&&r.original_title!==r.display_title?` · ${r.original_title}`:''}</small></td><td>{r.type}</td><td className="id-ok">{r.imdb_id}</td><td className={r.missing_tmdb?'id-bad':'id-ok'}>{r.tmdb_id||'—'}</td><td><div className="table-actions"><IdentityRetryButton imdbId={r.imdb_id}/><details><summary className="button ghost">✎ Corregir</summary><form action={saveIdentityPageAction} className="identity-edit"><input type="hidden" name="imdbId" value={r.imdb_id}/><label>IMDb<input name="newImdbId" defaultValue={r.imdb_id}/></label><label>TMDb<input name="tmdbId" defaultValue={r.tmdb_id||''}/></label><button>Guardar IDs</button></form></details><Link className="button ghost" href={`/catalogo/${r.imdb_id}?from=${encodeURIComponent('/calidad/identidad')}`}>Abrir</Link></div></td></tr>)}</tbody></table></section>
-  <Pager p={p} page={catalog.page} pages={catalog.pages}/>
-  <div className="identity-note"><span>ⓘ “Obtener identidad” procesa solo ese título y únicamente intenta resolver TMDb.</span><span>Cuando existe IMDb + TMDb, el lifecycle cambia y el título desaparece de esta cola para pasar a Validación de identidad.</span></div></>}
+  const raw=await searchParams,p=parseIdentityFilters(raw);
+  const [stats,catalog]=await Promise.all([getIdentityWorkflowStats(),getIdentityCatalogPage(p)]);
+  const cleanParams={...raw,notice:'',message:'',undo:''};
+  const currentPath='/calidad/identidad?'+qs(cleanParams,{page:catalog.page});
+  const total=Number(stats.affected_catalog||0),moviePct=total?Math.round(Number(stats.movies||0)*100/total):0,seriesPct=total?Math.round(Number(stats.series||0)*100/total):0;
+  const hasFilters=Boolean(p.q||p.type||p.status||p.plex||p.sort!=='year_desc');
+  const clearHref='/calidad/identidad';
+  const statusOptions=[['','Todos'],['untried',`Sin intentar (${nf(catalog.statusCounts.untried)})`],['not_found',`Sin coincidencia (${nf(catalog.statusCounts.not_found)})`],['error',`Error técnico (${nf(catalog.statusCounts.error)})`],['review',`Requiere revisión (${nf(catalog.statusCounts.review)})`],['processing',`Procesando (${nf(catalog.statusCounts.processing)})`]];
+  return <div className="identity-page"><IdentityAutoRefresh/>
+    <div className="breadcrumbs"><Link href="/calidad">Calidad</Link><span>›</span><b>Identidad</b></div>
+    {(raw.notice==='excluded'&&raw.undo)&&<div className="identity-toast success"><span>Título excluido correctamente.</span><form action={restoreTitle}><input type="hidden" name="imdbId" value={raw.undo}/><input type="hidden" name="returnTo" value={currentPath}/><button>Deshacer</button></form></div>}
+    {['identity_resolved','identity_saved'].includes(raw.notice)&&<div className="identity-toast success"><span>{raw.message||'Identidad actualizada correctamente.'}</span><Link href={currentPath.replace(/([?&])notice=[^&]*&?|([?&])message=[^&]*&?/g,'$1')}>Cerrar</Link></div>}
+
+    <header className="identity-head"><div><div className="eyebrow">Integridad maestra</div><h1>Identidad</h1><p>Títulos pendientes de completar su identidad canónica. Obtén o corrige TMDb para que continúen automáticamente a Validación de identidad.</p></div></header>
+
+    <section className="identity-kpis" aria-label="Resumen de identidad">
+      <Kpi label="Pendientes" value={stats.affected_catalog} active={!p.type} href={'/calidad/identidad?'+qs(raw,{type:'',page:1,notice:'',message:'',undo:''})}/>
+      <Kpi label="Películas" value={stats.movies} sub={`${moviePct}%`} active={p.type==='movie'} href={'/calidad/identidad?'+qs(raw,{type:'movie',page:1,notice:'',message:'',undo:''})}/>
+      <Kpi label="Series / Miniseries" value={stats.series} sub={`${seriesPct}%`} active={p.type==='series'} href={'/calidad/identidad?'+qs(raw,{type:'series',page:1,notice:'',message:'',undo:''})}/>
+    </section>
+
+    <section className="identity-toolbar-shell">
+      <form method="get" className="identity-toolbar">
+        <div className="identity-search"><input name="q" defaultValue={p.q} placeholder="Buscar por título, título original o IMDb…"/><button>Buscar</button></div>
+        <label>Tipo<select name="type" defaultValue={p.type}><option value="">Todos</option><option value="movie">Películas</option><option value="series">Series</option></select></label>
+        <label>Estado<select name="status" defaultValue={p.status}>{statusOptions.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>
+        <label>Plex<select name="plex" defaultValue={p.plex}><option value="">Todos</option><option value="in">En Plex</option><option value="out">Fuera de Plex</option></select></label>
+        <label>Orden<select name="sort" defaultValue={p.sort}><option value="year_desc">Más recientes</option><option value="year_asc">Más antiguas</option><option value="title_asc">Título A–Z</option><option value="title_desc">Título Z–A</option></select></label>
+        <input type="hidden" name="page" value="1"/>
+      </form>
+      {hasFilters&&<div className="identity-active-filters">{p.q&&<FilterChip label={`“${p.q}”`} p={raw} patch={{q:''}}/>}{p.type&&<FilterChip label={p.type==='movie'?'Películas':'Series'} p={raw} patch={{type:''}}/>}{p.status&&<FilterChip label={statusMeta[p.status]?.[0]||p.status} p={raw} patch={{status:''}}/>}{p.plex&&<FilterChip label={p.plex==='in'?'En Plex':'Fuera de Plex'} p={raw} patch={{plex:''}}/>}{p.sort!=='year_desc'&&<FilterChip label="Orden personalizado" p={raw} patch={{sort:'year_desc'}}/>}<Link className="identity-clear" href={clearHref}>Limpiar filtros</Link></div>}
+    </section>
+
+    <div className="identity-resultbar"><span>Mostrando <b>{nf(catalog.first)}–{nf(catalog.last)}</b> de <b>{nf(catalog.total)}</b>{hasFilters?' filtrados':''}</span><small>50 por página</small></div>
+
+    {catalog.rows.length===0?<section className="identity-empty"><strong>{total===0?'✓ No hay títulos pendientes de identidad':'No hay títulos que coincidan con estos filtros'}</strong><span>{total===0?'Todos los títulos han superado esta etapa del flujo.':'Modifica o limpia los filtros para volver a ver resultados.'}</span>{total>0&&<Link href={clearHref}>Quitar filtros</Link>}</section>:
+    <section className="identity-table-wrap"><table className="identity-table"><thead><tr><th>Título</th><th>Identidad / colección</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{catalog.rows.map(r=>{
+      const meta=statusMeta[r.identity_status]||statusMeta.untried,detailHref=`/catalogo/${r.imdb_id}?from=${encodeURIComponent(currentPath)}`,img=posterSrc(r.poster_path),tmdbUrl=r.tmdb_id?`https://www.themoviedb.org/${r.type==='Película'?'movie':'tv'}/${r.tmdb_id}`:null;
+      const primaryLabel=r.identity_status==='error'?'Reintentar':r.identity_status==='not_found'?'Reintentar':'Obtener identidad';
+      return <tr key={r.imdb_id}>
+        <td><div className="identity-title-cell"><div className="identity-mini-poster">{img?<img src={img} alt="" loading="lazy" width="46" height="69"/>:<span>{String(r.display_title||'?').slice(0,1)}</span>}</div><div><strong>{r.display_title}</strong><small>{r.original_title&&r.original_title!==r.display_title?`${r.original_title} · `:''}{r.year||'—'} · {r.type||'—'}</small></div></div></td>
+        <td><div className="identity-badges"><a className="identity-badge ok" href={`https://www.imdb.com/title/${r.imdb_id}/`} target="_blank" rel="noopener noreferrer">IMDb ✓ <span>{r.imdb_id}</span> ↗</a>{tmdbUrl?<a className="identity-badge ok" href={tmdbUrl} target="_blank" rel="noopener noreferrer">TMDb ✓ <span>{r.tmdb_id}</span> ↗</a>:<span className="identity-badge missing">TMDb —</span>}<span className={`identity-badge ${r.in_plex?'plex':'missing'}`}>{r.in_plex?'PLEX ✓ En colección':'PLEX — Fuera'}</span></div></td>
+        <td><div className="identity-status-cell"><span className={`identity-state ${meta[1]}`}>{meta[0]}</span>{r.last_attempt_at&&<small>{Number(r.attempt_count||0)} intento{Number(r.attempt_count||0)===1?'':'s'} · último {fmtDate(r.last_attempt_at)}</small>}{r.manual_review_reason&&<small title={r.manual_review_reason}>{r.manual_review_reason}</small>}</div></td>
+        <td><div className="identity-actions"><IdentityRetryButton imdbId={r.imdb_id} label={primaryLabel} primary={r.identity_status!=='not_found'}/><IdentityCorrectionPanel imdbId={r.imdb_id} tmdbId={r.tmdb_id||''} title={r.display_title}/><IdentityExcludeButton imdbId={r.imdb_id} title={r.display_title} inPlex={r.in_plex} returnTo={currentPath}/><Link className="button ghost" href={detailHref}>Abrir</Link></div></td>
+      </tr>})}</tbody></table></section>}
+    <Pager p={raw} catalog={catalog}/>
+  </div>;
+}
