@@ -7,4 +7,4 @@ COPY requirements.txt ./
 RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
 COPY lib ./lib
 COPY worker ./worker
-ENTRYPOINT ["node","worker/lifecycle-worker.mjs"]
+ENTRYPOINT ["node","worker/combined-worker.mjs"]
