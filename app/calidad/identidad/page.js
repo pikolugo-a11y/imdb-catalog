@@ -5,6 +5,7 @@ import IdentityExcludeButton from '@/components/IdentityExcludeButton';
 import IdentityAutoRefresh from '@/components/IdentityAutoRefresh';
 import {restoreTitle} from '@/app/actions';
 import {getIdentityCatalogPage,getIdentityWorkflowStats,parseIdentityFilters} from '@/lib/identity-page';
+import {providerUrl} from '@/lib/provider-links';
 import './identity.css';
 export const dynamic='force-dynamic';
 const nf=n=>Number(n||0).toLocaleString('es-ES');
@@ -19,8 +20,8 @@ function Kpi({label,value,active,href,sub}){return <Link className={`identity-kp
 export default async function Identidad({searchParams}){
   const raw=await searchParams,p=parseIdentityFilters(raw);
   const [stats,catalog]=await Promise.all([getIdentityWorkflowStats(),getIdentityCatalogPage(p)]);
-  const cleanParams={...raw,notice:'',message:'',undo:''};
-  const currentPath='/calidad/identidad?'+qs(cleanParams,{page:catalog.page});
+  const cleanParams={...raw,notice:'',message:'',undo:'',page:catalog.page};
+  const cleanQuery=qs(cleanParams),currentPath='/calidad/identidad'+(cleanQuery?`?${cleanQuery}`:'');
   const total=Number(stats.affected_catalog||0),moviePct=total?Math.round(Number(stats.movies||0)*100/total):0,seriesPct=total?Math.round(Number(stats.series||0)*100/total):0;
   const hasFilters=Boolean(p.q||p.type||p.status||p.plex||p.sort!=='year_desc');
   const clearHref='/calidad/identidad';
@@ -28,7 +29,7 @@ export default async function Identidad({searchParams}){
   return <div className="identity-page"><IdentityAutoRefresh/>
     <div className="breadcrumbs"><Link href="/calidad">Calidad</Link><span>›</span><b>Identidad</b></div>
     {(raw.notice==='excluded'&&raw.undo)&&<div className="identity-toast success"><span>Título excluido correctamente.</span><form action={restoreTitle}><input type="hidden" name="imdbId" value={raw.undo}/><input type="hidden" name="returnTo" value={currentPath}/><button>Deshacer</button></form></div>}
-    {['identity_resolved','identity_saved'].includes(raw.notice)&&<div className="identity-toast success"><span>{raw.message||'Identidad actualizada correctamente.'}</span><Link href={currentPath.replace(/([?&])notice=[^&]*&?|([?&])message=[^&]*&?/g,'$1')}>Cerrar</Link></div>}
+    {['identity_resolved','identity_saved'].includes(raw.notice)&&<div className="identity-toast success"><span>{raw.message||'Identidad actualizada correctamente.'}</span><Link href={currentPath}>Cerrar</Link></div>}
 
     <header className="identity-head"><div><div className="eyebrow">Integridad maestra</div><h1>Identidad</h1><p>Títulos pendientes de completar su identidad canónica. Obtén o corrige TMDb para que continúen automáticamente a Validación de identidad.</p></div></header>
 
@@ -54,11 +55,11 @@ export default async function Identidad({searchParams}){
 
     {catalog.rows.length===0?<section className="identity-empty"><strong>{total===0?'✓ No hay títulos pendientes de identidad':'No hay títulos que coincidan con estos filtros'}</strong><span>{total===0?'Todos los títulos han superado esta etapa del flujo.':'Modifica o limpia los filtros para volver a ver resultados.'}</span>{total>0&&<Link href={clearHref}>Quitar filtros</Link>}</section>:
     <section className="identity-table-wrap"><table className="identity-table"><thead><tr><th>Título</th><th>Identidad / colección</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{catalog.rows.map(r=>{
-      const meta=statusMeta[r.identity_status]||statusMeta.untried,detailHref=`/catalogo/${r.imdb_id}?from=${encodeURIComponent(currentPath)}`,img=posterSrc(r.poster_path),tmdbUrl=r.tmdb_id?`https://www.themoviedb.org/${r.type==='Película'?'movie':'tv'}/${r.tmdb_id}`:null;
-      const primaryLabel=r.identity_status==='error'?'Reintentar':r.identity_status==='not_found'?'Reintentar':'Obtener identidad';
+      const meta=statusMeta[r.identity_status]||statusMeta.untried,detailHref=`/catalogo/${r.imdb_id}?from=${encodeURIComponent(currentPath)}`,img=posterSrc(r.poster_path),imdbUrl=providerUrl('imdb',r.imdb_id,r.type),tmdbUrl=providerUrl('tmdb',r.tmdb_id,r.type);
+      const primaryLabel=r.identity_status==='error'||r.identity_status==='not_found'?'Reintentar':'Obtener identidad';
       return <tr key={r.imdb_id}>
         <td><div className="identity-title-cell"><div className="identity-mini-poster">{img?<img src={img} alt="" loading="lazy" width="46" height="69"/>:<span>{String(r.display_title||'?').slice(0,1)}</span>}</div><div><strong>{r.display_title}</strong><small>{r.original_title&&r.original_title!==r.display_title?`${r.original_title} · `:''}{r.year||'—'} · {r.type||'—'}</small></div></div></td>
-        <td><div className="identity-badges"><a className="identity-badge ok" href={`https://www.imdb.com/title/${r.imdb_id}/`} target="_blank" rel="noopener noreferrer">IMDb ✓ <span>{r.imdb_id}</span> ↗</a>{tmdbUrl?<a className="identity-badge ok" href={tmdbUrl} target="_blank" rel="noopener noreferrer">TMDb ✓ <span>{r.tmdb_id}</span> ↗</a>:<span className="identity-badge missing">TMDb —</span>}<span className={`identity-badge ${r.in_plex?'plex':'missing'}`}>{r.in_plex?'PLEX ✓ En colección':'PLEX — Fuera'}</span></div></td>
+        <td><div className="identity-badges">{imdbUrl?<a className="identity-badge ok" href={imdbUrl} target="_blank" rel="noopener noreferrer">IMDb ✓ <span>{r.imdb_id}</span> ↗</a>:<span className="identity-badge missing">IMDb ?</span>}{tmdbUrl?<a className="identity-badge ok" href={tmdbUrl} target="_blank" rel="noopener noreferrer">TMDb ✓ <span>{r.tmdb_id}</span> ↗</a>:<span className="identity-badge missing">TMDb —</span>}<span className={`identity-badge ${r.in_plex?'plex':'missing'}`}>{r.in_plex?'PLEX ✓ En colección':'PLEX — Fuera'}</span></div></td>
         <td><div className="identity-status-cell"><span className={`identity-state ${meta[1]}`}>{meta[0]}</span>{r.last_attempt_at&&<small>{Number(r.attempt_count||0)} intento{Number(r.attempt_count||0)===1?'':'s'} · último {fmtDate(r.last_attempt_at)}</small>}{r.manual_review_reason&&<small title={r.manual_review_reason}>{r.manual_review_reason}</small>}</div></td>
         <td><div className="identity-actions"><IdentityRetryButton imdbId={r.imdb_id} label={primaryLabel} primary={r.identity_status!=='not_found'}/><IdentityCorrectionPanel imdbId={r.imdb_id} tmdbId={r.tmdb_id||''} title={r.display_title}/><IdentityExcludeButton imdbId={r.imdb_id} title={r.display_title} inPlex={r.in_plex} returnTo={currentPath}/><Link className="button ghost" href={detailHref}>Abrir</Link></div></td>
       </tr>})}</tbody></table></section>}
