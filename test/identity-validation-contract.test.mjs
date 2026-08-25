@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
+const batch=read('../lib/batch-control.js');
+const metrics=read('../lib/batch-ui-metrics.js');
+const actions=read('../app/calidad/validacion-identidad/actions.js');
+const page=read('../app/calidad/validacion-identidad/page.js');
+const model=read('../lib/identity-validation-page.js');
+test('BATCH conserva IDENTITY_VALIDATION como etapa canónica',()=>{assert.match(batch,/['"]IDENTITY_VALIDATION['"]/);assert.match(metrics,/cl\.lifecycle_state=\$1/)});
+test('CALIDAD individual recomputa Lifecycle tras evidencia, validación e IDs',()=>{assert.ok((actions.match(/recomputeLifecycleForIds/g)||[]).length>=5)});
+test('editar IDs invalida evidencia y preserva detección de cambio de contexto BATCH',()=>{assert.match(actions,/validation_status='pending_data'/);assert.match(actions,/validation_details='\{\}'::jsonb/);assert.match(metrics,/COALESCE\(m\.tmdb_id,''\)/)});
+test('resolver manualmente limpia manual_review de BATCH para evitar estado paralelo',()=>{assert.match(actions,/stage='IDENTITY_VALIDATION'/);assert.match(actions,/manual_review=false/)});
+test('Validación reutiliza la exclusión canónica y no implementa batch masivo',()=>{assert.match(page,/IdentityExcludeButton/);assert.doesNotMatch(page,/createBatch|createFlexibleStageRun|seleccionar.*todos/i)});
+test('read model usa Lifecycle canónico, exclusiones y Plex local',()=>{assert.match(model,/IDENTITY_VALIDATION/);assert.match(model,/catalog_exclusions/);assert.match(model,/catalog_read_model/);assert.match(model,/effective_status/)});
