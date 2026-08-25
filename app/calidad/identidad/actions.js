@@ -10,13 +10,16 @@ import {recomputeLifecycleForIds} from '@/lib/lifecycle';
 function refresh(imdbId){revalidatePath('/calidad/identidad');revalidatePath('/calidad');revalidatePath('/admin');if(imdbId){revalidatePath('/catalogo');revalidatePath(`/catalogo/${imdbId}`)}}
 function imdb(formData,name='imdbId'){const id=String(formData.get(name)||'').trim();if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id}
 function tmdb(formData){const id=String(formData.get('tmdbId')||'').trim();if(id&&!/^\d+$/.test(id))throw new Error('TMDb ID inválido');return id}
+async function recordOutcome(id,outcome){const sql=db();await sql`INSERT INTO batch_process_state(entity_type,entity_id,stage,attempt_count,no_progress_count,last_attempt_at,last_outcome,manual_review,updated_at) VALUES('title',${id},'IDENTITY_PENDING',1,${outcome==='CORREGIDO'?0:1},now(),${outcome},false,now()) ON CONFLICT(entity_type,entity_id,stage) DO UPDATE SET attempt_count=batch_process_state.attempt_count+1,no_progress_count=CASE WHEN ${outcome}='CORREGIDO' THEN 0 ELSE batch_process_state.no_progress_count+1 END,last_attempt_at=now(),last_outcome=${outcome},updated_at=now()`}
 
 export async function obtainIdentityAction(_prev,formData){
+  let id='';
   try{
-    const id=imdb(formData),r=await resolveIdentityUnitary(id);refresh(id);
-    if(r.complete)return{ok:true,status:'resolved',imdbId:id,message:`Identidad completa · TMDb ${r.tmdbId}`};
+    id=imdb(formData);const r=await resolveIdentityUnitary(id);refresh(id);
+    if(r.complete){await recordOutcome(id,'CORREGIDO');return{ok:true,status:'resolved',imdbId:id,message:`Identidad completa · TMDb ${r.tmdbId}`}}
+    await recordOutcome(id,'NO_ENCONTRADO');
     return{ok:false,status:'not_found',imdbId:id,message:'TMDb respondió correctamente, pero no encontró una coincidencia. Puedes corregir el ID manualmente.'};
-  }catch(e){return{ok:false,status:'error',message:e?.message||'No se pudo obtener la identidad'}}
+  }catch(e){if(id)await recordOutcome(id,'ERROR').catch(()=>{});return{ok:false,status:'error',message:e?.message||'No se pudo obtener la identidad'}}
 }
 
 export async function saveIdentityPageAction(_prev,formData){
@@ -34,6 +37,7 @@ export async function saveIdentityPageAction(_prev,formData){
     const saved=await saveIdentity(old,{imdbId:newId,tmdbId});
     await markIdentityRefreshPending(saved,'manual_identity_edit');
     await recomputeLifecycleForIds([saved]);
+    if(tmdbId)await recordOutcome(saved,'CORREGIDO').catch(()=>{});
     refresh(old);refresh(saved);
     return{ok:true,status:'saved',imdbId:saved,message:`Identidad guardada${tmdbId?` · TMDb ${tmdbId}`:''}.${validationWarning}`};
   }catch(e){return{ok:false,status:'error',message:e?.message||'No se pudo guardar la identidad'}}
