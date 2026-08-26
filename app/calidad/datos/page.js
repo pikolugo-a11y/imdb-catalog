@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import ActionButton from '@/components/ActionButton';
 import IdentityExcludeButton from '@/components/IdentityExcludeButton';
-import {DATA_FIELDS,getDataQualityOverview,getDataQualityPage} from '@/lib/data-quality';
+import {DATA_FIELDS,getDataQualityView} from '@/lib/data-quality';
 import {providerUrl} from '@/lib/provider-links';
 import {updateDataAction,refreshRatingsAction,calculatePikoScoreV3Action} from './actions';
 import './quality-data.css';
+import './quality-data-layout-fix.css';
 
 export const dynamic='force-dynamic';
 const nf=n=>Number(n||0).toLocaleString('es-ES');
@@ -37,7 +38,7 @@ function ProviderLinks({r}){
 export default async function DataQuality({searchParams}){
   const p=await searchParams;
   const base={q:String(p.q||''),state:String(p.state||'all'),type:String(p.type||'all'),plex:String(p.plex||'all'),completion:String(p.completion||'all'),sort:String(p.sort||'priority'),stuck:String(p.stuck||'')};
-  const page=Math.max(1,Number(p.page)||1),[o,d]=await Promise.all([getDataQualityOverview(),getDataQualityPage({...base,page})]);
+  const requestedPage=Math.max(1,Number(p.page)||1),{overview:o,page:d}=await getDataQualityView({...base,page:requestedPage});
   const cards=[['data_incomplete','Datos incompletos',o.incomplete,'Faltan requisitos críticos'],['ratings_pending','Ratings pendientes',o.ratingsPending,'Faltan fuentes o toca refrescarlas'],['score_ready','Listos para PikoScore',o.scoreReady,'Materia prima preparada'],['resolved','Sin acción pendiente',o.resolved,`${nf(o.resolvedComplete)} al 100 % · ${nf(o.resolvedImprovable)} mejorables`]];
   const returnTo=qs(base,{page:d.page});
   return <main className="dq-page">
