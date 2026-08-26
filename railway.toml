@@ -3,6 +3,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.technical"
 
 [deploy]
-startCommand = "node worker/entrypoint.mjs"
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 2
+startCommand = "node -e \"console.log('technical snapshot disabled pending explicit approval')\""
+restartPolicyType = "NEVER"
+restartPolicyMaxRetries = 0
