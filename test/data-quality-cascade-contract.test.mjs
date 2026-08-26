@@ -26,14 +26,15 @@ test('Completar datos respeta el tipo validado y no reidentifica ni cambia de me
   assert.doesNotMatch(source,/ensureTmdbIdentity/);
   assert.doesNotMatch(source,/recoverMediaTypeIfNeeded/);
   assert.doesNotMatch(source,/media_type_recovered/);
-  const runs=[...source.matchAll(/runCascade\(imdbId,/g)];
-  assert.equal(runs.length,1,'Completar datos debe ejecutar una única cascada según el tipo ya validado');
+  const runs=[...source.matchAll(/await runCascade\(imdbId,/g)];
+  assert.equal(runs.length,1,'Debe ejecutarse una sola cascada según el tipo ya validado');
 });
 
 test('TMDb profundiza en episodios, créditos e imágenes cuando el tipo validado es serie',()=>{
   assert.match(source,/seriesEpisodeFacts/);
   assert.match(source,/\/episode\/\$\{ref\.episode\}\/credits/);
   assert.match(source,/\/images\?include_image_language=es,null,en/);
+  assert.match(source,/if\(key==='runtime'\)return Number\(row\.runtime\)>0/);
 });
 
 test('MDBList mantiene separados ratings y metadatos',()=>{
@@ -68,6 +69,11 @@ test('la revisión permanece disponible tras avanzar Lifecycle y calcula reentra
   assert.match(dataQuality,/nextRatingRefreshAt/);
   assert.match(dataQuality,/ratings_refreshed_at/);
   assert.match(dataQuality,/ratingsFresh/);
+});
+
+test('duración de serie cuenta para cobertura pero no bloquea el avance',()=>{
+  assert.match(dataQuality,/effectiveSeverity=\(k,r\)=>k==='runtime'&&isSeries\(r\)\?'optional'/);
+  assert.match(dataQuality,/k==='runtime'\?Number\(v\)>0/);
 });
 
 test('la pantalla incorpora contexto Plex, mejora no incidente y exclusión existente',()=>{
