@@ -85,7 +85,7 @@ test('duración de serie cuenta para cobertura pero no bloquea el avance',()=>{
 test('CALIDAD pagina y filtra en SQL en lugar de cargar todo el universo en Node',()=>{
   assert.match(dataQuality,/count\(\*\) OVER\(\)/);
   assert.match(dataQuality,/LIMIT \$5 OFFSET \$6/);
-  assert.match(dataQuality,/pageFilterSql/);
+  assert.match(dataQuality,/stateFilter/);
   assert.doesNotMatch(dataQuality,/\.slice\(start,start\+pageSize\)/);
   assert.doesNotMatch(dataQuality,/cache\(async/);
 });
