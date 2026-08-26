@@ -1,5 +1,6 @@
 import {neon} from '@neondatabase/serverless';
-import {refreshTechnicalQueue,claimTechnicalBatch} from '../lib/plex-technical-queue.mjs';
+import {scanPlexTechnicalLibrary} from '../lib/plex-technical-scan.mjs';
+import {claimTechnicalBatch} from '../lib/plex-technical-queue.mjs';
 import {captureTechnicalRatingKey} from '../lib/plex-technical-capture.mjs';
 
 const connectionString=process.env.DATABASE_URL||process.env.NEON_DATABASE_URL;
@@ -11,9 +12,11 @@ const sql=neon(connectionString);
 const batchSize=Math.max(1,Math.min(100,Number(process.env.TECHNICAL_SNAPSHOT_BATCH_SIZE)||25));
 const concurrency=Math.max(1,Math.min(8,Number(process.env.TECHNICAL_SNAPSHOT_CONCURRENCY)||4));
 const idleMs=Math.max(5000,Number(process.env.TECHNICAL_SNAPSHOT_IDLE_MS)||30000);
+const scanEveryMs=Math.max(60000,Number(process.env.TECHNICAL_SNAPSHOT_SCAN_MS)||900000);
 const once=String(process.env.TECHNICAL_SNAPSHOT_ONCE||'').toLowerCase()==='true';
 
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+let lastScanAt=0;
 
 async function processChunk(rows){
   let ok=0,failed=0;
@@ -25,22 +28,30 @@ async function processChunk(rows){
   return{ok,failed};
 }
 
-async function cycle(){
-  const queue=await refreshTechnicalQueue(sql);
-  const rows=await claimTechnicalBatch(sql,{limit:batchSize});
-  if(!rows.length)return{...queue,claimed:0,ok:0,failed:0};
-  const result=await processChunk(rows);
-  return{...queue,claimed:rows.length,...result};
+async function maybeScan(force=false){
+  const now=Date.now();
+  if(!force&&now-lastScanAt<scanEveryMs)return null;
+  const result=await scanPlexTechnicalLibrary({sql,token,baseUrl});
+  lastScanAt=Date.now();
+  return result;
 }
 
-console.log(`[technical-snapshot-worker] started batch=${batchSize} concurrency=${concurrency} once=${once}`);
+async function cycle(){
+  const scan=await maybeScan(lastScanAt===0);
+  const rows=await claimTechnicalBatch(sql,{limit:batchSize});
+  if(!rows.length)return{scan,claimed:0,ok:0,failed:0};
+  const result=await processChunk(rows);
+  return{scan,claimed:rows.length,...result};
+}
+
+console.log(`[technical-snapshot-worker] started batch=${batchSize} concurrency=${concurrency} scanEveryMs=${scanEveryMs} once=${once}`);
 for(;;){
   const started=Date.now();
   try{
     const result=await cycle();
     console.log('[technical-snapshot-worker]',JSON.stringify({...result,elapsed_ms:Date.now()-started}));
     if(once)break;
-    if(result.claimed===0)await sleep(idleMs);
+    if(result.claimed===0)await sleep(Math.min(idleMs,scanEveryMs));
   }catch(error){
     console.error('[technical-snapshot-worker] cycle failed',error);
     if(once)process.exitCode=1;
