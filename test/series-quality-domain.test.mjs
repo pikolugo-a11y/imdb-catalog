@@ -1,0 +1,9 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {classifySeries,getReferenceFreshness,nextReferenceCheck} from '../lib/series-quality-domain.mjs';
+const now=new Date('2026-08-26T00:00:00Z'),fresh={has_reference:true,refreshed_at:'2026-08-25T00:00:00Z',next_check_at:'2026-09-25T00:00:00Z',plex_detail_trusted:true};
+test('pre-quality wins and remains traced',()=>assert.equal(classifySeries({...fresh,pre_quality_pending:true,blocking_reason:'PikoScore pendiente'},now).primaryState,'pre_quality'));
+test('Plex trust is required before TMDb and episode diagnosis',()=>assert.equal(classifySeries({...fresh,plex_detail_trusted:false,actionable_missing:4},now).primaryState,'plex_sync'));
+test('expired TMDb blocks al día',()=>assert.equal(classifySeries({...fresh,next_check_at:'2026-08-20T00:00:00Z'},now).primaryState,'tmdb_refresh'));
+test('missing is primary over secondary unmapped/unknown signals',()=>{const r=classifySeries({...fresh,actionable_missing:2,unmapped_plex_episodes:3,availability_unknown:1},now);assert.equal(r.primaryState,'missing');assert.deepEqual(r.secondaryFlags,['missing','unknown','unmapped'])});
+test('al día requires both trusted sources and zero diagnosis',()=>assert.equal(classifySeries(fresh,now).primaryState,'uptodate'));
+test('invalidated reference is never trusted',()=>assert.equal(getReferenceFreshness({...fresh,reference_invalidated:true},now).isTrusted,false));
+test('ended series gets a long recheck interval',()=>{const d=nextReferenceCheck({status:'Ended',refreshedAt:now});assert.equal(Math.round((d-now)/86400000),180)});
