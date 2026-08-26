@@ -1,8 +1,8 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.worker"
+dockerfilePath = "Dockerfile.technical"
 
 [deploy]
-startCommand = "node worker/batch-fast.mjs"
+startCommand = "node worker/entrypoint.mjs"
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 2
