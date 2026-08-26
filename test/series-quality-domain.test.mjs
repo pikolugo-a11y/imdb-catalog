@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {classifySeries,getReferenceFreshness,nextReferenceCheck} from '../lib/series-quality-domain.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {classifySeries,deriveSeriesQualityState,getReferenceFreshness,nextReferenceCheck} from '../lib/series-quality-domain.mjs';
 const now=new Date('2026-08-26T00:00:00Z'),fresh={has_reference:true,refreshed_at:'2026-08-25T00:00:00Z',next_check_at:'2026-09-25T00:00:00Z',plex_detail_trusted:true,tmdb_status:'Returning Series',first_air_date:'2020-01-01'};
 test('fase previa queda reservada a series sin referencia oficial',()=>assert.equal(classifySeries({...fresh,has_reference:false,pre_quality_pending:true,blocking_reason:'PikoScore pendiente'},now).primaryState,'pre_quality'));
 test('un estado lifecycle antiguo no bloquea los subestados de una serie con referencia',()=>assert.equal(classifySeries({...fresh,pre_quality_pending:true,blocking_reason:'PikoScore pendiente'},now).primaryState,'uptodate'));
@@ -11,3 +11,8 @@ test('legacy reference without TMDb metadata is pending refresh',()=>assert.equa
 test('ended series gets a long recheck interval',()=>{const d=nextReferenceCheck({status:'Ended',refreshedAt:now});assert.equal(Math.round((d-now)/86400000),180)});
 test('returning series gets a short recheck interval',()=>{const d=nextReferenceCheck({status:'Returning Series',refreshedAt:now});assert.equal(Math.round((d-now)/86400000),14)});
 test('known next episode schedules refresh just after air date when later than minimum interval',()=>{const d=nextReferenceCheck({status:'Returning Series',nextAirDate:'2026-10-01',refreshedAt:now});assert.equal(d.toISOString().slice(0,10),'2026-10-02')});
+test('canonical state is AL_DIA only with reliable sources and no issues',()=>assert.equal(deriveSeriesQualityState(fresh,now).state,'AL_DIA'));
+test('unknown availability is review pending, not an error',()=>{const r=deriveSeriesQualityState({...fresh,availability_unknown:3},now);assert.equal(r.state,'REVISION_PENDIENTE');assert.equal(r.attention_count,0);assert.equal(r.pending_count,3)});
+test('missing and mapping anomalies require attention',()=>{const r=deriveSeriesQualityState({...fresh,actionable_missing:2,unmapped_plex_episodes:1},now);assert.equal(r.state,'REQUIERE_ATENCION');assert.equal(r.attention_count,3)});
+test('stale Plex or TMDb makes diagnosis unreliable',()=>assert.equal(deriveSeriesQualityState({...fresh,plex_detail_trusted:false},now).state,'DIAGNOSTICO_NO_FIABLE'));
+test('classifySeries exposes the same canonical quality state used by detail',()=>assert.equal(classifySeries({...fresh,availability_unknown:1},now).qualityState,'REVISION_PENDIENTE'));
