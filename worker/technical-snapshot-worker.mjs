@@ -14,6 +14,8 @@ const concurrency=Math.max(1,Math.min(8,Number(process.env.TECHNICAL_SNAPSHOT_CO
 const idleMs=Math.max(5000,Number(process.env.TECHNICAL_SNAPSHOT_IDLE_MS)||30000);
 const scanEveryMs=Math.max(60000,Number(process.env.TECHNICAL_SNAPSHOT_SCAN_MS)||900000);
 const once=String(process.env.TECHNICAL_SNAPSHOT_ONCE||'').toLowerCase()==='true';
+const requestedItemType=String(process.env.TECHNICAL_SNAPSHOT_ITEM_TYPE||'').trim().toLowerCase();
+const itemType=['movie','episode'].includes(requestedItemType)?requestedItemType:null;
 
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let lastScanAt=0;
@@ -38,13 +40,13 @@ async function maybeScan(force=false){
 
 async function cycle(){
   const scan=await maybeScan(lastScanAt===0);
-  const rows=await claimTechnicalBatch(sql,{limit:batchSize});
-  if(!rows.length)return{scan,claimed:0,ok:0,failed:0};
+  const rows=await claimTechnicalBatch(sql,{limit:batchSize,itemType});
+  if(!rows.length)return{scan,item_type:itemType,claimed:0,ok:0,failed:0};
   const result=await processChunk(rows);
-  return{scan,claimed:rows.length,...result};
+  return{scan,item_type:itemType,claimed:rows.length,...result};
 }
 
-console.log(`[technical-snapshot-worker] started batch=${batchSize} concurrency=${concurrency} scanEveryMs=${scanEveryMs} once=${once}`);
+console.log(`[technical-snapshot-worker] started batch=${batchSize} concurrency=${concurrency} scanEveryMs=${scanEveryMs} once=${once} itemType=${itemType||'any'}`);
 for(;;){
   const started=Date.now();
   try{
