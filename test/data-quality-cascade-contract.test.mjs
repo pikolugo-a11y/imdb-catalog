@@ -44,13 +44,14 @@ test('MDBList mantiene separados ratings y metadatos',()=>{
   assert.match(mdblist,/parseMDBListMetadata/);
 });
 
-test('CALIDAD registra request y response de proveedores sin exponer secretos',()=>{
+test('CALIDAD conserva logging mínimo solo para errores y no guarda payloads completos',()=>{
   assert.match(source,/loggedJsonFetch/);
   assert.match(mdblist,/loggedJsonFetch/);
-  assert.match(apiLog,/provider_http_request/);
-  assert.match(apiLog,/provider_http_response/);
+  assert.match(apiLog,/provider_http_transport_error/);
+  assert.match(apiLog,/provider_http_error/);
   assert.match(apiLog,/u\.searchParams\.set\(key,'\*\*\*'\)/);
-  assert.match(apiLog,/authorization/);
+  assert.doesNotMatch(apiLog,/provider_http_request/);
+  assert.doesNotMatch(apiLog,/provider_http_response/);
 });
 
 test('las fuentes posteriores no sustituyen datos existentes',()=>{
@@ -79,6 +80,14 @@ test('expires_at nulo usa la frescura calculada y no epoch 1970',()=>{
 test('duración de serie cuenta para cobertura pero no bloquea el avance',()=>{
   assert.match(dataQuality,/effectiveSeverity=\(k,r\)=>k==='runtime'&&isSeries\(r\)\?'optional'/);
   assert.match(dataQuality,/k==='runtime'\?Number\(v\)>0/);
+});
+
+test('CALIDAD pagina y filtra en SQL en lugar de cargar todo el universo en Node',()=>{
+  assert.match(dataQuality,/count\(\*\) OVER\(\)/);
+  assert.match(dataQuality,/LIMIT \$5 OFFSET \$6/);
+  assert.match(dataQuality,/stateFilter/);
+  assert.doesNotMatch(dataQuality,/\.slice\(start,start\+pageSize\)/);
+  assert.doesNotMatch(dataQuality,/cache\(async/);
 });
 
 test('la pantalla incorpora contexto Plex, mejora no incidente y exclusión existente',()=>{
