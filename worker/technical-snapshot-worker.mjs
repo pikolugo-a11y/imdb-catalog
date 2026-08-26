@@ -32,7 +32,7 @@ async function processChunk(rows){
   let ok=0,failed=0;
   for(let pos=0;pos<rows.length;pos+=concurrency){
     const control=await getTechnicalControl(sql);
-    if(control.requested_state!=='running')break;
+    if(!control.armed||control.requested_state!=='running')break;
     const chunk=rows.slice(pos,pos+concurrency);
     const results=await Promise.allSettled(chunk.map(row=>captureTechnicalRatingKey(sql,{token,baseUrl,ratingKey:row.rating_key})));
     for(const result of results){if(result.status==='fulfilled')ok++;else failed++;}
@@ -51,6 +51,10 @@ async function maybeScan(force=false){
 
 async function cycle(){
   const control=await getTechnicalControl(sql);
+  if(!control.armed){
+    await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});
+    return{control:'disarmed',claimed:0,ok:0,failed:0};
+  }
   if(control.requested_state==='paused'){
     await heartbeatTechnicalWorker(sql,{workerId,actualState:'paused'});
     return{control:'paused',claimed:0,ok:0,failed:0};
@@ -85,7 +89,7 @@ for(;;){
       await heartbeatTechnicalWorker(sql,{workerId,actualState:'completed'});
       if(mode==='backfill')break;
     }
-    if(result.control==='paused'||result.control==='stopped'||result.claimed===0)await sleep(idleMs);
+    if(result.control==='disarmed'||result.control==='paused'||result.control==='stopped'||result.claimed===0)await sleep(idleMs);
   }catch(error){
     console.error('[technical-snapshot-worker] cycle failed',error);
     await heartbeatTechnicalWorker(sql,{workerId,actualState:'error',lastError:String(error?.message||error)}).catch(()=>{});
