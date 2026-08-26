@@ -2,7 +2,7 @@
 import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
 import {analyzeMoviePikoQuality} from '@/lib/pikoquality-unitary';
-import {setTechnicalRequestedState} from '@/lib/plex-technical-control.mjs';
+import {setTechnicalArmed,setTechnicalRequestedState} from '@/lib/plex-technical-control.mjs';
 
 export async function analyzeOnePikoQualityAction(formData){
   const imdbId=String(formData.get('imdbId')||'');
@@ -16,6 +16,11 @@ async function setTechnicalState(state){
   revalidatePath('/calidad/pikoquality');
 }
 
-export async function startTechnicalSnapshotAction(){await setTechnicalState('running')}
+export async function startTechnicalSnapshotAction(){
+  const sql=db();
+  await setTechnicalArmed(sql,true);
+  await setTechnicalRequestedState(sql,'running');
+  revalidatePath('/calidad/pikoquality');
+}
 export async function pauseTechnicalSnapshotAction(){await setTechnicalState('paused')}
 export async function stopTechnicalSnapshotAction(){await setTechnicalState('stopped')}
