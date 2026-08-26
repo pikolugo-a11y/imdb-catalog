@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {classifySeries,getReferenceFreshness,nextReferenceCheck} from '../lib/series-quality-domain.mjs';
 const now=new Date('2026-08-26T00:00:00Z'),fresh={has_reference:true,refreshed_at:'2026-08-25T00:00:00Z',next_check_at:'2026-09-25T00:00:00Z',plex_detail_trusted:true,tmdb_status:'Returning Series',first_air_date:'2020-01-01'};
-test('pre-quality wins and remains traced',()=>assert.equal(classifySeries({...fresh,pre_quality_pending:true,blocking_reason:'PikoScore pendiente'},now).primaryState,'pre_quality'));
+test('fase previa queda reservada a series sin referencia oficial',()=>assert.equal(classifySeries({...fresh,has_reference:false,pre_quality_pending:true,blocking_reason:'PikoScore pendiente'},now).primaryState,'pre_quality'));
+test('un estado lifecycle antiguo no bloquea los subestados de una serie con referencia',()=>assert.equal(classifySeries({...fresh,pre_quality_pending:true,blocking_reason:'PikoScore pendiente'},now).primaryState,'uptodate'));
 test('Plex trust is required before TMDb and episode diagnosis',()=>assert.equal(classifySeries({...fresh,plex_detail_trusted:false,actionable_missing:4},now).primaryState,'plex_sync'));
 test('expired TMDb blocks al día',()=>assert.equal(classifySeries({...fresh,next_check_at:'2026-08-20T00:00:00Z'},now).primaryState,'tmdb_refresh'));
 test('missing is primary over secondary unmapped/unknown signals',()=>{const r=classifySeries({...fresh,actionable_missing:2,unmapped_plex_episodes:3,availability_unknown:1},now);assert.equal(r.primaryState,'missing');assert.deepEqual(r.secondaryFlags,['missing','unknown','unmapped'])});
