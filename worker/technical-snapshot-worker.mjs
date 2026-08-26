@@ -89,6 +89,7 @@ for(;;){
       await heartbeatTechnicalWorker(sql,{workerId,actualState:'completed'});
       if(mode==='backfill')break;
     }
+    if(mode==='backfill'&&['disarmed','paused','stopped'].includes(result.control))break;
     if(result.control==='disarmed'||result.control==='paused'||result.control==='stopped'||result.claimed===0)await sleep(idleMs);
   }catch(error){
     console.error('[technical-snapshot-worker] cycle failed',error);
