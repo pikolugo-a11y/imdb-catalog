@@ -6,7 +6,9 @@ const source=fs.readFileSync(new URL('../lib/data-quality-unitary.js',import.met
 const mdblist=fs.readFileSync(new URL('../lib/ratings-provider-mdblist.js',import.meta.url),'utf8');
 const apiLog=fs.readFileSync(new URL('../lib/data-quality-api-log.js',import.meta.url),'utf8');
 const dataQuality=fs.readFileSync(new URL('../lib/data-quality.js',import.meta.url),'utf8');
+const dataQualityPage=fs.readFileSync(new URL('../lib/data-quality-page.js',import.meta.url),'utf8');
 const page=fs.readFileSync(new URL('../app/calidad/datos/page.js',import.meta.url),'utf8');
+const css=fs.readFileSync(new URL('../app/calidad/datos/quality-data.css',import.meta.url),'utf8');
 
 test('CALIDAD Datos recorre fuentes en orden TMDb → OMDb → MDBList',()=>{
   const tmdb=source.indexOf("['TMDb',refreshTmdb]"),omdb=source.indexOf("['OMDb',refreshOmdb]"),mdb=source.indexOf("['MDBList',refreshMdblist]");
@@ -82,14 +84,22 @@ test('duración de serie cuenta para cobertura pero no bloquea el avance',()=>{
   assert.match(dataQuality,/k==='runtime'\?Number\(v\)>0/);
 });
 
-test('CALIDAD mantiene una lectura estable y reutilizada mientras se corrige la paginación SQL',()=>{
-  assert.match(dataQuality,/cache\(async/);
-  assert.match(dataQuality,/loadUniverse/);
-  assert.match(dataQuality,/\.slice\(start,start\+pageSize\)/);
+test('CALIDAD pagina y clasifica en SQL e hidrata únicamente la página visible',()=>{
+  assert.match(dataQualityPage,/count\(\*\) OVER\(\)/);
+  assert.match(dataQualityPage,/LIMIT \$\$\{limitPos\}::int OFFSET \$\$\{offsetPos\}::int/);
+  assert.match(dataQualityPage,/async function hydrate\(ids\)/);
+  assert.match(dataQualityPage,/m\.imdb_id=ANY\(\$1::text\[\]\)/);
+  assert.doesNotMatch(dataQualityPage,/\.slice\(start,start\+pageSize\)/);
+  assert.match(page,/from '@\/lib\/data-quality-page'/);
+});
+
+test('Datos respeta el contenedor principal y no invade el sidebar',()=>{
+  assert.match(css,/\.dq-page\{[^}]*width:100%/);
+  assert.doesNotMatch(css,/100vw|translateX\(|margin-left:50%/);
 });
 
 test('la pantalla incorpora contexto Plex, mejora no incidente y exclusión existente',()=>{
-  assert.match(dataQuality,/in_plex/);
+  assert.match(dataQualityPage,/in_plex/);
   assert.match(page,/En Plex/);
   assert.match(page,/Fuera de Plex/);
   assert.match(page,/Mejorar datos/);
