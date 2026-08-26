@@ -1,8 +1,9 @@
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.worker"
-
-[deploy]
-startCommand = "node worker/batch-fast.mjs"
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
+# This file intentionally left without [build]/[deploy] sections.
+# Per-service configuration is managed in the Railroad UI and in the
+# service-specific config files (railway.api.toml, railway.lifecycle.toml,
+# railway.technical.toml). A global [build]/[deploy] section here would
+# take precedence over service-level settings for any service that does
+# not explicitly reference its own config file, which previously caused
+# pikofilm-technical-snapshot-worker-v1 to build Dockerfile.worker and run
+# batch-fast.mjs instead of its configured Dockerfile.technical and
+# technical-snapshot-worker.mjs.
