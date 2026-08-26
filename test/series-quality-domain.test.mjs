@@ -7,3 +7,5 @@ test('missing is primary over secondary unmapped/unknown signals',()=>{const r=c
 test('al día requires both trusted sources and zero diagnosis',()=>assert.equal(classifySeries(fresh,now).primaryState,'uptodate'));
 test('invalidated reference is never trusted',()=>assert.equal(getReferenceFreshness({...fresh,reference_invalidated:true},now).isTrusted,false));
 test('ended series gets a long recheck interval',()=>{const d=nextReferenceCheck({status:'Ended',refreshedAt:now});assert.equal(Math.round((d-now)/86400000),180)});
+test('returning series gets a short recheck interval',()=>{const d=nextReferenceCheck({status:'Returning Series',refreshedAt:now});assert.equal(Math.round((d-now)/86400000),14)});
+test('known next episode schedules refresh just after air date when later than minimum interval',()=>{const d=nextReferenceCheck({status:'Returning Series',nextAirDate:'2026-10-01',refreshedAt:now});assert.equal(d.toISOString().slice(0,10),'2026-10-02')});
