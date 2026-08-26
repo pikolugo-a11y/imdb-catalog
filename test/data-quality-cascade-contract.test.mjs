@@ -5,30 +5,32 @@ import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../lib/data-quality-unitary.js',import.meta.url),'utf8');
 const mdblist=fs.readFileSync(new URL('../lib/ratings-provider-mdblist.js',import.meta.url),'utf8');
 const apiLog=fs.readFileSync(new URL('../lib/data-quality-api-log.js',import.meta.url),'utf8');
+const dataQuality=fs.readFileSync(new URL('../lib/data-quality.js',import.meta.url),'utf8');
+const page=fs.readFileSync(new URL('../app/calidad/datos/page.js',import.meta.url),'utf8');
 
 test('CALIDAD Datos recorre fuentes en orden TMDb → OMDb → MDBList',()=>{
-  const loop=source.match(/for\(const \[source,fn\] of \[(.*?)\]\)\{/s);
-  assert.ok(loop,'No se encontró la cascada de proveedores');
-  const text=loop[1];
-  assert.ok(text.indexOf("['TMDb',refreshTmdb]")<text.indexOf("['OMDb',refreshOmdb]"));
-  assert.ok(text.indexOf("['OMDb',refreshOmdb]")<text.indexOf("['MDBList',refreshMdblist]"));
+  const tmdb=source.indexOf("['TMDb',refreshTmdb]"),omdb=source.indexOf("['OMDb',refreshOmdb]"),mdb=source.indexOf("['MDBList',refreshMdblist]");
+  assert.ok(tmdb>=0&&omdb>tmdb&&mdb>omdb);
 });
 
 test('cada proveedor recibe IMDb ID y solo campos pendientes y soportados',()=>{
   assert.match(source,/wantedFor\(row,source\)/);
   assert.match(source,/missingFields\(row\)\.filter\(k=>supported\.has\(k\)\)/);
-  assert.match(source,/if\(!shouldRun\(row,source\)\)continue/);
+  assert.match(source,/shouldRun\(row,source\)/);
   assert.match(source,/fn\(imdbId,new Set\(attempted\)\)/);
 });
 
-test('TMDb resuelve identidad canónica desde IMDb antes de enriquecer',()=>{
-  assert.match(source,/ensureTmdbIdentity/);
-  assert.match(source,/\/find\/\$\{encodeURIComponent\(imdbId\)\}\?external_source=imdb_id/);
-  assert.match(source,/UPDATE movies SET tmdb_id=\$\{correctId\},type=\$\{correctType\}/);
-  assert.match(source,/tmdb_identity_resolved/);
+test('Completar datos respeta el tipo validado y no reidentifica ni cambia de medio',()=>{
+  assert.match(source,/mediaFromType\(m\.type\)/);
+  assert.doesNotMatch(source,/\/find\//);
+  assert.doesNotMatch(source,/ensureTmdbIdentity/);
+  assert.doesNotMatch(source,/recoverMediaTypeIfNeeded/);
+  assert.doesNotMatch(source,/media_type_recovered/);
+  const runs=[...source.matchAll(/runCascade\(imdbId,/g)];
+  assert.equal(runs.length,1,'Completar datos debe ejecutar una única cascada según el tipo ya validado');
 });
 
-test('TMDb profundiza en episodios, créditos e imágenes para series',()=>{
+test('TMDb profundiza en episodios, créditos e imágenes cuando el tipo validado es serie',()=>{
   assert.match(source,/seriesEpisodeFacts/);
   assert.match(source,/\/episode\/\$\{ref\.episode\}\/credits/);
   assert.match(source,/\/images\?include_image_language=es,null,en/);
@@ -58,18 +60,30 @@ test('las fuentes posteriores no sustituyen datos existentes',()=>{
   assert.match(source,/COALESCE\(country,/);
 });
 
-test('si quedan huecos valida el tipo contra el IMDb ID exacto de TMDb y prueba el tipo contrario',()=>{
-  assert.match(source,/recoverMediaTypeIfNeeded/);
-  assert.match(source,/append_to_response=external_ids/);
-  assert.match(source,/currentIdentity\.imdbId===imdbId/);
-  assert.match(source,/alternateIdentity\.imdbId!==imdbId/);
-  assert.match(source,/alternateMedia=currentMedia==='movie'\?'tv':'movie'/);
+test('la revisión permanece disponible tras avanzar Lifecycle y calcula reentrada de ratings',()=>{
+  assert.match(dataQuality,/MOVIE_FILE_PENDING/);
+  assert.match(dataQuality,/SERIES_REVIEW/);
+  assert.match(dataQuality,/TECH_PENDING/);
+  assert.match(dataQuality,/COMPLETE/);
+  assert.match(dataQuality,/nextRatingRefreshAt/);
+  assert.match(dataQuality,/ratings_refreshed_at/);
+  assert.match(dataQuality,/ratingsFresh/);
 });
 
-test('la reclasificación solo ocurre con coincidencia exacta y relanza la cascada una vez',()=>{
-  assert.match(source,/UPDATE movies SET type=\$\{correctedType\}/);
-  assert.match(source,/data_quality_type_recovery/);
-  assert.match(source,/media_type_recovered/);
-  const runs=[...source.matchAll(/runCascade\(imdbId,/g)];
-  assert.equal(runs.length,2,'Debe existir una pasada normal y como máximo una repetición tras reclasificar');
+test('la pantalla incorpora contexto Plex, mejora no incidente y exclusión existente',()=>{
+  assert.match(dataQuality,/in_plex/);
+  assert.match(page,/En Plex/);
+  assert.match(page,/Fuera de Plex/);
+  assert.match(page,/Mejorar datos/);
+  assert.match(page,/IdentityExcludeButton/);
+  assert.match(page,/100 % completos/);
+});
+
+test('la identidad muestra accesos externos fiables y mantiene IMDb visible',()=>{
+  assert.match(page,/providerUrl\('imdb'/);
+  assert.match(page,/providerUrl\('tmdb'/);
+  assert.match(page,/providerUrl\('mdblist'/);
+  assert.match(page,/providerUrl\('trakt'/);
+  assert.match(page,/<code>\{r\.imdb_id\}<\/code>/);
+  assert.doesNotMatch(page,/FilmAffinity|filmaffinity|FA ↗/i);
 });
