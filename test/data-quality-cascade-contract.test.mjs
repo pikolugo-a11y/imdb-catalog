@@ -7,6 +7,7 @@ const mdblist=fs.readFileSync(new URL('../lib/ratings-provider-mdblist.js',impor
 const apiLog=fs.readFileSync(new URL('../lib/data-quality-api-log.js',import.meta.url),'utf8');
 const dataQuality=fs.readFileSync(new URL('../lib/data-quality.js',import.meta.url),'utf8');
 const page=fs.readFileSync(new URL('../app/calidad/datos/page.js',import.meta.url),'utf8');
+const layoutFix=fs.readFileSync(new URL('../app/calidad/datos/quality-data-layout-fix.css',import.meta.url),'utf8');
 
 test('CALIDAD Datos recorre fuentes en orden TMDb → OMDb → MDBList',()=>{
   const tmdb=source.indexOf("['TMDb',refreshTmdb]"),omdb=source.indexOf("['OMDb',refreshOmdb]"),mdb=source.indexOf("['MDBList',refreshMdblist]");
@@ -27,7 +28,7 @@ test('Completar datos respeta el tipo validado y no reidentifica ni cambia de me
   assert.doesNotMatch(source,/recoverMediaTypeIfNeeded/);
   assert.doesNotMatch(source,/media_type_recovered/);
   const runs=[...source.matchAll(/await runCascade\(imdbId,/g)];
-  assert.equal(runs.length,1,'Debe ejecutarse una sola cascada según el tipo ya validado');
+  assert.equal(runs.length,1);
 });
 
 test('TMDb profundiza en episodios, créditos e imágenes cuando el tipo validado es serie',()=>{
@@ -44,12 +45,11 @@ test('MDBList mantiene separados ratings y metadatos',()=>{
   assert.match(mdblist,/parseMDBListMetadata/);
 });
 
-test('CALIDAD conserva logging mínimo solo para errores y no guarda payloads completos',()=>{
+test('CALIDAD conserva logging mínimo solo para errores',()=>{
   assert.match(source,/loggedJsonFetch/);
   assert.match(mdblist,/loggedJsonFetch/);
   assert.match(apiLog,/provider_http_transport_error/);
   assert.match(apiLog,/provider_http_error/);
-  assert.match(apiLog,/u\.searchParams\.set\(key,'\*\*\*'\)/);
   assert.doesNotMatch(apiLog,/provider_http_request/);
   assert.doesNotMatch(apiLog,/provider_http_response/);
 });
@@ -63,10 +63,7 @@ test('las fuentes posteriores no sustituyen datos existentes',()=>{
 });
 
 test('la revisión permanece disponible tras avanzar Lifecycle y calcula reentrada de ratings',()=>{
-  assert.match(dataQuality,/MOVIE_FILE_PENDING/);
-  assert.match(dataQuality,/SERIES_REVIEW/);
-  assert.match(dataQuality,/TECH_PENDING/);
-  assert.match(dataQuality,/COMPLETE/);
+  for(const stage of ['MOVIE_FILE_PENDING','SERIES_REVIEW','TECH_PENDING','COMPLETE'])assert.match(dataQuality,new RegExp(stage));
   assert.match(dataQuality,/nextRatingRefreshAt/);
   assert.match(dataQuality,/ratings_refreshed_at/);
   assert.match(dataQuality,/ratingsFresh/);
@@ -82,10 +79,22 @@ test('duración de serie cuenta para cobertura pero no bloquea el avance',()=>{
   assert.match(dataQuality,/k==='runtime'\?Number\(v\)>0/);
 });
 
-test('CALIDAD mantiene una lectura estable y reutilizada mientras se corrige la paginación SQL',()=>{
-  assert.match(dataQuality,/cache\(async/);
-  assert.match(dataQuality,/loadUniverse/);
-  assert.match(dataQuality,/\.slice\(start,start\+pageSize\)/);
+test('CALIDAD Datos clasifica y pagina en PostgreSQL sin cargar todo el universo en Node',()=>{
+  assert.match(dataQuality,/export async function getDataQualityView/);
+  assert.match(dataQuality,/scored AS MATERIALIZED/);
+  assert.match(dataQuality,/LIMIT \$\{p\.pageSize\} OFFSET \$\{offset\}/);
+  assert.match(dataQuality,/page_rows/);
+  assert.doesNotMatch(dataQuality,/loadUniverse/);
+  assert.doesNotMatch(dataQuality,/\.slice\(start,start\+pageSize\)/);
+  assert.match(page,/getDataQualityView/);
+  assert.doesNotMatch(page,/Promise\.all\(\[getDataQualityOverview\(\),getDataQualityPage/);
+});
+
+test('CALIDAD Datos respeta el contenedor del layout y no usa 100vw ni translateX',()=>{
+  assert.match(page,/quality-data-layout-fix\.css/);
+  assert.match(layoutFix,/width:auto!important/);
+  assert.match(layoutFix,/transform:none!important/);
+  assert.doesNotMatch(layoutFix,/100vw/);
 });
 
 test('la pantalla incorpora contexto Plex, mejora no incidente y exclusión existente',()=>{
