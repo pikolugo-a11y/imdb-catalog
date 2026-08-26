@@ -1,4 +1,5 @@
 'use server';
+// PikoQuality technical snapshot controls are intentionally driven from the frontend.
 import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
 import {analyzeMoviePikoQuality} from '@/lib/pikoquality-unitary';
