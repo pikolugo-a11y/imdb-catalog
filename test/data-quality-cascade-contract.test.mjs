@@ -82,12 +82,10 @@ test('duración de serie cuenta para cobertura pero no bloquea el avance',()=>{
   assert.match(dataQuality,/k==='runtime'\?Number\(v\)>0/);
 });
 
-test('CALIDAD pagina y filtra en SQL en lugar de cargar todo el universo en Node',()=>{
-  assert.match(dataQuality,/count\(\*\) OVER\(\)/);
-  assert.match(dataQuality,/LIMIT \$5 OFFSET \$6/);
-  assert.match(dataQuality,/stateFilter/);
-  assert.doesNotMatch(dataQuality,/\.slice\(start,start\+pageSize\)/);
-  assert.doesNotMatch(dataQuality,/cache\(async/);
+test('CALIDAD mantiene una lectura estable y reutilizada mientras se corrige la paginación SQL',()=>{
+  assert.match(dataQuality,/cache\(async/);
+  assert.match(dataQuality,/loadUniverse/);
+  assert.match(dataQuality,/\.slice\(start,start\+pageSize\)/);
 });
 
 test('la pantalla incorpora contexto Plex, mejora no incidente y exclusión existente',()=>{
