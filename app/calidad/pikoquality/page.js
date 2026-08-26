@@ -23,6 +23,7 @@ export default async function Page(){
     sql`SELECT cl.imdb_id,m.title_es,m.year,pcs.rating_key,p.plex_title,p.plex_year,p.fingerprint,pm.resolution,pm.video_codec,q.score,q.source_fingerprint FROM catalog_lifecycle cl JOIN movies m USING(imdb_id) LEFT JOIN plex_catalog_status pcs USING(imdb_id) LEFT JOIN plex_items p ON p.rating_key=pcs.rating_key AND p.active LEFT JOIN LATERAL(SELECT resolution,video_codec FROM plex_media z WHERE z.rating_key=p.rating_key ORDER BY media_index LIMIT 1) pm ON true LEFT JOIN piko_quality q ON q.rating_key=pcs.rating_key WHERE cl.lifecycle_state='TECH_PENDING' AND m.type='Película' ORDER BY m.year DESC NULLS LAST,m.title_es LIMIT 500`
   ]);
   const c=technical.control||{};
+  const armed=Boolean(c.armed);
   const requested=c.requested_state||'stopped';
   const actual=c.actual_state||'stopped';
   const overallPct=pct(technical.total.ready,technical.total.total);
@@ -31,15 +32,15 @@ export default async function Page(){
     <div className={styles.topline}><div className={styles.titleWrap}><div className={styles.logo}>☆</div><div><h1>PikoQuality <span className={styles.version}>v{QUALITY_VERSION}</span></h1><p className={styles.subtitle}>Evaluación técnica del archivo físico actual. Las películas se procesan una a una.</p></div></div><Link className="btn" href="/calidad">← Calidad</Link></div>
 
     <section className={styles.syncPanel}>
-      <div className={styles.syncHeader}><div><span className={styles.kicker}>CAPTURA TÉCNICA PLEX</span><h2>Sincronización técnica</h2><p>Snapshot persistido de vídeo y audio. Es independiente de Novedades y del cálculo de PikoQuality.</p></div><div className={`${styles.syncState} ${styles[`syncState_${actual}`]||''}`}><span>{technical.workerOnline?'●':'○'}</span>{technicalLabels[actual]||actual}</div></div>
+      <div className={styles.syncHeader}><div><span className={styles.kicker}>CAPTURA TÉCNICA PLEX</span><h2>Sincronización técnica</h2><p>Snapshot persistido de vídeo y audio. Es independiente de Novedades y del cálculo de PikoQuality.</p></div><div className={`${styles.syncState} ${styles[`syncState_${actual}`]||''}`}><span>{technical.workerOnline?'●':'○'}</span>{armed?(technicalLabels[actual]||actual):'Bloqueado hasta GO'}</div></div>
       <div className={styles.syncSummary}><div><span>Progreso total</span><strong>{nf(technical.total.ready)} / {nf(technical.total.total)}</strong><small>{overallPct}% capturado</small></div><div><span>Velocidad reciente</span><strong>{technical.velocity.perMinute5} / min</strong><small>15 min: {technical.velocity.perMinute15} / min</small></div><div><span>Última captura</span><strong>{dt(technical.velocity.lastCaptureAt)}</strong><small>Heartbeat: {dt(c.heartbeat_at)}</small></div><div><span>Worker</span><strong>{technical.workerOnline?'Online':'Sin actividad'}</strong><small>{c.worker_id||'—'}</small></div></div>
       <div className={styles.syncProgressGrid}><Progress label="Películas" data={technical.byType.movie}/><Progress label="Episodios" data={technical.byType.episode}/></div>
       {c.last_error?<div className={styles.syncError}>Último error: {c.last_error}</div>:null}
       <div className={styles.syncActions}>
-        {requested!=='running'?<form action={startTechnicalSnapshotAction}><button className={styles.primaryButton}>{actual==='paused'?'Reanudar':'Iniciar'}</button></form>:null}
-        {requested==='running'?<form action={pauseTechnicalSnapshotAction}><button className={styles.secondaryButton}>Pausar</button></form>:null}
-        {requested!=='stopped'?<form action={stopTechnicalSnapshotAction}><button className={styles.secondaryButton}>Detener</button></form>:null}
-        <div className={styles.syncActionNote}>La pausa termina las capturas ya iniciadas y no reclama un lote nuevo. Reanudar continúa sobre los pendientes.</div>
+        {!armed?<button className={styles.primaryButton} disabled title="El backfill inicial requiere autorización expresa">Iniciar</button>:requested!=='running'?<form action={startTechnicalSnapshotAction}><button className={styles.primaryButton}>{actual==='paused'?'Reanudar':'Iniciar'}</button></form>:null}
+        {armed&&requested==='running'?<form action={pauseTechnicalSnapshotAction}><button className={styles.secondaryButton}>Pausar</button></form>:null}
+        {armed&&requested!=='stopped'?<form action={stopTechnicalSnapshotAction}><button className={styles.secondaryButton}>Detener</button></form>:null}
+        <div className={styles.syncActionNote}>{armed?'La pausa termina las capturas ya iniciadas y no reclama un lote nuevo. Reanudar continúa sobre los pendientes.':'El backfill inicial está bloqueado. Se habilitará únicamente después de tu GO expreso.'}</div>
       </div>
     </section>
 
