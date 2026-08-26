@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import ActionButton from '@/components/ActionButton';
 import IdentityExcludeButton from '@/components/IdentityExcludeButton';
-import {DATA_FIELDS,getDataQualityOverview,getDataQualityPage} from '@/lib/data-quality';
+import {DATA_FIELDS} from '@/lib/data-quality';
+import {getDataQualityOverview,getDataQualityPage} from '@/lib/data-quality-page';
 import {providerUrl} from '@/lib/provider-links';
 import {updateDataAction,refreshRatingsAction,calculatePikoScoreV3Action} from './actions';
 import './quality-data.css';
