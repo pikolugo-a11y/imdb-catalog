@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../lib/data-quality-unitary.js',import.meta.url),'utf8');
 const mdblist=fs.readFileSync(new URL('../lib/ratings-provider-mdblist.js',import.meta.url),'utf8');
+const apiLog=fs.readFileSync(new URL('../lib/data-quality-api-log.js',import.meta.url),'utf8');
 
 test('CALIDAD Datos recorre fuentes en orden TMDb → OMDb → MDBList',()=>{
   const loop=source.match(/for\(const \[source,fn\] of \[(.*?)\]\)\{/s);
@@ -20,6 +21,13 @@ test('cada proveedor recibe IMDb ID y solo campos pendientes y soportados',()=>{
   assert.match(source,/fn\(imdbId,new Set\(attempted\)\)/);
 });
 
+test('TMDb resuelve identidad canónica desde IMDb antes de enriquecer',()=>{
+  assert.match(source,/ensureTmdbIdentity/);
+  assert.match(source,/\/find\/\$\{encodeURIComponent\(imdbId\)\}\?external_source=imdb_id/);
+  assert.match(source,/UPDATE movies SET tmdb_id=\$\{correctId\},type=\$\{correctType\}/);
+  assert.match(source,/tmdb_identity_resolved/);
+});
+
 test('TMDb profundiza en episodios, créditos e imágenes para series',()=>{
   assert.match(source,/seriesEpisodeFacts/);
   assert.match(source,/\/episode\/\$\{ref\.episode\}\/credits/);
@@ -31,6 +39,15 @@ test('MDBList mantiene separados ratings y metadatos',()=>{
   assert.match(mdblist,/export async function fetchMDBListMetadata/);
   assert.match(mdblist,/parseMDBListRatings/);
   assert.match(mdblist,/parseMDBListMetadata/);
+});
+
+test('CALIDAD registra request y response de proveedores sin exponer secretos',()=>{
+  assert.match(source,/loggedJsonFetch/);
+  assert.match(mdblist,/loggedJsonFetch/);
+  assert.match(apiLog,/provider_http_request/);
+  assert.match(apiLog,/provider_http_response/);
+  assert.match(apiLog,/u\.searchParams\.set\(key,'\*\*\*'\)/);
+  assert.match(apiLog,/authorization/);
 });
 
 test('las fuentes posteriores no sustituyen datos existentes',()=>{
