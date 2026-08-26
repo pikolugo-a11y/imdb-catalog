@@ -11,6 +11,7 @@ if(kind==='fast'||kind==='api'){
 const targets={
   lifecycle:'./lifecycle-worker.mjs',
   people:'./people-worker.mjs',
+  technical:'./technical-snapshot-worker.mjs',
 };
 
 if(!targets[kind])throw new Error(`Worker kind no soportado: ${kind}`);
