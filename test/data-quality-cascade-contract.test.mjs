@@ -13,10 +13,11 @@ test('CALIDAD Datos recorre fuentes en orden TMDb → OMDb → MDBList',()=>{
   assert.ok(text.indexOf("['OMDb',refreshOmdb]")<text.indexOf("['MDBList',refreshMdblist]"));
 });
 
-test('cada proveedor recibe solo campos pendientes y soportados',()=>{
+test('cada proveedor recibe IMDb ID y solo campos pendientes y soportados',()=>{
   assert.match(source,/wantedFor\(row,source\)/);
   assert.match(source,/missingFields\(row\)\.filter\(k=>supported\.has\(k\)\)/);
   assert.match(source,/if\(!shouldRun\(row,source\)\)continue/);
+  assert.match(source,/fn\(imdbId,new Set\(attempted\)\)/);
 });
 
 test('TMDb profundiza en episodios, créditos e imágenes para series',()=>{
