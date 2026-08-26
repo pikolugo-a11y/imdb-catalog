@@ -71,6 +71,11 @@ test('la revisión permanece disponible tras avanzar Lifecycle y calcula reentra
   assert.match(dataQuality,/ratingsFresh/);
 });
 
+test('expires_at nulo usa la frescura calculada y no epoch 1970',()=>{
+  assert.match(dataQuality,/explicit=r\.expires_at\?new Date\(r\.expires_at\)\.getTime\(\):NaN/);
+  assert.doesNotMatch(dataQuality,/explicit=new Date\(r\.expires_at\)\.getTime\(\)/);
+});
+
 test('duración de serie cuenta para cobertura pero no bloquea el avance',()=>{
   assert.match(dataQuality,/effectiveSeverity=\(k,r\)=>k==='runtime'&&isSeries\(r\)\?'optional'/);
   assert.match(dataQuality,/k==='runtime'\?Number\(v\)>0/);
