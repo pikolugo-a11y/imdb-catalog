@@ -1,0 +1,1 @@
+Watchmode title endpoints accept TMDb-formatted IDs such as `tv-1416`. PikoFilm uses this form directly for TV availability checks to avoid an unnecessary search/mapping request and reduce failure modes.
