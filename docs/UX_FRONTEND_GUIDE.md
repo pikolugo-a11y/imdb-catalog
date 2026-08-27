@@ -30,6 +30,7 @@ Una pantalla no se considera UX terminada hasta revisar, cuando aplique, estos p
 - [ ] ¿Color + icono + texto mantienen una semántica estable? El color nunca es el único indicador.
 - [ ] ¿Ningún estado anómalo queda invisible? Debe existir filtro, cola, señal o acceso para localizarlo.
 - [ ] ¿Cuando todo está correcto se reduce el ruido técnico y, cuando hay un problema, éste gana protagonismo?
+- [ ] En una vista operativa de películas/series, ¿se ve inmediatamente si cada elemento **está o no está en Plex**?
 
 ### D. Búsqueda y filtros
 - [ ] ¿La búsqueda frecuente está visible y los filtros avanzados disponibles sin dominar la pantalla?
@@ -53,6 +54,7 @@ Una pantalla no se considera UX terminada hasta revisar, cuando aplique, estos p
 - [ ] ¿Toda acción deja feedback: ejecutando, completado/error y resultado?
 - [ ] ¿Las acciones molestas son reversibles cuando sea razonable?
 - [ ] Si una acción de dominio aparece en varias pantallas, ¿todas usan **la misma operación canónica y significado**?
+- [ ] En toda vista operativa de títulos, ¿existe una acción **Excluir** rápida y contextual sin obligar a abrir la ficha?
 
 ### G. Navegación
 - [ ] ¿Toda sección funcional accesible está representada en la navegación que le corresponde?
@@ -172,6 +174,16 @@ Todo proceso manual o automático visible debe dejar traza comprensible: **qué 
 
 La profundidad técnica visible debe adaptarse al contexto: en una pantalla de mantenimiento puede ser extensa; en una portada funcional debe resumirse y poder desplegarse.
 
+### 2.13. Contexto Plex y exclusión en vistas operativas
+
+**Patrón aprobado:** en toda pantalla operativa cuyo listado represente películas, series u otras unidades audiovisuales gestionables, cada elemento debe permitir conocer **de un vistazo si está o no en Plex**.
+
+Además, cada elemento debe ofrecer una acción rápida y contextual de **Excluir del catálogo**, sin obligar a abrir su ficha o navegar a otra pantalla. Esta acción debe utilizar siempre el contrato transversal canónico de Excluir.
+
+Estas dos capacidades son transversales y no dependen del objetivo concreto de la pantalla: Identidad, Datos, Películas, Series, Calidad u otras colas futuras pueden mostrar información distinta, pero **Plex + Excluir** forman parte del contexto operativo mínimo del título.
+
+La presentación puede adaptarse a la densidad de cada vista (badge, icono con texto accesible, columna compacta, acción contextual, etc.), pero no debe desaparecer en móvil ni quedar oculta detrás de navegación innecesaria.
+
 ---
 
 ## 3. Contratos transversales
@@ -196,6 +208,7 @@ No usar `COALESCE` para reducir esos campos a un único valor buscable. La búsq
 - No borra ni modifica el archivo físico de Plex.
 - Comportamiento coherente para películas y series.
 - Feedback claro y, cuando sea razonable, **Deshacer** o restauración equivalente.
+- En vistas operativas de títulos debe estar disponible **directamente desde cada elemento**, sin exigir entrar en la ficha.
 
 ### 3.3. Navegación principal
 
@@ -204,6 +217,10 @@ Una sección funcional que forma parte del producto no puede depender de conocer
 ### 3.4. Contadores/resúmenes
 
 Una portada o tarjeta que resume otro módulo debe reutilizar su fuente de verdad o helper canónico. El número de la portada y el de la secundaria deben representar **el mismo universo y la misma definición**. Si miden conceptos distintos, deben etiquetarse explícitamente como tales.
+
+### 3.5. Estado Plex en vistas operativas
+
+La pertenencia a Plex es contexto operativo transversal. Todo elemento audiovisual gestionable mostrado en una cola/listado operativo debe exponer un estado inequívoco **En Plex / No en Plex** (o equivalente semántico) usando la fuente canónica de Plex. No se debe inferir mediante aproximaciones locales si existe un estado canónico disponible.
 
 ---
 
@@ -215,7 +232,7 @@ Normalmente considerar:
 
 **búsqueda → filtros → resumen → orden/vista → colección → acciones → paginación.**
 
-Debe existir contador de resultados, acceso claro al detalle, estados visibles y acciones rápidas sólo cuando aporten valor.
+Debe existir contador de resultados, acceso claro al detalle, estados visibles y acciones rápidas sólo cuando aporten valor. En vistas operativas de títulos, **Plex y Excluir son excepciones: siempre aportan valor y son obligatorios**.
 
 Grid y tabla pueden convivir si resuelven necesidades visuales y analíticas distintas sobre el mismo conjunto y conservan el mismo contexto.
 
@@ -226,6 +243,8 @@ Normalmente considerar:
 **estado global → subconjuntos que requieren atención → filtros operativos → resultados → resolución/acción → mantenimiento técnico.**
 
 No ocultar incidencias. Cuando no haya pendientes, no es necesario cargar una tabla vacía ni miles de elementos; sí debe existir una forma explícita de consultar históricos/correctos si aporta valor.
+
+Cada resultado audiovisual debe conservar el contexto transversal mínimo: **estado Plex visible + Excluir rápido**.
 
 ### 4.3. Ficha / detalle
 
@@ -282,6 +301,8 @@ El objetivo es mantener un **lenguaje común**, no copiar píxeles ni colores ex
 - Ocultar elementos problemáticos porque no encajan en el flujo feliz.
 - Acciones globales alejadas del objeto sobre el que actúan.
 - Misma acción con implementaciones o consecuencias diferentes según pantalla.
+- Vista operativa audiovisual sin estado Plex visible.
+- Obligar a abrir la ficha para poder Excluir un título desde una cola operativa.
 - Color como único indicador de estado.
 - Responsive entendido como simple reducción.
 - Buscadores que sólo consultan un alias/título aunque prometan más.
@@ -330,6 +351,10 @@ Se consolidan como reglas transversales:
 8. patrón maestro-detalle consistente.
 
 La revisión de Calidad añade además dos aprendizajes operativos: los resúmenes deben reutilizar la **fuente canónica** de cada secundaria y los procesos técnicos deben ceder protagonismo a estado/resultados cuando la pantalla tenga una finalidad funcional distinta del mantenimiento.
+
+### 2026-08-27 — Contexto operativo mínimo: Plex + Excluir
+
+El usuario establece expresamente que en **todas las pestañas/vistas operativas de títulos** debe poder comprobarse inmediatamente si el elemento está en Plex y debe existir una acción rápida para **Excluir del catálogo**. Ambas capacidades pasan a ser obligatorias y transversales. Excluir reutiliza siempre su operación canónica y el estado Plex debe provenir de la fuente de verdad correspondiente.
 
 ---
 
