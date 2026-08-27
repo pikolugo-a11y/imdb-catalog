@@ -17,7 +17,7 @@ const sql=neon(connectionString);
 // ITEM_TYPE, MAX_ITEMS) se ignoran deliberadamente para evitar que Railway
 // considere el servicio caído cuando el proceso termina tras una prueba.
 const batchSize=Math.max(1,Math.min(100,Number(process.env.TECHNICAL_SNAPSHOT_BATCH_SIZE)||25));
-const concurrency=Math.max(1,Math.min(8,Number(process.env.TECHNICAL_SNAPSHOT_CONCURRENCY)||8));
+const concurrency=Math.max(1,Math.min(64,Number(process.env.TECHNICAL_SNAPSHOT_CONCURRENCY)||8));
 const idleMs=Math.max(5000,Number(process.env.TECHNICAL_SNAPSHOT_IDLE_MS)||10000);
 const scanEveryMs=Math.max(60000,Number(process.env.TECHNICAL_SNAPSHOT_SCAN_MS)||900000);
 const workerId=`technical-${process.pid}-${randomUUID().slice(0,8)}`;
