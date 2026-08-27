@@ -1,327 +1,342 @@
-# PikoFilm — Guía viva de UX/UI del frontal
+# PikoFilm — PATRÓN UX del frontal
 
-> Documento de referencia para la evolución del frontal de PikoFilm.
-> 
-> **Referencia inicial aprobada:** pantalla **Catálogo** (`/catalogo`).
-> 
-> Este documento no pretende congelar el diseño actual ni obligar a que todas las pantallas sean iguales. Su objetivo es conservar las decisiones de UX que funcionan y utilizarlas como lenguaje común al revisar, diseñar o rehacer otras áreas.
-
-## 1. Estado del documento
-
-- Referencia analizada: **Catálogo**.
-- Estado: **patrón aprobado por el usuario**.
-- Otras pantallas se incorporarán sólo cuando se revisen expresamente.
-- Las conclusiones inferidas se distinguen de las decisiones explícitamente confirmadas.
+> Guía viva y operativa para **auditar, diseñar y corregir pantallas** de PikoFilm.
+>
+> Referencia inicial: **Catálogo** (`/catalogo`). El patrón incorpora después decisiones transversales aprobadas durante las revisiones de Calidad y navegación.
+>
+> **Uso recomendado:** antes de tocar una pantalla, leer primero la checklist de la sección 1. El resto del documento explica el criterio y las excepciones.
 
 ---
 
-## 2. Qué funciona especialmente bien en Catálogo
+## 1. Checklist rápida de auditoría
 
-### 2.1. Alta densidad sin sensación de desorden
+Una pantalla no se considera UX terminada hasta revisar, cuando aplique, estos puntos:
 
-Catálogo muestra mucha información y muchas posibilidades sin convertir la pantalla en un formulario administrativo. La información está organizada por capas:
+### A. Propósito y jerarquía
+- [ ] ¿Se entiende en pocos segundos **para qué sirve** la pantalla?
+- [ ] ¿Lo primero visible responde al estado, problema o decisión principal?
+- [ ] ¿La jerarquía sigue, cuando aplique, **estado/contexto → problema → evidencia/contenido → acción → navegación**?
+- [ ] ¿Se ha eliminado información repetida, decorativa o que no ayuda a decidir/actuar?
+- [ ] ¿El contenido/objeto principal ocupa más espacio que los controles secundarios?
 
-1. búsqueda y filtros;
-2. resumen cuantitativo;
-3. contexto del resultado y herramientas de vista;
-4. contenido principal;
-5. acciones rápidas;
-6. paginación.
+### B. Resumen y métricas
+- [ ] Si representa un conjunto, ¿hay un resumen pequeño y útil antes del detalle?
+- [ ] ¿Cada KPI responde a una pregunta operativa real?
+- [ ] ¿Los contadores usan la **misma fuente de verdad** que la pantalla o proceso que resumen?
+- [ ] ¿Se evita repetir el mismo estado en varios bloques con distinta redacción?
 
-**Patrón aprobado:** una pantalla de PikoFilm puede ser densa si existe una jerarquía visual clara. No hay que resolver la complejidad eliminando información útil.
+### C. Estados e incidencias
+- [ ] ¿Correcto, pendiente, procesando, advertencia, error y desconocido son reconocibles de un vistazo?
+- [ ] ¿Color + icono + texto mantienen una semántica estable? El color nunca es el único indicador.
+- [ ] ¿Ningún estado anómalo queda invisible? Debe existir filtro, cola, señal o acceso para localizarlo.
+- [ ] ¿Cuando todo está correcto se reduce el ruido técnico y, cuando hay un problema, éste gana protagonismo?
 
-### 2.2. El contenido es el protagonista
+### D. Búsqueda y filtros
+- [ ] ¿La búsqueda frecuente está visible y los filtros avanzados disponibles sin dominar la pantalla?
+- [ ] ¿Los filtros responden también a **tareas reales** (pendiente, requiere atención, error, correcto...) y no sólo a atributos técnicos?
+- [ ] ¿Los filtros muestran cantidades cuando aportan contexto?
+- [ ] En títulos audiovisuales: ¿busca independientemente por **título localizado, principal, original e IMDb ID**?
+- [ ] ¿La búsqueda es parcial, no sensible a mayúsculas/minúsculas y el placeholder promete sólo capacidades reales?
+- [ ] ¿Existe una forma clara de limpiar/restablecer filtros?
 
-En vista de carátulas, los pósteres ocupan la mayor parte de la pantalla. Los controles son compactos y quedan por encima del contenido sin competir con él.
+### E. Colecciones y maestro-detalle
+- [ ] ¿La unidad visible es la adecuada para la decisión del usuario, evitando detalle técnico innecesario?
+- [ ] ¿Listado/colección permite detectar rápidamente qué requiere atención?
+- [ ] ¿El detalle explica el motivo y permite actuar sin perder el contexto de procedencia?
+- [ ] ¿Se conservan búsqueda, filtros, orden, vista y página al entrar/salir del detalle?
+- [ ] ¿Grid/tabla u otras vistas alternativas existen sólo cuando resuelven necesidades distintas sobre el mismo conjunto?
 
-**Patrón aprobado:** dedicar la mayor superficie posible al objeto principal de cada pantalla y comprimir controles secundarios.
+### F. Acciones
+- [ ] ¿Las acciones aparecen junto al elemento/contexto sobre el que actúan?
+- [ ] ¿Las acciones principales son evidentes y las secundarias no compiten visualmente?
+- [ ] ¿El peso visual refleja riesgo: consulta < reversible < cambio de estado < destructiva?
+- [ ] ¿Toda acción deja feedback: ejecutando, completado/error y resultado?
+- [ ] ¿Las acciones molestas son reversibles cuando sea razonable?
+- [ ] Si una acción de dominio aparece en varias pantallas, ¿todas usan **la misma operación canónica y significado**?
 
-### 2.3. Filtros potentes pero compactos
+### G. Navegación
+- [ ] ¿Toda sección funcional accesible está representada en la navegación que le corresponde?
+- [ ] ¿Escritorio y móvil derivan de la misma definición/arquitectura de navegación?
+- [ ] ¿La ubicación actual es evidente y el regreso conserva contexto?
+- [ ] ¿Se evita obligar a hacer scroll sólo para alcanzar navegación o acciones principales que deberían estar visibles?
 
-El filtro combina:
+### H. Densidad y lenguaje visual
+- [ ] ¿Hay mucha información útil sin sensación de formulario administrativo?
+- [ ] ¿Datos secundarios son discretos y anomalías/decisiones tienen mayor peso visual?
+- [ ] ¿Tipografía, espaciado, superficies y estados son coherentes con PikoFilm?
+- [ ] ¿Se aprovecha el espacio sin introducir ruido ni aire innecesario?
 
-- buscador principal visible;
-- conjuntos rápidos;
-- filtros desplegables;
-- selección múltiple mediante chips;
-- rango de años;
-- atajos por décadas;
-- posibilidad de limpiar filtros;
-- aplicación explícita cuando corresponde.
+### I. Rendimiento
+- [ ] ¿La ruta frecuente se siente ágil?
+- [ ] ¿Las colecciones grandes paginan/filtran en servidor cuando corresponde?
+- [ ] ¿Se cargan sólo datos necesarios para la vista actual?
+- [ ] ¿Se evitan N+1, colecciones completas, consultas redundantes y llamadas externas durante listados?
+- [ ] ¿La pantalla evita cargar miles de filas si por defecto no son necesarias?
+- [ ] ¿Una mejora visual/funcional evita degradar perceptiblemente rendimiento real o percibido?
 
-Los filtros complejos viven en popovers y no ocupan permanentemente espacio vertical.
+### J. Responsive/móvil
+- [ ] ¿Móvil reorganiza prioridades y controles en vez de encoger escritorio?
+- [ ] ¿Ninguna acción o información esencial desaparece?
+- [ ] ¿Se evita scroll horizontal innecesario?
+- [ ] ¿Filtros, popovers y paneles se transforman en superficies táctiles adecuadas?
+- [ ] ¿También en móvil se conserva contexto y fluidez?
 
-**Patrón aprobado:** lo frecuente debe estar visible; lo avanzado debe estar disponible a un clic, sin inundar la pantalla.
+---
 
-### 2.4. Resumen contextual inmediato
+## 2. Principios maestros aprobados
 
-La banda de KPI responde rápidamente a preguntas básicas: cuántos títulos hay, cuántos faltan, cuántos están en proceso y cuántos están en Plex. Cada dato utiliza número, etiqueta, icono/estado y porcentaje.
+### 2.1. Jerarquía antes que minimalismo
 
-**Patrón aprobado:** cuando una pantalla represente un conjunto de elementos, ofrecer primero un resumen pequeño y útil del estado de ese conjunto. Los KPI deben aportar contexto operativo, no ser decoración.
+PikoFilm puede y debe mostrar bastante información cuando sea útil. La complejidad se resuelve con **jerarquía**, no ocultando información necesaria.
 
-### 2.5. Estados reconocibles visualmente
+Secuencia de referencia, adaptable al objetivo de cada pantalla:
 
-Catálogo no obliga a leer texto para entender cada situación. Plex, faltantes, en proceso y estados de Lifecycle tienen señales visuales diferenciadas.
+**Estado/contexto → problema o resumen → herramientas/filtros → contenido/evidencia → acciones → navegación.**
 
-**Patrón aprobado:** los estados recurrentes deben tener un lenguaje visual consistente y reconocible. Color/icono complementan al texto; no deben sustituirlo cuando pueda existir ambigüedad.
+No es obligatorio usar todos los niveles ni exactamente en ese orden si el propósito exige otra cosa. Sí es obligatorio evitar mezclar sin jerarquía métricas, filtros, contenido, procesos y acciones.
 
-### 2.6. Dos vistas para dos necesidades
+### 2.2. El contenido y la decisión son protagonistas
 
-La vista Grid favorece exploración visual. La vista Tabla favorece inspección de datos y comparación. Ambas representan el mismo conjunto y conservan filtros/contexto.
+La mayor superficie debe dedicarse al objeto que el usuario necesita entender o gestionar. Controles, procesos técnicos y metadatos secundarios se comprimen o pliegan cuando no requieren atención.
 
-**Patrón aprobado:** cuando una colección tenga uso visual y analítico, considerar vistas alternativas sin duplicar la lógica funcional.
+En pantallas operativas, cuando todo está correcto, el estado técnico debe ocupar poco espacio. Si aparece un error, pendiente o proceso activo, puede ganar protagonismo automáticamente.
 
-### 2.7. Acciones donde se necesitan
+### 2.3. KPI operativos, no decorativos
 
-En las tarjetas se puede marcar un título como “En proceso” o excluirlo sin abrir la ficha. La tabla mantiene acciones equivalentes. Para profundizar se abre la ficha individual.
+Los KPI deben responder preguntas reales: cuánto hay, cuánto falta, qué requiere atención, cuál es el estado de cobertura, etc.
 
-**Patrón aprobado:** permitir acciones rápidas y seguras desde el contexto donde aparece el elemento; reservar la ficha para análisis o acciones más completas.
+Un resumen debe consumir la **fuente canónica** del módulo que representa. No se deben reconstruir cifras mediante reglas paralelas que puedan divergir de la pantalla secundaria.
+
+### 2.4. Estados con semántica consistente
+
+Correcto, pendiente, procesando, advertencia, error, desconocido y estados equivalentes deben utilizar un lenguaje visual reconocible en toda la aplicación.
+
+- verde: positivo/correcto;
+- amarillo: atención/ausencia;
+- azul: proceso;
+- rojo apagado: error/destructivo;
+- naranja: interacción/selección principal cuando corresponda.
+
+Los colores concretos pueden evolucionar; **la semántica no debe cambiar arbitrariamente entre pantallas**. Color e icono complementan al texto y no lo sustituyen cuando pueda existir ambigüedad.
+
+### 2.5. Densidad informativa controlada
+
+PikoFilm favorece interfaces compactas y de alta densidad útil. Datos secundarios pueden ser discretos; anomalías, decisiones y acciones importantes deben destacar. Se debe evitar tanto el ruido como el espacio desperdiciado.
+
+### 2.6. Filtros orientados a tareas
+
+Lo frecuente debe estar visible; lo avanzado, accesible a un clic. Los filtros no deben limitarse a atributos técnicos: cuando exista un flujo operativo deben incluir conceptos como **requiere atención, pendiente, error, correcto, prioridad**, etc.
+
+Cuando una métrica o categoría ya representa un subconjunto útil, debe considerarse convertirla en acceso/filtro directo en vez de obligar al usuario a reconstruir ese criterio manualmente.
+
+### 2.7. Acciones contextuales, consistentes y reversibles
+
+Las acciones rápidas y seguras deben estar junto al elemento al que afectan. El detalle se reserva para análisis o acciones más completas.
+
+Toda acción debe comunicar qué está ocurriendo y el resultado. Siempre que sea razonable, cambios molestos deben ofrecer Deshacer/restauración.
+
+Una acción de dominio con el mismo nombre y significado debe invocar **una única operación canónica** en toda PikoFilm.
 
 ### 2.8. Navegación con conservación de contexto
 
-Al abrir una ficha se transmite la procedencia (`from`) para poder regresar al catálogo conservando el contexto. Los filtros, orden, vista y página se expresan mediante query parameters.
+Entrar en un detalle no debe hacer perder el punto de partida. Búsqueda, filtros, orden, vista y página deben conservarse mediante estado navegable/query parameters cuando corresponda.
 
-**Patrón aprobado:** navegar hacia el detalle no debe hacer perder al usuario el punto desde el que llegó.
+Toda sección funcional accesible debe aparecer en la navegación apropiada. Escritorio y móvil deben partir de la misma definición para evitar divergencias como páginas existentes que desaparecen del menú.
 
-### 2.9. Feedback y reversibilidad
+### 2.9. Maestro-detalle consistente
 
-Al excluir un título aparece confirmación y opción de **Deshacer**.
+En colecciones, la vista maestra debe permitir localizar rápidamente elementos relevantes o problemáticos. El detalle debe explicar el motivo, aportar evidencia y permitir resolverlo, conservando contexto suficiente para regresar.
 
-**Patrón aprobado:** las acciones que cambian el estado deben dar feedback inmediato. Siempre que sea razonable, una acción potencialmente molesta debe poder revertirse fácilmente.
+La **unidad visible debe responder a la decisión del usuario**, no necesariamente a la granularidad técnica del almacenamiento. Si el sistema procesa capítulos pero la decisión es por temporada, la interfaz debe poder resumir por temporada.
 
-### 2.10. Responsive real, no simple reducción
+### 2.10. Responsive real
 
-La interfaz cambia su composición según el ancho: número de columnas, distribución de KPI, popovers convertidos en superficies móviles, herramientas que se reorganizan y acciones que cambian de disposición.
+Responsive significa **reorganizar prioridades, controles y acciones**, no reducir tamaños. Ninguna información o acción operativa esencial puede desaparecer en móvil.
 
-**Patrón aprobado:** responsive significa reorganizar prioridades y controles, no limitarse a reducir tamaños.
+### 2.11. Rendimiento como requisito UX
 
----
+La velocidad real y percibida es criterio de aceptación. Una evolución visual o funcional no se considera correcta si empeora perceptiblemente la navegación.
 
-## 3. Lenguaje visual de referencia
+En colecciones grandes:
 
-### Superficies
+- paginación/filtrado en servidor cuando corresponda;
+- sólo datos necesarios de la vista actual;
+- evitar N+1 y llamadas externas en render de listados;
+- evitar cargar colecciones completas por defecto;
+- minimizar payload, consultas redundantes y trabajo de renderizado;
+- medir antes de introducir índices, cachés, vistas materializadas o duplicación de datos.
 
-- Fondo oscuro.
-- Paneles ligeramente diferenciados del fondo general.
-- Bordes finos y discretos.
-- Radios moderados.
-- Sombras contenidas para profundidad, especialmente en tarjetas y popovers.
+### 2.12. Feedback de procesos
 
-### Acentos
+Todo proceso manual o automático visible debe dejar traza comprensible: **qué fase ejecuta, progreso, completado/error y resultado**. No debe existir una barra al 100 % que deje al usuario sin saber si terminó o qué hizo.
 
-- Naranja como acento principal de interacción/selección.
-- Verde asociado a estados positivos/Plex.
-- Amarillo para ausencia o atención.
-- Azul para procesos en curso.
-- Rojo apagado para acciones destructivas o de exclusión.
-
-La regla importante no es copiar literalmente cada color, sino mantener una **semántica estable de estados y acciones**.
-
-### Tipografía y densidad
-
-- Números importantes grandes y muy legibles.
-- Etiquetas secundarias pequeñas.
-- Metadatos compactos.
-- Títulos claramente diferenciados.
-- Poco espacio desperdiciado entre bloques funcionalmente relacionados.
-
-### Interacción
-
-- Hover discreto en tarjetas.
-- Selección claramente visible.
-- Botones compactos.
-- Acciones destructivas diferenciadas de las primarias.
-- Controles avanzados mediante popovers.
+La profundidad técnica visible debe adaptarse al contexto: en una pantalla de mantenimiento puede ser extensa; en una portada funcional debe resumirse y poder desplegarse.
 
 ---
 
-## 4. Arquitectura UX que debemos reutilizar
+## 3. Contratos transversales
 
-Cuando diseñemos una nueva pantalla, comprobar si encaja esta secuencia:
+### 3.1. Buscadores audiovisuales
 
-**Contexto / filtros → resumen → herramientas → contenido principal → acciones → navegación.**
+Todo buscador de películas, series o títulos audiovisuales debe consultar independientemente:
 
-No es obligatorio utilizar todos los niveles. Sí debemos evitar mezclar sin jerarquía filtros, métricas, contenido y acciones.
-
-### Colecciones
-
-Para pantallas con muchos elementos:
-
-- búsqueda visible;
-- filtros compactos;
-- contador de resultados;
-- ordenación;
-- paginación o mecanismo equivalente;
-- estados visibles;
-- acceso claro al detalle;
-- acciones rápidas cuando aporten valor.
-
-### Buscadores de películas y títulos audiovisuales
-
-**Patrón aprobado:** todo buscador cuyo objeto sean películas, series o títulos audiovisuales debe buscar, como mínimo, de forma independiente sobre:
-
-- título en español/localizado;
+- título español/localizado;
 - título principal;
 - título original;
 - IMDb ID.
 
-La existencia de un título localizado no puede impedir encontrar el elemento mediante su título principal u original. No debe implementarse esta búsqueda mediante un `COALESCE` que reduzca los campos a un único valor buscable.
+No usar `COALESCE` para reducir esos campos a un único valor buscable. La búsqueda textual será parcial y no sensible a mayúsculas/minúsculas. Un `tt...` debe poder localizar directamente el IMDb ID.
 
-La búsqueda textual debe ser parcial y no sensible a mayúsculas/minúsculas. Cuando la entrada tenga formato de IMDb ID (`tt...`), el sistema debe permitir localizar directamente ese identificador. El placeholder y la ayuda del buscador deben describir únicamente capacidades que realmente estén implementadas.
-
-Esta regla se aplica transversalmente a Catálogo, Calidad y cualquier pantalla presente o futura que permita buscar títulos audiovisuales, salvo que exista una excepción funcional expresamente justificada.
-
-### Paginación, rendimiento y fluidez
-
-**Patrón aprobado:** la velocidad de navegación es un requisito UX de primer nivel. Una mejora visual o funcional no se considera correcta si degrada perceptiblemente el rendimiento.
-
-En colecciones potencialmente grandes:
-
-- paginar en servidor cuando corresponda;
-- devolver únicamente los datos necesarios de la página actual;
-- conservar búsqueda, filtros, orden y página al navegar al detalle y volver;
-- evitar N+1, cargas completas de colecciones y llamadas externas durante la renderización de listados;
-- minimizar consultas redundantes, payload y trabajo de renderizado;
-- optimizar primero las rutas frecuentes y medir antes de introducir índices, cachés, vistas materializadas o datos duplicados;
-- hacer que búsqueda, filtros, ordenación y cambio de página se sientan ágiles.
-
-La paginación debe comunicar claramente la posición dentro del conjunto y no debe obligar a recargar o reconstruir contexto innecesariamente.
-
-### Navegación móvil
-
-**Patrón aprobado:** toda pantalla y toda evolución deben diseñarse y validarse también para móvil. Responsive significa reorganizar jerarquía, controles y acciones para uso táctil; no simplemente reducir la versión de escritorio.
-
-- Ninguna acción o información operativa esencial puede desaparecer porque no quepa.
-- Debe evitarse el scroll horizontal innecesario.
-- Los filtros deben seguir siendo comprensibles y manejables.
-- Los paneles/popovers de escritorio deben transformarse en superficies móviles adecuadas cuando sea necesario.
-- Debe conservarse contexto al entrar y salir de detalle también en móvil.
-- La navegación debe mantenerse fluida y rápida en anchos pequeños.
-
-### Consistencia de acciones globales
-
-**Patrón aprobado:** una acción de dominio con el mismo nombre y significado debe ejecutar la misma operación canónica y producir las mismas consecuencias funcionales independientemente de la pantalla desde la que se invoque.
-
-Las pantallas no deben implementar variantes locales de una misma acción de dominio. Esto aplica, entre otras, a acciones como **Excluir**, **Restaurar** o cambios de estado equivalentes cuando existan en varias superficies.
-
-#### Contrato transversal de Excluir
+### 3.2. Excluir
 
 - **Excluir no significa borrar.**
-- Debe utilizar la misma operación canónica desde cualquier pantalla.
-- Debe sacar el elemento del catálogo operativo y de los flujos/colas que correspondan según Lifecycle.
-- Debe conservar los datos, identificadores, histórico, auditoría y referencias existentes.
-- No debe borrar ni modificar el archivo físico de Plex.
-- Debe funcionar de forma coherente para películas y series.
-- Debe ofrecer feedback claro y, cuando sea razonable, posibilidad de **Deshacer** o restauración equivalente.
+- Misma operación canónica desde cualquier pantalla.
+- Saca el elemento del catálogo operativo y de las colas/flujos correspondientes según Lifecycle.
+- Conserva datos, identificadores, histórico, auditoría y referencias.
+- No borra ni modifica el archivo físico de Plex.
+- Comportamiento coherente para películas y series.
+- Feedback claro y, cuando sea razonable, **Deshacer** o restauración equivalente.
 
-### Estados
+### 3.3. Navegación principal
 
-Una pantalla no debería esconder elementos porque tengan un estado anómalo. Si un elemento requiere intervención, debe existir una cola, filtro o señal que permita encontrarlo.
+Una sección funcional que forma parte del producto no puede depender de conocer su URL para ser encontrada. Las entradas de escritorio y móvil deben generarse desde una fuente común o mantenerse mediante un mecanismo que garantice paridad.
 
-### Acciones
+### 3.4. Contadores/resúmenes
 
-Clasificar mentalmente las acciones en:
-
-- navegación/consulta;
-- acción habitual y reversible;
-- cambio de estado;
-- acción destructiva.
-
-Su peso visual debe corresponder a su importancia y riesgo.
+Una portada o tarjeta que resume otro módulo debe reutilizar su fuente de verdad o helper canónico. El número de la portada y el de la secundaria deben representar **el mismo universo y la misma definición**. Si miden conceptos distintos, deben etiquetarse explícitamente como tales.
 
 ---
 
-## 5. Qué NO debemos copiar mecánicamente
+## 4. Patrones por tipo de pantalla
 
-Catálogo es una referencia de UX, no una plantilla rígida. No todas las pantallas necesitan:
+### 4.1. Colección / catálogo
 
-- cuatro KPI;
-- filtros;
-- grid de pósteres;
-- tabla alternativa;
-- los mismos colores exactos;
-- la misma densidad.
+Normalmente considerar:
 
-Una pantalla de administración, una cola de Calidad y una ficha individual tienen objetivos diferentes. Debemos reutilizar **jerarquía, claridad, consistencia, densidad útil y comportamiento**, no clonar la composición.
+**búsqueda → filtros → resumen → orden/vista → colección → acciones → paginación.**
 
----
+Debe existir contador de resultados, acceso claro al detalle, estados visibles y acciones rápidas sólo cuando aporten valor.
 
-## 6. Criterios de revisión para futuras pantallas
+Grid y tabla pueden convivir si resuelven necesidades visuales y analíticas distintas sobre el mismo conjunto y conservan el mismo contexto.
 
-Al revisar cada pantalla responderemos, como mínimo:
+### 4.2. Cola / calidad / incidencias
 
-1. ¿Se entiende inmediatamente para qué sirve?
-2. ¿Está visible primero lo más importante?
-3. ¿Hay información ocupando espacio sin ayudar a decidir o actuar?
-4. ¿Las acciones principales son evidentes?
-5. ¿Los estados se reconocen de un vistazo?
-6. ¿Los controles avanzados están disponibles sin dominar la pantalla?
-7. ¿La densidad es útil o produce ruido?
-8. ¿Se conserva el contexto al entrar y salir del detalle?
-9. ¿Las acciones dan feedback y son reversibles cuando procede?
-10. ¿Funciona correctamente en escritorio y móvil?
-11. ¿Es coherente con el lenguaje visual aprobado de PikoFilm?
-12. ¿Existe algún estado o incidencia que pueda quedar invisible para el usuario?
-13. Si existe buscador de títulos, ¿busca realmente por título localizado, principal, original e IMDb ID?
-14. ¿La colección está paginada cuando corresponde y comunica claramente posición/rango?
-15. ¿La navegación entre páginas, filtros, búsqueda y orden mantiene una respuesta ágil?
-16. ¿Se han evitado N+1, cargas completas y llamadas externas innecesarias en listados?
-17. ¿La versión móvil reorganiza realmente la interfaz sin perder acciones o información esencial?
-18. Si una acción de dominio existe en varias pantallas, ¿todas invocan la misma operación canónica y producen el mismo comportamiento funcional?
+Normalmente considerar:
+
+**estado global → subconjuntos que requieren atención → filtros operativos → resultados → resolución/acción → mantenimiento técnico.**
+
+No ocultar incidencias. Cuando no haya pendientes, no es necesario cargar una tabla vacía ni miles de elementos; sí debe existir una forma explícita de consultar históricos/correctos si aporta valor.
+
+### 4.3. Ficha / detalle
+
+Debe dejar claro:
+
+- qué entidad se está viendo;
+- por qué se llegó allí o qué estado tiene;
+- evidencia/datos relevantes;
+- acciones disponibles y su riesgo;
+- retorno al contexto anterior.
+
+Evitar repetir información técnica que ya esté sintetizada en una métrica más útil, salvo que el detalle tenga propósito diagnóstico.
+
+### 4.4. Administración / procesos
+
+Puede mostrar más detalle técnico que el resto del producto, pero debe conservar jerarquía y trazabilidad. Fases, progreso, resultado y errores deben ser comprensibles. Si el proceso está al día, el bloque puede permanecer plegado.
 
 ---
 
-## 7. Preferencias UX inferidas a partir de Catálogo
+## 5. Lenguaje visual de referencia
 
-Estas conclusiones son **inferidas** y deberán consolidarse o corregirse durante las siguientes revisiones:
+### Superficies
+- fondo oscuro;
+- paneles diferenciados de forma sutil;
+- bordes finos/discretos;
+- radios moderados;
+- sombras contenidas cuando aporten profundidad.
 
-- Preferencia por interfaces modernas, oscuras y compactas.
-- Preferencia por aprovechar bien el espacio disponible.
-- Preferencia por ver mucha información útil sin tener que navegar continuamente.
-- Preferencia por una jerarquía clara antes que por interfaces minimalistas que oculten información.
-- Preferencia por estados y métricas visuales que permitan entender la situación rápidamente.
-- Preferencia por filtros potentes cuando la cantidad de información lo exige.
-- Preferencia por acciones contextuales que reduzcan pasos.
-- Preferencia por mantener control manual incluso cuando existan automatismos.
-- Preferencia por poder detectar excepciones y elementos que se salen del flujo normal.
+### Tipografía y densidad
+- números importantes grandes y legibles;
+- etiquetas secundarias pequeñas;
+- metadatos compactos;
+- títulos claramente diferenciados;
+- poco espacio desperdiciado entre bloques relacionados.
+
+### Interacción
+- hover discreto;
+- selección claramente visible;
+- botones compactos;
+- destructivas diferenciadas de primarias;
+- controles avanzados mediante popovers/paneles cuando convenga.
+
+El objetivo es mantener un **lenguaje común**, no copiar píxeles ni colores exactos entre pantallas.
 
 ---
 
-## 8. Registro de decisiones explícitas
+## 6. Antipatrones que debemos detectar
 
-### 2026-08-25 — Referencia inicial
+- Portadas que reconstruyen contadores distintos a los de sus secundarias.
+- KPI que repiten información sin añadir decisión o contexto.
+- Procesos/batches dominando una pantalla cuyo objetivo principal es consultar resultados.
+- Tres o más filas de navegación/tarjetas cuando la información principal podría estar visible sin scroll.
+- Cargar miles de filas para mostrar inicialmente “no hay pendientes”.
+- Ocultar elementos problemáticos porque no encajan en el flujo feliz.
+- Acciones globales alejadas del objeto sobre el que actúan.
+- Misma acción con implementaciones o consecuencias diferentes según pantalla.
+- Color como único indicador de estado.
+- Responsive entendido como simple reducción.
+- Buscadores que sólo consultan un alias/título aunque prometan más.
+- Pérdida de filtros/página al volver de una ficha.
+- Barras al 100 % sin resultado o estado final comprensible.
+- Páginas funcionales existentes pero ausentes de la navegación.
+- Duplicar información técnica que ya está sintetizada en una métrica útil.
 
-El usuario establece **Catálogo** como única pantalla de referencia inicial para construir la guía UX del frontal. Las siguientes conclusiones y reglas se irán añadiendo durante la revisión pantalla a pantalla.
+---
 
-### 2026-08-25 — Buscadores de películas y títulos audiovisuales
+## 7. Qué NO debemos copiar mecánicamente
 
-Durante la revisión de **Calidad → Identidad**, el usuario establece como regla transversal que los buscadores de películas/títulos deben permitir encontrar un elemento por título localizado, título principal, título original e IMDb ID. Esta decisión pasa a formar parte del patrón UX aprobado y debe comprobarse también al revisar pantallas existentes.
+Catálogo es referencia, no plantilla rígida. No todas las pantallas necesitan cuatro KPI, filtros, grid, tabla, los mismos colores o idéntica densidad.
 
-### 2026-08-25 — Paginación, rendimiento y fluidez
+Una portada, una cola de Calidad, una ficha, un catálogo y una pantalla administrativa tienen objetivos diferentes. Reutilizamos **jerarquía, claridad, consistencia, densidad útil, rendimiento y comportamiento**, no una composición fija.
 
-El usuario establece que la **velocidad es primordial**. Las colecciones deben paginarse cuando corresponda y la navegación entre búsqueda, filtros, orden, páginas y detalle debe sentirse muy ágil. Rendimiento real y percibido pasan a ser criterio de aceptación UX.
+---
+
+## 8. Decisiones explícitas consolidadas
+
+### 2026-08-25 — Catálogo como referencia inicial
+Catálogo establece el lenguaje inicial del patrón: alta densidad útil, contenido protagonista, filtros compactos, KPI operativos, estados visuales, acciones contextuales, conservación de contexto y responsive real.
+
+### 2026-08-25 — Búsqueda audiovisual transversal
+Los buscadores de títulos deben localizar por título localizado, principal, original e IMDb ID de forma independiente.
+
+### 2026-08-25 — Rendimiento y paginación
+La velocidad es primordial. Rendimiento real y percibido son criterio UX; las colecciones deben paginar/filtrar de forma eficiente cuando corresponda.
 
 ### 2026-08-25 — Consistencia de acciones globales
-
-Durante la revisión de **Calidad → Identidad**, el usuario establece que acciones globales como **Excluir** deben hacer siempre lo mismo, independientemente de la pantalla. Se fija el principio de una única operación canónica por acción de dominio y se documenta expresamente el contrato funcional de Excluir.
+Acciones como Excluir deben tener una única implementación/semántica canónica en toda la aplicación.
 
 ### 2026-08-25 — Navegación móvil
+Toda evolución debe diseñarse y validarse también en móvil sin perder información ni acciones esenciales.
 
-El usuario establece que la navegación móvil debe tenerse siempre en cuenta. Toda pantalla y evolución debe diseñarse y validarse también para móvil, reorganizando la interfaz sin perder información ni acciones esenciales.
+### 2026-08-27 — Revisión de Calidad y navegación
+Se consolidan como reglas transversales:
+
+1. jerarquía progresiva de información;
+2. acciones asociadas a su contexto;
+3. estados con semántica visual consistente y no dependiente sólo del color;
+4. densidad informativa controlada;
+5. filtros orientados a tareas reales;
+6. feedback obligatorio para acciones y procesos;
+7. navegación como fuente coherente de descubrimiento, con paridad escritorio/móvil;
+8. patrón maestro-detalle consistente.
+
+La revisión de Calidad añade además dos aprendizajes operativos: los resúmenes deben reutilizar la **fuente canónica** de cada secundaria y los procesos técnicos deben ceder protagonismo a estado/resultados cuando la pantalla tenga una finalidad funcional distinta del mantenimiento.
 
 ---
 
-## 9. Evolución del documento
+## 9. Cómo evoluciona este documento
 
-Este archivo es deliberadamente vivo. Cada revisión de pantalla podrá añadir:
+Este archivo es deliberadamente vivo. Cada auditoría puede proponer nuevos patrones, antipatrones, excepciones o componentes estandarizables.
 
-- nuevas decisiones confirmadas;
-- patrones reutilizables;
-- antipatrónes detectados;
-- componentes que convenga estandarizar;
-- excepciones justificadas;
-- criterios específicos para móvil;
-- reglas de navegación y feedback;
-- decisiones sobre densidad, métricas y visualización de estados.
+**Regla de gobierno:** una observación encontrada en una pantalla no se convierte automáticamente en patrón global. Debe ser reutilizable y quedar aprobada expresamente antes de incorporarse como norma transversal.
 
-Antes de rediseñar una pantalla existente o crear una nueva, este documento debe utilizarse como referencia UX del frontal de PikoFilm.
+Antes de rediseñar una pantalla existente o crear una nueva, esta guía debe utilizarse como referencia. Durante la auditoría, la **sección 1** funciona como checklist rápida; el resto sirve para resolver el porqué y las excepciones.
