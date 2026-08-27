@@ -3,6 +3,7 @@
 import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
 import {analyzeMoviePikoQuality,PikoQualityPrerequisiteError} from '@/lib/pikoquality-unitary';
+import {processC6Batch,C6_BATCH_SIZE} from '@/lib/pikoquality-c6-batch';
 import {setTechnicalArmed,setTechnicalRequestedState} from '@/lib/plex-technical-control.mjs';
 
 export async function analyzeOnePikoQualityAction(_prevState,formData){
@@ -17,16 +18,13 @@ export async function analyzeOnePikoQualityAction(_prevState,formData){
   }
 }
 
-async function setTechnicalState(state){
-  await setTechnicalRequestedState(db(),state);
-  revalidatePath('/calidad/pikoquality');
+export async function runC6BatchChunkAction(){
+  const result=await processC6Batch(C6_BATCH_SIZE);
+  revalidatePath('/calidad/pikoquality');revalidatePath('/calidad/peliculas');revalidatePath('/catalogo');
+  return result;
 }
 
-export async function startTechnicalSnapshotAction(){
-  const sql=db();
-  await setTechnicalArmed(sql,true);
-  await setTechnicalRequestedState(sql,'running');
-  revalidatePath('/calidad/pikoquality');
-}
+async function setTechnicalState(state){await setTechnicalRequestedState(db(),state);revalidatePath('/calidad/pikoquality')}
+export async function startTechnicalSnapshotAction(){const sql=db();await setTechnicalArmed(sql,true);await setTechnicalRequestedState(sql,'running');revalidatePath('/calidad/pikoquality')}
 export async function pauseTechnicalSnapshotAction(){await setTechnicalState('paused')}
 export async function stopTechnicalSnapshotAction(){await setTechnicalState('stopped')}
