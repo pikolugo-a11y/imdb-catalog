@@ -4,5 +4,8 @@
   "outputDirectory": ".next",
   "git": {
     "deploymentEnabled": false
-  }
+  },
+  "crons": [
+    {"path": "/api/cron/dashboard-snapshot", "schedule": "15 2 * * *"}
+  ]
 }
