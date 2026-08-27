@@ -12,10 +12,10 @@ function StatusPill({status}){
 }
 
 function StageCard({stage}){
-  return <Link href={stage.href} className={`qh-stage qh-stage-${stage.id}`} aria-label={`${stage.label}: ${stage.count} pendientes. ${stage.status.label}`}>
+  return <Link href={stage.href} className={`qh-stage qh-stage-${stage.id}`} aria-label={`${stage.label}: ${stage.count}. ${stage.status.label}`}>
     <div className="qh-stage-top"><span>{stage.label}</span><strong>{nf(stage.count)}</strong></div>
     <StatusPill status={stage.status}/>
-    <p>{stage.count===0?'Sin casos pendientes en esta etapa.':stage.description}</p>
+    <p>{stage.count===0?'Sin casos que requieran acción en esta área.':stage.description}</p>
     <em>{stage.cta} →</em>
   </Link>;
 }
@@ -29,8 +29,7 @@ function Summary({home}){
       {home.excluded>0&&<small className="qh-progress-note">{nf(home.excluded)} excluidos no computan en el progreso activo</small>}
     </div>
     <div className="qh-summary-stat"><span>Estado</span><StatusPill status={home.globalStatus}/></div>
-    <div className="qh-summary-stat"><span>Pendientes</span><strong>{nf(home.pending)}</strong></div>
-    <div className="qh-summary-stat"><span>Intervención</span><strong>{nf(home.intervention)}</strong></div>
+    <div className="qh-summary-stat"><span>Áreas con trabajo</span><strong>{nf(home.areasPending)}</strong><small>de 7 controles operativos</small></div>
     <Link href="/calidad/sin-estado" className={`qh-summary-stat qh-integrity ${home.integrity.ok?'ok':'bad'}`}>
       <span>Integridad Lifecycle</span>
       <strong>{home.integrity.ok?'✓':`${nf(home.integrity.total)} anomalías`}</strong>
@@ -44,32 +43,27 @@ export default async function Calidad(){
   const byId=Object.fromEntries(home.stages.map(stage=>[stage.id,stage]));
   return <div className="quality-home qh-page">
     <header className="qh-head">
-      <div><div className="eyebrow">Centro de control · Lifecycle</div><h1>Calidad</h1><p>Salud, integridad y avance del catálogo audiovisual.</p></div>
+      <div><div className="eyebrow">Centro de control · Lifecycle</div><h1>Calidad</h1><p>Estado real de cada control de calidad y acceso directo a lo que requiere revisión.</p></div>
     </header>
 
     <Summary home={home}/>
 
-    {home.priorityItems.length>0&&<section className="qh-priority" aria-labelledby="qh-priority-title">
-      <div className="qh-section-head"><div><div className="eyebrow">Intervención</div><h2 id="qh-priority-title">Atención prioritaria</h2></div><span>{home.priorityItems.length} {home.priorityItems.length===1?'área':'áreas'}</span></div>
-      <div className="qh-priority-list">{home.priorityItems.map(item=><Link key={item.id} href={item.href} className={`qh-priority-item qh-${item.status.key}`}><StatusPill status={item.status}/><strong>{item.label}</strong><span>{nf(item.count)} {item.count===1?'caso':'casos'}</span><em>Abrir →</em></Link>)}</div>
-    </section>}
-
     <section className="qh-flow" aria-labelledby="qh-flow-title">
-      <div className="qh-section-head"><div><div className="eyebrow">Secuencia real</div><h2 id="qh-flow-title">Lifecycle</h2></div><span>{nf(home.pending)} pendientes</span></div>
+      <div className="qh-section-head"><div><div className="eyebrow">Secuencia de control</div><h2 id="qh-flow-title">Lifecycle</h2></div><span>Los números coinciden con cada pantalla</span></div>
       <div className="qh-flow-main" aria-label="Etapas previas">
         <StageCard stage={byId.recovery}/><span className="qh-arrow" aria-hidden="true">→</span>
         <StageCard stage={byId.identity}/><span className="qh-arrow" aria-hidden="true">→</span>
         <StageCard stage={byId.validation}/><span className="qh-arrow" aria-hidden="true">→</span>
         <StageCard stage={byId.data}/>
       </div>
-      <div className="qh-branch-label"><span>Rama física</span></div>
-      <div className="qh-flow-branch">
+      <div className="qh-branch-label"><span>Biblioteca física y calidad</span></div>
+      <div className="qh-flow-branch" aria-label="Control de biblioteca física y calidad">
         <StageCard stage={byId.movies}/>
         <StageCard stage={byId.series}/>
+        <StageCard stage={byId.pikoquality}/>
       </div>
-      <div className="qh-flow-final"><span className="qh-arrow qh-arrow-down" aria-hidden="true">↓</span><StageCard stage={byId.pikoquality}/></div>
     </section>
 
-    <footer className="qh-foot"><span>El progreso se calcula sobre el catálogo activo y el estado terminal real del Lifecycle.</span><Link href="/catalogo">Ver Catálogo →</Link></footer>
+    <footer className="qh-foot"><span>El porcentaje superior refleja Lifecycle; cada tarjeta usa el contador operativo real de su módulo.</span><Link href="/catalogo">Ver Catálogo →</Link></footer>
   </div>;
 }
