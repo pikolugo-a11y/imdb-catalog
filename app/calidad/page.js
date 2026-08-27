@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {getQualityHomeSnapshot} from '@/lib/quality-home';
 import './quality-dashboard.css';
+import './quality-home-overrides.css';
 
 export const dynamic='force-dynamic';
 
