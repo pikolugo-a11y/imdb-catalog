@@ -3,19 +3,16 @@ import {db} from '@/lib/db';
 import {QUALITY_VERSION} from '../../../lib/pikoquality';
 import {getPikoQualityState,getPikoQualityPendingPage} from '../../../lib/pikoquality-state';
 import {getTechnicalDashboard} from '../../../lib/plex-technical-control.mjs';
-import {startTechnicalSnapshotAction,pauseTechnicalSnapshotAction,stopTechnicalSnapshotAction} from './actions';
 import AnalyzeForm from './AnalyzeForm';
+import TechnicalRunFlow from './TechnicalRunFlow';
 import styles from './pikoquality.module.css';
 
 export const dynamic='force-dynamic';
 const nf=n=>Number(n||0).toLocaleString('es-ES');
-const dt=v=>v?new Date(v).toLocaleString('es-ES'):'—';
 const labels={excellent:'Excelente',very_good:'Muy buena',correct:'Correcta',improvable:'Mejorable',deficient:'Deficiente'};
 const pct=(n,total)=>total?Math.round(Number(n||0)*1000/Number(total))/10:0;
-const technicalLabels={running:'Ejecutándose',pausing:'Pausando',paused:'Pausado',stopped:'Detenido',error:'Error',completed:'Completado'};
 const mbps=v=>v?`${(Number(v)/1000).toLocaleString('es-ES',{maximumFractionDigits:1})} Mbps`:'—';
 function Metric({label,value,sub,href}){const body=<><span>{label}</span><strong>{value}</strong><small>{sub}</small></>;return href?<Link className={`${styles.metric} ${styles.metricLink}`} href={href}>{body}</Link>:<div className={styles.metric}>{body}</div>}
-function Progress({label,data}){const p=pct(data.ready,data.total);return <div className={styles.syncProgress}><div className={styles.syncProgressHead}><span>{label}</span><b>{nf(data.ready)} / {nf(data.total)} · {p}%</b></div><div className={styles.progressTrack}><span style={{width:`${Math.min(100,p)}%`}}/></div><small>{nf(data.pending)} pendientes · {nf(data.stale)} desactualizados · {nf(data.error)} errores</small></div>}
 function queueStatus(r){if(r.status==='error'&&r.source_fingerprint===r.fingerprint)return['Error',styles.statusError];if(r.rating_key&&(r.status==='stale'||r.formula_version!==QUALITY_VERSION||r.source_fingerprint!==r.fingerprint))return['Desactualizado',styles.statusStale];return['Pendiente',styles.statusPending]}
 function paramsHref(current,patch){const p=new URLSearchParams();for(const [k,v] of Object.entries({...current,...patch})){if(v!==''&&v!=null&&!(k==='page'&&Number(v)===1))p.set(k,String(v))}const qs=p.toString();return `/calidad/pikoquality${qs?`?${qs}`:''}`}
 
@@ -28,12 +25,6 @@ export default async function Page({searchParams}){
     getTechnicalDashboard(sql),
     getPikoQualityPendingPage({page:filters.page,pageSize:25,query:filters.q,resolution:filters.resolution,codec:filters.codec,status:filters.status,sort:filters.sort})
   ]);
-  const c=technical.control||{};
-  const armed=Boolean(c.armed);
-  const requested=c.requested_state||'stopped';
-  const actual=c.actual_state||'stopped';
-  const overallPct=pct(technical.total.ready,technical.total.total);
-  const firstRun=!armed&&technical.total.ready<=6&&technical.total.pending>0;
   const distribution=[['excellent',styles.excellent,'85–100'],['very_good',styles.verygood,'75–84'],['correct',styles.correct,'60–74'],['improvable',styles.improvable,'40–59'],['deficient',styles.deficient,'< 40']];
   const rangeStart=queue.total?(queue.page-1)*queue.pageSize+1:0;
   const rangeEnd=Math.min(queue.total,queue.page*queue.pageSize);
@@ -43,18 +34,7 @@ export default async function Page({searchParams}){
   return <div className={styles.page}>
     <div className={styles.topline}><div className={styles.titleWrap}><div className={styles.logo}>☆</div><div><h1>PikoQuality <span className={styles.version}>v{QUALITY_VERSION}</span></h1><p className={styles.subtitle}>Área de trabajo para capturar datos técnicos y resolver únicamente lo que requiere intervención.</p></div></div><Link className="btn" href="/calidad">← Calidad</Link></div>
 
-    <section className={styles.syncPanel}>
-      <div className={styles.syncHeader}><div><span className={styles.kicker}>1 · DATOS TÉCNICOS</span><h2>Captura técnica de Plex</h2><p>Persistimos vídeo, audio, tamaño, duración y fingerprint. Esta captura es independiente del cálculo de PikoQuality y de Novedades.</p></div><div className={`${styles.syncState} ${styles[`syncState_${actual}`]||''}`}><span>{technical.workerOnline?'●':'○'}</span>{technicalLabels[actual]||actual}</div></div>
-      <div className={styles.syncSummary}><div><span>Progreso total</span><strong>{nf(technical.total.ready)} / {nf(technical.total.total)}</strong><small>{overallPct}% capturado</small></div><div><span>Velocidad reciente</span><strong>{technical.velocity.perMinute5} / min</strong><small>15 min: {technical.velocity.perMinute15} / min</small></div><div><span>Última captura</span><strong>{dt(technical.velocity.lastCaptureAt)}</strong><small>Heartbeat: {dt(c.heartbeat_at)}</small></div><div><span>Worker</span><strong>{technical.workerOnline?'Online':'En espera'}</strong><small>{nf(technical.total.error)} errores acumulados</small></div></div>
-      <div className={styles.syncProgressGrid}><Progress label="Películas" data={technical.byType.movie}/><Progress label="Episodios" data={technical.byType.episode}/></div>
-      {c.last_error?<div className={styles.syncError}>Último error del worker: {c.last_error}</div>:null}
-      <div className={styles.syncActions}>
-        {requested!=='running'?<form action={startTechnicalSnapshotAction}><button className={styles.primaryButton}>{actual==='paused'?'Reanudar':firstRun?'Iniciar captura inicial':'Iniciar captura técnica'}</button></form>:null}
-        {requested==='running'?<form action={pauseTechnicalSnapshotAction}><button className={styles.secondaryButton}>Pausar</button></form>:null}
-        {requested!=='stopped'?<form action={stopTechnicalSnapshotAction}><button className={styles.secondaryButton}>Detener</button></form>:null}
-        <div className={styles.syncActionNote}>Pausar no borra el progreso. Al reanudar, el worker continúa sobre los elementos pendientes. El snapshot persistido seguirá siendo válido aunque cambie la fórmula.</div>
-      </div>
-    </section>
+    <TechnicalRunFlow technical={technical}/>
 
     <section className={styles.hero}>
       <div className={styles.heroStatus}><div className={styles.ring} style={{'--p':`${Math.min(100,s.progressA)}%`}}><strong>{s.progressA}%</strong></div><div><span className={styles.muted}>2 · PIKOQUALITY</span><h2>{allDone?'PikoQuality al día':'Trabajo pendiente'}</h2><p>{nf(s.evaluated)} de {nf(s.total)} archivos elegibles tienen un resultado vigente para su fingerprint y fórmula actual.</p></div></div>
