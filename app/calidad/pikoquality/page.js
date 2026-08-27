@@ -1,76 +1,25 @@
 import Link from 'next/link';
-import {db} from '@/lib/db';
 import {PIKOQUALITY_ACTIVE_VERSION} from '../../../lib/pikoquality-version.mjs';
-import {getPikoQualityState,getPikoQualityPendingPage} from '../../../lib/pikoquality-state';
+import {getPikoQualityState} from '../../../lib/pikoquality-state';
+import {getPikoQualityLibrary} from '../../../lib/pikoquality-library';
 import {getC6BatchState} from '../../../lib/pikoquality-c6-batch';
 import {getTechnicalDashboard} from '../../../lib/plex-technical-control.mjs';
-import AnalyzeForm from './AnalyzeForm';
+import {db} from '@/lib/db';
 import TechnicalRunFlow from './TechnicalRunFlow';
 import C6BatchRunner from './C6BatchRunner';
 import styles from './pikoquality.module.css';
-
 export const dynamic='force-dynamic';
 const nf=n=>Number(n||0).toLocaleString('es-ES');
 const labels={fail:'Suspenso',sufficient:'Suficiente',good:'Bien',notable:'Notable',outstanding:'Sobresaliente',honors:'Matrícula'};
-const pct=(n,total)=>total?Math.round(Number(n||0)*1000/Number(total))/10:0;
-const mbps=v=>v?`${(Number(v)/1000).toLocaleString('es-ES',{maximumFractionDigits:1})} Mbps`:'—';
-function Metric({label,value,sub,href}){const body=<><span>{label}</span><strong>{value}</strong><small>{sub}</small></>;return href?<Link className={`${styles.metric} ${styles.metricLink}`} href={href}>{body}</Link>:<div className={styles.metric}>{body}</div>}
-function queueStatus(r){if(r.status==='error'&&r.formula_version===PIKOQUALITY_ACTIVE_VERSION)return['Error',styles.statusError];if(r.rating_key&&(r.formula_version===PIKOQUALITY_ACTIVE_VERSION&&r.source_fingerprint!==r.fingerprint))return['Desactualizado',styles.statusStale];return['Pendiente C6',styles.statusPending]}
-function paramsHref(current,patch){const p=new URLSearchParams();for(const [k,v] of Object.entries({...current,...patch})){if(v!==''&&v!=null&&!(k==='page'&&Number(v)===1))p.set(k,String(v))}const qs=p.toString();return `/calidad/pikoquality${qs?`?${qs}`:''}`}
-
-export default async function Page({searchParams}){
-  const sp=await searchParams||{};
-  const filters={page:Math.max(1,Number(sp.page)||1),q:String(sp.q||''),resolution:String(sp.resolution||''),codec:String(sp.codec||''),status:String(sp.status||''),sort:String(sp.sort||'priority')};
-  const sql=db();
-  const [s,technical,queue,c6]=await Promise.all([
-    getPikoQualityState(),
-    getTechnicalDashboard(sql),
-    getPikoQualityPendingPage({page:filters.page,pageSize:25,query:filters.q,resolution:filters.resolution,codec:filters.codec,status:filters.status,sort:filters.sort}),
-    getC6BatchState(sql)
-  ]);
-  const distribution=[['fail',styles.deficient,'< 5,0'],['sufficient',styles.improvable,'5,0–5,9'],['good',styles.correct,'6,0–6,9'],['notable',styles.verygood,'7,0–8,4'],['outstanding',styles.excellent,'8,5–9,4'],['honors',styles.honors,'≥ 9,5']];
-  const rangeStart=queue.total?(queue.page-1)*queue.pageSize+1:0;
-  const rangeEnd=Math.min(queue.total,queue.page*queue.pageSize);
-  const current={q:filters.q,resolution:filters.resolution,codec:filters.codec,status:filters.status,sort:filters.sort,page:queue.page};
-  const hasFilters=Boolean(filters.q||filters.resolution||filters.codec||filters.status||filters.sort!=='priority');
-  const allDone=s.pending_a===0&&s.errors===0;
-  return <div className={styles.page}>
-    <div className={styles.topline}><div className={styles.titleWrap}><div className={styles.logo}>☆</div><div><h1>PikoQuality <span className={styles.version}>v{PIKOQUALITY_ACTIVE_VERSION}</span></h1><p className={styles.subtitle}>Área de trabajo para capturar datos técnicos y calcular la PikoQuality oficial del archivo físico vigente.</p></div></div><Link className="btn" href="/calidad">← Calidad</Link></div>
-
-    <TechnicalRunFlow technical={technical}/>
-    <C6BatchRunner initial={c6}/>
-
-    <section className={styles.hero}>
-      <div className={styles.heroStatus}><div className={styles.ring} style={{'--p':`${Math.min(100,s.progressA)}%`}}><strong>{s.progressA}%</strong></div><div><span className={styles.muted}>PIKOQUALITY 2.0 · C6</span><h2>{allDone?'PikoQuality al día':'Trabajo pendiente'}</h2><p>{nf(s.evaluated)} de {nf(s.total)} archivos técnicamente preparados tienen C6 vigente para su fingerprint técnico actual.</p></div></div>
-      <div className={styles.infoBox}><h3>Fuente de verdad única</h3><ul><li>El valor oficial se guarda en <code>piko_quality.score</code>.</li><li>La versión activa es <code>{PIKOQUALITY_ACTIVE_VERSION}</code>.</li><li>Un cambio de technical_fingerprint invalida automáticamente el resultado.</li><li>Individual y Batch usan exactamente el mismo núcleo C6.</li></ul></div>
-    </section>
-
-    <section className={styles.metrics}>
-      <Metric label="Cobertura C6" value={`${s.progressA}%`} sub={`${nf(s.evaluated)} / ${nf(s.total)} vigentes`}/>
-      <Metric label="Películas pendientes" value={nf(queue.overallTotal)} sub="Archivos movie ready sin C6 vigente" href="/calidad/pikoquality"/>
-      <Metric label="Archivo cambiado" value={nf(s.stale)} sub="C6 existente con fingerprint distinto" href={paramsHref(current,{page:1,status:'stale'})}/>
-      <Metric label="Incidencias C6" value={nf(s.errors)} sub="Errores de cálculo C6" href={paramsHref(current,{page:1,status:'error'})}/>
-    </section>
-
-    {allDone&&!hasFilters?<section className={styles.completedState}><div className={styles.completedIcon}>✓</div><div><span className={styles.kicker}>SIN TRABAJO PENDIENTE</span><h2>PikoQuality C6 al día</h2><p>{nf(s.evaluated)} / {nf(s.total)} archivos técnicamente preparados tienen la fórmula oro vigente.</p></div></section>:<section className={styles.queueSection}>
-      <div className={styles.panel}>
-        <div className={styles.sectionHead}><div><h2>Películas pendientes de C6</h2><p className={styles.subtitle}>La cola se deriva de versión + technical_fingerprint. No depende del lifecycle para decidir la vigencia de PikoQuality.</p></div><div className={styles.range}>{rangeStart}–{rangeEnd} de {nf(queue.total)}{hasFilters?` · ${nf(queue.overallTotal)} totales`:''}</div></div>
-        <form className={styles.filters} method="get">
-          <label className={styles.searchField}><span>Buscar</span><input name="q" defaultValue={filters.q} placeholder="Título o IMDb ID"/></label>
-          <label><span>Resolución</span><select name="resolution" defaultValue={filters.resolution}><option value="">Todas</option>{queue.resolutions.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
-          <label><span>Códec</span><select name="codec" defaultValue={filters.codec}><option value="">Todos</option>{queue.codecs.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
-          <label><span>Estado</span><select name="status" defaultValue={filters.status}><option value="">Todos</option><option value="pending">Nunca C6</option><option value="stale">Archivo cambiado</option><option value="error">Error C6</option></select></label>
-          <label><span>Orden</span><select name="sort" defaultValue={filters.sort}><option value="priority">Prioridad recomendada</option><option value="year">Año</option><option value="title">Título</option></select></label>
-          <button className={styles.primaryButton} type="submit">Aplicar</button>
-          {hasFilters?<Link className={styles.clearFilters} href="/calidad/pikoquality">Limpiar</Link>:null}
-        </form>
-      </div>
-      <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Película</th><th>Archivo técnico</th><th>Audio</th><th>Prioridad / estado</th><th>Acción</th></tr></thead><tbody>{queue.rows.length?queue.rows.map(r=>{const [status,statusClass]=queueStatus(r);return <tr key={r.rating_key}><td><strong>{r.title_es||r.title||r.original_title||r.plex_title||r.imdb_id||r.rating_key}</strong><br/><span className={styles.muted}>{r.year||r.plex_year||'—'}{r.imdb_id?` · ${r.imdb_id}`:''}</span></td><td><div className={styles.techMain}>{r.resolution||'—'} · {String(r.video_codec||'—').toUpperCase()}</div><span className={styles.techSub}>{mbps(r.bitrate)}</span></td><td><div className={styles.techMain}>{String(r.audio_codec||'—').toUpperCase()}</div><span className={styles.techSub}>{r.audio_channels?`${r.audio_channels} canales`:'—'}</span></td><td><span className={`${styles.statusChip} ${statusClass}`}>{status}</span><span className={styles.priorityReason}>{r.priority_reason||'Pendiente C6'}</span></td><td>{r.imdb_id?<AnalyzeForm imdbId={r.imdb_id}/>:<span className={styles.muted}>Batch C6</span>}</td></tr>}):<tr><td colSpan="5"><div className={styles.emptyState}><b>No hay elementos con estos filtros.</b><span>Modifica los filtros o vuelve a la cola completa.</span></div></td></tr>}</tbody></table></div>
-      {queue.pageCount>1?<nav className={styles.pagination} aria-label="Paginación"><Link className={queue.page<=1?styles.disabledPage:''} aria-disabled={queue.page<=1} href={queue.page<=1?'#':paramsHref(current,{page:queue.page-1})}>← Anterior</Link><span>Página {queue.page} de {queue.pageCount}</span><Link className={queue.page>=queue.pageCount?styles.disabledPage:''} aria-disabled={queue.page>=queue.pageCount} href={queue.page>=queue.pageCount?'#':paramsHref(current,{page:queue.page+1})}>Siguiente →</Link></nav>:null}
-    </section>}
-
-    <section className={styles.bodyGrid}><div className={styles.panel}><h2>Distribución C6 vigente</h2><div className={styles.distribution}>{distribution.map(([key,cls,range])=><div className={`${styles.band} ${cls}`} key={key}><span>{labels[key]}</span><strong>{pct(s.distribution[key],s.evaluated)}%</strong><small>{nf(s.distribution[key])} · {range}</small></div>)}</div><p className={styles.formulaNote}>C6 es la fórmula oro activa. C5 y 1.0.0 se conservan únicamente como histórico y nunca se consideran vigentes.</p></div><div className={styles.panel}><h2>Estado del dominio</h2><div className={styles.detailGrid}><div><span>Total ready</span><b>{nf(s.total)}</b></div><div><span>Películas</span><b>{nf(s.movies)}</b></div><div><span>Episodios</span><b>{nf(s.episodes)}</b></div><div><span>Agregados C6</span><b>{nf(s.aggregateCount)}</b></div></div><div className={styles.domainState}><b>{s.recommendation.label}</b><span>{s.recommendation.description}</span></div></div></section>
-
-    <div className={styles.adminNote}>ⓘ PikoQuality tiene una única fuente de verdad: score + versión C6 + technical_fingerprint vigente. Las pantallas consumidoras no necesitan conocer versiones históricas.</div>
-  </div>;
-}
+const ranges={fail:'< 5,0',sufficient:'5,0–5,9',good:'6,0–6,9',notable:'7,0–8,4',outstanding:'8,5–9,4',honors:'≥ 9,5'};
+const pct=(n,t)=>t?Math.round(Number(n||0)*1000/Number(t))/10:0;
+function href(sp,patch){const p=new URLSearchParams();for(const[k,v]of Object.entries({...sp,...patch})){if(v!==''&&v!=null&&!(k==='page'&&Number(v)===1))p.set(k,String(v))}const q=p.toString();return`/calidad/pikoquality${q?`?${q}`:''}`}
+export default async function Page({searchParams}){const raw=await searchParams||{};const f={q:String(raw.q||''),kind:String(raw.kind||''),band:String(raw.band||''),priority:String(raw.priority||''),sort:String(raw.sort||'priority'),page:Math.max(1,Number(raw.page)||1)};const load=raw.view==='library'||Boolean(f.q||f.kind||f.band||f.priority);const sql=db();const[s,technical,c6,library]=await Promise.all([getPikoQualityState(),getTechnicalDashboard(sql),getC6BatchState(sql),getPikoQualityLibrary({...f,load})]);const sum=library.summary||{};const allDone=s.pending_a===0&&s.errors===0;const maintenanceOpen=!allDone||technical.currentRun?.status==='running'||c6.pending>0;const bands=['fail','sufficient','good','notable','outstanding','honors'];return <div className={styles.page}>
+<div className={styles.topline}><div className={styles.titleWrap}><div className={styles.logo}>☆</div><div><h1>PikoQuality <span className={styles.version}>v{PIKOQUALITY_ACTIVE_VERSION}</span></h1><p className={styles.subtitle}>Salud de la biblioteca y prioridades para decidir qué copias merece la pena mejorar.</p></div></div><Link className="btn" href="/calidad">← Calidad</Link></div>
+<section className={styles.healthHero}><div><span className={styles.kicker}>SALUD DE LA BIBLIOTECA</span><h2>{allDone?'Biblioteca evaluada y al día':'Hay trabajo técnico pendiente'}</h2><p>La vista de decisión trabaja con <b>películas y temporadas</b>. Los capítulos se analizan internamente, pero no aparecen como unidades de trabajo.</p></div><div className={styles.healthStats}><div><span>PikoQuality media</span><strong>{sum.avg_quality?Number(sum.avg_quality).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</strong><small>sobre películas + temporadas</small></div><div><span>Candidatos suspensos</span><strong>{nf(sum.fail)}</strong><small>{pct(sum.fail,sum.total)}% de la vista</small></div><div><span>Prioridad alta</span><strong>{nf(sum.high_priority)}</strong><small>PikoScore × déficit de calidad</small></div><div><span>Cobertura C6</span><strong>{s.progressA}%</strong><small>{nf(s.evaluated)} archivos técnicos vigentes</small></div></div></section>
+<section className={styles.panel}><div className={styles.sectionHead}><div><h2>Distribución de calidad</h2><p className={styles.subtitle}>Pulsa una categoría para consultar directamente sus películas y temporadas.</p></div><span className={styles.range}>{nf(sum.movies)} películas · {nf(sum.seasons)} temporadas</span></div><div className={styles.distribution}>{bands.map(k=><Link key={k} className={`${styles.band} ${styles.bandLink} ${styles[k==='fail'?'deficient':k==='sufficient'?'improvable':k==='good'?'correct':k==='notable'?'verygood':k==='outstanding'?'excellent':'honors']}`} href={href(f,{view:'library',band:k,page:1})}><span>{labels[k]}</span><strong>{pct(s.distribution[k],s.evaluated)}%</strong><small>{nf(s.distribution[k])} archivos · {ranges[k]}</small></Link>)}</div></section>
+<section className={styles.panel}><div className={styles.sectionHead}><div><span className={styles.kicker}>¿QUÉ DEBERÍA MEJORAR?</span><h2>Prioridad de mejora</h2><p className={styles.subtitle}>PikoScore pondera el valor de la obra y PikoQuality el margen de mejora. Una obra excelente con una copia floja sube antes que una obra poco valiosa.</p></div>{!load?<Link className={styles.primaryLink} href="/calidad/pikoquality?view=library&priority=high">Ver prioridades altas</Link>:null}</div>
+<form className={styles.decisionFilters} method="get"><input type="hidden" name="view" value="library"/><label><span>Buscar</span><input name="q" defaultValue={f.q} placeholder="Película o serie"/></label><label><span>Tipo</span><select name="kind" defaultValue={f.kind}><option value="">Películas + temporadas</option><option value="movie">Películas</option><option value="season">Temporadas</option></select></label><label><span>Calidad</span><select name="band" defaultValue={f.band}><option value="">Todas</option>{bands.map(k=><option key={k} value={k}>{labels[k]}</option>)}</select></label><label><span>Prioridad</span><select name="priority" defaultValue={f.priority}><option value="">Todas</option><option value="high">Alta</option><option value="medium">Media</option><option value="low">Baja</option></select></label><label><span>Orden</span><select name="sort" defaultValue={f.sort}><option value="priority">Prioridad recomendada</option><option value="quality">Peor PikoQuality</option><option value="pikoscore">Mejor PikoScore</option><option value="title">Título</option></select></label><button className={styles.primaryButton}>Consultar</button>{load?<Link className={styles.clearFilters} href="/calidad/pikoquality">Cerrar consulta</Link>:null}</form>
+{load?<><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Obra</th><th>Tipo</th><th>PikoScore</th><th>PikoQuality</th><th>Prioridad</th><th>Lectura rápida</th></tr></thead><tbody>{library.rows.length?library.rows.map(r=><tr key={`${r.kind}:${r.entity_key}`}><td><strong>{r.title}</strong><br/><span className={styles.muted}>{r.item_year||'—'}</span></td><td>{r.kind==='movie'?'Película':`Temporada ${r.season_index}`}</td><td><b>{r.pikoscore!=null?Number(r.pikoscore).toLocaleString('es-ES',{minimumFractionDigits:1,maximumFractionDigits:1}):'—'}</b></td><td><b>{Number(r.pikoquality).toLocaleString('es-ES',{minimumFractionDigits:1,maximumFractionDigits:1})}</b><br/><span className={styles.muted}>{labels[r.band]||r.band}</span></td><td><span className={`${styles.priorityBadge} ${styles[`priority${r.priority_label}`]||''}`}>{r.priority_label}</span><br/><small>{r.priority_score!=null?`${r.priority_score}/100`:'Sin PikoScore'}</small></td><td>{r.pikoscore==null?'Falta PikoScore':r.priority_label==='Alta'?'Merece revisión prioritaria':r.priority_label==='Media'?'Mejorable, sin urgencia':'Baja prioridad de sustitución'}</td></tr>):<tr><td colSpan="6"><div className={styles.emptyState}><b>No hay resultados.</b><span>Prueba otros filtros.</span></div></td></tr>}</tbody></table></div>{library.pageCount>1?<nav className={styles.pagination}><Link href={href({...f,view:'library'},{page:Math.max(1,library.page-1)})}>← Anterior</Link><span>Página {library.page} de {library.pageCount} · {nf(library.total)} resultados</span><Link href={href({...f,view:'library'},{page:Math.min(library.pageCount,library.page+1)})}>Siguiente →</Link></nav>:null}</>:<div className={styles.queryEmpty}><b>No cargamos miles de filas al entrar.</b><span>Usa los filtros, pulsa una banda o abre las prioridades altas. La portada solo ejecuta agregados ligeros.</span></div>}</section>
+<details className={styles.maintenance} open={maintenanceOpen}><summary><div><span className={styles.kicker}>PROCESOS Y MANTENIMIENTO</span><b>{allDone&&c6.pending===0?'Todo al día':'Requiere atención'}</b></div><span>{allDone&&c6.pending===0?'✓ Captura técnica · ✓ C6':'Ver procesos'}</span></summary><div className={styles.maintenanceBody}><TechnicalRunFlow technical={technical}/><C6BatchRunner initial={c6}/></div></details>
+<div className={styles.adminNote}>ⓘ La prioridad es una ayuda de decisión, no modifica PikoScore ni PikoQuality. Los episodios siguen siendo la base técnica de C6; esta pantalla los resume por temporada.</div></div>}
