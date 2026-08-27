@@ -1,11 +1,12 @@
 import {startTechnicalSnapshotAction,pauseTechnicalSnapshotAction,stopTechnicalSnapshotAction} from './actions';
+import TechnicalAutoRefresh from './TechnicalAutoRefresh';
 import styles from './pikoquality.module.css';
 
 const nf=n=>Number(n||0).toLocaleString('es-ES');
 const pct=(n,total)=>total?Math.min(100,Math.round(Number(n||0)*1000/Number(total))/10):0;
 const dt=v=>v?new Date(v).toLocaleString('es-ES'):'—';
 const dur=ms=>{const s=Math.round(Number(ms||0)/1000);if(!s)return'—';const m=Math.floor(s/60),r=s%60;return m?`${m}m ${r}s`:`${r}s`};
-const stateLabel={running:'Ejecutándose',completed:'Completado',error:'Error',stopped:'Detenido'};
+const stateLabel={running:'Ejecutándose',completed:'Completado',error:'Error',stopped:'Detenido',paused:'Pausado'};
 
 function Phase({number,title,active,done,progress,children}){
   return <div className={`${styles.syncProgress} ${active?styles.stepActive:''} ${done?styles.stepDone:''}`}>
@@ -30,6 +31,7 @@ export default function TechnicalRunFlow({technical}){
   const changed=Number(run?.scan_changed||0),created=Number(run?.scan_created||0);
 
   return <section className={styles.syncPanel}>
+    <TechnicalAutoRefresh active={requested==='running'||isRunning}/>
     <div className={styles.syncHeader}>
       <div><span className={styles.kicker}>CAPTURA TÉCNICA · FLUJO DE EJECUCIÓN</span><h2>Comprobar → tratar únicamente cambios</h2><p>Cada ejecución queda registrada. Primero se compara la identidad física de toda la biblioteca; después solo se recapturan archivos nuevos o modificados.</p></div>
       <div className={`${styles.syncState} ${styles[`syncState_${c.actual_state}`]||''}`}><span>{technical.workerOnline?'●':'○'}</span>{stateLabel[c.actual_state]||c.actual_state||'En espera'}</div>
