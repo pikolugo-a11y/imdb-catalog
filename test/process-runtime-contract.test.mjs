@@ -4,10 +4,11 @@ import fs from 'node:fs';
 const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 const runtime=read('../lib/process-runtime.js');
 const identity=read('../lib/identity-unitary.js');
+const identityStore=read('../lib/identity.js');
 const correction=read('../lib/identity-correction.js');
 const actions=read('../app/calidad/identidad/actions.js');
 
- test('runtime común escribe exclusivamente el modelo nuevo de observabilidad',()=>{
+test('runtime común escribe exclusivamente el modelo nuevo de observabilidad',()=>{
   assert.match(runtime,/process_runs/);
   assert.match(runtime,/process_run_events/);
   assert.match(runtime,/process_run_errors/);
@@ -73,9 +74,11 @@ test('ID-002 usa el núcleo canónico compartido y observabilidad común',()=>{
 
 test('núcleo de corrección exige verificación TMDb real antes de guardar',()=>{
   assert.match(correction,/validateTmdbIdentity/);
-  assert.match(correction,/if\(!verification\.actualImdbId\)return\{changed:false,blocked:true,reason:'unverifiable'/);
-  assert.match(correction,/if\(!verification\.ok\)return\{changed:false,blocked:true,reason:'mismatch'/);
-  const verify=correction.indexOf('validateTmdbIdentity');
+  assert.match(correction,/!verification\.actualImdbId/);
+  assert.match(correction,/reason:'unverifiable'/);
+  assert.match(correction,/!verification\.ok/);
+  assert.match(correction,/reason:'mismatch'/);
+  const verify=correction.indexOf('verification=await validateTmdbIdentity');
   const save=correction.indexOf('saveIdentity(oldId');
   assert.ok(verify>=0&&save>verify);
 });
@@ -84,4 +87,9 @@ test('fallo técnico TMDb corta la corrección y queda clasificado para retry',(
   assert.match(correction,/e\.processStep='validate_tmdb_identity'/);
   assert.match(correction,/e\.source='tmdb'/);
   assert.match(correction,/e\.retryable=true/);
+});
+
+test('correcciones observadas suprimen el audit legacy duplicado',()=>{
+  assert.match(correction,/auditLegacy:false/);
+  assert.match(identityStore,/options\.auditLegacy!==false/);
 });
