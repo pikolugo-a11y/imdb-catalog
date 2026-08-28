@@ -38,8 +38,15 @@ test('doble clic no se interpreta como TMDb no encontrado',()=>{
   assert.match(actions,/if\(observed\.reused\)/);
   assert.match(actions,/status:'duplicate'/);
   const reusedIndex=actions.indexOf('if(observed.reused)');
-  const notFoundIndex=actions.indexOf("recordOutcome(id,'NO_ENCONTRADO')");
+  const notFoundIndex=actions.indexOf("status:'not_found'");
   assert.ok(reusedIndex>=0&&notFoundIndex>reusedIndex);
+});
+
+test('ID-001 no escribe estado residual del Batch legacy',()=>{
+  const start=actions.indexOf('export async function obtainIdentityAction');
+  const end=actions.indexOf('export async function saveIdentityPageAction');
+  const body=actions.slice(start,end);
+  assert.doesNotMatch(body,/recordOutcome\(|batch_process_state/);
 });
 
 test('ID-001 solo resuelve TMDb y recalcula Lifecycle',()=>{
