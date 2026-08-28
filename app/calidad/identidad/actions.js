@@ -38,10 +38,9 @@ export async function obtainIdentityAction(_prev,formData){
     }
     const r=observed.result;
     refresh(id);
-    if(r?.complete){await recordOutcome(id,'CORREGIDO');return{ok:true,status:'resolved',imdbId:id,runId:observed.runId,message:`Identidad completa · TMDb ${r.tmdbId}`}}
-    await recordOutcome(id,'NO_ENCONTRADO');
+    if(r?.complete)return{ok:true,status:'resolved',imdbId:id,runId:observed.runId,message:`Identidad completa · TMDb ${r.tmdbId}`};
     return{ok:false,status:'not_found',imdbId:id,runId:observed.runId,message:'TMDb respondió correctamente, pero no encontró una coincidencia. Puedes corregir el ID manualmente.'};
-  }catch(e){if(id)await recordOutcome(id,'ERROR').catch(()=>{});return{ok:false,status:'error',runId:e?.runId||null,message:e?.message||'No se pudo obtener la identidad'}}
+  }catch(e){return{ok:false,status:'error',runId:e?.runId||null,message:e?.message||'No se pudo obtener la identidad'}}
 }
 
 export async function saveIdentityPageAction(_prev,formData){
