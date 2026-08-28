@@ -22,12 +22,24 @@ test('runtime separa origen, executor, estado técnico y resultado funcional',()
   assert.match(runtime,/correlation_key/);
 });
 
+test('idempotencia se resuelve por proceso y no solo por clave',()=>{
+  assert.match(runtime,/WHERE process_code=\$\{processCode\} AND idempotency_key=\$\{idempotencyKey\}/);
+});
+
 test('ID-001 usa la infraestructura común y conserva una única operación funcional',()=>{
   assert.match(actions,/executeObservedProcess/);
   assert.match(actions,/processCode:'PROC-ID-001'/);
   assert.match(actions,/triggerSource:'calidad_identidad_manual'/);
   assert.match(actions,/executor:'vercel'/);
   assert.match(actions,/resolveIdentityUnitary\(id,trace\)/);
+});
+
+test('doble clic no se interpreta como TMDb no encontrado',()=>{
+  assert.match(actions,/if\(observed\.reused\)/);
+  assert.match(actions,/status:'duplicate'/);
+  const reusedIndex=actions.indexOf('if(observed.reused)');
+  const notFoundIndex=actions.indexOf("recordOutcome(id,'NO_ENCONTRADO')");
+  assert.ok(reusedIndex>=0&&notFoundIndex>reusedIndex);
 });
 
 test('ID-001 solo resuelve TMDb y recalcula Lifecycle',()=>{
