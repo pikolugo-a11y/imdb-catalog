@@ -32,6 +32,10 @@ export async function obtainIdentityAction(_prev,formData){
       const r=await resolveIdentityUnitary(id,trace);
       return{...r,technicalStatus:'succeeded',functionalResult:r.functionalResult,before:r.before,after:r.after,metrics:{methods:r.methods,duration_ms:r.durationMs},message:r.complete?'Identidad resuelta':'Identidad no encontrada'};
     });
+    if(observed.reused){
+      refresh(id);
+      return{ok:true,status:'duplicate',imdbId:id,runId:observed.runId,message:'Esta solicitud ya se está procesando o acaba de procesarse. No se ha lanzado una segunda ejecución.'};
+    }
     const r=observed.result;
     refresh(id);
     if(r?.complete){await recordOutcome(id,'CORREGIDO');return{ok:true,status:'resolved',imdbId:id,runId:observed.runId,message:`Identidad completa · TMDb ${r.tmdbId}`}}
