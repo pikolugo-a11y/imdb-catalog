@@ -2,6 +2,7 @@
 import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
 import {resolveIdentityUnitary} from '@/lib/identity-unitary';
+import {executeObservedProcess} from '@/lib/process-runtime';
 import {validateTmdbIdentity} from '@/lib/identity-resolver';
 import {saveIdentity} from '@/lib/identity';
 import {markIdentityRefreshPending,refreshKnownIdentity} from '@/lib/identity-refresh';
@@ -15,11 +16,32 @@ async function recordOutcome(id,outcome){const sql=db();await sql`INSERT INTO ba
 export async function obtainIdentityAction(_prev,formData){
   let id='';
   try{
-    id=imdb(formData);const r=await resolveIdentityUnitary(id);refresh(id);
-    if(r.complete){await recordOutcome(id,'CORREGIDO');return{ok:true,status:'resolved',imdbId:id,message:`Identidad completa · TMDb ${r.tmdbId}`}}
+    id=imdb(formData);
+    const idempotencyKey=`PROC-ID-001:manual:${id}:${Math.floor(Date.now()/5000)}`;
+    const observed=await executeObservedProcess({
+      processCode:'PROC-ID-001',
+      runKind:'individual',
+      triggerSource:'calidad_identidad_manual',
+      executor:'vercel',
+      entityType:'title',
+      entityId:id,
+      correlationKey:`identity:${id}`,
+      idempotencyKey,
+      context:{surface:'/calidad/identidad',operation:'obtain_identity'}
+    },async trace=>{
+      const r=await resolveIdentityUnitary(id,trace);
+      return{...r,technicalStatus:'succeeded',functionalResult:r.functionalResult,before:r.before,after:r.after,metrics:{methods:r.methods,duration_ms:r.durationMs},message:r.complete?'Identidad resuelta':'Identidad no encontrada'};
+    });
+    if(observed.reused){
+      refresh(id);
+      return{ok:true,status:'duplicate',imdbId:id,runId:observed.runId,message:'Esta solicitud ya se está procesando o acaba de procesarse. No se ha lanzado una segunda ejecución.'};
+    }
+    const r=observed.result;
+    refresh(id);
+    if(r?.complete){await recordOutcome(id,'CORREGIDO');return{ok:true,status:'resolved',imdbId:id,runId:observed.runId,message:`Identidad completa · TMDb ${r.tmdbId}`}}
     await recordOutcome(id,'NO_ENCONTRADO');
-    return{ok:false,status:'not_found',imdbId:id,message:'TMDb respondió correctamente, pero no encontró una coincidencia. Puedes corregir el ID manualmente.'};
-  }catch(e){if(id)await recordOutcome(id,'ERROR').catch(()=>{});return{ok:false,status:'error',message:e?.message||'No se pudo obtener la identidad'}}
+    return{ok:false,status:'not_found',imdbId:id,runId:observed.runId,message:'TMDb respondió correctamente, pero no encontró una coincidencia. Puedes corregir el ID manualmente.'};
+  }catch(e){if(id)await recordOutcome(id,'ERROR').catch(()=>{});return{ok:false,status:'error',runId:e?.runId||null,message:e?.message||'No se pudo obtener la identidad'}}
 }
 
 export async function saveIdentityPageAction(_prev,formData){
