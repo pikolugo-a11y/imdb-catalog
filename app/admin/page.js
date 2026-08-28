@@ -1,3 +1,54 @@
-import Link from 'next/link';import Kpi from '@/components/Kpi';import Segmented from '@/components/Segmented';import {getAdminOverview} from '@/lib/admin-queries-v2';import AutoRefresh from './batch/AutoRefresh';import {createPlexFullReconcileAction,cancelPlexFullReconcileAction} from './batch/actions';export const dynamic='force-dynamic';const dt=v=>v?new Date(v).toLocaleString('es-ES'):'—';
+import Link from 'next/link';
+import {getOperationsOverview} from '@/lib/operations-queries';
+export const dynamic='force-dynamic';
+
+const dt=v=>v?new Date(v).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'medium'}):'—';
+const duration=ms=>ms===null||ms===undefined?'—':ms<1000?`${ms} ms`:ms<60000?`${(ms/1000).toFixed(1)} s`:`${(ms/60000).toFixed(1)} min`;
+const statusLabel={queued:'En cola',running:'En curso',succeeded:'Correcto',failed:'Fallido',partial:'Parcial',cancelled:'Cancelado'};
+const resultLabel={updated:'Actualizado',no_change:'Sin cambios',pending:'Pendiente',blocked:'Bloqueado',not_found:'No encontrado',invalid:'Inválido'};
+const tone=s=>s==='succeeded'?'ok':s==='failed'?'bad':s==='partial'||s==='queued'?'warn':s==='running'?'live':'muted';
 function qs(p,patch={}){const x=new URLSearchParams();for(const[k,v]of Object.entries({...p,...patch}))if(v!==undefined&&v!==null&&v!=='')x.set(k,String(v));return x.toString()}
-export default async function Admin({searchParams}){const p=await searchParams,status=p.status||'',d=await getAdminOverview(p);const jobs=[...new Set(d.pipeline.map(x=>x.job_type))],plexFull=d.pipeline.find(x=>x.job_type==='plex_full_reconcile'),plexFullActive=Boolean(plexFull&&['queued','running'].includes(plexFull.status)),plexTotal=Number(plexFull?.summary?.total||0),plexDone=Number(plexFull?.processed_count||0),plexPct=plexTotal?Math.min(100,Math.round(plexDone*100/plexTotal)):0;return <><AutoRefresh active={plexFullActive}/><div className="page-head"><div><div className="eyebrow">Consola operativa</div><h1>Administración</h1><p>Todo proceso de PikoFilm debe dejar aquí su estado, volumen, duración y motivo de error sin obligarte a mirar GitHub o Vercel.</p></div></div><div className="mini-kpis"><Kpi label="Catálogo base" value={d.counts.movies}/><Kpi label="Plex activos" value={d.counts.plex_active}/><Kpi label="Series referenciadas" value={d.counts.series}/><Kpi label="Temporadas ES" value={d.counts.availability_es}/></div><section className="section"><div className="section-head"><div><h2>Reconciliación completa Plex</h2><p>Operación pesada y ocasional. Fuerza el refresco profundo de todos los elementos usando los mismos datos que la sincronización rápida.</p></div>{plexFullActive?<form action={cancelPlexFullReconcileAction}><input type="hidden" name="runId" value={plexFull.id}/><button className="danger">Cancelar</button></form>:<form action={createPlexFullReconcileAction}><button>Reconciliar todo Plex</button></form>}</div>{plexFull&&<div className="batch-time-strip"><span><b>Estado:</b> {plexFull.status}</span><span><b>Progreso:</b> {plexDone}{plexTotal?` / ${plexTotal} (${plexPct}%)`:''}</span><span><b>Actual:</b> {plexFull.summary?.current_title||plexFull.summary?.stage||'—'}</span><span><b>Errores:</b> {plexFull.error_count||0}</span></div>}</section><div className="filter-bar"><div><span className="filter-label">Estado</span><Segmented value={status} items={[{value:'',label:'Todos',href:'/admin?'+qs(p,{status:''})},{value:'running',label:'En curso',href:'/admin?'+qs(p,{status:'running'})},{value:'success',label:'Correctos',href:'/admin?'+qs(p,{status:'success'})},{value:'failed',label:'Fallidos',href:'/admin?'+qs(p,{status:'failed'})}]}/></div></div><form className="filters compact" method="get"><input type="hidden" name="status" value={status}/><select name="job" defaultValue={p.job||''}><option value="">Todos los procesos</option>{jobs.map(x=><option key={x} value={x}>{x}</option>)}</select><button>Filtrar</button><Link className="filter-reset" href="/admin">Limpiar</Link></form><section className="section"><div className="section-head"><div><h2>Actividad / Procesos</h2><p>Las filas se pueden abrir para ver el resumen técnico completo.</p></div></div><div className="process-list">{d.pipeline.map(x=><details className={`process-card process-${x.status}`} key={x.id}><summary><div><b>{x.job_type}</b><span>{x.source||'—'} · {dt(x.started_at)} · {x.duration_seconds??'—'} s</span></div><div className="process-stats"><span>{x.processed_count??0} procesados</span><span>{x.error_count??0} errores</span><strong>{x.status}</strong></div></summary><div className="process-detail"><div className="tech-grid"><span><b>Inicio</b>{dt(x.started_at)}</span><span><b>Fin</b>{dt(x.finished_at)}</span><span><b>Añadidos</b>{x.added_count??0}</span><span><b>Actualizados</b>{x.updated_count??0}</span><span><b>Omitidos</b>{x.skipped_count??0}</span><span><b>Errores</b>{x.error_count??0}</span></div><pre className="json-summary">{JSON.stringify(x.summary||{},null,2)}</pre></div></details>)}</div></section><section className="section"><div className="section-head"><h2>Sincronizaciones Plex</h2></div><div className="table-wrap"><table><thead><tr><th>Inicio</th><th>Duración</th><th>Biblioteca</th><th>Nuevos</th><th>Cambios</th><th>Bajas</th><th>Errores</th><th>Estado</th></tr></thead><tbody>{d.syncs.map(x=><tr key={x.id}><td>{dt(x.started_at)}</td><td>{x.finished_at&&x.started_at?Math.round((new Date(x.finished_at)-new Date(x.started_at))/100)/10+' s':'—'}</td><td>{x.library_count??'—'}</td><td>{x.new_count??0}</td><td>{x.changed_count??0}</td><td>{x.missing_count??0}</td><td>{x.error_count??0}</td><td>{x.status}</td></tr>)}</tbody></table></div></section><section className="section"><div className="section-head"><h2>Auditoría de acciones</h2></div><div className="modern-list">{d.events.map(x=><article key={x.id}><div className="list-main"><b>{x.action}</b><span>{x.event_type} · {x.entity_type}{x.entity_id?` · ${x.entity_id}`:''} · {dt(x.created_at)}</span></div><code>{JSON.stringify(x.payload||{})}</code></article>)}</div></section></>}
+
+export default async function Operations({searchParams}){
+  const p=await searchParams;
+  const d=await getOperationsOverview(p);
+  const s=d.summary||{};
+  const successRate=Number(s.runs_24h)>0?Math.round(Number(s.succeeded_24h||0)*100/Number(s.runs_24h)):0;
+  return <div className="ops-shell">
+    <header className="ops-hero">
+      <div><div className="ops-kicker">Centro de Operaciones</div><h1>Procesos y trazabilidad</h1><p>Vista canónica de lo que PikoFilm ejecuta: quién lo pidió, dónde corrió, qué ocurrió y dónde falló.</p></div>
+      <div className="ops-live"><span className={Number(s.active)>0?'dot live':'dot'}></span>{Number(s.active)>0?`${s.active} en ejecución`:'Sin procesos activos'}</div>
+    </header>
+
+    <section className="ops-kpis">
+      <article><span>Activos</span><strong>{s.active||0}</strong><small>En cola o ejecutándose</small></article>
+      <article><span>Ejecuciones · 24 h</span><strong>{s.runs_24h||0}</strong><small>{successRate}% correctas</small></article>
+      <article className={Number(s.open_errors)>0?'attention':''}><span>Errores abiertos</span><strong>{s.open_errors||0}</strong><small>{s.failed_24h||0} fallos en 24 h</small></article>
+      <article><span>Tiempo medio · 24 h</span><strong>{duration(Number(s.avg_duration_ms||0))}</strong><small>Solo ejecuciones con duración</small></article>
+    </section>
+
+    <div className="ops-grid">
+      <section className="ops-panel ops-main-panel">
+        <div className="ops-panel-head"><div><span className="ops-label">Runs</span><h2>Ejecuciones recientes</h2></div><Link className="ops-refresh" href={'/admin?'+qs(p)}>Actualizar</Link></div>
+        <form className="ops-filters" method="get">
+          <select name="status" defaultValue={p.status||''}><option value="">Todos los estados</option><option value="queued">En cola</option><option value="running">En curso</option><option value="succeeded">Correctos</option><option value="failed">Fallidos</option><option value="partial">Parciales</option><option value="cancelled">Cancelados</option></select>
+          <select name="kind" defaultValue={p.kind||''}><option value="">Todos los tipos</option><option value="individual">Individual</option><option value="batch">Batch</option><option value="system">Sistema</option></select>
+          <input name="process" defaultValue={p.process||''} placeholder="Proceso, p. ej. ID-001"/>
+          <input name="entity" defaultValue={p.entity||''} placeholder="Entidad / IMDb ID"/>
+          <button>Filtrar</button><Link href="/admin">Limpiar</Link>
+        </form>
+        {d.runs.length===0?<div className="ops-empty"><b>Aún no hay ejecuciones trazadas</b><span>La infraestructura está lista. El primer flujo real aparecerá cuando instrumentemos y ejecutemos ID-001.</span></div>:<div className="ops-runs">{d.runs.map(r=><Link href={`/admin/runs/${r.run_id}`} className="ops-run" key={r.run_id}>
+          <div className={`ops-status-line ${tone(r.technical_status)}`}></div>
+          <div className="ops-run-main"><div className="ops-run-title"><strong>{r.process_code}</strong><span className="ops-kind">{r.run_kind}</span>{r.functional_result&&<span className="ops-result">{resultLabel[r.functional_result]||r.functional_result}</span>}</div><p>{r.entity_type||'sin entidad'}{r.entity_id?` · ${r.entity_id}`:''}</p><small>{r.trigger_source} → {r.executor} · {dt(r.requested_at)}</small></div>
+          <div className="ops-run-meta"><span className={`ops-badge ${tone(r.technical_status)}`}>{statusLabel[r.technical_status]||r.technical_status}</span><b>{duration(r.duration_ms)}</b>{r.error_count>0&&<em>{r.error_count} error{r.error_count===1?'':'es'}</em>}</div>
+        </Link>)}</div>}
+      </section>
+
+      <aside className="ops-side">
+        <section className="ops-panel"><div className="ops-panel-head"><div><span className="ops-label">Atención</span><h2>Errores abiertos</h2></div></div>{d.errors.length===0?<div className="ops-empty compact"><b>Sin errores abiertos</b><span>Los fallos estructurados aparecerán aquí.</span></div>:<div className="ops-errors">{d.errors.map(e=><Link href={`/admin/runs/${e.run_id}`} key={e.error_id}><div><strong>{e.process_code}</strong><span>{e.step||e.error_code||'Error'}</span></div><p>{e.message}</p><small>{dt(e.occurred_at)}{e.retryable?' · reintentable':''}</small></Link>)}</div>}</section>
+        <section className="ops-panel"><div className="ops-panel-head"><div><span className="ops-label">Procesos</span><h2>Actividad registrada</h2></div></div>{d.processes.length===0?<div className="ops-empty compact"><span>Sin procesos registrados todavía.</span></div>:<div className="ops-processes">{d.processes.map(x=><div key={x.process_code}><strong>{x.process_code}</strong><span>{x.total} runs · {x.problematic} con incidencia</span><small>{dt(x.last_run_at)}</small></div>)}</div>}</section>
+        <section className="ops-panel ops-batch-placeholder"><span className="ops-label">Batch</span><h2>Orquestación</h2><p>Reservado para la futura capa Batch construida como N ejecuciones del proceso individual canónico.</p><span className="ops-coming">Pendiente de individuales</span></section>
+      </aside>
+    </div>
+  </div>
+}
