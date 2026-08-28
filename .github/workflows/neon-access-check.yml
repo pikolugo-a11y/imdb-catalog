@@ -1,0 +1,55 @@
+name: PikoFilm · comprobar acceso Neon
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-neon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NEON_PROJECT_ID: broad-truth-29708407
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+    steps:
+      - name: Comprobar que NEON_API_KEY está configurada
+        shell: bash
+        run: |
+          if [ -z "$NEON_API_KEY" ]; then
+            echo "NEON_API_KEY no está configurada en GitHub Secrets."
+            exit 1
+          fi
+          echo "NEON_API_KEY está disponible para el workflow."
+
+      - name: Verificar acceso de lectura al proyecto Neon
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          http_code="$(curl --silent --show-error \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $NEON_API_KEY" \
+            --header "Accept: application/json" \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID")"
+
+          if [ "$http_code" != "200" ]; then
+            echo "La API de Neon respondió HTTP $http_code."
+            cat "$response_file"
+            exit 1
+          fi
+
+          node - "$response_file" <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const project = payload.project || payload;
+          console.log(JSON.stringify({
+            access: 'ok',
+            project_id: project.id,
+            project_name: project.name,
+            pg_version: project.pg_version,
+            region_id: project.region_id
+          }, null, 2));
+          NODE
