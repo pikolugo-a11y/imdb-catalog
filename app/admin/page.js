@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {getOperationsOverview} from '@/lib/operations-queries';
 import {processDisplay,kindDisplay,entityDisplay,triggerDisplay,executorDisplay} from '@/lib/process-display';
+import OperationsResetTitle from '@/components/OperationsResetTitle';
 export const dynamic='force-dynamic';
 
 const dt=v=>v?new Date(v).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'medium'}):'—';
@@ -46,6 +47,7 @@ export default async function Operations({searchParams}){
       </section>
 
       <aside className="ops-side">
+        <OperationsResetTitle/>
         <section className="ops-panel"><div className="ops-panel-head"><div><span className="ops-label">Atención</span><h2>Errores abiertos</h2></div></div>{d.errors.length===0?<div className="ops-empty compact"><b>Sin errores abiertos</b><span>Los fallos estructurados aparecerán aquí.</span></div>:<div className="ops-errors">{d.errors.map(e=>{const proc=processDisplay(e.process_code);return <Link href={`/admin/runs/${e.run_id}`} key={e.error_id}><div><strong>{proc.name}</strong><span>{e.step||e.error_code||'Error'}</span></div><p>{e.message}</p><small>{proc.code} · {dt(e.occurred_at)}{e.retryable?' · reintentable':''}</small></Link>})}</div>}</section>
         <section className="ops-panel"><div className="ops-panel-head"><div><span className="ops-label">Procesos</span><h2>Actividad registrada</h2></div></div>{d.processes.length===0?<div className="ops-empty compact"><span>Sin procesos registrados todavía.</span></div>:<div className="ops-processes">{d.processes.map(x=>{const proc=processDisplay(x.process_code);return <div key={x.process_code}><strong>{proc.name}</strong><span>{proc.code} · {x.total} ejecuciones · {x.problematic} con incidencia</span><small>{dt(x.last_run_at)}</small></div>})}</div>}</section>
         <section className="ops-panel ops-batch-placeholder"><span className="ops-label">Batch</span><h2>Orquestación</h2><p>Reservado para la futura capa Batch construida como N ejecuciones del proceso individual canónico.</p><span className="ops-coming">Pendiente de individuales</span></section>
