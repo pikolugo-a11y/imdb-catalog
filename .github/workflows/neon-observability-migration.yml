@@ -1,0 +1,99 @@
+name: PikoFilm · migrar observabilidad Neon
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pikofilm-neon-observability-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Validar DATABASE_URL
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL no está configurada"
+            exit 1
+          fi
+
+      - name: Instalar cliente PostgreSQL
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Aplicar migración de observabilidad
+        shell: bash
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/20260828_process_observability.sql
+
+      - name: Verificar tablas e índices
+        shell: bash
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT table_name
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name IN ('process_runs','process_run_errors','process_run_events')
+          ORDER BY table_name;
+
+          SELECT tablename, indexname
+          FROM pg_indexes
+          WHERE schemaname = 'public'
+            AND tablename IN ('process_runs','process_run_errors','process_run_events')
+          ORDER BY tablename, indexname;
+          SQL
+
+      - name: Smoke test transaccional
+        shell: bash
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN;
+          WITH r AS (
+            INSERT INTO process_runs (
+              process_code, run_kind, trigger_source, executor,
+              technical_status, entity_type, entity_id,
+              correlation_key, idempotency_key
+            ) VALUES (
+              'OBS-SMOKE', 'individual', 'manual_test', 'github_actions',
+              'running', 'system', 'observability-smoke',
+              'obs-smoke-correlation', 'obs-smoke-idempotency'
+            )
+            RETURNING run_id
+          ), e AS (
+            INSERT INTO process_run_events (run_id, event_type, step, message)
+            SELECT run_id, 'milestone', 'schema_smoke', 'Observability smoke event' FROM r
+            RETURNING run_id
+          )
+          INSERT INTO process_run_errors (
+            run_id, process_code, step, error_code, message, source, retryable
+          )
+          SELECT run_id, 'OBS-SMOKE', 'schema_smoke', 'OBS_TEST',
+                 'Observability smoke error', 'github_actions', false
+          FROM e;
+
+          SELECT r.process_code, r.technical_status,
+                 COUNT(DISTINCT ev.event_id) AS events,
+                 COUNT(DISTINCT er.error_id) AS errors
+          FROM process_runs r
+          LEFT JOIN process_run_events ev ON ev.run_id = r.run_id
+          LEFT JOIN process_run_errors er ON er.run_id = r.run_id
+          WHERE r.process_code = 'OBS-SMOKE'
+          GROUP BY r.run_id, r.process_code, r.technical_status;
+          ROLLBACK;
+          SQL
