@@ -1,9 +1,10 @@
 'use client';
 import {useActionState} from 'react';
+import {saveIdentityIdsWithFeedbackAction,forceIdentityIdsAction} from '@/app/calidad/validacion-identidad/force-actions';
 
-export default function IdentityIdsEditor({action,forceAction,imdbId,tmdbId,returnTo}){
-  const[state,formAction,pending]=useActionState(action,null);
-  const[forceState,forceFormAction,forcePending]=useActionState(forceAction,null);
+export default function IdentityIdsEditor({imdbId,tmdbId,returnTo}){
+  const[state,formAction,pending]=useActionState(saveIdentityIdsWithFeedbackAction,null);
+  const[forceState,forceFormAction,forcePending]=useActionState(forceIdentityIdsAction,null);
   const mismatch=state?.status==='mismatch';
   const attemptedImdb=state?.attemptedImdbId||imdbId;
   const attemptedTmdb=state?.attemptedTmdbId||'';
@@ -16,7 +17,7 @@ export default function IdentityIdsEditor({action,forceAction,imdbId,tmdbId,retu
       <button disabled={pending}>{pending?'Comprobando…':'Guardar y comprobar'}</button>
       {state?.message?<small className={state.ok?'action-ok':'action-error'} role="status">{state.message}</small>:null}
     </form>
-    {mismatch&&forceAction?<form action={forceFormAction} className="iv-edit iv-force">
+    {mismatch?<form action={forceFormAction} className="iv-edit iv-force">
       <input type="hidden" name="imdbId" value={imdbId}/>
       <input type="hidden" name="newImdbId" value={attemptedImdb}/>
       <input type="hidden" name="tmdbId" value={attemptedTmdb}/>
