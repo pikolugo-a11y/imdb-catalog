@@ -1,6 +1,7 @@
 'use server';
 import {revalidatePath} from 'next/cache';
 import {updateDataQualityTitle} from '@/lib/data-quality-unitary';
+import {getDataQualityTitle} from '@/lib/data-quality';
 import {refreshRatingsForTitle} from '@/lib/ratings-refresh';
 import {calculateAndSavePikoScoreV3ForTitle} from '@/lib/pikoscore-v3';
 import {recomputeLifecycleForIds} from '@/lib/lifecycle';
@@ -62,6 +63,20 @@ export async function calculatePikoScoreV3Action(_prev,formData){
 }
 
 export async function saveManualDataAction(formData){const imdbId=id(formData);await saveManualDataField(imdbId,formData.get('field'),formData.get('value'));await recomputeLifecycleForIds([imdbId]);refresh(imdbId)}
-export async function acceptIncompleteDataAction(formData){const imdbId=id(formData);await acceptIncompleteData(imdbId);await recomputeLifecycleForIds([imdbId]);refresh(imdbId)}
+export async function acceptIncompleteDataAction(formData){
+  const imdbId=id(formData),requestKey=`PROC-DATA-005:manual:${imdbId}:${Math.floor(Date.now()/5000)}`;
+  const observed=await executeObservedProcess({processCode:'PROC-DATA-005',runKind:'individual',triggerSource:'calidad_datos_manual',executor:'vercel',entityType:'title',entityId:imdbId,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:'/calidad/datos',operation:'accept_incomplete_data'}},async trace=>{
+    const beforeRow=await getDataQualityTitle(imdbId);if(!beforeRow)throw new Error('Título no encontrado');
+    const before={coverage:beforeRow.coverage,missing:beforeRow.missing||[],missing_blocking:beforeRow.missingBlocking||[],data_ready:Boolean(beforeRow.dataReady),manual_data_accepted:Boolean(beforeRow.manualDataAccepted),lifecycle:beforeRow.lifecycle_state||null};
+    await trace.event({eventType:'step_started',step:'accept_incomplete_data',message:'Registrando excepción manual para datos incompletos',data:{missing:before.missing,missing_blocking:before.missing_blocking}});
+    await acceptIncompleteData(imdbId);
+    const lifecycle=(await recomputeLifecycleForIds([imdbId])).get(imdbId),afterRow=await getDataQualityTitle(imdbId);
+    const after={coverage:afterRow?.coverage??before.coverage,missing:afterRow?.missing||before.missing,missing_blocking:afterRow?.missingBlocking||before.missing_blocking,data_ready:Boolean(afterRow?.dataReady),manual_data_accepted:Boolean(afterRow?.manualDataAccepted),lifecycle:lifecycle?.state||lifecycle?.label||afterRow?.lifecycle_state||null};
+    await trace.event({eventType:'manual_decision',step:'accept_incomplete_data',message:'Datos incompletos aceptados manualmente',data:{decision:'accepted_incomplete',missing_at_decision:before.missing,missing_blocking_at_decision:before.missing_blocking,before_lifecycle:before.lifecycle,after_lifecycle:after.lifecycle}});
+    return{technicalStatus:'succeeded',functionalResult:before.manual_data_accepted?'no_change':'updated',before,after,metrics:{missing_fields_at_decision:before.missing.length,missing_blocking_at_decision:before.missing_blocking.length,already_accepted:before.manual_data_accepted},message:before.manual_data_accepted?'La excepción ya estaba aceptada':'Datos incompletos aceptados manualmente'};
+  });
+  refresh(imdbId);
+  return observed.reused?{ok:true,status:'duplicate',runId:observed.runId,message:'Esta solicitud ya se está procesando o acaba de procesarse. No se ha lanzado una segunda ejecución.'}:{ok:true,status:observed.result?.functionalResult||'updated',runId:observed.runId,message:observed.result?.message||'Datos incompletos aceptados'};
+}
 export async function saveManualRatingAction(formData){const imdbId=id(formData);await saveManualRating(imdbId,formData.get('source'),formData.get('rating'),formData.get('votes'));await recomputeLifecycleForIds([imdbId]);refresh(imdbId)}
 export async function fixRatingsAtFiveAction(formData){const imdbId=id(formData);await fixRatingsAtFive(imdbId);await recomputeLifecycleForIds([imdbId]);refresh(imdbId)}
