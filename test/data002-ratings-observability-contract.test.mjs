@@ -20,6 +20,15 @@ test('DATA-002 never overwrites rescue sources already present',()=>{
   assert.match(ratings,/sourceSet\(existing\)\.has\(RATING_SOURCES\.TMDB\)/);
 });
 
+test('DATA-002 treats MDBList 404 as expected provider miss and continues rescue',()=>{
+  assert.match(ratings,/providerMiss/);
+  assert.match(ratings,/provider_not_found/);
+  assert.match(ratings,/MDBList no conoce el título; se activa la cascada de rescate/);
+  assert.match(ratings,/expected:true/);
+  assert.match(actions,/x\.status==='warning'&&x\.expected!==true/);
+  assert.match(actions,/expected_provider_misses/);
+});
+
 test('DATA-002 is observed as canonical individual operation',()=>{
   assert.match(actions,/processCode:'PROC-DATA-002'/);
   assert.match(actions,/runKind:'individual'/);
