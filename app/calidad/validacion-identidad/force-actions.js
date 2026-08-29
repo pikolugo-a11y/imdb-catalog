@@ -5,9 +5,16 @@ import {correctIdentityIds} from '@/lib/identity-correction';
 import {refreshIdentityEvidence} from '@/lib/identity-validation';
 import {recomputeLifecycleForIds} from '@/lib/lifecycle';
 import {executeObservedProcess,recordProcessError} from '@/lib/process-runtime';
+import {saveIdentityIdsAction} from './actions';
 
 function refresh(imdbId){revalidatePath('/calidad/validacion-identidad');revalidatePath('/calidad');revalidatePath('/admin');revalidatePath('/catalogo');if(imdbId)revalidatePath(`/catalogo/${imdbId}`)}
 const idFrom=f=>{const id=String(f.get('imdbId')||'').trim();if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id};
+
+export async function saveIdentityIdsWithFeedbackAction(prev,formData){
+  const result=await saveIdentityIdsAction(prev,formData);
+  if(result?.status==='mismatch')return{...result,attemptedImdbId:String(formData.get('newImdbId')||formData.get('imdbId')||'').trim(),attemptedTmdbId:String(formData.get('tmdbId')||'').trim()};
+  return result;
+}
 
 export async function forceIdentityIdsAction(_prev,formData){
   let oldId='';
