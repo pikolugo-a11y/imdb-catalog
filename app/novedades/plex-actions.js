@@ -4,12 +4,16 @@ import {syncPlexFast} from '@/lib/plex-sync';
 import {seedPlexNewsCandidates} from '@/lib/plex-news-seed';
 import {captureDashboardSnapshot} from '@/lib/dashboard-v2';
 import {executeObservedProcess,recordProcessError} from '@/lib/process-runtime';
+import {db} from '@/lib/db';
 
 function refresh(){revalidatePath('/');revalidatePath('/novedades');revalidatePath('/catalogo');revalidatePath('/plex');revalidatePath('/calidad');revalidatePath('/admin')}
 
 export async function syncPlexFromNews(_prevState,formData){
   const raw=String(formData?.get('reviewFrom')||'').trim();
   const reviewFrom=raw?`${raw}T00:00:00.000Z`:undefined;
+  const sql=db();
+  const [active]=await sql`SELECT run_id FROM process_runs WHERE process_code='PROC-NOV-008' AND technical_status IN('queued','running') AND finished_at IS NULL ORDER BY requested_at DESC LIMIT 1`;
+  if(active)return{ok:false,message:'Ya hay una actualización de Plex en curso. Espera a que termine.'};
   const requestKey=`PROC-NOV-008:${reviewFrom||'last-success'}:${Math.floor(Date.now()/3000)}`;
   try{
     const observed=await executeObservedProcess({processCode:'PROC-NOV-008',runKind:'system',triggerSource:'novedades_manual',executor:'vercel',entityType:'series_library',entityId:'plex',correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:'/novedades',operation:'sync_plex_and_seed_news',review_from:reviewFrom||'last_success'}},async trace=>{
