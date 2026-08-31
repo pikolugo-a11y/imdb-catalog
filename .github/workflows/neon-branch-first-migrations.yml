@@ -1,0 +1,140 @@
+name: Neon · branch-first migrations
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'db/migrations/*.sql'
+  push:
+    branches: [main]
+    paths:
+      - 'db/migrations/*.sql'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neon-migrations-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NEON_PROJECT_ID: red-silence-53441102
+      NEON_PARENT_BRANCH: br-crimson-tooth-b2k4s1jw
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolver migraciones modificadas
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              BASE="${{ github.sha }}^"
+            fi
+          fi
+          git diff --diff-filter=AM --name-only "$BASE" "${{ github.sha }}" -- 'db/migrations/*.sql' \
+            | grep -v '\.smoke\.sql$' \
+            | sort > /tmp/migrations.txt || true
+          if [ ! -s /tmp/migrations.txt ]; then
+            echo 'No hay migraciones SQL nuevas/modificadas.'
+            echo 'has_migrations=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo 'Migraciones detectadas:'
+          cat /tmp/migrations.txt
+          echo 'has_migrations=true' >> "$GITHUB_OUTPUT"
+
+      - name: Validar credencial Neon
+        if: steps.changes.outputs.has_migrations == 'true'
+        shell: bash
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: |
+          if [ -z "$NEON_API_KEY" ]; then
+            echo 'Falta el secret NEON_API_KEY. Configúralo mediante la integración GitHub de Neon o como repository secret.'
+            exit 1
+          fi
+
+      - name: Crear rama Neon efímera
+        if: steps.changes.outputs.has_migrations == 'true'
+        id: neon
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ env.NEON_PROJECT_ID }}
+          parent_branch: ${{ env.NEON_PARENT_BRANCH }}
+          branch_name: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          role: neondb_owner
+          database: neondb
+          expires_at: ${{ format('{0:yyyy-MM-ddTHH:mm:ssZ}', fromJSON(format('"{0}"', github.event.repository.updated_at))) }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Instalar cliente PostgreSQL
+        if: steps.changes.outputs.has_migrations == 'true'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Aplicar migraciones en rama efímera
+        if: steps.changes.outputs.has_migrations == 'true'
+        shell: bash
+        env:
+          DATABASE_URL: ${{ steps.neon.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r migration; do
+            echo "Aplicando $migration en rama efímera"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+            smoke="${migration%.sql}.smoke.sql"
+            if [ -f "$smoke" ]; then
+              echo "Smoke test $smoke"
+              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$smoke"
+            fi
+          done < /tmp/migrations.txt
+
+      - name: Verificación mínima de rama efímera
+        if: steps.changes.outputs.has_migrations == 'true'
+        shell: bash
+        env:
+          DATABASE_URL: ${{ steps.neon.outputs.db_url }}
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'SELECT current_database(), version();'
+
+      - name: Aplicar a producción tras merge
+        if: github.event_name == 'push' && steps.changes.outputs.has_migrations == 'true'
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DATABASE_URL" ]; then
+            echo 'Falta DATABASE_URL de producción.'
+            exit 1
+          fi
+          while IFS= read -r migration; do
+            echo "Aplicando $migration en producción"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+            smoke="${migration%.sql}.smoke.sql"
+            if [ -f "$smoke" ]; then
+              echo "Smoke test de producción $smoke"
+              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$smoke"
+            fi
+          done < /tmp/migrations.txt
+
+      - name: Eliminar rama Neon efímera
+        if: always() && steps.changes.outputs.has_migrations == 'true' && steps.neon.outputs.branch_id != ''
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ env.NEON_PROJECT_ID }}
+          branch: ${{ steps.neon.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
