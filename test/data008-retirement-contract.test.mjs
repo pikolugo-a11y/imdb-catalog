@@ -16,6 +16,9 @@ test('DATA-008 deja de existir como proceso independiente',()=>{
 });
 
 test('DATA-002 sigue siendo la vía canónica de ratings',()=>{
-  const ratings=read('lib/data-ratings-v2.js');
-  assert.match(ratings,/PROC-DATA-002/);
+  const actions=read('app/calidad/datos/actions.js');
+  const ratings=read('lib/ratings-refresh.js');
+  assert.match(actions,/processCode:'PROC-DATA-002'/);
+  assert.match(actions,/refreshRatingsForTitle\(imdbId,\{trace\}\)/);
+  assert.match(ratings,/export async function refreshRatingsForTitle/);
 });
