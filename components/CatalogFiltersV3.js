@@ -4,14 +4,14 @@ import {useMemo,useState} from 'react';
 import {useRouter,useSearchParams} from 'next/navigation';
 
 const TYPE=[['','Todos'],['movie','Películas'],['series','Series']];
-const STATUS=[['','Todos'],['missing','Faltan'],['acquiring','En proceso'],['in_plex','En Plex']];
+const STATUS=[['','Todos'],['missing','Faltan'],['in_plex','En Plex']];
 
 export default function CatalogFiltersV3({genres,minYear,maxYear,initial={}}){
   const router=useRouter();
   const current=useSearchParams();
   const [q,setQ]=useState(initial.q||'');
   const [type,setType]=useState(initial.type||'');
-  const [status,setStatus]=useState(initial.status||'');
+  const [status,setStatus]=useState(initial.status==='acquiring'?'missing':initial.status||'');
   const [selectedGenres,setSelectedGenres]=useState(initial.genres||[]);
   const [genreMode,setGenreMode]=useState(initial.genreMode||'any');
   const [genreSearch,setGenreSearch]=useState('');
