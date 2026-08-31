@@ -7,7 +7,7 @@ import {recomputeLifecycleForIds} from '@/lib/lifecycle';
 
 function imdbIdOf(formData){const id=String(formData.get('imdbId')||'').trim();if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id}
 function refresh(id){revalidatePath('/novedades');revalidatePath('/catalogo');revalidatePath(`/catalogo/${id}`);revalidatePath('/calidad');revalidatePath('/calidad/identidad');revalidatePath('/admin');revalidatePath('/')}
-function candidateOrigin(candidate){const snap=candidate.source_snapshot||{},isManual=snap.manual===true||snap.manual==='true',isPlex=snap.origin==='plex'||snap.matchedRule==='plex';return isPlex?'plex':isManual?'manual':'discovery'}
+function candidateOrigin(candidate){const snap=candidate.source_snapshot||{},isManual=snap.manual===true||snap.manual==='true',isPlex=snap.origin==='plex'||snap.matchedRule==='plex',isSaga=snap.origin==='saga'||snap.matchedRule==='saga_manual';return isPlex?'plex':isManual?'manual':isSaga?'saga':'discovery'}
 function movieType(candidateType){return candidateType==='movie'?'Película':candidateType==='tvMiniSeries'?'Miniserie':candidateType==='tvSeries'?'Serie':null}
 
 async function linkPlexCandidate(sql,imdbId,snap){
@@ -27,14 +27,16 @@ export async function admitNewsCandidateAction(formData){
     if(candidate.eligibility_status!=='eligible')return{technicalStatus:'succeeded',functionalResult:'blocked',after:{reason:'not_eligible',eligibility_status:candidate.eligibility_status},message:'El candidato todavía no está listo'};
     const snap=candidate.source_snapshot||{},origin=candidateOrigin(candidate),type=movieType(candidate.candidate_type),title=String(snap.title||snap.originalTitle||'').trim();
     if(!type||!title||title===imdbId)return{technicalStatus:'succeeded',functionalResult:'blocked',after:{reason:'minimum_identity_missing',title:title||null,candidate_type:candidate.candidate_type||null},message:'Faltan título o tipo para admitir el candidato'};
-    const inclusionOrigin=origin==='plex'?'plex':origin==='manual'?'imdb_manual':'imdb_discovery',movieOrigin=origin==='plex'?'plex_news':origin==='manual'?'imdb_manual':'imdb_discovery';
+    const inclusionOrigin=origin==='plex'?'plex':origin==='manual'?'imdb_manual':origin==='saga'?'saga':'imdb_discovery';
+    const movieOrigin=origin==='plex'?'plex_news':origin==='manual'?'imdb_manual':origin==='saga'?'saga_news':'imdb_discovery';
+    const sourceStatus={intake_origin:origin,admission:'minimums_only',...(origin==='saga'&&snap.tmdbMovieId?{tmdb_origin_evidence:String(snap.tmdbMovieId),tmdb_identity_validated:false}:{})};
     await trace.event({eventType:'step_started',step:'admission',entityType:'title',entityId:imdbId,message:'Admitiendo mínimos conocidos en catálogo',data:{origin,title,type,year:candidate.year||null}});
-    await sql`INSERT INTO movies(imdb_id,type,title,title_es,year,origin,source_status,synced_at,inclusion_origin) VALUES(${imdbId},${type},${title},${title},${candidate.year||null},${movieOrigin},${JSON.stringify({intake_origin:origin,admission:'minimums_only'})}::jsonb,now(),${inclusionOrigin})`;
+    await sql`INSERT INTO movies(imdb_id,type,title,title_es,year,origin,source_status,synced_at,inclusion_origin) VALUES(${imdbId},${type},${title},${title},${candidate.year||null},${movieOrigin},${JSON.stringify(sourceStatus)}::jsonb,now(),${inclusionOrigin})`;
     const plexRatingKey=origin==='plex'?await linkPlexCandidate(sql,imdbId,snap):null;
     await sql`UPDATE catalog_candidates SET eligibility_status='catalogued',processed_at=now(),updated_at=now(),source_snapshot=COALESCE(source_snapshot,'{}'::jsonb)||${JSON.stringify({cataloguedAt:new Date().toISOString(),catalogAdmission:'minimums_only'})}::jsonb WHERE imdb_id=${imdbId}`;
     await recomputeLifecycleForIds([imdbId]);
     await trace.event({eventType:'step_completed',step:'admission',entityType:'title',entityId:imdbId,message:'Título admitido; Lifecycle recalculado',data:{origin,plexRatingKey}});
-    return{technicalStatus:'succeeded',functionalResult:'created',after:{catalogued:true,title,type,origin,year:candidate.year||null,plex_rating_key:plexRatingKey},metrics:{admitted:1,external_calls:0},message:'Título admitido al catálogo con identidad mínima'};
+    return{technicalStatus:'succeeded',functionalResult:'updated',after:{catalogued:true,title,type,origin,year:candidate.year||null,plex_rating_key:plexRatingKey},metrics:{admitted:1,external_calls:0},message:'Título admitido al catálogo con identidad mínima'};
   });
   refresh(imdbId);
   const result=observed.result;
