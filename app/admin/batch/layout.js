@@ -1,5 +1,3 @@
-import Link from 'next/link';
-import './batch.css';
-import './compact.css';
+import {redirect} from 'next/navigation';
 
-export default function BatchLayout({children}){return <><nav className="batch-subnav" aria-label="Procesos Batch"><Link href="/admin/batch">Lifecycle</Link><Link href="/admin/batch/personas">Personas / Filmografías</Link></nav>{children}</>}
+export default function BatchLayout(){redirect('/admin')}
