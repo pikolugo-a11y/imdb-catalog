@@ -3,35 +3,11 @@ import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
 import {saveMovieQualitySettings} from '@/lib/movie-quality-settings';
 import {audit} from '@/lib/runlog';
+import {validateMovieFile,getMovieFileValidationSnapshot} from '@/lib/movie-file-validation';
+import {executeObservedProcess} from '@/lib/process-runtime';
 
 const n=(fd,key,fallback)=>{const v=Number(fd.get(key));return Number.isFinite(v)?v:fallback};
-export async function saveMovieQualitySettingsAction(formData){
-  const value=await saveMovieQualitySettings({
-    duration:{minMinutes:n(formData,'durationMinMinutes',10),minPercent:n(formData,'durationMinPercent',15)},
-    filename:{minSimilarity:n(formData,'filenameMinSimilarityPct',55)/100},
-    pikoQuality:{minScore:n(formData,'pikoQualityMinScore',60)},
-    duplicates:{verySimilarPercent:n(formData,'duplicateVerySimilarPercent',2),differentCutPercent:n(formData,'duplicateDifferentCutPercent',10)}
-  });
-  await audit('quality','movie_quality','settings','update_criteria',{value});
-  revalidatePath('/calidad/peliculas');
-  revalidatePath('/calidad');
-  revalidatePath('/admin');
-}
-
-export async function correctedMovieResetAction(formData){
-  const id=Number(formData.get('id'));if(!Number.isFinite(id))throw new Error('Incidencia inválida');
-  const sql=db();const[f]=await sql`SELECT id,imdb_id,rating_key,finding_type FROM movie_quality_findings WHERE id=${id}`;
-  if(!f?.imdb_id||!['duration','filename','duplicate'].includes(String(f.finding_type||'')))throw new Error('La incidencia no pertenece a la validación de película');
-  const imdbId=f.imdb_id,ratingKey=f.rating_key;
-  await audit('movie_file_validation','title',imdbId,'corrected_reset_started',{finding_id:id,rating_key:ratingKey,finding_type:f.finding_type});
-  await sql.transaction([
-    sql`DELETE FROM movie_quality_findings WHERE imdb_id=${imdbId}`,
-    sql`DELETE FROM movie_file_validation WHERE imdb_id=${imdbId}`,
-    sql`DELETE FROM piko_quality WHERE rating_key=${ratingKey}`,
-    sql`DELETE FROM catalog_candidates WHERE imdb_id=${imdbId}`,
-    sql`DELETE FROM plex_catalog_status WHERE imdb_id=${imdbId}`,
-    sql`DELETE FROM movies WHERE imdb_id=${imdbId}`
-  ]);
-  await audit('movie_file_validation','title',imdbId,'corrected_reset_completed',{rating_key:ratingKey,next:'plex_sync_to_news'});
-  revalidatePath('/calidad/peliculas');revalidatePath('/calidad');revalidatePath('/catalogo');revalidatePath('/novedades');revalidatePath('/plex');revalidatePath('/admin');
-}
+function refresh(imdbId){revalidatePath('/calidad/peliculas');revalidatePath('/calidad');revalidatePath('/calidad/pikoquality');revalidatePath('/admin');if(imdbId)revalidatePath(`/catalogo/${imdbId}`)}
+export async function validateMovieFileAction(formData){const imdbId=String(formData.get('imdbId')||'').trim();if(!/^tt\d+$/.test(imdbId))throw new Error('IMDb ID inválido');const requestKey=`PROC-MOV-001:manual:${imdbId}:${Math.floor(Date.now()/5000)}`;const observed=await executeObservedProcess({processCode:'PROC-MOV-001',runKind:'individual',triggerSource:'calidad_peliculas_manual',executor:'vercel',entityType:'movie',entityId:imdbId,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:'/calidad/peliculas',operation:'validate_movie_file'}},async trace=>{const before=await getMovieFileValidationSnapshot(imdbId);const r=await validateMovieFile(imdbId,{trace});const after=await getMovieFileValidationSnapshot(imdbId),functionalResult=r.issues>0?'blocked':before.lifecycle_state===after.lifecycle_state&&Number(before.open_findings)===Number(after.open_findings)&&Number(before.validations)>0?'no_change':'updated';return{...r,technicalStatus:'succeeded',functionalResult,before,after,metrics:{physical_files:r.files,plex_rows:r.plexRows,issues:r.issues,rating_keys:r.ratingKeys.length},message:r.issues?`Validación física completada con ${r.issues} incidencia(s)`:'Archivo físico validado sin incidencias'}});refresh(imdbId);return observed.reused?{ok:true,status:'duplicate',runId:observed.runId,message:'Esta película ya se está analizando o acaba de analizarse.'}:{ok:true,status:observed.result?.functionalResult||'updated',runId:observed.runId,message:observed.result?.message||'Película analizada'}}
+export async function saveMovieQualitySettingsAction(formData){const value=await saveMovieQualitySettings({duration:{minMinutes:n(formData,'durationMinMinutes',10),minPercent:n(formData,'durationMinPercent',15)},filename:{minSimilarity:n(formData,'filenameMinSimilarityPct',55)/100},pikoQuality:{minScore:n(formData,'pikoQualityMinScore',60)},duplicates:{verySimilarPercent:n(formData,'duplicateVerySimilarPercent',2),differentCutPercent:n(formData,'duplicateDifferentCutPercent',10)}});await audit('quality','movie_quality','settings','update_criteria',{value});refresh()}
+export async function correctedMovieResetAction(formData){const id=Number(formData.get('id'));if(!Number.isFinite(id))throw new Error('Incidencia inválida');const sql=db();const[f]=await sql`SELECT id,imdb_id,rating_key,finding_type FROM movie_quality_findings WHERE id=${id}`;if(!f?.imdb_id||!['duration','filename','duplicate'].includes(String(f.finding_type||'')))throw new Error('La incidencia no pertenece a la validación de película');const imdbId=f.imdb_id,ratingKey=f.rating_key;await audit('movie_file_validation','title',imdbId,'corrected_reset_started',{finding_id:id,rating_key:ratingKey,finding_type:f.finding_type});await sql.transaction([sql`DELETE FROM movie_quality_findings WHERE imdb_id=${imdbId}`,sql`DELETE FROM movie_file_validation WHERE imdb_id=${imdbId}`,sql`DELETE FROM piko_quality WHERE rating_key=${ratingKey}`,sql`DELETE FROM catalog_candidates WHERE imdb_id=${imdbId}`,sql`DELETE FROM plex_catalog_status WHERE imdb_id=${imdbId}`,sql`DELETE FROM movies WHERE imdb_id=${imdbId}`]);await audit('movie_file_validation','title',imdbId,'corrected_reset_completed',{rating_key:ratingKey,next:'plex_sync_to_news'});revalidatePath('/calidad/peliculas');revalidatePath('/calidad');revalidatePath('/catalogo');revalidatePath('/novedades');revalidatePath('/plex');revalidatePath('/admin')}
