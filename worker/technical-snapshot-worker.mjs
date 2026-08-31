@@ -80,7 +80,6 @@ async function cycle(){
   }
   const runId=String(active.run_id);
   await heartbeatTechnicalWorker(sql,{workerId,actualState:'running'});
-  await addTechnicalProcessEvent(sql,runId,{eventType:'worker_heartbeat',step:'technical_worker',message:'Worker Railway ejecutando captura técnica',data:{worker_id:workerId}}).catch(()=>{});
   const scan=await maybeScan(runId,lastScanAt===0);
   const rows=await claimTechnicalBatch(sql,{limit:batchSize,itemType:null});
 
