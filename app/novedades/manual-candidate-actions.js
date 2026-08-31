@@ -6,11 +6,11 @@ import {resolveManualNewsCandidate} from '@/lib/news-manual-resolver';
 import {executeObservedProcess} from '@/lib/process-runtime';
 
 function imdbIdOf(formData){const id=String(formData.get('imdbId')||'').trim();if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id}
-const refresh=()=>{revalidatePath('/novedades');revalidatePath('/admin')};
+const refresh=()=>{revalidatePath('/novedades');revalidatePath('/catalogo/excluidas');revalidatePath('/admin')};
 
-async function persistResolved(sql,imdbId,resolved){
+async function persistResolved(sql,imdbId,resolved,extraSnapshot={}){
   const status=resolved.ready?'eligible':'processing';
-  const snap={...resolved.source_snapshot,manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1'};
+  const snap={...resolved.source_snapshot,...extraSnapshot,manual:true,manualActive:true,matchedRule:'manual',discoveryVersion:'novedades-v1'};
   await sql`INSERT INTO catalog_candidates(imdb_id,candidate_type,year,imdb_rating,imdb_votes,eligibility_status,first_seen_at,last_seen_at,became_eligible_at,last_evaluated_at,source_snapshot,created_at,updated_at)
     VALUES(${imdbId},${resolved.candidate_type},${resolved.year},${resolved.imdb_rating},${resolved.imdb_votes},${status},now(),now(),${resolved.ready?new Date():null},now(),${JSON.stringify(snap)}::jsonb,now(),now())
     ON CONFLICT(imdb_id) DO UPDATE SET candidate_type=EXCLUDED.candidate_type,year=EXCLUDED.year,imdb_rating=EXCLUDED.imdb_rating,imdb_votes=EXCLUDED.imdb_votes,eligibility_status=EXCLUDED.eligibility_status,last_seen_at=now(),became_eligible_at=CASE WHEN EXCLUDED.eligibility_status='eligible' THEN COALESCE(catalog_candidates.became_eligible_at,now()) ELSE catalog_candidates.became_eligible_at END,last_evaluated_at=now(),source_snapshot=(COALESCE(catalog_candidates.source_snapshot,'{}'::jsonb)-'authoritativeStatus'-'authoritativeRequestedAt'-'authoritativeAttempts'-'manualAuthoritativeError'-'manualAuthoritativeFailedAt'-'manualAuthoritativeResolvedAt')||EXCLUDED.source_snapshot,updated_at=now()`;
@@ -60,4 +60,28 @@ export async function retryManualCandidateAction(formData){
   if(result?.functionalResult==='blocked')redirect('/novedades?notice=retry_missing');
   if(result?.functionalResult==='pending')redirect(`/novedades?notice=retry_failed&imdb=${encodeURIComponent(imdbId)}`);
   redirect(`/novedades?notice=retry_resolved&imdb=${encodeURIComponent(imdbId)}`);
+}
+
+export async function restoreAndAddManualAction(formData){
+  const imdbId=imdbIdOf(formData),sql=db(),requestKey=`PROC-NOV-004:${imdbId}:${Math.floor(Date.now()/3000)}`;
+  const observed=await executeObservedProcess({processCode:'PROC-NOV-004',runKind:'individual',triggerSource:'novedades_manual',executor:'vercel',entityType:'title',entityId:imdbId,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:'/novedades',operation:'restore_exclusion_and_add_manual'}},async trace=>{
+    const[movie]=await sql`SELECT imdb_id FROM movies WHERE imdb_id=${imdbId} LIMIT 1`;
+    if(movie)return{technicalStatus:'succeeded',functionalResult:'blocked',after:{reason:'already_catalogued'},message:'El IMDb ya está en el catálogo'};
+    const[excluded]=await sql`SELECT imdb_id,reason,excluded_at FROM catalog_exclusions WHERE imdb_id=${imdbId} LIMIT 1`;
+    if(!excluded)return{technicalStatus:'succeeded',functionalResult:'blocked',after:{reason:'not_excluded'},message:'El IMDb ya no está excluido'};
+    await trace.event({eventType:'manual_decision',step:'restore_exclusion',entityType:'title',entityId:imdbId,message:'Retirar exclusión y volver a admitir el IMDb',data:{previous_reason:excluded.reason||null,excluded_at:excluded.excluded_at||null}});
+    await sql`DELETE FROM catalog_exclusions WHERE imdb_id=${imdbId}`;
+    await trace.event({eventType:'step_completed',step:'restore_exclusion',entityType:'title',entityId:imdbId,message:'Exclusión retirada'});
+    const resolved=await resolveManualNewsCandidate(imdbId,{trace});
+    const status=await persistResolved(sql,imdbId,resolved,{restored:true,restoredAt:new Date().toISOString()});
+    await trace.event({eventType:'step_completed',step:'resolve_minimums',entityType:'title',entityId:imdbId,message:resolved.ready?'Restauración completó identidad mínima':'Exclusión retirada; identidad mínima sigue pendiente',data:{ready:resolved.ready,title:resolved.source_snapshot?.title||null,type:resolved.candidate_type||null}});
+    if(!resolved.ready)return{technicalStatus:'partial',functionalResult:'pending',before:{excluded:true},after:{excluded:false,eligibility_status:status,minimums:resolved.source_snapshot?.minimums||null},metrics:{restored:1,ready:0,pending:1},message:'Exclusión retirada; candidato pendiente de identidad mínima'};
+    return{technicalStatus:'succeeded',functionalResult:'updated',before:{excluded:true},after:{excluded:false,eligibility_status:status,title:resolved.source_snapshot?.title,type:resolved.candidate_type},metrics:{restored:1,ready:1,pending:0},message:'Exclusión retirada e IMDb añadido a Novedades'};
+  });
+  refresh();
+  const result=observed.result;
+  if(result?.functionalResult==='blocked'&&result?.after?.reason==='already_catalogued')redirect(`/novedades?notice=exists&imdb=${encodeURIComponent(imdbId)}`);
+  if(result?.functionalResult==='blocked'&&result?.after?.reason==='not_excluded')redirect(`/novedades?notice=restore_missing&imdb=${encodeURIComponent(imdbId)}`);
+  if(result?.functionalResult==='pending')redirect(`/novedades?notice=restored_pending&imdb=${encodeURIComponent(imdbId)}`);
+  redirect(`/novedades?notice=restored&imdb=${encodeURIComponent(imdbId)}`);
 }
