@@ -1,0 +1,70 @@
+name: PikoFilm · retirar batch_job_steps legacy
+
+on:
+  push:
+    branches:
+      - cleanup/drop-batch-job-steps-direct
+    paths:
+      - db/migrations/20260831_drop_legacy_batch_job_steps.sql
+      - .github/workflows/drop-legacy-batch-job-steps.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pikofilm-drop-legacy-batch-job-steps
+  cancel-in-progress: false
+
+jobs:
+  audit-and-drop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar DATABASE_URL
+        run: test -n "$DATABASE_URL"
+      - name: Instalar PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Auditar y eliminar tabla legacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT to_regclass('public.batch_job_steps') AS relation_before,
+                 pg_size_pretty(COALESCE(pg_total_relation_size(to_regclass('public.batch_job_steps')),0)) AS size_before;
+
+          DO $$
+          DECLARE dep_count integer;
+          BEGIN
+            IF to_regclass('public.batch_job_steps') IS NULL THEN
+              RAISE NOTICE 'batch_job_steps ya no existe';
+              RETURN;
+            END IF;
+
+            SELECT count(*) INTO dep_count
+            FROM pg_depend d
+            JOIN pg_class c ON c.oid=d.refobjid
+            WHERE c.oid='public.batch_job_steps'::regclass
+              AND d.deptype NOT IN ('i','a')
+              AND d.objid <> c.oid;
+
+            IF dep_count > 0 THEN
+              RAISE EXCEPTION 'batch_job_steps tiene % dependencias no internas; abortando DROP', dep_count;
+            END IF;
+          END $$;
+          SQL
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/20260831_drop_legacy_batch_job_steps.sql
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$ BEGIN
+            IF to_regclass('public.batch_job_steps') IS NOT NULL THEN
+              RAISE EXCEPTION 'batch_job_steps sigue existiendo tras DROP';
+            END IF;
+          END $$;
+          SELECT pg_size_pretty(pg_database_size(current_database())) AS database_size_after;
+          SQL
