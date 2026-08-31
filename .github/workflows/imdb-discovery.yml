@@ -3,14 +3,10 @@ name: PikoFilm · descubrir novedades IMDb
 on:
   workflow_dispatch:
     inputs:
-      force_once:
-        description: 'Excepción controlada: ignorar cooldown una sola ejecución manual'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
+      run_id:
+        description: 'Run canónico PROC-NOV-001 creado desde Novedades'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -22,11 +18,11 @@ concurrency:
 jobs:
   discovery:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
-      FORCE_DISCOVERY_ONCE: ${{ inputs.force_once }}
+      PROCESS_RUN_ID: ${{ inputs.run_id }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -42,5 +38,5 @@ jobs:
       - name: Instalar dependencias
         run: npm install --ignore-scripts
 
-      - name: Discovery manual con límite semanal
+      - name: Discovery IMDb global
         run: npm run worker:imdb-discovery
