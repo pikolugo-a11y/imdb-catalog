@@ -4,7 +4,7 @@ import {scanPlexTechnicalLibrary} from '../lib/plex-technical-scan.mjs';
 import {claimTechnicalBatch} from '../lib/plex-technical-queue.mjs';
 import {captureTechnicalRatingKey} from '../lib/plex-technical-capture.mjs';
 import {getTechnicalControl,heartbeatTechnicalWorker} from '../lib/plex-technical-control.mjs';
-import {getActiveTechnicalProcessRun,addTechnicalProcessEvent,mergeTechnicalProcessContext,addTechnicalCaptureCounters,recordTechnicalProcessError,finishTechnicalProcessRun} from '../lib/pikoquality-technical-observability.mjs';
+import {getActiveTechnicalProcessRun,addTechnicalProcessEvent,mergeTechnicalProcessContext,addTechnicalCaptureCounters,recordTechnicalProcessError,finishTechnicalProcessRun,reconcileStoppedTechnicalProcessRun} from '../lib/pikoquality-technical-observability.mjs';
 
 const connectionString=process.env.DATABASE_URL||process.env.NEON_DATABASE_URL;
 if(!connectionString)throw new Error('Falta DATABASE_URL/NEON_DATABASE_URL');
@@ -67,11 +67,27 @@ async function finishIfEmpty(runId,scan){
   await finishTechnicalProcessRun(sql,runId,{technicalStatus,functionalResult,message:errors>0?'Captura técnica completada con incidencias':'Captura técnica completada',metrics:{scan_total:Number(context.scan_total||0)||0,created,changed,capture_ok:captureOk,capture_failed:captureFailed}});
 }
 
+async function reconcileIdleRun(){
+  const run=await reconcileStoppedTechnicalProcessRun(sql).catch(error=>{
+    console.error('[technical-snapshot-worker] reconcile failed',error);
+    return null;
+  });
+  return Boolean(run);
+}
+
 async function cycle(){
   const control=await getTechnicalControl(sql);
-  if(!control.armed){await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});return{control:'disarmed',claimed:0,ok:0,failed:0}}
+  if(!control.armed){
+    const reconciled=await reconcileIdleRun();
+    await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});
+    return{control:'disarmed',claimed:0,ok:0,failed:0,reconciled};
+  }
   if(control.requested_state==='paused'){await heartbeatTechnicalWorker(sql,{workerId,actualState:'paused'});return{control:'paused',claimed:0,ok:0,failed:0}}
-  if(control.requested_state==='stopped'){await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});return{control:'stopped',claimed:0,ok:0,failed:0}}
+  if(control.requested_state==='stopped'){
+    const reconciled=await reconcileIdleRun();
+    await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});
+    return{control:'stopped',claimed:0,ok:0,failed:0,reconciled};
+  }
 
   const active=await getActiveTechnicalProcessRun(sql);
   if(!active){
