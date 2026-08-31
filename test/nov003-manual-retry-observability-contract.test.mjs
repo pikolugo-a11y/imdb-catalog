@@ -21,13 +21,14 @@ test('NOV-003 only retries active manual candidates and promotes only real minim
   const retry=action.slice(action.indexOf('export async function retryManualCandidateAction'));
   assert.match(retry,/source_snapshot->>'manual'='true'/);
   assert.match(retry,/manualActive/);
-  assert.match(retry,/resolved\.ready\?'eligible':'processing'/);
+  assert.match(retry,/persistResolved\(sql,imdbId,resolved\)/);
+  assert.match(action,/const status=resolved\.ready\?'eligible':'processing'/);
   assert.match(retry,/functionalResult:'pending'/);
   assert.match(retry,/functionalResult:'updated'/);
 });
 
 test('Novedades UI wires retry to NOV-003 and exposes human operation name',()=>{
-  assert.match(page,/retryManualCandidateAction} from '\.\/manual-candidate-actions'/);
+  assert.match(page,/import \{[^}]*retryManualCandidateAction[^}]*\} from '\.\/manual-candidate-actions'/);
   assert.match(page,/↻ Reintentar/);
   assert.match(page,/retry_resolved/);
   assert.match(display,/'PROC-NOV-003':\{name:'Reintentar candidato manual'\}/);
