@@ -13,7 +13,7 @@ export async function requestNewsDiscoveryAction(){
   if(!token)redirect('/novedades?notice=dispatch_not_configured');
   const[active]=await sql`SELECT run_id,technical_status FROM process_runs WHERE process_code='PROC-NOV-001' AND technical_status IN('queued','running') ORDER BY requested_at DESC LIMIT 1`;
   if(active)redirect('/novedades?notice=discovery_running');
-  const[last]=await sql`SELECT finished_at FROM process_runs WHERE process_code='PROC-NOV-001' AND technical_status='succeeded' AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1`;
+  const[last]=await sql`SELECT finished_at FROM process_runs WHERE process_code='PROC-NOV-001' AND technical_status='succeeded' AND COALESCE(functional_result,'')<>'blocked' AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT 1`;
   const nextAllowedAt=last?.finished_at?new Date(new Date(last.finished_at).getTime()+WEEK_MS):null;
   if(nextAllowedAt&&nextAllowedAt>new Date())redirect(`/novedades?notice=discovery_blocked&next=${encodeURIComponent(nextAllowedAt.toISOString())}`);
   const runId=crypto.randomUUID(),correlationKey=`PROC-NOV-001:${runId}`;
@@ -25,7 +25,7 @@ export async function requestNewsDiscoveryAction(){
     await sql`INSERT INTO process_run_events(run_id,event_type,step,entity_type,entity_id,message) VALUES(${runId}::uuid,'queued','dispatch','discovery','global','Run enviado a GitHub Actions')`;
   }catch(e){
     const message=e?.message||String(e);
-    await sql`INSERT INTO process_run_errors(run_id,process_code,entity_type,entity_id,step,error_class,message,source,retryable) VALUES(${runId}::uuid,'PROC-NOV-001','discovery','global','dispatch',${e?.name||'Error'},${message},'github_actions',true)`;
+    await sql`INSERT INTO process_run_errors(run_id,process_code,entity_type,entity_id,step,error_class,message,source,retryable) VALUES(${runId}::uuid,'PROC-NOV-001','discovery','global','dispatch',${e?.name||'Error'},${message},'github_api',false)`;
     await sql`UPDATE process_runs SET technical_status='failed',finished_at=now(),duration_ms=GREATEST(0,ROUND(EXTRACT(EPOCH FROM(now()-requested_at))*1000)::bigint),error_count=error_count+1,updated_at=now() WHERE run_id=${runId}::uuid`;
     await sql`INSERT INTO process_run_events(run_id,event_type,step,entity_type,entity_id,message) VALUES(${runId}::uuid,'error','dispatch','discovery','global',${message})`;
     refresh();redirect('/novedades?notice=dispatch_failed');
