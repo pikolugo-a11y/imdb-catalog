@@ -59,3 +59,13 @@ test('SAGA-001 deduplicates provider members by TMDb movie id before writing',()
   assert.match(saga,/duplicate_members_ignored/);
   assert.match(saga,/member_count,refreshed_at\).*\$\{parts\.length\}/s);
 });
+
+test('SAGA-001 treats a missing TMDb collection as a functional not_found, not a technical error',()=>{
+  assert.match(saga,/error\.status=r\.status/);
+  assert.match(saga,/error\?\.status===404/);
+  assert.match(saga,/DELETE FROM saga_collection_members WHERE tmdb_collection_id=/);
+  assert.match(saga,/DELETE FROM saga_collections WHERE tmdb_collection_id=/);
+  assert.match(saga,/return\{ok:true,collectionId,notFound:true\}/);
+  assert.match(saga,/collections_not_found:notFoundCollections/);
+  assert.match(saga,/not_found:notFoundCollections/);
+});
