@@ -3,12 +3,16 @@
 import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
 import {processC6Batch,C6_BATCH_SIZE,getC6BatchState} from '@/lib/pikoquality-c6-batch';
-import {setTechnicalArmed,setTechnicalRequestedState} from '@/lib/plex-technical-control.mjs';
+import {getTechnicalControl,setTechnicalArmed,setTechnicalRequestedState} from '@/lib/plex-technical-control.mjs';
 import {startProcessRun,addProcessEvent,recordProcessError,finishProcessRun} from '@/lib/process-runtime';
+import {getActiveTechnicalProcessRun} from '@/lib/pikoquality-technical-observability.mjs';
 
 const C6_PROCESS_CODE='PROC-PQ-001';
 const C6_ENTITY_TYPE='pikoquality';
 const C6_ENTITY_ID='c6';
+const TECH_PROCESS_CODE='PROC-PQ-002';
+const TECH_ENTITY_TYPE='plex_library';
+const TECH_ENTITY_ID='technical_snapshot';
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function startC6BatchRunAction(){
@@ -55,7 +59,50 @@ export async function runC6BatchChunkAction(runId){
   }
 }
 
-async function setTechnicalState(state){await setTechnicalRequestedState(db(),state);revalidatePath('/calidad/pikoquality')}
-export async function startTechnicalSnapshotAction(){const sql=db();await setTechnicalArmed(sql,true);await setTechnicalRequestedState(sql,'running');revalidatePath('/calidad/pikoquality')}
-export async function pauseTechnicalSnapshotAction(){await setTechnicalState('paused')}
-export async function stopTechnicalSnapshotAction(){await setTechnicalState('stopped')}
+const revalidateTechnical=()=>{revalidatePath('/calidad/pikoquality');revalidatePath('/admin')};
+
+export async function startTechnicalSnapshotAction(){
+  const sql=db();
+  const control=await getTechnicalControl(sql);
+  let active=await getActiveTechnicalProcessRun(sql);
+  if(control?.requested_state==='paused'&&active){
+    await setTechnicalArmed(sql,true);
+    await setTechnicalRequestedState(sql,'running');
+    await addProcessEvent(active.run_id,{eventType:'run_resumed',step:'technical_control',entityType:TECH_ENTITY_TYPE,entityId:TECH_ENTITY_ID,message:'Captura técnica reanudada'});
+    revalidateTechnical();
+    return;
+  }
+  if(!active){
+    const started=await startProcessRun({processCode:TECH_PROCESS_CODE,runKind:'batch',triggerSource:'calidad_pikoquality_manual',executor:'railway',entityType:TECH_ENTITY_TYPE,entityId:TECH_ENTITY_ID,context:{mode:'incremental',phases:['scan','capture']}});
+    active=started.run;
+    await addProcessEvent(active.run_id,{eventType:'technical_requested',step:'technical_control',entityType:TECH_ENTITY_TYPE,entityId:TECH_ENTITY_ID,message:'Captura técnica solicitada desde PikoQuality'});
+  }
+  try{
+    await setTechnicalArmed(sql,true);
+    await setTechnicalRequestedState(sql,'running');
+  }catch(error){
+    await recordProcessError(active.run_id,{error,step:'technical_control',source:'vercel',retryable:false}).catch(()=>{});
+    await finishProcessRun(active.run_id,{technicalStatus:'failed',message:'No se pudo iniciar la captura técnica'}).catch(()=>{});
+    throw error;
+  }
+  revalidateTechnical();
+}
+
+export async function pauseTechnicalSnapshotAction(){
+  const sql=db();
+  await setTechnicalRequestedState(sql,'paused');
+  const active=await getActiveTechnicalProcessRun(sql);
+  if(active)await addProcessEvent(active.run_id,{eventType:'run_paused',step:'technical_control',entityType:TECH_ENTITY_TYPE,entityId:TECH_ENTITY_ID,message:'Captura técnica pausada'});
+  revalidateTechnical();
+}
+
+export async function stopTechnicalSnapshotAction(){
+  const sql=db();
+  await setTechnicalRequestedState(sql,'stopped');
+  const active=await getActiveTechnicalProcessRun(sql);
+  if(active){
+    await addProcessEvent(active.run_id,{eventType:'run_cancelled',step:'technical_control',entityType:TECH_ENTITY_TYPE,entityId:TECH_ENTITY_ID,message:'Captura técnica detenida por el usuario'});
+    await finishProcessRun(active.run_id,{technicalStatus:'cancelled',functionalResult:'pending',message:'Captura técnica detenida'});
+  }
+  revalidateTechnical();
+}
