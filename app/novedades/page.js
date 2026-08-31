@@ -1,11 +1,13 @@
 import './news.css';
 import Link from 'next/link';
 import {getNewsV1,getNewsSettings} from '@/lib/news-v1';
+import {getNewsDiscoveryStatus} from '@/lib/news-discovery-status';
 import {countryLabel} from '@/lib/country-display';
 import {db} from '@/lib/db';
 import PlexSyncButton from '@/components/PlexSyncButton';
 import {savePlexIdentityAction} from '@/app/actions';
-import {addManualCandidateAction,enrichNewsCandidateAction,excludeNewsCandidateAction,removeManualCandidateAction,restoreAndAddManualAction,requestNewsDiscoveryAction,retryManualCandidateAction} from './actions';
+import {requestNewsDiscoveryAction} from './discovery-actions';
+import {addManualCandidateAction,enrichNewsCandidateAction,excludeNewsCandidateAction,removeManualCandidateAction,restoreAndAddManualAction,retryManualCandidateAction} from './actions';
 export const dynamic='force-dynamic';
 const STALE_MS=30*60*1000;
 function qs(p,patch={}){const x=new URLSearchParams();for(const[k,v]of Object.entries({...p,...patch}))if(v!==undefined&&v!==null&&v!=='')x.set(k,String(v));return x.toString()}
@@ -22,13 +24,13 @@ function Actions({r}){if(r.row_kind==='plex_unidentified')return <div className=
 
 export default async function Novedades({searchParams}){
   const p=await searchParams||{},type=['all','movie','series'].includes(p.type)?p.type:'all',sort=['new','rating','votes','year'].includes(p.sort)?p.sort:'new',source=['all','manual','plex','discovery'].includes(p.source)?p.source:'all',state=['all','identity_pending','preparing','eligible','error'].includes(p.state)?p.state:'all';
-  const [{rows,stats,filteredTotal,excludedCount,latestRun,nextAllowedAt,discoveryAllowed,testOverrideAvailable,page,pageSize},settings]=await Promise.all([getNewsV1({...p,type,sort,source,state,view:'list'}),getNewsSettings()]);
+  const [{rows,stats,filteredTotal,excludedCount,page,pageSize},settings,discovery]=await Promise.all([getNewsV1({...p,type,sort,source,state,view:'list'}),getNewsSettings(),getNewsDiscoveryStatus()]);
   const sql=db();const [latestPlexRun]=await sql`SELECT started_at,finished_at FROM pipeline_runs WHERE job_type='plex_fast_sync' AND status='success' ORDER BY COALESCE(finished_at,started_at) DESC LIMIT 1`;
-  const canDispatch=discoveryAllowed||testOverrideAvailable;
-  const notices={exists:'Ese IMDb ya está en el catálogo.',excluded:'Ese IMDb está excluido. Puedes restaurarlo explícitamente.',manual_added:'IMDb añadido manualmente.',manual_resolve_error:'Se añadió el IMDb, pero la resolución inicial falló.',retry_dispatched:'Reintento solicitado.',retry_failed:'No se pudo lanzar el reintento.',retry_missing:'Ese candidato ya no está disponible.',restored:'Exclusión retirada y candidato añadido a Novedades.',excluded_now:'Título excluido.',manual_removed:'Candidato manual retirado.',enrich_error:'No se pudo establecer identidad mínima suficiente.',discovery_dispatched:'Discovery solicitado.',discovery_dispatched_override:'Discovery de prueba solicitado.',dispatch_not_configured:'Falta configurar la credencial segura de GitHub en Vercel.',dispatch_failed:'GitHub no aceptó la solicitud de discovery.',discovery_blocked:'Discovery bloqueado por la regla semanal.',plex_identity_saved:'IMDb Plex guardado. La Novedad continuará por el flujo común.'};
+  const notices={exists:'Ese IMDb ya está en el catálogo.',excluded:'Ese IMDb está excluido. Puedes restaurarlo explícitamente.',manual_added:'IMDb añadido manualmente.',manual_resolve_error:'Se añadió el IMDb, pero la resolución inicial falló.',retry_dispatched:'Reintento solicitado.',retry_failed:'No se pudo lanzar el reintento.',retry_missing:'Ese candidato ya no está disponible.',restored:'Exclusión retirada y candidato añadido a Novedades.',excluded_now:'Título excluido.',manual_removed:'Candidato manual retirado.',enrich_error:'No se pudo establecer identidad mínima suficiente.',discovery_dispatched:'Discovery solicitado. Puedes seguir su ejecución en Operaciones.',discovery_running:'Ya hay un Discovery solicitado o ejecutándose.',dispatch_not_configured:'Falta configurar la credencial segura de GitHub en Vercel.',dispatch_failed:'GitHub no aceptó la solicitud de Discovery.',discovery_blocked:'Discovery bloqueado por la regla semanal.',plex_identity_saved:'IMDb Plex guardado. La Novedad continuará por el flujo común.'};
   const sortHref=key=>'/novedades?'+qs(p,{sort:key,page:1,view:undefined});
+  const latestDiscoveryAt=discovery.latestRun?.finished_at||discovery.latestRun?.started_at||discovery.latestRun?.requested_at;
   return <div className="news-page">
-    <div className="news-head"><div><div className="eyebrow">✦ DESCUBRIMIENTO</div><h1>Novedades</h1><p>Una única cola para Discovery, Plex y altas manuales. La tabla es la vista operativa.</p></div><div className="discovery-box"><PlexSyncButton/><div><span>✓ Última actualización Plex</span><b>{latestPlexRun?fmtDate(latestPlexRun.finished_at||latestPlexRun.started_at):'Sin ejecución'}</b></div><div><span>✓ Último discovery</span><b>{latestRun?fmtDate(latestRun.finished_at||latestRun.started_at):'Sin ejecución'}</b></div><div><span>◷ Próximo discovery disponible</span><b>{discoveryAllowed?'Ahora':fmtDate(nextAllowedAt)}</b></div>{canDispatch?<form action={requestNewsDiscoveryAction}><button>{discoveryAllowed?'Buscar novedades':'Prueba única'}</button></form>:null}</div></div>
+    <div className="news-head"><div><div className="eyebrow">✦ DESCUBRIMIENTO</div><h1>Novedades</h1><p>Una única cola para Discovery, Plex y altas manuales. La tabla es la vista operativa.</p></div><div className="discovery-box"><PlexSyncButton/><div><span>✓ Última actualización Plex</span><b>{latestPlexRun?fmtDate(latestPlexRun.finished_at||latestPlexRun.started_at):'Sin ejecución'}</b></div><div><span>✓ Último discovery</span><b>{latestDiscoveryAt?fmtDate(latestDiscoveryAt):'Sin ejecución'}</b></div><div><span>◷ Próximo discovery disponible</span><b>{discovery.activeRun?'Hay uno en curso':discovery.discoveryAllowed?'Ahora':fmtDate(discovery.nextAllowedAt)}</b></div>{discovery.discoveryAllowed?<form action={requestNewsDiscoveryAction}><button>Buscar novedades</button></form>:null}</div></div>
 
     {p.notice&&notices[p.notice]?<div className="info-banner">{notices[p.notice]}{p.imdb?` · ${p.imdb}`:''}</div>:null}
     {p.notice==='excluded'&&p.imdb?<form action={restoreAndAddManualAction}><input type="hidden" name="imdbId" value={p.imdb}/><button className="button">Restaurar y añadir</button></form>:null}
