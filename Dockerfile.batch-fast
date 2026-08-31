@@ -1,0 +1,7 @@
+FROM node:20-slim
+WORKDIR /app
+COPY package.json ./
+RUN npm install --omit=dev
+COPY lib ./lib
+COPY worker ./worker
+CMD ["node","worker/batch-fast-worker.mjs"]
