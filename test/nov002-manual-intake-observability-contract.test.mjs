@@ -28,7 +28,7 @@ test('candidato incompleto no queda falsamente elegible',()=>{
 });
 
 test('frontal usa la acción canónica nueva',()=>{
-  assert.match(page,/import \{addManualCandidateAction\} from '\.\/manual-candidate-actions'/);
+  assert.match(page,/import \{[^}]*addManualCandidateAction[^}]*\} from '\.\/manual-candidate-actions'/);
   assert.match(page,/<form action=\{addManualCandidateAction\}/);
 });
 
