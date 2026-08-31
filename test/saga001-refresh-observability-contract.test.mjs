@@ -20,14 +20,16 @@ test('SAGA-001 is the canonical observed manual TMDb saga refresh',()=>{
 test('SAGA-001 keeps the existing writer/read-model contract and bounded refresh policy',()=>{
   assert.match(saga,/saga_collections/);
   assert.match(saga,/saga_collection_members/);
-  assert.match(saga,/ORDER BY sc\.refreshed_at ASC NULLS FIRST/);
+  assert.match(saga,/sc\.refreshed_at ASC NULLS FIRST/);
   assert.match(saga,/Math\.min\(120/);
   assert.match(saga,/pool\(ids,6/);
   assert.match(page,/getSagasDashboard/);
   assert.match(detail,/getSagaDetailV3/);
 });
 
-test('SAGA-001 preserves IMDb resolution required by Saga to Novedades intake and traces failures',()=>{
+test('SAGA-001 resolves IMDb without the removed tmdb_external_ids relation',()=>{
+  assert.doesNotMatch(saga,/tmdb_external_ids/);
+  assert.match(saga,/SELECT imdb_id FROM saga_collection_members WHERE tmdb_movie_id=/);
   assert.match(saga,/\/external_ids/);
   assert.match(saga,/recordProcessError\(trace\.runId/);
   assert.match(saga,/step:'resolve_imdb'/);
@@ -35,4 +37,16 @@ test('SAGA-001 preserves IMDb resolution required by Saga to Novedades intake an
   assert.match(saga,/externalCall/);
   assert.match(detail,/external_imdb_id/);
   assert.match(detail,/addSagaMemberToNewsAction/);
+});
+
+test('SAGA-001 refresh is atomic per collection and prioritizes inconsistent collections for self-healing',()=>{
+  assert.match(saga,/actual_member_count/);
+  assert.match(saga,/COALESCE\(sm\.actual_member_count,0\)<>COALESCE\(sc\.member_count,0\)/);
+  const transaction=saga.indexOf('await sql.transaction(ops);');
+  const countSuccess=saga.indexOf('if(exists.length)updated++;else added++;');
+  assert.ok(transaction>=0&&countSuccess>transaction,'success counters must run only after the collection transaction commits');
+  const ops=saga.indexOf('const ops=[');
+  const collectionWrite=saga.indexOf('INSERT INTO saga_collections',ops);
+  const memberDelete=saga.indexOf('DELETE FROM saga_collection_members',ops);
+  assert.ok(ops>=0&&collectionWrite>ops&&memberDelete>collectionWrite,'collection metadata and members must share the transaction ops');
 });
