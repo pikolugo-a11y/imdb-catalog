@@ -76,7 +76,6 @@ jobs:
           branch_name: ci-${{ github.run_id }}-${{ github.run_attempt }}
           role: neondb_owner
           database: neondb
-          expires_at: ${{ format('{0:yyyy-MM-ddTHH:mm:ssZ}', fromJSON(format('"{0}"', github.event.repository.updated_at))) }}
           api_key: ${{ secrets.NEON_API_KEY }}
 
       - name: Instalar cliente PostgreSQL
