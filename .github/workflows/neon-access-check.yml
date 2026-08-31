@@ -11,45 +11,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      NEON_PROJECT_ID: broad-truth-29708407
-      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
-      - name: Comprobar que NEON_API_KEY está configurada
+      - name: Validar DATABASE_URL
         shell: bash
         run: |
-          if [ -z "$NEON_API_KEY" ]; then
-            echo "NEON_API_KEY no está configurada en GitHub Secrets."
-            exit 1
-          fi
-          echo "NEON_API_KEY está disponible para el workflow."
+          test -n "$DATABASE_URL" || { echo "DATABASE_URL no está configurada"; exit 1; }
 
-      - name: Verificar acceso de lectura al proyecto Neon
+      - name: Instalar cliente PostgreSQL
         shell: bash
         run: |
-          set -euo pipefail
-          response_file="$(mktemp)"
-          http_code="$(curl --silent --show-error \
-            --output "$response_file" \
-            --write-out '%{http_code}' \
-            --header "Authorization: Bearer $NEON_API_KEY" \
-            --header "Accept: application/json" \
-            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID")"
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
 
-          if [ "$http_code" != "200" ]; then
-            echo "La API de Neon respondió HTTP $http_code."
-            cat "$response_file"
-            exit 1
-          fi
-
-          node - "$response_file" <<'NODE'
-          const fs = require('fs');
-          const payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          const project = payload.project || payload;
-          console.log(JSON.stringify({
-            access: 'ok',
-            project_id: project.id,
-            project_name: project.name,
-            pg_version: project.pg_version,
-            region_id: project.region_id
-          }, null, 2));
-          NODE
+      - name: Verificar conexión real a la base configurada
+        shell: bash
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT current_database() AS database,
+                 current_user AS role,
+                 pg_size_pretty(pg_database_size(current_database())) AS database_size,
+                 version() AS postgres_version;
+          SQL
