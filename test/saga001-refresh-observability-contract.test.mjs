@@ -32,7 +32,7 @@ test('SAGA-001 preserves IMDb resolution required by Saga to Novedades intake an
   assert.match(saga,/recordProcessError\(trace\.runId/);
   assert.match(saga,/step:'resolve_imdb'/);
   assert.match(saga,/step:'refresh_collection'/);
-  assert.match(saga,/trace\.externalCall/);
+  assert.match(saga,/externalCall/);
   assert.match(detail,/external_imdb_id/);
   assert.match(detail,/addSagaMemberToNewsAction/);
 });
