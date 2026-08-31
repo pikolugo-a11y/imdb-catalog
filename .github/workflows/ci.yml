@@ -27,7 +27,6 @@ jobs:
       - name: Validar workers canónicos
         run: |
           node --check worker/imdb-discovery.mjs
-          node --check worker/update-imdb-ratings.mjs
           node --check worker/lifecycle-pikoscore-executor.mjs
           node --check worker/lifecycle-worker.mjs
           node --check lib/lifecycle-data-stage.mjs
