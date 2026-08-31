@@ -8,7 +8,8 @@ test('Catálogo no expone el estado funcional En proceso',()=>{
   const page=read('app/catalogo/page.js');
   const filters=read('components/CatalogFiltersV3.js');
   const queries=read('lib/catalog-v3-queries.js');
-  assert.doesNotMatch(page,/markAcquiring|En proceso|Proceso<|acquiring/);
+  assert.doesNotMatch(page,/markAcquiring|En proceso|Proceso</);
+  assert.match(page,/status\|\|''\)==='acquiring'\?'missing'/);
   assert.doesNotMatch(filters,/En proceso/);
   assert.match(queries,/rawStatus==='acquiring'\?'missing'/);
   assert.doesNotMatch(queries,/stats\.acquiring/);
