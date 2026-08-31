@@ -7,7 +7,8 @@ import {DATA_FIELDS} from '@/lib/data-quality';
 import {getDataQualityView} from '@/lib/data-quality-page';
 import {getData003BatchPanelState} from '@/lib/batch-engine';
 import {providerUrl} from '@/lib/provider-links';
-import {updateDataAction,refreshRatingsAction,calculatePikoScoreV3Action} from './actions';
+import {updateDataAction,refreshRatingsAction} from './actions';
+import {calculatePikoScoreV3Action} from './pikoscore-actions';
 import './quality-data.css';
 import './batch-panel.css';
 
