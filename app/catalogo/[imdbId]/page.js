@@ -4,8 +4,7 @@ import {getCatalogItem,getSeriesDetail,getSagaDetail} from '@/lib/queries';
 import {getCatalogRatings} from '@/lib/catalog-ratings';
 import {getSeriesDashboard} from '@/lib/series-dashboard';
 import {getMovieDetailExtras} from '@/lib/movie-detail-extras';
-import EnrichTitleButton from '@/components/EnrichTitleButton';
-import {markAcquiring,clearAcquiring,excludeTitle,saveIdentityAction} from '@/app/actions';
+import {excludeTitle} from '@/app/actions';
 import './detail-editorial.css';
 import './series-command.css';
 import './movie-command.css';
@@ -30,7 +29,7 @@ const runtimeLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '�
 const bitrateLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';return x>=1000?`${(x/1000).toFixed(1)} Mbps`:`${x} Kbps`;};
 const sizeLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';return `${(x/1073741824).toFixed(1)} GB`;};
 
-function EditorialSeries({item,back,notice,operational,dashboard,ratingsData}){
+function EditorialSeries({item,back,operational,dashboard,ratingsData}){
   const cast=item.credits.filter(c=>c.credit_type==='cast').slice(0,8);
   const crew=relevantCrew(item.credits.filter(c=>c.credit_type!=='cast'));
   const s=item.series;
@@ -52,10 +51,9 @@ function EditorialSeries({item,back,notice,operational,dashboard,ratingsData}){
   const pikoVersion=String(ratingsData?.version||'').replace('3.0.0-experimental.','3.0 · v');
   return <>
     <div className="editorial-crumbs"><Link href={back}>Catálogo</Link><span>›</span><span>Series</span><span>›</span><b>{title}</b></div>
-    {notice==='identity_saved'&&<div className="toast success">Identificadores guardados.</div>}
     <section className="series-command series-command-v3">
       <div className="series-command-main">{item.poster_path?<img className="command-poster" src={img(item.poster_path)} alt=""/>:<div className="command-poster"/>}<div className="command-copy">
-        <div className="eyebrow">{item.type} · {item.effective_status==='in_plex'?'EN PLEX':item.effective_status==='acquiring'?'EN PROCESO':'CATÁLOGO'}</div><h1>{title}</h1>
+        <div className="eyebrow">{item.type} · {item.effective_status==='in_plex'?'EN PLEX':'CATÁLOGO'}</div><h1>{title}</h1>
         {item.original_title&&cleanSeriesTitle(item.original_title)!==title&&<p className="editorial-original">{cleanSeriesTitle(item.original_title)}</p>}{item.tagline&&<p className="editorial-tagline">{item.tagline}</p>}
         <div className="command-facts"><span><b>Géneros</b>{(item.genres||[]).join(' · ')||'—'}</span><span><b>País</b><i>{flagFor(item.country)}</i>{item.country||'—'}</span><span><b>Estreno</b>{release}</span></div>
         {crew[0]&&<div className="hero-credit"><span>{crew[0].job||'Creador / dirección'}</span><b>{crew[0].name}</b></div>}
@@ -76,17 +74,17 @@ function EditorialSeries({item,back,notice,operational,dashboard,ratingsData}){
           <div className={`quality-summary ${quality?qClass(quality.band):'pending'}`}><span>PIKOQUALITY</span>{quality?<><strong>{quality.score}</strong><b>{qBand(quality.band)}</b><small>{quality.analyzed_count}/{quality.total_count} episodios analizados</small></>:<><strong>···</strong><b>Calculando</b><small>Pendiente de agregados</small></>}</div>
           <div className={`hero-coverage coverage-compact ${coverage===100?'good':coverage>=80?'warn':'bad'}`}><div className="hero-ring" style={{'--pct':`${coverage*3.6}deg`}}><strong>{coverage}%</strong></div><div><span>COBERTURA PLEX</span><b>{present} / {total||'—'}</b><small>{s?.missing||0} faltan · {s?.unknown||0} por confirmar</small></div></div>
         </div>
-        {hasIssue&&<div className="hero-alerts">{(s?.not_available_es||0)>0&&<span>⚠ {s.not_available_es} episodios no disponibles en España</span>}{(!item.imdb_id||!item.tmdb_id||!s?.show_rating_key)&&<span>⚠ Revisar identidad de la serie</span>}</div>}
+        {hasIssue&&<div className="hero-alerts">{(s?.not_available_es||0)>0&&<span>⚠ {s.not_available_es} episodios no disponibles en España</span>}{(!item.imdb_id||!item.tmdb_id||!s?.show_rating_key)&&<span>⚠ Revisar identidad de la serie en Calidad</span>}</div>}
       </div>
     </section>
-    <section className="series-tools series-tools-v3"><div className="tool-ids"><a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer"><b>IMDb ↗</b>{item.imdb_id}</a>{item.tmdb_id?<a href={`https://www.themoviedb.org/tv/${item.tmdb_id}`} target="_blank" rel="noreferrer"><b>TMDb ↗</b>{item.tmdb_id}</a>:<span><b>TMDb</b>Falta</span>}<span><b>Plex</b>{s?.show_rating_key||'—'}</span></div><details><summary>✎ Editar IDs</summary><form action={saveIdentityAction} className="identity-form"><input type="hidden" name="imdbId" value={item.imdb_id}/><label>IMDb ID<input name="newImdbId" defaultValue={item.imdb_id}/></label><label>TMDb ID<input name="tmdbId" defaultValue={item.tmdb_id||''}/></label><button>Guardar identificadores</button></form></details><div className="series-tool-actions"><EnrichTitleButton imdbId={item.imdb_id} label="↻ Actualizar datos" className="ghost"/><form action={excludeTitle}><input type="hidden" name="imdbId" value={item.imdb_id}/><input type="hidden" name="returnTo" value={back}/><button className="series-exclude">Excluir serie</button></form></div></section>
+    <section className="series-tools series-tools-v3"><div className="tool-ids"><a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer"><b>IMDb ↗</b>{item.imdb_id}</a>{item.tmdb_id?<a href={`https://www.themoviedb.org/tv/${item.tmdb_id}`} target="_blank" rel="noreferrer"><b>TMDb ↗</b>{item.tmdb_id}</a>:<span><b>TMDb</b>Falta</span>}<span><b>Plex</b>{s?.show_rating_key||'—'}</span></div><div className="series-tool-actions"><form action={excludeTitle}><input type="hidden" name="imdbId" value={item.imdb_id}/><input type="hidden" name="returnTo" value={back}/><button className="series-exclude">Excluir serie</button></form></div></section>
     {seasonCards.length>0&&<section className="editorial-card editorial-seasons compact-seasons"><div className="section-head"><div><h2>Temporadas</h2><p>{seasonCards.length} temporadas · {total||episodes.length} episodios oficiales</p></div>{s?.show_rating_key&&<Link href={`/calidad/series/${s.show_rating_key}`}>Ver todos los episodios →</Link>}</div><div className="season-strip">{seasonCards.map(x=><Link href={s?.show_rating_key?`/calidad/series/${s.show_rating_key}?season=${x.sn}`:'#'} className={`season-tile ${x.pct===100?'complete':x.pct>0?'partial':'empty'}`} key={x.sn}><div><b>T{x.sn}</b><span className="season-quality">{x.quality?`PQ ${x.quality.score}`:'PQ —'}</span></div><div className="season-percent"><strong>{x.pct}%</strong><span>{x.p}/{x.total}</span></div><i><em style={{width:`${x.pct}%`}}/></i><small>{x.m?`${x.m} faltan`:x.na?`${x.na} no disp. ES`:x.u?`${x.u} por confirmar`:'Completa'}</small></Link>)}</div></section>}
     {crew.length>0&&<section className="editorial-card series-crew"><h2>Creadores y dirección</h2><div className="creator-grid">{crew.map((c,i)=><Link href={`/personas/${c.tmdb_person_id}`} key={`${c.tmdb_person_id}-${i}`}><b>{c.name}</b><span>{c.job||c.credit_type}</span></Link>)}</div></section>}
     <section className="editorial-card editorial-cast"><div className="section-head"><div><h2>Reparto principal</h2><p>Acceso a la filmografía disponible en PikoFilm.</p></div></div>{cast.length?<div className="editorial-cast-grid">{cast.map((c,i)=><Link className="editorial-person" href={`/personas/${c.tmdb_person_id}`} key={`${c.tmdb_person_id}-${i}`}>{img(c.profile_path)?<img src={img(c.profile_path)} alt=""/>:<div className="ph"/>}<b>{c.name}</b><span>{c.character_name||'Reparto'}</span></Link>)}</div>:<p className="editorial-overview">Sin reparto enriquecido disponible.</p>}</section>
   </>;
 }
 
-function EditorialMovie({item,back,notice,ratingsData,qualityData,saga}){
+function EditorialMovie({item,back,ratingsData,qualityData,saga}){
   const cast=item.credits.filter(c=>c.credit_type==='cast').slice(0,12);
   const crew=item.credits.filter(c=>c.credit_type!=='cast').slice(0,8);
   const director=crew.find(c=>/director/i.test(String(c.job||'')))||crew[0]||null;
@@ -96,17 +94,15 @@ function EditorialMovie({item,back,notice,ratingsData,qualityData,saga}){
   const pikoReady=ratingsData?.score!=null;
   const release=item.release_date?new Date(item.release_date).toLocaleDateString('es-ES'):item.year||'—';
   const plex=item.effective_status==='in_plex';
-  const acquiring=item.effective_status==='acquiring';
   const qualityReady=qualityData?.score!=null;
   const sagaTitles=saga?.titles||[];
   const sagaOwned=sagaTitles.filter(x=>x.effective_status==='in_plex').length;
   return <div className="movie-v3">
     <div className="editorial-crumbs"><Link href={back}>Catálogo</Link><span>›</span><span>Películas</span><span>›</span><b>{item.display_title}</b></div>
-    {notice==='identity_saved'&&<div className="toast success">Identificadores guardados.</div>}
     <section className="movie-hero">
       {item.poster_path?<img className="movie-poster" src={img(item.poster_path)} alt=""/>:<div className="movie-poster"/>}
       <div className="movie-copy">
-        <div className="eyebrow">PELÍCULA · {plex?'EN PLEX':acquiring?'EN PROCESO':'CATÁLOGO'}</div>
+        <div className="eyebrow">PELÍCULA · {plex?'EN PLEX':'CATÁLOGO'}</div>
         <h1>{item.display_title} {item.year&&<small>({item.year})</small>}</h1>
         {item.original_title&&item.original_title!==item.display_title&&<p className="movie-original">{item.original_title}</p>}
         <div className="movie-tags">{(item.genres||[]).slice(0,4).map(g=><span key={g}>{g}</span>)}</div>
@@ -114,7 +110,7 @@ function EditorialMovie({item,back,notice,ratingsData,qualityData,saga}){
         {director&&<div className="hero-credit"><span>{director.job||'Dirección'}</span><b>{director.name}</b></div>}
         {item.tagline&&<p className="editorial-tagline">{item.tagline}</p>}
         <div className="movie-synopsis"><span>SINOPSIS</span><p>{item.overview||'Sin sinopsis enriquecida disponible.'}</p></div>
-        <div className="movie-hero-actions">{plex?<Link className="primary" href="/plex">✓ En tu Plex</Link>:<form action={acquiring?clearAcquiring:markAcquiring}><input type="hidden" name="imdbId" value={item.imdb_id}/><button className="primary">{acquiring?'Quitar de En proceso':'+ Marcar En proceso'}</button></form>}<a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer">IMDb ↗</a>{item.tmdb_id&&<a href={`https://www.themoviedb.org/movie/${item.tmdb_id}`} target="_blank" rel="noreferrer">TMDb ↗</a>}</div>
+        <div className="movie-hero-actions">{plex&&<Link className="primary" href="/plex">✓ En tu Plex</Link>}<a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer">IMDb ↗</a>{item.tmdb_id&&<a href={`https://www.themoviedb.org/movie/${item.tmdb_id}`} target="_blank" rel="noreferrer">TMDb ↗</a>}</div>
       </div>
       <div className="movie-intelligence">
         <div className="movie-piko"><div className="movie-piko-score"><span>★ PikoScore</span><strong>{pikoReady?score2(ratingsData.score):'—'}</strong><small>{pikoReady?'Valoración PikoFilm':'Pendiente de cálculo'}</small></div><div className="movie-trust"><div className="movie-trust-head"><div><span>CONFIANZA</span><b>{confidence==null?'—':`${confidence.toFixed(1)}%`}</b></div><div className="movie-trust-badges"><i>{ratingsData?.sourceCount||ratings.length} fuentes</i><i>{ratingsData?.familyCount||families.length} familias</i><i>{marketLabel(ratingsData?.market)}</i></div></div><div className="movie-trust-track"><i style={{width:`${Math.max(0,Math.min(100,confidence||0))}%`}}/></div>{families.length>0&&<div className="movie-families">{families.map(f=><div className="movie-family" key={f.family}><span>{familyLabel(f.family)}</span><b>{score1(f.score)}</b><small>{Math.round(Number(f.weight||0)*100)}% peso</small></div>)}</div>}</div></div>
@@ -123,7 +119,7 @@ function EditorialMovie({item,back,notice,ratingsData,qualityData,saga}){
     </section>
 
     <section className="movie-status-grid movie-status-grid-4">
-      <div className={`movie-status-card ${plex?'ok':'warn'}`}><span>PLEX</span><strong>{plex?'Disponible en Plex':acquiring?'En proceso':'No está en Plex'}</strong><small>{item.resolution?`Resolución detectada: ${item.resolution}`:'Estado sincronizado con tu biblioteca'}</small></div>
+      <div className={`movie-status-card ${plex?'ok':'warn'}`}><span>PLEX</span><strong>{plex?'Disponible en Plex':'No está en Plex'}</strong><small>{item.resolution?`Resolución detectada: ${item.resolution}`:'Estado sincronizado con tu biblioteca'}</small></div>
       <div className={`movie-status-card pikoquality-card ${qualityReady?qClass(qualityData.band):plex?'warn':''}`}><span>PIKOQUALITY</span><div className="movie-quality-inline"><strong>{qualityReady?Math.round(Number(qualityData.score)):'—'}</strong><div><b>{qualityReady?qBand(qualityData.band):plex?'Pendiente de análisis':'Solo disponible en Plex'}</b><small>{qualityReady?[qualityData.resolution,qualityData.video_codec].filter(Boolean).join(' · '):'Calidad técnica de tu copia'}</small></div></div></div>
       <div className={`movie-status-card ${item.imdb_id&&item.tmdb_id?'ok':'warn'}`}><span>IDENTIDAD</span><strong>{item.imdb_id&&item.tmdb_id?'Verificada':'Pendiente'}</strong><small>IMDb {item.imdb_id} · TMDb {item.tmdb_id||'falta'}</small></div>
       <div className="movie-status-card"><span>PIKOSCORE</span><strong>{pikoReady?`v${String(ratingsData?.version||'3.0').replace('3.0.0-experimental.','3.0.')}`:'Pendiente'}</strong><small>{ratingsData?.calculatedAt?`Calculado ${dateShort(ratingsData.calculatedAt)}`:'Todavía sin cálculo vigente'}</small></div>
@@ -131,22 +127,22 @@ function EditorialMovie({item,back,notice,ratingsData,qualityData,saga}){
 
     {qualityData&&<section className="movie-panel movie-copy-quality"><div className="movie-panel-head"><div><span>TU COPIA</span><h2>PikoQuality</h2></div><div className={`movie-quality-dial ${qClass(qualityData.band)}`}><strong>{qualityReady?Math.round(Number(qualityData.score)):'—'}</strong><small>/100</small></div></div><div className="movie-copy-quality-grid"><div><b>Valoración</b><span>{qualityReady?qBand(qualityData.band):'Pendiente'}</span></div><div><b>Resolución</b><span>{qualityData.resolution||'—'}</span></div><div><b>Vídeo</b><span>{qualityData.video_codec||'—'}</span></div><div><b>Bitrate</b><span>{bitrateLabel(qualityData.bitrate)}</span></div><div><b>Audio</b><span>{qualityData.audio_codec||'—'}{qualityData.audio_channels?` · ${qualityData.audio_channels} canales`:''}</span></div><div><b>Tamaño</b><span>{sizeLabel(qualityData.file_size_bytes)}</span></div></div><Link className="movie-quality-link" href="/calidad/pikoquality">Abrir PikoQuality completo →</Link></section>}
 
-    {saga&&sagaTitles.length>0&&<section className="movie-panel movie-saga-panel"><div className="movie-saga-head"><div><span>SAGA / COLECCIÓN</span><h2>{saga.name||item.collection_name}</h2><small>{sagaOwned}/{sagaTitles.length} en Plex</small></div><Link href={`/sagas/${item.tmdb_collection_id}`}>Ver saga completa →</Link></div><div className="movie-saga-strip">{sagaTitles.map((x,i)=>{const current=x.imdb_id===item.imdb_id,poster=x.catalog_poster||x.poster_path;const body=<><div className="movie-saga-poster-wrap">{poster?<img src={img(poster)} alt=""/>:<div className="movie-saga-ph"/>}<span className="movie-saga-order">{i+1}</span><span className={`movie-saga-state ${x.effective_status==='in_plex'?'owned':x.effective_status==='acquiring'?'acquiring':'missing'}`}>{x.effective_status==='in_plex'?'✓':x.effective_status==='acquiring'?'…':'!'}</span></div><b>{x.display_title||x.title}</b><small>{x.year||'—'} · PikoScore {x.final_rating!=null?score1(x.final_rating):'—'}</small></>;return x.imdb_id?<Link className={`movie-saga-card ${current?'current':''}`} href={`/catalogo/${x.imdb_id}`} key={`${x.imdb_id}-${i}`}>{body}</Link>:<div className={`movie-saga-card ${current?'current':''}`} key={`${x.title}-${i}`}>{body}</div>})}</div></section>}
+    {saga&&sagaTitles.length>0&&<section className="movie-panel movie-saga-panel"><div className="movie-saga-head"><div><span>SAGA / COLECCIÓN</span><h2>{saga.name||item.collection_name}</h2><small>{sagaOwned}/{sagaTitles.length} en Plex</small></div><Link href={`/sagas/${item.tmdb_collection_id}`}>Ver saga completa →</Link></div><div className="movie-saga-strip">{sagaTitles.map((x,i)=>{const current=x.imdb_id===item.imdb_id,poster=x.catalog_poster||x.poster_path;const body=<><div className="movie-saga-poster-wrap">{poster?<img src={img(poster)} alt=""/>:<div className="movie-saga-ph"/>}<span className="movie-saga-order">{i+1}</span><span className={`movie-saga-state ${x.effective_status==='in_plex'?'owned':'missing'}`}>{x.effective_status==='in_plex'?'✓':'!'}</span></div><b>{x.display_title||x.title}</b><small>{x.year||'—'} · PikoScore {x.final_rating!=null?score1(x.final_rating):'—'}</small></>;return x.imdb_id?<Link className={`movie-saga-card ${current?'current':''}`} href={`/catalogo/${x.imdb_id}`} key={`${x.imdb_id}-${i}`}>{body}</Link>:<div className={`movie-saga-card ${current?'current':''}`} key={`${x.title}-${i}`}>{body}</div>})}</div></section>}
 
     <div className="movie-grid">
       <section className="movie-panel"><h2>Información</h2><div className="movie-info"><div><b>Director</b><span>{director?.name||'—'}</span></div><div><b>País</b><span>{item.country||'—'}</span></div><div><b>Estreno</b><span>{release}</span></div><div><b>Duración</b><span>{runtimeLabel(item.runtime)}</span></div><div><b>Idioma original</b><span>{item.original_language||'—'}</span></div><div><b>Clasificación</b><span>{item.certification||'—'}</span></div><div><b>Géneros</b><span>{(item.genres||[]).join(', ')||'—'}</span></div><div><b>Saga</b><span>{item.collection_name&&item.tmdb_collection_id?<Link className="movie-saga-link" href={`/sagas/${item.tmdb_collection_id}`}>{item.collection_name} →</Link>:item.collection_name||'—'}</span></div></div></section>
       <section className="movie-panel"><div className="section-head"><h2>Reparto principal</h2></div>{cast.length?<div className="movie-cast">{cast.map((c,i)=><Link className="movie-person" href={`/personas/${c.tmdb_person_id}`} key={`${c.tmdb_person_id}-${i}`}>{img(c.profile_path)?<img src={img(c.profile_path)} alt=""/>:<div className="ph"/>}<b>{c.name}</b><span>{c.character_name||'Reparto'}</span></Link>)}</div>:<div className="movie-empty">Sin reparto enriquecido disponible.</div>}</section>
       {crew.length>0&&<section className="movie-panel"><h2>Equipo principal</h2><div className="movie-team">{crew.map((c,i)=><Link href={`/personas/${c.tmdb_person_id}`} key={`${c.tmdb_person_id}-${i}`}><b>{c.name}</b><span>{c.job||c.credit_type}</span></Link>)}</div></section>}
-      <section className="movie-panel"><h2>Calidad de datos</h2><div className="movie-info"><div><b>Identidad</b><span>{item.imdb_id&&item.tmdb_id?'IMDb + TMDb correctos':'Revisar IDs'}</span></div><div><b>Ratings</b><span>{ratings.length?`${ratings.length} fuentes actuales`:'Pendientes'}</span></div><div><b>Sinopsis</b><span>{item.overview?'Disponible':'Pendiente'}</span></div><div><b>Carátula</b><span>{item.poster_path?'Disponible':'Pendiente'}</span></div></div></section>
+      <section className="movie-panel"><h2>Calidad de datos</h2><div className="movie-info"><div><b>Identidad</b><span>{item.imdb_id&&item.tmdb_id?'IMDb + TMDb correctos':'Revisar en Calidad → Identidad'}</span></div><div><b>Ratings</b><span>{ratings.length?`${ratings.length} fuentes actuales`:'Pendientes'}</span></div><div><b>Sinopsis</b><span>{item.overview?'Disponible':'Pendiente'}</span></div><div><b>Carátula</b><span>{item.poster_path?'Disponible':'Pendiente'}</span></div></div></section>
     </div>
 
-    <section className="movie-admin"><div className="ids"><a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer"><b>IMDb</b>{item.imdb_id} ↗</a>{item.tmdb_id?<a href={`https://www.themoviedb.org/movie/${item.tmdb_id}`} target="_blank" rel="noreferrer"><b>TMDb</b>{item.tmdb_id} ↗</a>:<span><b>TMDb</b>Falta</span>}</div><details><summary>✎ Editar identidad</summary><form action={saveIdentityAction} className="identity-form"><input type="hidden" name="imdbId" value={item.imdb_id}/><label>IMDb ID<input name="newImdbId" defaultValue={item.imdb_id}/></label><label>TMDb ID<input name="tmdbId" defaultValue={item.tmdb_id||''}/></label><button>Guardar</button></form></details><div className="movie-admin-actions"><EnrichTitleButton imdbId={item.imdb_id} label="↻ Actualizar datos" className="ghost"/><form action={excludeTitle}><input type="hidden" name="imdbId" value={item.imdb_id}/><input type="hidden" name="returnTo" value={back}/><button className="danger">Excluir película</button></form></div></section>
+    <section className="movie-admin"><div className="ids"><a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer"><b>IMDb</b>{item.imdb_id} ↗</a>{item.tmdb_id?<a href={`https://www.themoviedb.org/movie/${item.tmdb_id}`} target="_blank" rel="noreferrer"><b>TMDb</b>{item.tmdb_id} ↗</a>:<span><b>TMDb</b>Falta</span>}</div><div className="movie-admin-actions"><form action={excludeTitle}><input type="hidden" name="imdbId" value={item.imdb_id}/><input type="hidden" name="returnTo" value={back}/><button className="danger">Excluir película</button></form></div></section>
   </div>;
 }
 
 export default async function Ficha({params,searchParams}){
   const{imdbId}=await params,p=await searchParams,item=await getCatalogItem(imdbId);if(!item)notFound();const back=p.from&&String(p.from).startsWith('/catalogo')?p.from:'/catalogo';
-  if(isSeries(item.type)){const[operational,dashboard,ratingsData]=await Promise.all([item.series?.show_rating_key?getSeriesDetail(item.series.show_rating_key):null,item.series?.show_rating_key?getSeriesDashboard(item.series.show_rating_key):null,getCatalogRatings(imdbId)]);return <EditorialSeries item={item} back={back} notice={p.notice} operational={operational} dashboard={dashboard} ratingsData={ratingsData}/>;}
+  if(isSeries(item.type)){const[operational,dashboard,ratingsData]=await Promise.all([item.series?.show_rating_key?getSeriesDetail(item.series.show_rating_key):null,item.series?.show_rating_key?getSeriesDashboard(item.series.show_rating_key):null,getCatalogRatings(imdbId)]);return <EditorialSeries item={item} back={back} operational={operational} dashboard={dashboard} ratingsData={ratingsData}/>;}
   const[ratingsData,qualityData,saga]=await Promise.all([getCatalogRatings(imdbId),getMovieDetailExtras(imdbId),item.tmdb_collection_id?getSagaDetail(item.tmdb_collection_id):null]);
-  return <EditorialMovie item={item} back={back} notice={p.notice} ratingsData={ratingsData} qualityData={qualityData} saga={saga}/>;
+  return <EditorialMovie item={item} back={back} ratingsData={ratingsData} qualityData={qualityData} saga={saga}/>;
 }
