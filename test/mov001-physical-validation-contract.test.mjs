@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const validation=await readFile(new URL('../lib/movie-file-validation.js',import.meta.url),'utf8');
+const lifecycle=await readFile(new URL('../lib/lifecycle.js',import.meta.url),'utf8');
+const plex=await readFile(new URL('../lib/plex-sync.js',import.meta.url),'utf8');
+const display=await readFile(new URL('../lib/process-display.js',import.meta.url),'utf8');
+test('MOV-001 is the observed canonical individual operation',()=>{assert.match(validation,/processCode:'PROC-MOV-001'/);assert.match(validation,/runKind:'individual'/);assert.match(validation,/validateMovieFileCore/);assert.match(validation,/physical_files/);assert.match(display,/Validar archivo físico/)});
+test('MOV-001 detects duplicates from distinct plex_files, not rating keys',()=>{assert.match(validation,/JOIN plex_files pf/);assert.match(validation,/physicalKey/);assert.match(validation,/distinct\.length>1/);assert.match(validation,/physical_file_count/);assert.doesNotMatch(validation,/if\(rows\.length>1\)/)});
+test('movie file validation uses a physical fingerprint and lifecycle compares the same contract',()=>{assert.match(validation,/ratingPhysicalFingerprint/);assert.match(validation,/createHash\('md5'\)/);assert.match(lifecycle,/md5\(string_agg/);assert.match(lifecycle,/pfv\.file_path/);assert.match(lifecycle,/pfv\.file_size_bytes/);assert.match(lifecycle,/pfv\.duration_ms/);assert.match(lifecycle,/pfv\.plex_part_id/)});
+test('Plex Sync recomputes movies whose physical fingerprint changed without auto-running MOV-001',()=>{assert.match(plex,/recomputePhysicalMovieChanges/);assert.match(plex,/mfv\.source_fingerprint IS DISTINCT FROM/);assert.match(plex,/recomputeLifecycleForIds\(ids\)/);assert.doesNotMatch(plex,/validateMovieFile/)});
