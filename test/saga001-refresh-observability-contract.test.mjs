@@ -50,3 +50,12 @@ test('SAGA-001 refresh is atomic per collection and prioritizes inconsistent col
   const memberDelete=saga.indexOf('DELETE FROM saga_collection_members',ops);
   assert.ok(ops>=0&&collectionWrite>ops&&memberDelete>collectionWrite,'collection metadata and members must share the transaction ops');
 });
+
+test('SAGA-001 deduplicates provider members by TMDb movie id before writing',()=>{
+  assert.match(saga,/function uniqueMovieParts\(parts\)/);
+  assert.match(saga,/seen\.has\(id\)/);
+  assert.match(saga,/const rawParts=/);
+  assert.match(saga,/const parts=uniqueMovieParts\(rawParts\)/);
+  assert.match(saga,/duplicate_members_ignored/);
+  assert.match(saga,/member_count,refreshed_at\).*\$\{parts\.length\}/s);
+});
