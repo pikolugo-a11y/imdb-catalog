@@ -31,6 +31,15 @@ test('Railway reports compact scan, capture progress and first-class errors',()=
   assert.match(bridge,/error_count=error_count\+1/);
 });
 
+test('idle worker reconciles an orphaned completed technical run',()=>{
+  assert.match(worker,/reconcileStoppedTechnicalProcessRun/);
+  assert.match(worker,/reconcileIdleRun/);
+  assert.match(bridge,/FROM plex_technical_runs/);
+  assert.match(bridge,/legacy\.status!=='completed'/);
+  assert.match(bridge,/eventType:'run_reconciled'/);
+  assert.match(bridge,/reconciled:true/);
+});
+
 test('PQ-002 does not require a new Neon schema column',()=>{
   assert.doesNotMatch(actions,/process_run_id/);
   assert.doesNotMatch(worker,/process_run_id/);
