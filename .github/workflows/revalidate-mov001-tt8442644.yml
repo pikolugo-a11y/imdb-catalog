@@ -28,7 +28,9 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund server-only
 
       - name: Revalidar únicamente tt8442644
         run: node --conditions=react-server scripts/revalidate-mov001-once.mjs tt8442644
