@@ -1,5 +1,6 @@
 import {claimBatchItem,executeClaimedItem,reconcileExpiredLeases,heartbeatPool} from '../lib/batch-worker-runtime.mjs';
 import {executeData003Canonical} from '../lib/data003-canonical.mjs';
+import {executeMov001Canonical} from '../lib/mov001-canonical.mjs';
 
 const POOL='fast';
 const CAPACITY=Math.max(1,Math.min(Number(process.env.BATCH_FAST_CAPACITY)||8,32));
@@ -8,6 +9,7 @@ const HEARTBEAT_MS=Math.max(5000,Math.min(Number(process.env.BATCH_HEARTBEAT_MS)
 const workerId=`batch-fast:${process.env.RAILWAY_REPLICA_ID||process.env.HOSTNAME||process.pid}`;
 const adapters=new Map([
   ['PROC-DATA-003',{execute:executeData003Canonical}],
+  ['PROC-MOV-001',{execute:executeMov001Canonical}],
 ]);
 let stopping=false;
 const active=new Set();
