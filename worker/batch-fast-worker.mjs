@@ -1,6 +1,8 @@
 import {claimBatchItem,executeClaimedItem,reconcileExpiredLeases,heartbeatPool} from '../lib/batch-worker-runtime.mjs';
 import {executeData003Canonical} from '../lib/data003-canonical.mjs';
 import {executeMov001Canonical} from '../lib/mov001-canonical.mjs';
+import {executeIv002Canonical} from '../lib/identity-validation-canonical.mjs';
+import {recomputeValidationLifecycle} from '../lib/validation-lifecycle-canonical.mjs';
 
 const POOL='fast';
 const CAPACITY=Math.max(1,Math.min(Number(process.env.BATCH_FAST_CAPACITY)||8,32));
@@ -10,6 +12,7 @@ const workerId=`batch-fast:${process.env.RAILWAY_REPLICA_ID||process.env.HOSTNAM
 const adapters=new Map([
   ['PROC-DATA-003',{execute:executeData003Canonical}],
   ['PROC-MOV-001',{execute:executeMov001Canonical}],
+  ['PROC-IV-002',{execute:(sql,id,{trace})=>executeIv002Canonical(sql,id,{trace,recomputeLifecycle:recomputeValidationLifecycle})}],
 ]);
 let stopping=false;
 const active=new Set();
