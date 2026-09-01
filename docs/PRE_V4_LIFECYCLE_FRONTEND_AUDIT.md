@@ -202,6 +202,38 @@ Clasificación provisional:
 
 Antes de borrar: comprobar que ninguna workflow histórica todavía abierta o PR pendiente usa estos artefactos como marcador; el CI actual no los consume.
 
+## P2-A — Primer lote destructivo aprobado y ejecutado
+
+Autorización explícita del usuario recibida el 2026-09-01 con **“Adelante”** sobre el lote presentado.
+
+Se eliminaron **únicamente** en la rama `pre-v4-readiness` los elementos previamente clasificados con `FRONTEND=NO`:
+
+- `.github/workflows/revalidate-mov001-tt8442644.yml`
+- `scripts/revalidate-mov001-once.mjs`
+- `ops/diagnose/tt8442644.fix-note`
+- `ops/diagnose/tt8442644.once`
+- `ops/diagnose/tt8442644.trigger`
+- `ops/revalidate/tt8442644.final`
+- `ops/revalidate/tt8442644.once`
+- `tmp/validate-saga-availability-main.txt`
+- `tmp/validate-saga-availability-v2.txt` … `v11.txt`
+- `ci/sagas-v2-pr.txt`
+- `ci/sagas-v2-validation.txt`
+
+Verificación posterior: la ruta `tmp/` ya no existe en el branch tras retirar todos sus artefactos, confirmando que el directorio contenía únicamente estos temporales.
+
+No se tocó:
+
+- MOV-001 canónico;
+- Sagas V3;
+- Batch API/FAST/Plex;
+- Lifecycle read-model;
+- Railway/Neon/Vercel;
+- PRs o ramas;
+- ningún control o flujo con consumidor frontend `SÍ`/`INDIRECTO`.
+
+**Resultado P2-A:** `COMPLETADO`.
+
 ## Estado tras este bloque
 
 Se reduce significativamente el bloqueo del antiguo launcher Lifecycle:
@@ -209,15 +241,13 @@ Se reduce significativamente el bloqueo del antiguo launcher Lifecycle:
 - mantenimiento actual de `catalog_lifecycle`: **demostrado en caminos canónicos**;
 - People histórico: **reemplazo canónico visible + Batch API demostrado**;
 - Plex Reconcile histórico: **identificado como DEBUG PROBE 5, no reconciliador completo**;
-- temporales Sagas/CI: **sin consumidor en CI actual ni frontend encontrado**.
-
-El borrado físico sigue bloqueado hasta completar el último gate de productores externos/PRs/branches y presentar el lote P2 al usuario.
+- primer lote TEMP/diagnóstico: **eliminado tras autorización explícita y gate frontend=NO**.
 
 ## Próximo gate
 
-1. Buscar productores/referencias restantes de `orchestration='people'`, `plex_full_reconcile`, `batch_jobs` Lifecycle y marcadores temporales en PRs/branches relevantes.
-2. Terminar la clasificación de los 11 PR abiertos y sus commits únicos.
+1. Buscar productores/referencias restantes de `orchestration='people'`, `plex_full_reconcile` y `batch_jobs` Lifecycle.
+2. Terminar la clasificación de los PR abiertos y rescatar únicamente ideas útiles de #258/#261/#99.
 3. Construir allowlist de ramas que deben conservarse.
-4. Presentar el primer lote P2 con evidencia `frontend=NO` y riesgo por elemento.
+4. Preparar el siguiente lote P2 con evidencia de consumidor frontend por elemento.
 
-**Estado:** Lifecycle read-model protegido y ejecución histórica casi cerrada; pendiente último gate externo antes de borrado.
+**Estado:** P2-A completado; Lifecycle read-model protegido y ejecución histórica todavía pendiente de último gate externo antes de borrado.
