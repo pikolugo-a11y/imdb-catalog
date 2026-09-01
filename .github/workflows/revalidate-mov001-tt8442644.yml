@@ -1,16 +1,16 @@
-name: Revalidar MOV-001 tt8442644
+name: Diagnosticar MOV-001 tt8442644
 
 on:
   push:
     branches: [main]
     paths:
-      - 'ops/revalidate/tt8442644.once'
+      - 'ops/diagnose/tt8442644.once'
 
 permissions:
   contents: read
 
 jobs:
-  revalidate:
+  diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -28,9 +28,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: |
-          npm install --no-audit --no-fund
-          npm install --no-save --no-audit --no-fund server-only
+        run: npm install --no-audit --no-fund
 
-      - name: Revalidar únicamente tt8442644
-        run: node --conditions=react-server scripts/revalidate-mov001-once.mjs tt8442644
+      - name: Diagnosticar hashes tt8442644
+        run: node scripts/diagnose-mov001-fingerprint-once.mjs tt8442644
