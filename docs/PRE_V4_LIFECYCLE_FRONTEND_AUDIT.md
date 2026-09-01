@@ -102,11 +102,122 @@ Clasificación provisional: `TEMP / DIAGNOSTIC / FRONTEND=NO`.
 
 Antes de pedir autorización de borrado se hará una última comprobación de referencias del repositorio y se preservará en documentación la causa raíz útil si no está ya recogida en docs/issue.
 
+## LFC-005 — Quién mantiene hoy `catalog_lifecycle`
+
+La arquitectura canónica actual sí recompone Lifecycle fuera del worker histórico.
+
+Evidencia:
+
+- `worker/batch-api-worker.mjs` importa `recomputeLifecycleWithSql` y lo ejecuta explícitamente tras IV-001 y DATA-002. También dispone de una transición específica para ID-001.
+- `worker/batch-fast-worker.mjs` importa `recomputeLifecycleWithSql` y lo ejecuta después de IV-002.
+- los procesos SER-003/SER-004 devuelven el Lifecycle calculado por sus cores canónicos.
+- `executeData003Canonical` persiste PikoScore y después recalcula/persiste `catalog_lifecycle`.
+- `executeMov001Canonical` recalcula explícitamente la fase de película y actualiza `catalog_lifecycle`.
+
+**Conclusión:** el mantenimiento del read-model Lifecycle ya existe dentro de caminos canónicos Batch/API/FAST/unitarios. Por tanto no depende en exclusiva del antiguo `worker/lifecycle-worker.mjs`.
+
+### Deuda detectada LFC-DUP-001
+
+`lib/data003-canonical.mjs` contiene una copia local sustancial de la clasificación Lifecycle (`classify`, `reason`, consulta de estado y upsert de `catalog_lifecycle`) en vez de reutilizar `lifecycle-recompute-core.mjs`.
+
+`lib/mov001-canonical.mjs` también contiene una transición parcial local (`recomputeMovieStage`) para los estados de película.
+
+Esto no es motivo de borrado inmediato porque ambos procesos están vivos, pero sí deuda PRE-V4: **consolidar la escritura de Lifecycle en un único core canónico** para evitar divergencias de reglas.
+
+Clasificación:
+
+- `lifecycle-recompute-core.mjs`: `CANONICAL`.
+- lógica duplicada DATA-003: `DUPLICATE / CONSOLIDAR`.
+- transición parcial MOV-001: `COMPATIBILITY / CONSOLIDAR`.
+
+## LFC-006 — People histórico frente a People canónico
+
+El launcher antiguo arranca `worker/people-worker.mjs`. Ese worker consume la generación histórica `batch_jobs` / `batch_runs` y ejecuta `worker/people-executor.mjs`.
+
+Sin embargo, la superficie actual de Personas usa otra arquitectura:
+
+- `/personas/[id]` muestra el botón **Actualizar perfil y filmografía**.
+- ese botón llama `refreshPersonFilmographyAction`.
+- la Server Action llama directamente `refreshPersonFilmography` de `lib/people-v2.js`.
+- `refreshPersonFilmography` está observado como `PROC-PER-001`, executor `vercel` para el flujo individual.
+
+Además existe Batch Personas actual:
+
+- `/calidad/personas` → `startPeopleBatchAction` → `startPeopleBatch`.
+- `startPeopleBatch` crea `batch_run_control`/`batch_run_items`, pool `api`, executor `railway_batch_api`.
+- `worker/batch-api-worker.mjs` registra `PROC-PER-001` y reutiliza **la misma función canónica `refreshPersonFilmography` de `lib/people-v2.js`**.
+
+Por tanto hay dos caminos actuales coherentes —individual Vercel y Batch API— que reutilizan el mismo core de Personas.
+
+`worker/people-worker.mjs` + `worker/people-executor.mjs` implementan una generación distinta basada en tablas históricas y duplican gran parte de la lógica TMDb/filmografía.
+
+Clasificación actual:
+
+- `lib/people-v2.js`: `CANONICAL / FRONTEND-CONSUMED`.
+- Batch `PROC-PER-001` sobre Batch API: `CANONICAL / FRONTEND-CONSUMED`.
+- `worker/people-worker.mjs`: `LEGACY PROBABLE`.
+- `worker/people-executor.mjs`: `DUPLICATE / LEGACY PROBABLE`.
+
+Gate para borrado: confirmar que no existe productor vivo de `batch_jobs` con `orchestration='people'` ni dependencia externa. A nivel frontend actual, el People worker histórico **no es necesario** para los dos flujos visibles encontrados.
+
+## LFC-007 — Plex Reconcile histórico es un DEBUG PROBE, no un reconciliador completo
+
+`worker/plex-reconcile-worker.mjs`, arrancado por el antiguo `combined-worker`, contiene señales inequívocas de implementación temporal/diagnóstica:
+
+- reclama `pipeline_runs` con `job_type='plex_full_reconcile'`;
+- registra `stage:'debug_probe'`;
+- fija `probe_limit:5`;
+- selecciona `plex_items ... LIMIT 5`;
+- termina con `stage:'debug_probe_done'`;
+- el propio proceso escribe `plex-reconcile-worker listo DEBUG PROBE 5`.
+
+Esto significa que el nombre `plex_full_reconcile` no describe la ejecución real actual de ese worker: sólo procesa cinco elementos tras un baseline.
+
+La operación visible de Novedades **Actualizar Plex** ya fue trazada por el frontend gate y usa el camino canónico `syncPlexFromNews` / `syncPlexFast`, ejecutado en Vercel; SER-002 usa por separado el Batch Plex canónico.
+
+Por tanto el `plex-reconcile-worker.mjs` del launcher histórico no debe confundirse con ninguno de esos dos flujos protegidos.
+
+Clasificación: `TEMP/DEBUG + LEGACY PROBABLE`, con alta prioridad para retirar o reemplazar documentalmente tras verificar si queda algún productor real de `pipeline_runs.job_type='plex_full_reconcile'`.
+
+Riesgo: si se mantuviera creyendo que hace una reconciliación completa, produciría una falsa sensación de cobertura porque sólo procesa cinco items.
+
+## LFC-008 — Temporales Sagas/CI
+
+El directorio `tmp/` del branch contiene exclusivamente una familia de validaciones `validate-saga-availability-*`: `main` y versiones `v2` a `v11`; múltiples versiones incluso comparten el mismo blob SHA, lo que confirma repetición de marcadores/artefactos de validación.
+
+El directorio `ci/` sólo contiene:
+
+- `sagas-v2-pr.txt`
+- `sagas-v2-validation.txt`
+
+La workflow CI actual no referencia `tmp/` ni esos dos ficheros `ci/`; sus pasos ejecutan checks de Node, selfcheck PikoScore, `test:quality` y build.
+
+Además las páginas Sagas actuales ya están trazadas sobre `sagas-v3`.
+
+Clasificación provisional:
+
+- `tmp/validate-saga-availability-*`: `TEMP / FRONTEND=NO / CANDIDATO P2`.
+- `ci/sagas-v2-pr.txt`: `TEMP / FRONTEND=NO / CANDIDATO P2`.
+- `ci/sagas-v2-validation.txt`: `TEMP / FRONTEND=NO / CANDIDATO P2`.
+
+Antes de borrar: comprobar que ninguna workflow histórica todavía abierta o PR pendiente usa estos artefactos como marcador; el CI actual no los consume.
+
+## Estado tras este bloque
+
+Se reduce significativamente el bloqueo del antiguo launcher Lifecycle:
+
+- mantenimiento actual de `catalog_lifecycle`: **demostrado en caminos canónicos**;
+- People histórico: **reemplazo canónico visible + Batch API demostrado**;
+- Plex Reconcile histórico: **identificado como DEBUG PROBE 5, no reconciliador completo**;
+- temporales Sagas/CI: **sin consumidor en CI actual ni frontend encontrado**.
+
+El borrado físico sigue bloqueado hasta completar el último gate de productores externos/PRs/branches y presentar el lote P2 al usuario.
+
 ## Próximo gate
 
-1. Trazar quién recompone `catalog_lifecycle` en las operaciones canónicas actuales.
-2. Separar People y Plex Reconcile del launcher histórico y comprobar reemplazos vivos.
-3. Terminar referencias de `tt8442644` y temporales Sagas/CI.
-4. Presentar al usuario el primer lote P2 sólo cuando todos sus miembros tengan frontend=`NO` demostrado.
+1. Buscar productores/referencias restantes de `orchestration='people'`, `plex_full_reconcile`, `batch_jobs` Lifecycle y marcadores temporales en PRs/branches relevantes.
+2. Terminar la clasificación de los 11 PR abiertos y sus commits únicos.
+3. Construir allowlist de ramas que deben conservarse.
+4. Presentar el primer lote P2 con evidencia `frontend=NO` y riesgo por elemento.
 
-**Estado:** auditoría Lifecycle abierta; read-model protegido; ejecución histórica todavía bloqueada para borrado.
+**Estado:** Lifecycle read-model protegido y ejecución histórica casi cerrada; pendiente último gate externo antes de borrado.
