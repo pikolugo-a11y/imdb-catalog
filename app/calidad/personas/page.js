@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import {getPeopleQualityOverview} from '@/lib/people-quality';
+import {getPeopleBatchPanelState} from '@/lib/people-batch';
 import {refreshPersonFilmographyAction} from '@/app/personas/actions';
+import PeopleBatchPanel from '@/components/PeopleBatchPanel';
+import '../datos/batch-panel.css';
 import './people-quality.css';
 
 export const dynamic='force-dynamic';
@@ -11,12 +14,13 @@ const labels={never:['Sin actualizar','Nunca se ha ejecutado PER-001'],stale:['D
 
 export default async function CalidadPersonas({searchParams}){
   const p=await searchParams;
-  const data=await getPeopleQualityOverview(p);
+  const [data,batchState]=await Promise.all([getPeopleQualityOverview(p),getPeopleBatchPanelState()]);
   const qs=(changes={})=>{const x=new URLSearchParams();for(const[k,v]of Object.entries({...p,...changes}))if(v!==undefined&&v!==null&&v!=='')x.set(k,String(v));return`/calidad/personas?${x}`};
   const returnTo=qs({});
   const cards=[['pending','Pendientes',data.summary.pending],['never','Nunca actualizadas',data.summary.never],['stale','Desactualizadas',data.summary.stale],['error','Con error',data.summary.error],['ok','Correctas',data.summary.ok]];
   return <div className="pq-page">
-    <header className="pq-head"><div><Link href="/calidad" className="pq-back">← Calidad</Link><span className="eyebrow">CALIDAD · PERSONAS</span><h1>Personas</h1><p>Control de mantenimiento del perfil y filmografía. Actualiza directamente desde esta tabla con PER-001 o abre la ficha para revisar el detalle de una persona.</p></div><div className="pq-total"><strong>{nf(data.summary.total)}</strong><span>personas relevantes</span></div></header>
+    <header className="pq-head"><div><Link href="/calidad" className="pq-back">← Calidad</Link><span className="eyebrow">CALIDAD · PERSONAS</span><h1>Personas</h1><p>Control de mantenimiento del perfil y filmografía. Actualiza directamente con PER-001 o usa el Batch común para ejecutar PER-001 × N.</p></div><div className="pq-total"><strong>{nf(data.summary.total)}</strong><span>personas relevantes</span></div></header>
+    <PeopleBatchPanel state={batchState}/>
     <section className="pq-summary">{cards.map(([key,label,count])=><Link key={key} href={qs({status:key,page:1})} className={`pq-card ${data.status===key?'active':''} pq-${key}`}><span>{label}</span><strong>{nf(count)}</strong><small>{key==='ok'?'al día':key==='pending'?`${nf(data.summary.pending)} requieren acción`:'personas'}</small></Link>)}</section>
     <form className="pq-tools"><input name="q" defaultValue={data.q} placeholder="Buscar persona…"/><input type="hidden" name="status" value={data.status}/><button>Buscar</button><Link href="/calidad/personas">Limpiar</Link></form>
     <div className="pq-list-head"><div><b>{nf(data.filteredTotal)}</b> resultados</div><span>Vigencia: {data.maxAgeDays} días</span></div>
