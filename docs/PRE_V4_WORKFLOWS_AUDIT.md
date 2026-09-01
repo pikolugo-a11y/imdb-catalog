@@ -2,196 +2,152 @@
 
 Fecha: 2026-09-01  
 Rama: `pre-v4-readiness`  
-Estado: **P1 en curso; no ejecutar borrados todavía**
+Estado: **P1/P2 auditado; sin borrados nuevos en este bloque**
 
-## 1. Los 8 workflows actuales
+## 1. Workflows actuales en `pre-v4-readiness`
 
-| Workflow | Trigger | Función real | Clasificación P1 | Decisión provisional |
+La rama contiene actualmente 7 workflows:
+
+| Workflow | Trigger | Función real | Clasificación | Decisión |
 |---|---|---|---|---|
-| `ci.yml` | PR → main/develop | sintaxis + selfcheck + `test:quality` + build | CANONICAL pero desactualizado | CONSERVAR y corregir |
-| `drop-legacy-batch-job-steps.yml` | push a rama cleanup concreta | drop one-shot de tabla legacy | TEMP/MIGRATION | BORRAR cuando DB confirme |
-| `imdb-discovery.yml` | manual `workflow_dispatch` | PROC-NOV-001 global | CANONICAL | CONSERVAR |
-| `manual-maintenance.yml` | manual | checks read-only acotados | OPERATIONS UTILITY | CONSERVAR o integrar en runbook |
-| `neon-access-check.yml` | manual | comprobar conexión/rol/tamaño/version | OPERATIONS UTILITY | CONSERVAR de momento |
-| `neon-branch-first-migrations.yml` | PR/push con SQL | probar en rama Neon + aplicar producción tras merge | CANONICAL pero RIESGO ALTO | REDISEÑAR antes de V4 |
-| `neon-observability-migration.yml` | manual | migración puntual de observabilidad | TEMP/MIGRATION ONE-SHOT | BORRAR tras confirmar aplicada |
-| `revalidate-mov001-tt8442644.yml` | push de marcador específico | revalidación de una sola película | TEMP/DIAGNOSTIC | BORRAR |
+| `ci.yml` | PR → main/develop | sintaxis + selfcheck + `test:quality` + build | CANONICAL | CONSERVAR |
+| `drop-legacy-batch-job-steps.yml` | push a rama cleanup concreta | drop one-shot de tabla legacy | TEMP/MIGRATION | BORRAR sólo cuando Neon confirme |
+| `imdb-discovery.yml` | manual `workflow_dispatch` | PROC-NOV-001 global | CANONICAL + FRONTEND=SÍ | CONSERVAR |
+| `manual-maintenance.yml` | manual | checks read-only acotados | OPERATIONS UTILITY | CONSERVAR |
+| `neon-access-check.yml` | manual | comprobar conexión/rol/tamaño/version | OPERATIONS UTILITY | CONSERVAR mientras NEON-001 siga activo |
+| `neon-branch-first-migrations.yml` | PR/push con SQL | probar en rama Neon + aplicar producción tras merge | CANONICAL, policy debt | CONSERVAR; revisar política antes de V4 |
+| `neon-observability-migration.yml` | manual | migración puntual de observabilidad | TEMP/MIGRATION ONE-SHOT | BORRAR sólo tras confirmar aplicada |
 
-## 2. Hallazgo CI-001 — CI sigue llamando “canónicos” a workers legacy
+El antiguo `revalidate-mov001-tt8442644.yml` ya no existe en la rama PRE-V4.
 
-`ci.yml` incluye un paso llamado `Validar workers canónicos` que comprueba expresamente:
+## 2. CI-001 — resuelto
 
-- `worker/imdb-discovery.mjs`
-- `worker/lifecycle-pikoscore-executor.mjs`
-- `worker/lifecycle-worker.mjs`
-- `lib/lifecycle-data-stage.mjs`
+El CI ya fue actualizado durante P2-C para dejar de proteger el worker Lifecycle histórico y comprobar los workers Batch actuales. Se conservan además Discovery, PikoScore V3, tests de calidad y build.
 
-La auditoría del execution plane ha demostrado que el Batch V1 actual usa `batch-api-worker`, `batch-fast-worker` y requiere `batch-plex-worker`, mientras el Lifecycle worker histórico depende de la arquitectura antigua `batch_jobs`/`batch_job_steps`.
+**Estado: RESUELTO.**
 
-### Consecuencia
+## 3. DBMIG-001 — riesgo acotado, deuda de política pendiente
 
-CI está protegiendo una generación antigua y, al mismo tiempo, no hace `node --check` explícito de los tres workers Batch V1 que sí componen el execution plane actual.
+`neon-branch-first-migrations.yml` tiene filtros de ruta tanto en PR como en push a `main`:
 
-### Acción PRE-V4 propuesta
+- sólo se activa si cambia `db/migrations/*.sql`;
+- en PR prueba las migraciones modificadas sobre una rama Neon efímera;
+- en push a `main`, si hay migraciones nuevas/modificadas, las aplica a `DATABASE_URL` de producción y ejecuta los smoke tests asociados.
 
-Cuando se cierre definitivamente la clasificación Lifecycle:
+Consecuencia importante: los hotfixes recientes de Railway/Plex que sólo tocaron Docker/configuración/código no disparan este workflow.
 
-1. retirar de CI los checks de workers legacy;
-2. añadir checks explícitos de `batch-api-worker.mjs`, `batch-fast-worker.mjs`, `batch-plex-worker.mjs`, `technical-snapshot-worker.mjs` e `imdb-discovery.mjs`;
-3. conservar `npm run test:quality` y build;
-4. asegurar que los tests contractuales cubren la asignación proceso → pool → adapter canónico.
+Sigue existiendo una deuda de política PRE-V4: un merge que sí incluya DDL bajo `db/migrations/*.sql` puede aplicar producción automáticamente. Para V4 conviene separar claramente:
 
-## 3. Hallazgo DBMIG-001 — merge a main puede modificar producción automáticamente
+1. validación branch-first en CI;
+2. apply de producción manual/approval-gated y trazable.
 
-`neon-branch-first-migrations.yml` hace dos cosas distintas:
+**Estado: riesgo técnico ACOTADO; policy debt ABIERTA.**
 
-- en PR: crea una rama Neon efímera y prueba las migraciones modificadas;
-- en push a `main`: ejecuta automáticamente esas migraciones contra `DATABASE_URL` de producción y luego sus smoke tests.
-
-Esto es técnicamente coherente con branch-first, pero **no es coherente con la regla PRE-V4 de que cada cambio destructivo/riesgoso tenga evidencia y decisión explícita antes de afectar producción**.
-
-Además, el trigger por `db/migrations/*.sql` significa que un merge de código que incluya DDL puede convertirse directamente en cambio productivo sin una segunda aprobación operacional.
-
-### Decisión propuesta
-
-Para V4, separar:
-
-- **CI de migración:** validar siempre en rama efímera;
-- **apply de producción:** manual/approval-gated y trazable.
-
-No modificar todavía el workflow hasta acordar política definitiva de migraciones.
-
-## 4. Workflows one-shot de alta confianza
-
-### `revalidate-mov001-tt8442644.yml`
-
-Es inequívocamente diagnóstico puntual: depende de un marcador `ops/revalidate/tt8442644.final` y ejecuta un script para ese IMDb concreto.
-
-**P2: BORRAR como bloque junto con script y marcadores.**
+## 4. Workflows one-shot bloqueados por Neon
 
 ### `drop-legacy-batch-job-steps.yml`
 
-Sólo escucha la rama `cleanup/drop-batch-job-steps-direct` y existe para retirar `batch_job_steps`.
+Sólo escucha `cleanup/drop-batch-job-steps-direct` y ejecuta una auditoría de dependencias antes de aplicar `20260831_drop_legacy_batch_job_steps.sql`.
 
-**P2: BORRAR workflow tras verificación DB.** La migración SQL se tratará según la política histórica de migraciones.
+No existe consumidor frontend directo del workflow, pero su efecto es destructivo en base de datos. El frontend safety gate no basta para autorizar su retirada ni ejecución: primero debe verificarse el estado real de `batch_job_steps` en producción.
+
+**Clasificación: TEMP/MIGRATION — BLOCKED BY NEON-001.**
 
 ### `neon-observability-migration.yml`
 
-Aplica manualmente una migración concreta (`20260828_process_observability.sql`) y verifica tablas/índices con smoke test transaccional.
+Es `workflow_dispatch`, aplica `20260828_process_observability.sql`, verifica `process_runs`, `process_run_errors`, `process_run_events` e índices y hace smoke transaccional.
 
-La migración ya forma parte de `db/migrations/` y existe un mecanismo genérico branch-first posterior.
+Es one-shot y conceptualmente superseded por el mecanismo genérico branch-first, pero no se borra hasta confirmar que observabilidad ya está aplicada en producción.
 
-**Clasificación:** superseded one-shot.  
-**P2:** borrar workflow tras confirmar que observabilidad está aplicada en producción.
+**Clasificación: TEMP/MIGRATION — BLOCKED BY NEON-001.**
 
-## 5. Workflows que sí tienen responsabilidad actual
+## 5. `imdb-discovery.yml` — frontend safety gate completado
 
-### `imdb-discovery.yml`
+Cadena comprobada:
 
-Es manual, recibe un `run_id` canónico de PROC-NOV-001, usa `main` y ejecuta `worker:imdb-discovery`.
+`/novedades` → botón visible `Buscar novedades` → `requestNewsDiscoveryAction` → crea run `PROC-NOV-001` en `process_runs` → dispatch GitHub de `imdb-discovery.yml` con `run_id` → workflow hace checkout de `main` → `npm run worker:imdb-discovery` → `worker/imdb-discovery.mjs`.
 
-**CANONICAL.** Encaja en el modelo GitHub Actions para tareas globales explícitas/excepcionales, no como motor continuo.
+Por tanto:
 
-### `manual-maintenance.yml`
+- **FRONTEND=SÍ**;
+- **CANONICAL**;
+- no borrar, renombrar ni sustituir sin decisión explícita del usuario y migración completa de la cadena frontend→executor.
 
-Sólo permite dos checks read-only (`database-health`, `series-sample`) y limita el sample.
+## 6. `manual-maintenance.yml`
 
-**OPERATIONS UTILITY.** No urge borrarlo. En P6 debe documentarse en RUNBOOK y decidir si aporta valor frente a herramientas directas.
+Sólo admite tareas manuales acotadas y read-only:
 
-### `neon-access-check.yml`
+- `database-health`;
+- `series-sample`, con límite 1–10.
 
-Sólo comprueba conectividad y metadatos básicos.
+Ejecuta `scripts/manual-check.mjs` contra `DATABASE_URL`.
 
-**OPERATIONS UTILITY.** Útil mientras el acceso directo a Neon no sea fiable; no es deuda prioritaria.
+No forma parte de un botón frontend conocido y no es execution plane continuo. Aporta valor operativo, especialmente mientras el conector Neon no permita inspección fiable.
 
-## 6. Hallazgo UI-LEGACY-001 — las generaciones CSS no están muertas: se cargan todas globalmente
+**Clasificación: OPERATIONS UTILITY — CONSERVAR.**
 
-`app/layout.js` importa en el root, simultáneamente:
+## 7. `neon-access-check.yml`
 
-- `globals.css`
-- `v1.css`
-- `ux.css`
-- `v12.css`
-- `v2.css`
-- `v3-shell.css`
-- `people-v2.css`
-- `home-dashboard.css`
-- `home-dashboard-v2.css`
-- `home-dashboard-v4.css`
+Es manual y read-only. Comprueba conexión real, database, role, tamaño y versión de PostgreSQL mediante `psql`.
 
-Por tanto, los nombres `v1/v2/v3/v4` no identifican ficheros muertos; **hoy todos forman parte del cascade global**.
+Mientras NEON-001 siga bloqueando `get_database_tables`/`describe_branch`/SQL directo del conector, este workflow conserva valor diagnóstico.
 
-### Consecuencia
+**Clasificación: OPERATIONS UTILITY — CONSERVAR.**
 
-Este es un hotspot de deuda real:
+## 8. UI-LEGACY-001 — CSS global generacional sigue protegido
 
-- reglas acumuladas de varias generaciones;
-- posible dependencia por especificidad/orden de importación;
-- riesgo de regresión visual si se borra cualquier capa individual;
-- imposibilidad de entender la UI actual mirando sólo el CSS “más nuevo”.
+`app/layout.js` carga varias hojas generacionales globales. No se debe inferir que `v1/v2/v3/v4` son ficheros muertos por nombre. La consolidación requiere inventario de selectores, overrides y validación visual ruta por ruta.
 
-### Acción V3-final
+**Estado: DEUDA UX/P8; no borrar por nombre.**
 
-No borrar por nombre. En P8/P2 se debe:
+## 9. Sagas
 
-1. inventariar selectores usados;
-2. detectar overrides entre generaciones;
-3. consolidar por responsabilidad (`shell`, home, personas, etc.);
-4. eliminar el versionado histórico de nombres cuando haya una única hoja canónica;
-5. validar visualmente las rutas principales después de cada consolidación.
+`/sagas` y `/sagas/[name]` usan `lib/sagas-v3`, que queda CANONICAL para lectura/dashboard.
 
-## 7. Sagas: V3 confirmado como implementación viva
+`lib/sagas-v2.js` sigue presente y contiene `refreshSagas()`/PROC-SAGA-001 con writes reales a `saga_collections` y `saga_collection_members`. La búsqueda de código no devuelve importadores actuales y el árbol no muestra un fichero adicional obvio que lo consuma, pero la ausencia de resultados de code-search no es evidencia suficiente por sí sola para borrar.
 
-Tanto `/sagas` como `/sagas/[name]` importan desde `lib/sagas-v3` (`getSagasDashboard` y `getSagaDetailV3`).
+**Clasificación actual: `sagas-v2.js` = LEGACY PROBABLE / INVESTIGAR.**
 
-Esto eleva `sagas-v3` a **CANONICAL** para overview y detalle.
+Frontend safety gate para borrado: **UNKNOWN** hasta demostrar exhaustivamente que ningún action, test, script o import dinámico lo consume.
 
-`sagas-v2.js` queda como **LEGACY probable**, pero todavía no se borra hasta revisar acciones/tests/consumidores indirectos.
+## 10. Novedades — componentes Plex antiguos detectados
 
-## 8. PikoScore: wrapper público ya apunta a V3
+En el árbol actual siguen presentes:
 
-`lib/pikoscore.js` no contiene una fórmula antigua: funciona como fachada de compatibilidad y reexporta PikoScore V3 (`pikoscore-v3` / `pikoscore-v3-core`).
+- `app/novedades/NovedadesPlexShell.js`;
+- `app/novedades/PlexIntake.js`.
 
-En cambio `lib/pikoscore-core.mjs` contiene explícitamente `PIKOSCORE_VERSION='2.0.0'` y la fórmula antigua de tres fuentes.
+`app/novedades/layout.js` actualmente devuelve únicamente `children`, por lo que no monta `NovedadesPlexShell` ni `PlexIntake`. La página actual `/novedades` implementa directamente su bloque operativo y usa `PlexSyncButton`, acciones de identidad Plex y cola unificada.
 
-La principal referencia confirmada de `pikoscore-core.mjs` está dentro del Lifecycle worker histórico, que usa `freshnessDays` de esa generación.
+Las búsquedas de código por `NovedadesPlexShell` y `PlexIntake` no devolvieron consumidores. Esto los convierte en candidatos fuertes a DEAD/LEGACY, pero se mantiene el gate conservador:
 
-### Clasificación provisional
+- `NovedadesPlexShell.js`: **DEAD probable / FRONTEND=NO probable**;
+- `PlexIntake.js`: **LEGACY probable / FRONTEND=NO probable**;
+- decisión destructiva: **NO APROBADA TODAVÍA**, hasta completar un último chequeo de consumidores/import dinámico y contraste con tests.
+
+## 11. PikoScore
 
 - `pikoscore-v3-core.mjs`: CANONICAL
 - `pikoscore-v3.js`: CANONICAL
-- `pikoscore.js`: COMPATIBILITY FACADE todavía viva
-- `pikoscore-core.mjs`: LEGACY probable ligado al Lifecycle antiguo
+- `pikoscore.js`: COMPATIBILITY FACADE viva
+- `pikoscore-core.mjs`: LEGACY probable
 
-No borrar hasta completar consumidores.
+No borrar la fachada ni el core antiguo hasta cerrar importadores restantes.
 
-## 9. Matriz actualizada de seguridad P2
+## 12. Estado PRE-V4 actualizado
 
-### Alta confianza para borrar tras último chequeo
+Resueltos o confirmados:
 
-- `revalidate-mov001-tt8442644.yml`
-- `scripts/revalidate-mov001-once.mjs`
-- `ops/diagnose/tt8442644.*`
-- `ops/revalidate/tt8442644.*`
-- `tmp/validate-saga-availability-*`
-- `ci/sagas-v2-*.txt` si ningún workflow los usa
-- `neon-observability-migration.yml` si DB confirma aplicada
-- `drop-legacy-batch-job-steps.yml` si DB confirma tabla retirada
-- `railway.api.toml` + `Dockerfile.api` si no hay consumidor externo
+- CI-001 resuelto;
+- Plex Batch executor productivo restaurado;
+- Technical Snapshot migrado a `main` y rama feature eliminada;
+- `imdb-discovery.yml` confirmado frontend-consumed y canónico;
+- DBMIG-001 no se dispara por cualquier push: sólo por cambios en `db/migrations/*.sql`.
 
-### NO borrar
+Bloqueos/deuda activos:
 
-- Batch API/FAST/Plex workers y configs
-- Technical worker/config
-- `imdb-discovery.yml`
-- `ci.yml` (se corrige, no se elimina)
-- CSS generacional individual hasta consolidación
-- `pikoscore.js` fachada hasta migrar importadores
-
-### Pendientes críticos
-
-- crear/restaurar executor Railway para pool Plex o redefinir arquitectura SER-002;
-- mover Technical Snapshot de rama feature a `main`;
-- resolver Lifecycle antiguo + CI que todavía lo protege;
-- rediseñar apply de migraciones de producción;
-- inventario Neon real bloqueado por conector.
+- NEON-001 impide inventario y limpieza P3;
+- dos workflows one-shot Neon no se borran hasta verificar producción;
+- CSS generacional requiere P8;
+- `sagas-v2.js`, `NovedadesPlexShell.js`, `PlexIntake.js`, `pikoscore-core.mjs` siguen en investigación conservadora;
+- la política de apply automático de migraciones a producción debe revisarse antes de V4.
