@@ -1,11 +1,17 @@
 'use server';
 import {revalidatePath} from 'next/cache';
 import {startData003Batch,pauseBatch,resumeBatch,cancelBatch} from '@/lib/batch-engine';
+import {startData001Batch} from '@/lib/data001-batch';
 import {startData002Batch} from '@/lib/data002-batch';
 
 function refresh(){revalidatePath('/calidad/datos');revalidatePath('/calidad');revalidatePath('/admin');}
 const runId=formData=>String(formData.get('runId')||'').trim();
 const limitOf=formData=>{const raw=String(formData.get('limit')||'').trim();return raw?Number(raw):null};
+
+export async function startData001BatchAction(formData){try{const r=await startData001Batch({limit:limitOf(formData),concurrency:2});refresh();if(r.empty)return{ok:true,message:'No hay títulos con datos estructurales pendientes.'};return{ok:true,runId:r.run?.run_id||null,message:r.reused?'Ya existe un Batch DATA-001 activo.':`Batch de datos preparado · ${r.eligibleCount} título(s) · concurrencia 2.`}}catch(error){refresh();return{ok:false,message:error?.message||'No se pudo iniciar el Batch de datos'}}}
+export async function pauseData001BatchAction(formData){try{const id=runId(formData);if(!id)throw new Error('Run ID ausente');await pauseBatch(id,{reason:'manual'});refresh()}catch(error){refresh();throw error}}
+export async function resumeData001BatchAction(formData){try{const id=runId(formData);if(!id)throw new Error('Run ID ausente');await resumeBatch(id);refresh()}catch(error){refresh();throw error}}
+export async function cancelData001BatchAction(formData){try{const id=runId(formData);if(!id)throw new Error('Run ID ausente');await cancelBatch(id);refresh()}catch(error){refresh();throw error}}
 
 export async function startData002BatchAction(formData){try{const r=await startData002Batch({limit:limitOf(formData),concurrency:2});refresh();if(r.empty)return{ok:true,message:'No hay títulos con ratings pendientes.'};return{ok:true,runId:r.run?.run_id||null,message:r.reused?'Ya existe un Batch DATA-002 activo.':`Batch ratings preparado · ${r.eligibleCount} título(s) · concurrencia 2.`}}catch(error){refresh();return{ok:false,message:error?.message||'No se pudo iniciar el Batch de ratings'}}}
 export async function pauseData002BatchAction(formData){try{const id=runId(formData);if(!id)throw new Error('Run ID ausente');await pauseBatch(id,{reason:'manual'});refresh()}catch(error){refresh();throw error}}
