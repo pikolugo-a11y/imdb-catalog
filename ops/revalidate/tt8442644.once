@@ -1,4 +1,0 @@
-Revalidación one-shot de PROC-MOV-001 tras corregir el contrato de fingerprint físico.
-IMDb: tt8442644
-Intento: 5
-Motivo: alinear duración efectiva COALESCE(plex_files.duration_ms, plex_media.duration_ms).
