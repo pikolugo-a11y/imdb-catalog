@@ -1,0 +1,18 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
+const orchestration=read('../lib/iv-batch.js');
+const canonical=read('../lib/identity-validation-canonical.mjs');
+const wrapper=read('../lib/identity-validation.js');
+const apiWorker=read('../worker/batch-api-worker.mjs');
+const fastWorker=read('../worker/batch-fast-worker.mjs');
+const layout=read('../app/calidad/validacion-identidad/layout.js');
+const panels=read('../components/IvBatchPanels.js');
+test('IV-001 Batch selecciona solo evidencia pendiente y usa pool API con concurrencia 2',()=>{assert.match(orchestration,/'PROC-IV-001':\{pool:'api'/);assert.match(orchestration,/concurrency:2/);assert.match(orchestration,/NOT\(\$\{readySql\}\)/)});
+test('IV-002 Batch selecciona solo evidencia lista y usa pool fast con concurrencia 8',()=>{assert.match(orchestration,/'PROC-IV-002':\{pool:'fast'/);assert.match(orchestration,/concurrency:8/);assert.match(orchestration,/cl\.lifecycle_state='IDENTITY_VALIDATION'/)});
+test('Individual y Batch comparten los canónicos IV',()=>{assert.match(wrapper,/executeIv001Canonical/);assert.match(wrapper,/executeIv002Canonical/);assert.match(apiWorker,/executeIv001Canonical/);assert.match(fastWorker,/executeIv002Canonical/)});
+test('IV-001 usa gobierno compartido TMDb y OMDb',()=>{assert.match(apiWorker,/createApiGate\(sql,\{batchRunId:item\.batch_run_id\}\)/);assert.match(canonical,/source:'tmdb'/);assert.match(canonical,/source:'omdb'/);assert.match(canonical,/lane='manual'/)});
+test('IV-002 no realiza llamadas externas',()=>{const body=canonical.slice(canonical.indexOf('export async function executeIv002Canonical'));assert.doesNotMatch(body,/requestJson\(/);assert.doesNotMatch(body,/apiGate\.acquire/)});
+test('Workers nuevos no importan lifecycle-validation legacy ni FilmAffinity',()=>{assert.doesNotMatch(apiWorker,/lifecycle-validation-executor|faEvidence|FilmAffinity/);assert.doesNotMatch(fastWorker,/lifecycle-validation-executor|faEvidence|FilmAffinity/)});
+test('Validación muestra ambos controles Batch y nunca los inicia sola',()=>{assert.match(layout,/getIvBatchPanelState\('PROC-IV-001'\)/);assert.match(layout,/getIvBatchPanelState\('PROC-IV-002'\)/);assert.match(panels,/Iniciar Batch/);assert.match(panels,/1 título/);assert.match(panels,/5 títulos/);assert.match(panels,/25 títulos/);assert.doesNotMatch(layout,/startIvBatch/)});
