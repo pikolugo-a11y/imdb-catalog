@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const read=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8');
 const runtime=read('../lib/process-runtime.js');
 const identity=read('../lib/identity-unitary.js');
+const identityCanonical=read('../lib/id001-canonical.mjs');
 const identityStore=read('../lib/identity.js');
 const correction=read('../lib/identity-correction.js');
 const actions=read('../app/calidad/identidad/actions.js');
@@ -34,6 +35,7 @@ test('ID-001 usa la infraestructura común y conserva una única operación func
   assert.match(actions,/triggerSource:'calidad_identidad_manual'/);
   assert.match(actions,/executor:'vercel'/);
   assert.match(actions,/resolveIdentityUnitary\(id,trace\)/);
+  assert.match(identity,/executeId001Canonical/);
 });
 
 test('doble clic no se interpreta como TMDb no encontrado',()=>{
@@ -52,14 +54,14 @@ test('ID-001 no escribe estado residual del Batch legacy',()=>{
 });
 
 test('ID-001 solo resuelve TMDb y recalcula Lifecycle',()=>{
-  assert.match(identity,/resolveTmdbOnly/);
+  assert.match(identityCanonical,/themoviedb\.org\/3\/find/);
   assert.match(identity,/recomputeLifecycleForIds/);
-  assert.doesNotMatch(identity,/FilmAffinity|Wikidata|fa_/i);
+  assert.doesNotMatch(identityCanonical,/FilmAffinity|Wikidata|fa_/i);
 });
 
 test('ID-001 distingue updated no_change y not_found',()=>{
-  assert.match(identity,/before\.tmdb_id\?'no_change':'updated'/);
-  assert.match(identity,/:\s*'not_found'/);
+  assert.match(identityCanonical,/before\.tmdb_id\?'no_change':'updated'/);
+  assert.match(identityCanonical,/:\s*'not_found'/);
 });
 
 test('ID-002 usa el núcleo canónico compartido y observabilidad común',()=>{
