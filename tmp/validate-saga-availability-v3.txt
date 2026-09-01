@@ -1,1 +1,0 @@
-validate saga availability current main snapshot
