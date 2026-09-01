@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import ActionButton from './ActionButton';
 import BatchAutoRefresh from './BatchAutoRefresh';
+import Data001BatchPanel from './Data001BatchPanel';
 import Data002BatchPanel from './Data002BatchPanel';
+import {getData001BatchPanelState} from '@/lib/data001-batch';
 import {getData002BatchPanelState} from '@/lib/data002-batch';
 import {startData003BatchAction,pauseData003BatchAction,resumeData003BatchAction,cancelData003BatchAction} from '@/app/calidad/datos/batch-actions';
 
@@ -9,11 +11,11 @@ const nf=n=>Number(n||0).toLocaleString('es-ES');
 function pct(done,total){return total?Math.min(100,Math.round((Number(done||0)*1000)/Number(total))/10):0}
 
 export default async function Data003BatchPanel({state}){
-  const data002=await getData002BatchPanelState();
+  const [data001,data002]=await Promise.all([getData001BatchPanelState(),getData002BatchPanelState()]);
   const active=state?.active||null,latest=state?.latest||null,enginePaused=state?.engine?.desired_state==='paused';
   const run=active||latest,total=Number(run?.items_total||0),processed=Number(run?.items_processed||0),succeeded=Number(run?.items_succeeded||0),failed=Number(run?.items_failed||0),pending=Number(run?.items_pending||0);
   const paused=active?.desired_state==='paused'||enginePaused,cancelling=active?.desired_state==='cancel_requested';
-  return <><Data002BatchPanel state={data002}/><section className="batch-panel" aria-label="Batch PikoScore">
+  return <><Data001BatchPanel state={data001}/><Data002BatchPanel state={data002}/><section className="batch-panel" aria-label="Batch PikoScore">
     <BatchAutoRefresh active={Boolean(active)} paused={paused}/>
     <div className="batch-panel-head"><div><span className="cap">Batch · DATA-003</span><h2>Calcular PikoScore masivamente</h2><p>Ejecuta el mismo proceso individual para todos los títulos que están listos para PikoScore.</p></div><span className={`batch-pill ${active?paused?'paused':'running':'idle'}`}>{active?(cancelling?'Cancelando':paused?'Pausado':'En curso'):'Disponible'}</span></div>
     {!active&&<div className="batch-idle"><div><strong>{nf(state?.eligibleCount)} pendientes</strong><small>Selección canónica: datos completos + ratings suficientes y frescos + PikoScore no vigente.</small></div><ActionButton action={startData003BatchAction} label="Iniciar Batch" pendingLabel="Preparando Batch…" className="button"/></div>}
