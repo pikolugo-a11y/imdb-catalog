@@ -38,9 +38,11 @@ test('faltantes e incoherencias bloquean el dashboard',()=>{
 });
 
 test('todos los estados canónicos de lifecycle están clasificados por Calidad',()=>{
-  const source=fs.readFileSync(new URL('../lib/lifecycle.js',import.meta.url),'utf8');
-  const match=source.match(/export const LIFECYCLE=\{([\s\S]*?)\};\nexport function classifyLifecycle/);
-  assert.ok(match,'No se pudo localizar LIFECYCLE en lib/lifecycle.js');
+  const source=fs.readFileSync(new URL('../lib/lifecycle-recompute-core.mjs',import.meta.url),'utf8');
+  const wrapper=fs.readFileSync(new URL('../lib/lifecycle.js',import.meta.url),'utf8');
+  const match=source.match(/export const LIFECYCLE=\{([\s\S]*?)\};\nfunction ageYears/);
+  assert.ok(match,'No se pudo localizar LIFECYCLE en lifecycle-recompute-core.mjs');
+  assert.match(wrapper,/LIFECYCLE,classifyLifecycle,recomputeLifecycleWithSql/);
   const states=[...match[1].matchAll(/([A-Z][A-Z0-9_]+):\{/g)].map(m=>m[1]).sort();
   assert.deepEqual(states,Object.keys(QUALITY_STATE_STAGE).sort());
 });
