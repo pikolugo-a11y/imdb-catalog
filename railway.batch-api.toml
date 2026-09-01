@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.batch-api"
+
+[deploy]
+startCommand = "npm run worker:batch-api"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

@@ -22,7 +22,8 @@ test('Batch parent snapshots queue without precreating child runs',()=>{
   assert.match(batch,/INSERT INTO batch_run_items/);
   assert.doesNotMatch(batch,/parent_run_id.*run_kind.*individual/s);
   assert.match(worker,/INSERT INTO process_runs\(parent_run_id,process_code,run_kind/);
-  assert.match(worker,/'individual','batch','railway_batch_fast'/);
+  assert.match(worker,/createChild\(item,workerId,executor\)/);
+  assert.match(worker,/executor='railway_batch_fast'/);
 });
 
 test('one active Batch per process is respected and active run is reused',()=>{
