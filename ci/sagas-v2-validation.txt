@@ -1,1 +1,0 @@
-Validate sagas V2 responsive dashboard and detail.
