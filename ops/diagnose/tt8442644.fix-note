@@ -1,0 +1,1 @@
+Root cause confirmed: JS Unicode lowercasing differs from PostgreSQL for Turkish capital İ. Canonical freshness fingerprint moved into PostgreSQL function movie_physical_fingerprint(text).
