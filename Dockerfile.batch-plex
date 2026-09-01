@@ -3,4 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY . .
+# Railway runs the worker directly under Node ESM (without the Next/Vercel bundler).
+# Normalize the extensionless CommonJS-era relative imports used by this worker chain.
+RUN sed -i "s#from './db';#from './db.js';#g; s#from './runlog';#from './runlog.js';#g; s#from './lifecycle';#from './lifecycle.js';#g; s#from './process-runtime';#from './process-runtime.js';#g" lib/series-plex-sync.js lib/runlog.js lib/lifecycle.js lib/process-runtime.js
 CMD ["npm","run","worker:batch-plex"]
