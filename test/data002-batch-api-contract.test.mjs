@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const wrapper=await readFile(new URL('../lib/ratings-refresh.js',import.meta.url),'utf8');
+const core=await readFile(new URL('../lib/ratings-refresh-core.mjs',import.meta.url),'utf8');
+const batch=await readFile(new URL('../lib/data002-batch.js',import.meta.url),'utf8');
+const worker=await readFile(new URL('../worker/batch-api-worker.mjs',import.meta.url),'utf8');
+const actions=await readFile(new URL('../app/calidad/datos/batch-actions.js',import.meta.url),'utf8');
+const panel=await readFile(new URL('../components/Data002BatchPanel.js',import.meta.url),'utf8');
+test('DATA-002 manual y Batch comparten el mismo core canónico',()=>{assert.match(wrapper,/refreshRatingsCanonical/);assert.match(worker,/refreshRatingsCanonical/);assert.match(worker,/PROC-DATA-002/);assert.doesNotMatch(worker,/fetchMDBListRatings/)});
+test('DATA-002 conserva cascada MDBList -> OMDb -> TMDb sólo como rescate',()=>{const m=core.indexOf("governedJson('mdblist'"),o=core.indexOf("governedJson('omdb'"),t=core.indexOf("governedJson('tmdb'");assert.ok(m>=0&&o>m&&t>o);assert.match(core,/if\(count<2\)/);assert.match(core,/ratings_omdb_rescue/);assert.match(core,/ratings_tmdb_rescue/)});
+test('DATA-002 usa gobierno API compartido para las tres fuentes',()=>{assert.match(wrapper,/createApiGate/);assert.match(core,/apiGate\?\.acquire/);assert.match(core,/apiGate\?\.release/);assert.match(core,/mdblist/);assert.match(core,/omdb/);assert.match(core,/tmdb/)});
+test('DATA-002 Batch selecciona ratings pendientes, pool API y concurrencia máxima 2',()=>{assert.match(batch,/PIKOSCORE_PENDING/);assert.match(batch,/fixed_five/);assert.match(batch,/fresh_rating_count<2/);assert.match(batch,/worker_pool:'api'/);assert.match(batch,/Math\.min\(Number\(concurrency\)\|\|2,2\)/)});
+test('DATA-002 se inicia sólo desde UI con tamaños progresivos',()=>{assert.match(actions,/startData002BatchAction/);assert.match(panel,/1 título/);assert.match(panel,/5 títulos/);assert.match(panel,/25 títulos/);assert.match(panel,/Todos/);assert.doesNotMatch(worker,/startData002Batch/)});

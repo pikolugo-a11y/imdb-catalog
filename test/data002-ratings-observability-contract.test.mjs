@@ -3,30 +3,32 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
 const ratings=await readFile(new URL('../lib/ratings-refresh.js',import.meta.url),'utf8');
+const core=await readFile(new URL('../lib/ratings-refresh-core.mjs',import.meta.url),'utf8');
 const actions=await readFile(new URL('../app/calidad/datos/actions.js',import.meta.url),'utf8');
 const display=await readFile(new URL('../lib/process-display.js',import.meta.url),'utf8');
 const quality=await readFile(new URL('../lib/data-quality.js',import.meta.url),'utf8');
 const qualityPage=await readFile(new URL('../lib/data-quality-page.js',import.meta.url),'utf8');
 
 test('DATA-002 keeps approved rescue order',()=>{
-  assert.match(ratings,/fetchMDBListRatings/);
-  assert.match(ratings,/count<2[\s\S]*rescueOmdb/);
-  assert.match(ratings,/count<2[\s\S]*rescueTmdb/);
-  assert.match(ratings,/step_skipped/);
+  assert.match(ratings,/refreshRatingsCanonical/);
+  assert.match(core,/fetchMdblist/);
+  assert.match(core,/count<2[\s\S]*rescueOmdb/);
+  assert.match(core,/count<2[\s\S]*rescueTmdb/);
+  assert.match(core,/step_skipped/);
 });
 
 test('DATA-002 never overwrites rescue sources already present',()=>{
-  assert.match(ratings,/!have\.has\(RATING_SOURCES\.IMDB\)/);
-  assert.match(ratings,/!have\.has\(RATING_SOURCES\.RT_CRITICS\)/);
-  assert.match(ratings,/!have\.has\(RATING_SOURCES\.METACRITIC\)/);
-  assert.match(ratings,/sourceSet\(existing\)\.has\(RATING_SOURCES\.TMDB\)/);
+  assert.match(core,/!have\.has\(RATING_SOURCES\.IMDB\)/);
+  assert.match(core,/!have\.has\(RATING_SOURCES\.RT_CRITICS\)/);
+  assert.match(core,/!have\.has\(RATING_SOURCES\.METACRITIC\)/);
+  assert.match(core,/sourceSet\(existing\)\.has\(RATING_SOURCES\.TMDB\)/);
 });
 
 test('DATA-002 treats MDBList 404 as expected provider miss and continues rescue',()=>{
-  assert.match(ratings,/providerMiss/);
-  assert.match(ratings,/provider_not_found/);
-  assert.match(ratings,/MDBList no conoce el título; se activa la cascada de rescate/);
-  assert.match(ratings,/expected:true/);
+  assert.match(core,/notFoundExpected:true/);
+  assert.match(core,/provider_not_found/);
+  assert.match(core,/MDBList no conoce el título; se activa la cascada de rescate/);
+  assert.match(core,/expected:true/);
   assert.match(actions,/x\.status==='warning'&&x\.expected!==true/);
   assert.match(actions,/expected_provider_misses/);
 });
