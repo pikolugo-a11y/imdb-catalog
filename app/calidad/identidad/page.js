@@ -10,6 +10,7 @@ import {getIdentityCatalogPage,getIdentityWorkflowStats,parseIdentityFilters} fr
 import {getId001BatchPanelState} from '@/lib/id001-batch';
 import {providerUrl} from '@/lib/provider-links';
 import './identity.css';
+import './identity-batch.css';
 export const dynamic='force-dynamic';
 const nf=n=>Number(n||0).toLocaleString('es-ES');
 const statusMeta={untried:['Sin intentar','neutral'],not_found:['Sin coincidencia','warn'],error:['Error al obtener identidad','bad'],review:['Requiere revisión','review'],processing:['Procesando','processing']};
