@@ -9,6 +9,7 @@ const dataQuality=fs.readFileSync(new URL('../lib/data-quality.js',import.meta.u
 const dataQualityPage=fs.readFileSync(new URL('../lib/data-quality-page.js',import.meta.url),'utf8');
 const lifecycleData=fs.readFileSync(new URL('../lib/lifecycle-data-stage.mjs',import.meta.url),'utf8');
 const lifecycle=fs.readFileSync(new URL('../lib/lifecycle.js',import.meta.url),'utf8');
+const lifecycleCore=fs.readFileSync(new URL('../lib/lifecycle-recompute-core.mjs',import.meta.url),'utf8');
 const piko=fs.readFileSync(new URL('../lib/pikoscore-v3.js',import.meta.url),'utf8');
 const manual=fs.readFileSync(new URL('../lib/data-quality-manual.js',import.meta.url),'utf8');
 const page=fs.readFileSync(new URL('../app/calidad/datos/page.js',import.meta.url),'utf8');
@@ -25,7 +26,7 @@ test('expires_at nulo usa la frescura calculada',()=>{assert.match(dataQuality,/
 test('duración de serie cuenta para cobertura pero no bloquea el avance',()=>{assert.match(dataQuality,/effectiveSeverity=\(k,r\)=>k==='runtime'&&isSeries\(r\)\?'optional'/)});
 test('CALIDAD clasifica una sola vez, pagina 25 e hidrata solo visibles',()=>{assert.match(dataQualityPage,/const PAGE_SIZE=25/);assert.match(dataQualityPage,/getDataQualityView/);assert.match(dataQualityPage,/count\(\*\) OVER\(\)/);assert.match(dataQualityPage,/async function hydrate\(ids\)/);assert.match(dataQualityPage,/m\.imdb_id=ANY\(\$1::text\[\]\)/);assert.match(dataQualityPage,/overview AS/);assert.match(page,/getDataQualityView/)});
 test('Datos no crea un main anidado y respeta el ancho del shell',()=>{assert.doesNotMatch(page,/return <main className="dq-page"/);assert.match(page,/return <div className="dq-page"/);assert.match(css,/\.dq-page\{[^}]*width:100%/);assert.doesNotMatch(css,/100vw|translateX\(|margin-left:50%/)});
-test('decisión manual de datos atraviesa evaluación y Lifecycle',()=>{assert.match(dataQuality,/manualDataAccepted/);assert.match(lifecycleData,/accepted_incomplete/);assert.match(lifecycle,/manual_data_decision/);assert.match(manual,/acceptIncompleteData/)});
+test('decisión manual de datos atraviesa evaluación y Lifecycle',()=>{assert.match(dataQuality,/manualDataAccepted/);assert.match(lifecycleData,/accepted_incomplete/);assert.match(lifecycleCore,/manual_data_decision/);assert.match(lifecycle,/recomputeLifecycleWithSql/);assert.match(manual,/acceptIncompleteData/)});
 test('ratings manuales y cierre fijo a 5 quedan persistentes',()=>{assert.match(manual,/saveManualRating/);assert.match(manual,/fixRatingsAtFive/);assert.match(manual,/final_rating=5/);assert.match(dataQuality,/manualRatingsFixed/);assert.match(piko,/manual_rating_decision/);assert.match(page,/DataQualityManualControls/)});
 test('la pantalla incorpora contexto Plex, mejora y exclusión existente',()=>{assert.match(dataQualityPage,/in_plex/);assert.match(page,/En Plex/);assert.match(page,/Fuera de Plex/);assert.match(page,/Mejorar datos/);assert.match(page,/IdentityExcludeButton/)});
 test('la identidad muestra accesos externos fiables y mantiene IMDb visible',()=>{assert.match(page,/providerUrl\('imdb'/);assert.match(page,/providerUrl\('tmdb'/);assert.match(page,/providerUrl\('mdblist'/);assert.match(page,/providerUrl\('trakt'/);assert.match(page,/<code>\{r\.imdb_id\}<\/code>/);assert.doesNotMatch(page,/FilmAffinity|filmaffinity|FA ↗/i)});
