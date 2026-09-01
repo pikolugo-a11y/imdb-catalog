@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.batch-plex"
+
+[deploy]
+startCommand = "npm run worker:batch-plex"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
