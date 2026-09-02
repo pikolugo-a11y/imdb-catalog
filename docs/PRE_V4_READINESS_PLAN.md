@@ -25,8 +25,8 @@ Objetivo: dejar una baseline limpia, coherente y verificable antes de empezar V4
 - P4 — Railway/execution plane: **cerrado**.
 - P5 — catálogo definitivo de procesos/Batch: **cerrado**.
 - P6 — documentación canónica: **cerrado**.
-- P7 — issues + limpieza documental final: **cerrado cuando `main` contenga este cleanup y GitHub confirme 0 issues abiertas**.
-- P8 — auditoría funcional/UX completa: **pendiente**.
+- P7 — issues + limpieza documental final: **cerrado**; GitHub quedó con 0 issues abiertas heredadas.
+- P8 — auditoría funcional/UX completa: **auditoría ejecutada; cierre pendiente únicamente de revalidar en producción el bloqueo de Excluidas corregido en código y superar el gate final**.
 
 ## Gate final PRE-V4
 
@@ -45,8 +45,20 @@ Antes de iniciar V4 deben cumplirse todos:
 
 ## P8 — auditoría funcional y UX
 
-Recorrer como mínimo Home, Catálogo, fichas película/serie, Novedades, Calidad y colas, Series, Personas, Sagas, PikoQuality, Excluidas, Admin/Operaciones/Batch y vistas de runs/errores.
+Se recorrió sobre producción: Home, Catálogo, filtros, ficha de película, ficha de serie, Personas y ficha, Novedades, Calidad, Identidad, Validación de identidad, Datos/PikoScore, Películas, Series y detalle, Personas, PikoQuality, Recuperación Lifecycle, Sagas y detalle, y Operaciones/runs/errores.
 
-Para cada pantalla revisar: propósito, jerarquía de información, terminología, componentes, interacción, estados loading/error/empty/success, responsive/accesibilidad, rendimiento percibido y coherencia con Lifecycle/procesos canónicos.
+Resultado general: las superficies observadas son funcionalmente coherentes con V3, Lifecycle y los procesos canónicos. No se detectaron regresiones bloqueantes en esos recorridos salvo `/catalogo/excluidas`.
+
+### Bloqueo P8: Excluidas
+
+En producción `/catalogo/excluidas` falló con excepción server-side, digest `3373281126`. Los logs de runtime mostraron `NeonDbError 42601: syntax error at or near "year"`. La causa estaba en aliases SQL no explícitos en `lib/excluded-v3-queries.js`; se corrige usando `AS` de forma inequívoca en el query de listado y estadísticas. El cierre de P8 exige desplegar el commit corregido y validar que Excluidas carga de nuevo.
+
+### Hallazgo no bloqueante: Sagas
+
+La colección `El padrino` mostró como miembro una obra con título/carátula de `Las aventuras de Jackie Chan`. La UI de Sagas se comportó correctamente, pero el dato sugiere una asociación o enriquecimiento incorrecto. No se atribuye la causa sin una auditoría específica de datos y no bloquea por sí solo la baseline funcional.
+
+### Fundación UX V4
+
+Las conclusiones del recorrido visual se consolidan en `docs/product/V4_UX_FOUNDATION.md`. Ese documento conserva fortalezas, fricciones y principios de diseño detectados en V3, pero no crea backlog ni convierte ideas antiguas en requisitos automáticos de V4.
 
 Los hallazgos PRE-V4 se corrigen sólo si afectan a la baseline que debe quedar cerrada. Las ideas de evolución no se convierten en backlog V4 durante esta fase.
