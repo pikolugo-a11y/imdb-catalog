@@ -55,6 +55,7 @@ Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards
 | PROC-PER-001 | Personas | Refrescar perfil y filmografía | individual | sí | `refreshPersonFilmographyCanonical` | Vercel / Railway API | EXACTA |
 | PROC-PQ-001 | PikoQuality | Calcular C6 | global por chunks | frontend batch | `processC6Batch` + `scorePikoQualityC6` | Vercel | MODELO ESPECIAL canónico |
 | PROC-PQ-002 | PikoQuality | Captura técnica Plex | global persistente | control especializado | Technical Snapshot worker | Vercel / Railway Technical | MODELO ESPECIAL |
+| PROC-HOME-001 | Home | Snapshot histórico diario del Dashboard | global automático pasivo | no | `/api/cron/dashboard-snapshot` → `captureDashboardSnapshot` | Vercel Cron | SIN BATCH / excepción automática |
 | PROC-OPS-001 | Operaciones | Reiniciar título desde Novedades | manual destructivo funcional | no | `resetTitleToNews` | Vercel | NO APLICA |
 
 `restartMissingLifecycleAction` (`/calidad/sin-estado`) es una operación de reparación administrativa sin código PROC propio: únicamente recrea Lifecycle cuando falta. Debe permanecer excepcional y no masificarse por defecto.
@@ -63,7 +64,7 @@ Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards
 
 Un proceso es Batch común sólo cuando existe una operación individual canónica que puede repetirse sobre una selección de entidades sin cambiar su semántica. El Batch Engine común persiste el padre en `process_runs`, gobierna la ejecución en `batch_run_control`, materializa unidades en `batch_run_items` y crea un child `process_run` por intento. Los pools vigentes son `api`, `fast` y `plex`; el worker Technical y PQ-001 son modelos especializados y no deben forzarse artificialmente dentro del Batch Engine.
 
-La UI inicia los Batch de forma explícita. No existe inicio automático por cron o por worker. La selección, concurrencia, leases, reintentos y API governance son infraestructura de ejecución, no procesos funcionales nuevos.
+La UI inicia los Batch de forma explícita. **No existe inicio automático del Batch Engine por cron o worker.** Esto no impide procesos automáticos pasivos expresamente inventariados, como `PROC-HOME-001`, que no ejecutan Lifecycle ni trabajo funcional por título. La selección, concurrencia, leases, reintentos y API governance son infraestructura de ejecución, no procesos funcionales nuevos.
 
 ## Procesos con Batch común
 
@@ -111,6 +112,9 @@ La UI crea **un único `process_runs` canónico** para la ejecución C6 y proces
 ### PQ-002
 Vercel solicita/controla captura técnica y Railway mantiene el worker persistente. Pausa/reanudación/cancelación usan su control especializado, no `batch_engine_control`.
 
+### HOME-001
+`vercel.json` programa `/api/cron/dashboard-snapshot` a las `02:15 UTC` diariamente. Es una **excepción automática pasiva**: captura agregados históricos del Dashboard y no ejecuta Lifecycle, no llama procesos por título y no pertenece al Batch Engine. La issue #335 queda abierta exclusivamente para medir/optimizar coste y reducir el cálculo a las métricas realmente persistidas; su existencia como proceso ya no depende de esa issue.
+
 ## Decisiones manuales
 
 ID-002, IV-003/004/005, DATA-005, MOV-002/003, SER-005/006, NOV-002/003/004/005/006/007/010/011/016 y OPS-001 son decisiones/correcciones humanas. No deben recibir Batch automáticamente.
@@ -133,11 +137,15 @@ NOV-005 ya entra por una acción observada propia (`exclude-actions.js`), persis
 - **P5-H03 — Series: CERRADO.** Contrato explícito fija la reconstrucción del read model para SER-003/004 en individual y Batch.
 - **P5-H04 — PikoQuality: CERRADO EN CÓDIGO.** PQ-001 converge en `process_runs`; `pipeline_runs` deja de recibir sus chunks. La eliminación física de la tabla queda fuera de este cierre hasta auditoría de consumidores.
 - **P5-H05 — código histórico: NO BLOQUEANTE PARA EL CATÁLOGO.** Las exportaciones/módulos históricos que no son entrypoint vivo no definen procesos; su eliminación física requiere barrido de consumidores y pertenece a limpieza posterior, no a redefinir el catálogo.
-- **P5-H06 — documentación histórica: DIFERIDO A P6.** `docs/LIFECYCLE_CANONICAL_PROCESSES.md` y documentos históricos deben etiquetarse/depurarse en la fase documental; este archivo es la fuente canónica P5.
+- **P5-H06 — documentación histórica: CERRADO EN P6.** La documentación histórica conflictiva quedó retirada o marcada como histórica y `docs/README.md` define la jerarquía canónica.
+
+## Corrección P7
+
+La limpieza de issues detectó un proceso automático real omitido por P5: `PROC-HOME-001`. La evidencia viva es el cron declarado en `vercel.json`. Se incorpora aquí antes de cerrar el inventario de issues. La omisión documental no altera la arquitectura Batch ni autoriza nuevos procesos automáticos.
 
 ## Gate P5
 
-P5 queda funcionalmente listo cuando los contratos de CI de observabilidad/paridad pasan junto con el build y los cambios de PQ-001 siguen sin fusionar/desplegar hasta decisión explícita. La fase no autoriza por sí sola eliminar `pipeline_runs`, `series_quality_runs`, servicios Railway ni otros modelos de compatibilidad.
+P5 queda funcionalmente cerrado: los contratos de CI de observabilidad/paridad pasan y los cambios de convergencia fueron integrados. Esta fase no autoriza por sí sola eliminar `pipeline_runs`, `series_quality_runs`, servicios Railway ni otros modelos de compatibilidad.
 
 ## Regla para nuevas implementaciones
 
