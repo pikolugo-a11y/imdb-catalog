@@ -44,7 +44,6 @@ export async function setManualIdentityDecisionAction(_prev,formData){
       await trace.event({eventType:'step_started',step:'persist_manual_decision',message:'Aplicando decisión manual',data:{decision,automatic_status:m.validation_status,automatic_score:m.validation_score,snapshot_fingerprint:manual.automatic_snapshot_fingerprint}});
       const[r]=await sql`UPDATE identity_validation SET validation_details=COALESCE(validation_details,'{}'::jsonb)||jsonb_build_object('manual',${JSON.stringify(manual)}::jsonb),validation_status=${decision},updated_at=now() WHERE imdb_id=${imdbId} RETURNING imdb_id`;
       if(!r)throw new Error('La identidad todavía no tiene datos de validación');
-      await sql`UPDATE batch_process_state SET manual_review=false,manual_review_reason=NULL,updated_at=now() WHERE entity_type='title' AND entity_id=${imdbId} AND stage='IDENTITY_VALIDATION'`;
       const lifecycle=await recomputeLifecycleForIds([imdbId]);
       const next=lifecycle.get(imdbId)?.label||'—';
       await trace.event({eventType:'manual_override',step:'persist_manual_decision',message:'Decisión manual aplicada',data:{decision,lifecycle_before:lifecycleBefore,lifecycle_after:next,snapshot_fingerprint:manual.automatic_snapshot_fingerprint}});
