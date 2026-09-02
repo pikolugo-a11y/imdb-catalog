@@ -18,7 +18,7 @@ PikoFilm es una **base de datos audiovisual personal maestra**. Gobierna selecci
 8. **Documentación es implementación.** Todo cambio funcional/arquitectónico revisa las fuentes canónicas afectadas. No mantener especificaciones históricas paralelas.
 9. **Memoria persistente.** Decisiones duraderas en código, tests, BBDD o documentación. Las issues se usan para trabajo activo, no como arquitectura permanente.
 10. **Baseline antes de evolucionar.** Cerrar lo validado y dejar una baseline inequívoca antes de una nueva versión.
-11. **Inicio de nueva conversación.** Seguir `AGENTS.md` y `docs/README.md`; mientras PRE-V4 esté activo leer además `PRE_V4_READINESS_PLAN.md`.
+11. **Inicio de nueva conversación.** Seguir `AGENTS.md`, `docs/README.md` y `docs/BASELINE_V4_START.md`; después leer las fuentes canónicas del dominio afectado.
 12. **Trazabilidad.** Una lección arquitectónica o regresión valiosa debe convertirse en test/contrato/documentación.
 13. **Seguridad.** Nunca persistir tokens, credenciales o secretos en código, documentación, issues o logs.
 14. **Merge sí; deployment Vercel no.** Un bloque preparado se integra por PR/CI y merge a `main`; los deployments de producción Vercel los realiza exclusivamente el usuario.
@@ -28,7 +28,7 @@ PikoFilm es una **base de datos audiovisual personal maestra**. Gobierna selecci
 18. **Batch reutiliza operación canónica.** Individual y Batch deben ejecutar la misma receta funcional. Batch sólo añade selección, cola, leases, concurrencia, retry, rate limits, pausa/cancelación y métricas.
 19. **Observabilidad única.** `process_runs` + eventos/errores son la frontera canónica. No crear otro `*_runs` sin demostrar necesidad.
 20. **Documentación histórica fuera de `main`.** Si un documento deja de describir el presente, se consolida o elimina; Git conserva la historia.
-21. **V4 empieza desde cero.** El cierre PRE-V4 debe dejar 0 issues abiertas heredadas y ninguna propuesta V4 predefinida. Las decisiones V4 se crearán de nuevo a partir del baseline auditado.
+21. **V4 empieza desde cero.** El baseline auditado no arrastra backlog V3/PRE-V4. Las decisiones, prioridades e issues V4 se crean de nuevo y sólo cuando exista trabajo real decidido.
 
 ## Cierre de sesión significativa
 
