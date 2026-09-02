@@ -42,6 +42,11 @@ Criterios:
 | `ops/revalidate-tt8442644-rerun4` | 0 | 192 | diagnóstico absorbido |
 | `ops/vercel-deploy-iv-batch` | 0 | 120 | despliegue/verificación absorbida |
 | `validate-people-v2` | 0 | 954 | validación absorbida |
+| `validation-lifecycle-only` | 0 | 1420 | validación absorbida |
+| `test/brave-throttle-30` | 0 | 1473 | test histórico absorbido |
+| `perf/identity-minimal-resolution` | 0 | 1291 | optimización absorbida |
+| `perf/identity-minimal-resolution-v2` | 0 | 1288 | optimización absorbida |
+| `perf/vercel-frankfurt` | 0 | 320 | configuración/perf absorbida |
 
 ## INVESTIGAR — contiene commits exclusivos
 
@@ -55,6 +60,16 @@ Criterios:
 | `validate-people-v2-final2` | 1 | 948 | fichero de validación |
 | `validate-pikoscore3-rollout` | 1 | 1034 | cambio CI histórico |
 | `validate-runtime-perf` | 2 | 1018 | triggers temporales de CI/perf |
+| `validate-sagas-redesign` | 1 | 991 | trigger CI temporal |
+| `validate-sagas-v2` | 3 | 985 | sólo artefactos de validación/CI observados |
+| `validate-series-detail-v3-fa-clean` | 1 | 1004 | fichero de validación CI |
+| `validate-series-detail-v3` | 1 | 1007 | fichero de validación CI |
+| `verify-identity-runtime-fix-2` | 1 | 838 | fichero de verificación CI |
+| `verify-identity-ui` | 5 | 841 | ficheros de verificación/notas históricas |
+| `diag/brave-single` | 1 | 1471 | endpoint de diagnóstico Brave exclusivo; revisar antes de descartar |
+| `experiment/identity-unit-fa-search-lab` | 1 | 1482 | cambia acción de Identidad; requiere revisión funcional |
+| `test/fa-python-5` | 7 | 1503 | workflow/probes Python/Vercel exclusivos; posible laboratorio histórico |
+| `test/fa-resolver-benchmark` | 3 | 1544 | workflow benchmark FA exclusivo |
 
 ## Nota
 
