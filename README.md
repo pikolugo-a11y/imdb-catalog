@@ -4,6 +4,8 @@
 
 El propósito completo y las reglas permanentes del proyecto están definidos en [`docs/PROJECT_RULES.md`](docs/PROJECT_RULES.md). Toda evolución debe respetar ese contrato.
 
+> **Desarrollo con IA:** cualquier nueva sesión, chat o agente que vaya a trabajar sobre PikoFilm debe comenzar por [`AGENTS.md`](AGENTS.md) y [`docs/AI_DEVELOPMENT_GUIDE.md`](docs/AI_DEVELOPMENT_GUIDE.md). La documentación canónica forma parte de la implementación y debe actualizarse en el mismo bloque que cualquier cambio funcional o arquitectónico.
+
 ## Modelo actual
 
 PikoFilm separa cuatro conceptos:
@@ -33,7 +35,7 @@ Actualizar ratings y calcular PikoScore son procesos separados. El cálculo de P
 
 ## Procesamiento
 
-La arquitectura operativa objetivo es **unitaria**: una película/serie por acción y feedback inmediato. Los procesos masivos que aún existen se consideran legado y están inventariados para migración.
+Cada proceso funcional debe tener una única operación canónica. La ejecución individual y cualquier Batch deben reutilizar exactamente ese mismo núcleo de negocio; el Batch sólo puede aportar selección, cola, leases, concurrencia, retry, pausa/reanudación/cancelación y agregación de métricas. Si individual y Batch requieren mantener lógica funcional separada, se considera una desviación arquitectónica prioritaria.
 
 ## Stack
 
@@ -56,6 +58,8 @@ GitHub contiene código, no el catálogo masivo. Neon es la fuente de verdad per
 
 ## Documentación canónica
 
+- [`AGENTS.md`](AGENTS.md) — entrada obligatoria para cualquier agente o nueva sesión de IA.
+- [`docs/AI_DEVELOPMENT_GUIDE.md`](docs/AI_DEVELOPMENT_GUIDE.md) — contrato de mantenimiento, mapa de impacto documental y reglas de paridad Individual/Batch.
 - [`docs/FUNCTIONAL_SPECIFICATION_V2.md`](docs/FUNCTIONAL_SPECIFICATION_V2.md) — especificación funcional actual.
 - [`docs/TECHNICAL_SPECIFICATION_V2.md`](docs/TECHNICAL_SPECIFICATION_V2.md) — arquitectura técnica actual.
 - [`docs/CANONICAL_DATA.md`](docs/CANONICAL_DATA.md) — modelo canónico de países y géneros.
@@ -65,7 +69,7 @@ GitHub contiene código, no el catálogo masivo. Neon es la fuente de verdad per
 - [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) — estado operativo.
 - [`docs/PROJECT_RULES.md`](docs/PROJECT_RULES.md) — propósito y reglas permanentes.
 
-La carpeta `docs/` contiene únicamente documentación vigente. El histórico de versiones anteriores permanece accesible en el historial de Git, no como documentación activa del proyecto.
+La documentación versionada debe describir el sistema vivo. El histórico de versiones anteriores permanece accesible en Git, no como fuente de verdad activa del proyecto.
 
 ## No objetivos
 
