@@ -30,6 +30,7 @@ export async function startC6BatchRunAction(){
     entityId:C6_ENTITY_ID,
     context:{formula_version:state.version,total:state.total,pending_at_start:state.pending,batch_size:C6_BATCH_SIZE},
   });
+  await sql`UPDATE process_runs SET items_total=${state.pending},items_pending=${state.pending},last_heartbeat_at=now(),updated_at=now() WHERE run_id=${started.run.run_id}::uuid`;
   await addProcessEvent(started.run.run_id,{eventType:'batch_ready',step:'c6',entityType:C6_ENTITY_TYPE,entityId:C6_ENTITY_ID,message:'Batch C6 preparado',data:{pending:state.pending,total:state.total,batch_size:C6_BATCH_SIZE}});
   return{runId:String(started.run.run_id),reused:started.reused,...state};
 }
@@ -46,9 +47,10 @@ export async function runC6BatchChunkAction(runId){
   }
   try{
     const result=await processC6Batch(C6_BATCH_SIZE);
+    await sql`UPDATE process_runs SET items_processed=items_processed+${result.processed},items_succeeded=items_succeeded+${result.processed},items_pending=${result.remaining},last_heartbeat_at=now(),metrics=COALESCE(metrics,'{}'::jsonb)||${JSON.stringify({formula_version:result.version,last_block_processed:result.processed,last_block_items_per_second:result.itemsPerSecond,remaining:result.remaining})}::jsonb,updated_at=now() WHERE run_id=${id}::uuid`;
     await addProcessEvent(id,{eventType:'batch_progress',step:'c6',entityType:C6_ENTITY_TYPE,entityId:C6_ENTITY_ID,message:'Bloque C6 completado',durationMs:result.elapsedMs,data:{processed:result.processed,remaining:result.remaining,items_per_second:result.itemsPerSecond,batch_size:C6_BATCH_SIZE}});
     if(result.remaining===0){
-      await finishProcessRun(id,{technicalStatus:'succeeded',functionalResult:result.processed>0?'updated':'no_change',metrics:{formula_version:result.version,remaining:0,last_block_processed:result.processed,last_block_items_per_second:result.itemsPerSecond,aggregates:result.aggregates||null},message:'Cálculo C6 completado'});
+      await finishProcessRun(id,{technicalStatus:'succeeded',functionalResult:'updated',metrics:{formula_version:result.version,remaining:0,last_block_processed:result.processed,last_block_items_per_second:result.itemsPerSecond,aggregates:result.aggregates||null},message:'Cálculo C6 completado'});
     }
     revalidatePath('/calidad/pikoquality');revalidatePath('/calidad/peliculas');revalidatePath('/catalogo');revalidatePath('/admin');
     return{...result,completed:result.remaining===0,runId:id};

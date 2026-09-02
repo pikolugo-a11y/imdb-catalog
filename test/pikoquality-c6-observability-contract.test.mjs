@@ -16,9 +16,16 @@ test('PQ-001 is one canonical observed Batch across chunks',()=>{
   assert.match(actions,/startProcessRun/);
   assert.match(actions,/batch_progress/);
   assert.match(actions,/finishProcessRun/);
+  assert.match(actions,/items_processed=items_processed\+/);
+  assert.match(actions,/items_pending=\$\{result\.remaining\}/);
   assert.match(runner,/startC6BatchRunAction/);
   assert.match(runner,/runC6BatchChunkAction\(id\)/);
   assert.match(display,/PROC-PQ-001/);
+});
+
+test('PQ-001 no longer writes pipeline_runs; process_runs is the execution truth',()=>{
+  assert.doesNotMatch(batch,/pipeline_runs/);
+  assert.match(batch,/FROM process_runs WHERE process_code='PROC-PQ-001'/);
 });
 
 test('C6 uses bounded chunks without changing its scoring core',()=>{
