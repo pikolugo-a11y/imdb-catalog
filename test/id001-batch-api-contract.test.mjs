@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,access} from 'node:fs/promises';
 const unit=await readFile(new URL('../lib/identity-unitary.js',import.meta.url),'utf8');
 const canonical=await readFile(new URL('../lib/id001-canonical.mjs',import.meta.url),'utf8');
 const batch=await readFile(new URL('../lib/id001-batch.js',import.meta.url),'utf8');
@@ -8,7 +8,7 @@ const worker=await readFile(new URL('../worker/batch-api-worker.mjs',import.meta
 const runtime=await readFile(new URL('../lib/batch-worker-runtime.mjs',import.meta.url),'utf8');
 const migration=await readFile(new URL('../db/migrations/20260901_batch_api_governance_v1.sql',import.meta.url),'utf8');
 const admin=await readFile(new URL('../app/admin/page.js',import.meta.url),'utf8');
-const legacy=await readFile(new URL('../worker/lifecycle-identity-executor.mjs',import.meta.url),'utf8');
+async function exists(path){try{await access(new URL(path,import.meta.url));return true}catch{return false}}
 test('ID-001 manual and Batch share one canonical executor',()=>{assert.match(unit,/executeId001Canonical/);assert.match(worker,/executeId001Canonical/);assert.match(worker,/PROC-ID-001/);assert.doesNotMatch(batch,/lifecycle-identity-executor|resolveTmdbOnly|saveTmdb/)});
 test('ID-001 Batch only selects identity pending without TMDb and never auto starts',()=>{assert.match(batch,/IDENTITY_PENDING/);assert.match(batch,/m\.tmdb_id IS NULL/);assert.match(batch,/worker_pool:'api'/);assert.doesNotMatch(worker,/startId001Batch/)});
 test('API governance persists quotas, usage, leases and 90 percent split',()=>{assert.match(migration,/batch_api_source_limits/);assert.match(migration,/batch_api_source_usage/);assert.match(migration,/batch_api_source_leases/);assert.match(migration,/\('omdb',100000,90,2\)/);assert.match(migration,/\('mdblist',25000,90,2\)/);assert.match(migration,/\('tmdb',NULL,90,3\)/)});
@@ -17,4 +17,4 @@ test('worker runtime records executor per pool instead of hardcoding every child
 test('Batch external call tracing uses canonical process_runs.external_calls column',()=>{assert.match(runtime,/SET external_calls=external_calls\+/);assert.doesNotMatch(runtime,/external_call_count/)});
 test('API canonical distinguishes functional not_found and handles 429',()=>{assert.match(canonical,/functionalResult/);assert.match(canonical,/tmdb_not_found/);assert.match(canonical,/response\.status===429/);assert.match(canonical,/retry-after/)});
 test('Centro exposes generic Batch control and editable API sources',()=>{assert.match(admin,/OperationsBatchControl/);assert.match(admin,/OperationsApiSources/)});
-test('legacy identity Batch is not imported by the new path',()=>{assert.ok(legacy.length>0);assert.doesNotMatch(worker,/lifecycle-identity-executor/);assert.doesNotMatch(unit,/lifecycle-identity-executor/)});
+test('legacy identity Batch executor is physically retired and not imported by the canonical path',async()=>{assert.equal(await exists('../worker/lifecycle-identity-executor.mjs'),false);assert.doesNotMatch(worker,/lifecycle-identity-executor/);assert.doesNotMatch(unit,/lifecycle-identity-executor/)});

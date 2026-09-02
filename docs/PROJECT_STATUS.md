@@ -1,136 +1,150 @@
-# PikoFilm — Bitácora y estado operativo
+# PikoFilm — Estado operativo actual
 
-> Documento vivo. La especificación funcional/técnica canónica describe el sistema; esta bitácora solo fija el punto actual.
+> Documento vivo. Este fichero describe el estado operativo vigente; el detalle de la auditoría previa a V4 vive en `docs/PRE_V4_*.md`.
 
-## Estado registrado
+## Estado
 
-**Fecha:** 23/08/2026 (Europe/Madrid)  
-**Fase:** arquitectura Lifecycle materializada; M01–M35 completado; M46-A Batch Control/Queue implementado  
+**Fecha:** 02/09/2026 (Europe/Madrid)  
+**Fase:** PRE-V4 — consolidación, retirada de legacy y cierre de arquitectura  
 **Repositorio:** `pikolugo-a11y/imdb-catalog`  
-**Rama productiva preparada:** `main`
+**Producción:** `main`  
+**Rama de auditoría/limpieza:** `pre-v4-readiness`
 
-## Reglas operativas innegociables
+## Arquitectura operativa vigente
 
-- Deployments Vercel: siempre manuales por el usuario.
-- Los cambios se preparan en rama, pasan CI y se mergean a `main`.
-- Pruebas funcionales/visuales: las realiza el usuario sobre el deployment que decida.
-- El procesamiento canónico sigue siendo unitario por título/serie/archivo/etapa; la automatización masiva futura encadenará muchas operaciones unitarias seguras, no procesos monolíticos.
-- Vercel es interfaz/control plane, no motor batch de larga duración.
-- GitHub Actions no debe convertirse en infraestructura continua de procesamiento Lifecycle.
-- Catálogo es la vista maestra; Plex representa presencia física; Novedades es la entrada única.
-- Excluidas quedan fuera del Lifecycle hasta restauración.
-- No se implementa control de reproducciones/visto; Plex cubre ese ámbito.
-- Eficiencia de infraestructura: PostgreSQL filtra/agrega cerca del dato y Vercel recibe solo lo necesario.
+### Frontend / control plane
 
-## Arquitectura funcional vigente
+- Vercel sirve PikoFilm.
+- `/admin` es el **Centro de Operaciones canónico**.
+- Las páginas funcionales de Calidad contienen los controles de sus procesos y Batch cuando corresponde.
+- La primera generación `/admin/batch` ya no forma parte del producto y se ha retirado en `pre-v4-readiness` tras aprobación explícita del usuario.
 
-### Entrada
-`Discovery / Plex / Manual → Novedades → Añadir → Catálogo`
+### Observabilidad y Batch Engine
 
-### Núcleo común
-`IDENTITY_PENDING → IDENTITY_VALIDATION / REVIEW → DATA_INCOMPLETE → PIKOSCORE_PENDING`
+El modelo vigente es:
 
-### Sin archivo Plex
-`PIKOSCORE_PENDING resuelto → COMPLETE`
+- `process_runs`
+- `process_run_events`
+- `process_run_errors`
+- `batch_run_control`
+- `batch_run_items`
+- `batch_engine_control`
 
-### Película con archivo Plex
-`PikoScore → MOVIE_FILE_PENDING → MOVIE_FILE_REVIEW si procede → TECH_PENDING → COMPLETE`
+Los Batch actuales crean runs comunes y ejecutan items mediante workers/pools. El Centro de Operaciones observa y gobierna este modelo.
 
-### Serie con Plex
-`PikoScore → SERIES_SYNC_PENDING → SERIES_REVIEW si procede → TECH_PENDING → COMPLETE`
+Las tablas de la primera generación (`batch_runs`, `batch_jobs`, `batch_process_state`, `batch_source_limits`, `batch_runtime_control`) son candidatos legacy para P3, pero no se eliminan físicamente hasta completar la comprobación de dependencias y disponer de acceso SQL Neon fiable.
 
-No existe `TECH_REVIEW`: PikoQuality bajo no constituye por sí solo una incidencia funcional.
+## Railway vigente
 
-## Hitos cerrados / implementados
+Proyecto: `PikoFilm Batch`.
 
-1. Lifecycle materializado en `catalog_lifecycle`.
-2. Catálogo muestra la fase de cada título y es la base de consulta única.
-3. Novedades unifica Discovery, Plex y Manual.
-4. `/plex` queda solo como redirect temporal a Novedades origen Plex.
-5. Identidad, Validación de identidad, Datos, Películas, PikoQuality y Series son unitarios en su operación normal.
-6. Identidad ya no usa GitHub Actions/polling; FA usa el resolver Python productivo.
-7. PikoScore 2.0 implantado y separado de actualización de ratings.
-8. Validación/PikoQuality física se vinculan al fingerprint actual.
-9. `/calidad` es mapa de colas Lifecycle y no lanza acciones masivas.
-10. Retirados runners/batches/workflows/workers antiguos de identidad, validación, películas, PikoQuality y Series.
-11. CI es el único workflow automático; Discovery, ratings offline y mantenimiento son manuales.
-12. `worker/` queda reducido a `imdb-discovery.mjs` y `update-imdb-ratings.mjs`.
-13. `api/fa-search.py` y `api/fa-evidence.py` son endpoints Python unitarios productivos.
-14. **M28:** `getLifecycleForIds()` es estrictamente lectura del snapshot; ya no recalcula por antigüedad. Las mutaciones relevantes recalculan estado explícitamente. Sync Plex reconcilia solo estados físicamente sensibles, en lotes.
-15. **M29/M30:** Calidad cuenta `PIKOSCORE_PENDING` dentro de Datos y representa explícitamente `MOVIE_FILE_PENDING/REVIEW`.
-16. **M31:** retirado `TECH_REVIEW`.
-17. **M32:** PikoScore legado sin versión/fecha actual se considera no vigente. Auditoría: 20.444/20.446 scores existentes eran pre-2.0/no vigentes; se conservan físicamente hasta recálculo, sin tratarlos como score canónico en Catálogo.
-18. **M33:** PikoQuality exige fórmula + fingerprint actuales. Auditoría: 63.834 evaluados, 0 evaluados sin fórmula/fingerprint.
-19. **M34:** `source_status` es auxiliar/transitorio, no fuente canónica. La poda física segura queda integrada en M42.
-20. **M35:** `movie_quality_findings` estaba vacío al auditar; no quedan findings pre-Lifecycle que migrar.
-21. Retirados restos internos huérfanos: `identity-validation-run-control.js`, `pikoquality-b-probe.js`, `pikoquality-pilot.js`.
-22. Especificaciones funcional y técnica actualizadas con el Lifecycle materializado definitivo.
-23. Documentación histórica activa retirada y `CANONICAL_DATA.md` consolidado.
-24. `PROJECT_RULES.md` incorpora propósito, merge siempre/deployment nunca y eficiencia/coste.
-25. `INFRASTRUCTURE_EFFICIENCY.md` fija la política técnica Neon/Vercel.
-26. **M46 diseñado:** Batch Engine / Autopilot Lifecycle permitirá automatización masiva mediante operaciones unitarias, cola/checkpoint, leases, rate limit por fuente, backoff, circuit breaker, presupuestos y kill switch.
-27. M46 separa control plane (Vercel), state plane (Neon) y execution plane (worker dedicado pendiente de seleccionar).
-28. Estados de revisión humana (`IDENTITY_REVIEW_REQUIRED`, `MOVIE_FILE_REVIEW`, `SERIES_REVIEW`) serán barreras obligatorias del Autopilot.
-29. **M46-A implementado:** Neon principal dispone de `batch_runs`, `batch_jobs`, control global y límites por fuente. La migración fue probada en rama temporal y aplicada después de aprobación explícita del usuario.
-30. M46-A nace en estado seguro: 0 runs, 0 jobs, kill switch global pausado y todas las fuentes deshabilitadas. No existe worker consumidor ni tráfico batch externo.
-31. `/admin/batch` permite preparar lotes por etapa Lifecycle, ver backlog/jobs, pausar/reanudar/cancelar runs y configurar límites por fuente. Preparar un lote no ejecuta el trabajo.
+Servicios productivos auditados:
 
-## Flujo de regresión de referencia
+- `pikofilm-batch-fast-worker-v1` — pool FAST actual;
+- `pikofilm-worker-api-v3` — pool API actual;
+- `pikofilm-batch-plex-worker-v2` — pool Plex actual;
+- `pikofilm-technical-snapshot-worker-v1` — captura técnica PikoQuality actual.
 
-### `tt6720618`
-`Plex/Novedades → Identidad → Validación → Datos → PikoScore → Validación película → PikoQuality → Complete`.
+**Regla:** no clasificar un servicio como legacy por contener `batch`, `worker` o un sufijo de versión en el nombre. La vigencia se determina por el código que ejecuta y por sus consumidores.
 
-### `tt21187592`
-`Novedades → Identidad → Validación → Datos → PikoScore → Complete`.
+El worker FAST actual usa `lib/batch-worker-runtime.mjs` y el modelo `process_runs/batch_run_items`; por tanto es infraestructura vigente aunque conserve el nombre histórico `batch-fast-worker-v1`.
 
-FilmAffinity en Identidad queda aceptado de momento tras recuperar una tasa de acierto razonable con el resolver Python probado; no bloquea la migración.
+## PikoQuality Technical Snapshot
 
-## Decisión estratégica M46
+- Railway ejecuta el servicio desde `main`.
+- `Dockerfile.technical` + `worker/technical-snapshot-worker.mjs` siguen vigentes.
+- La antigua rama productiva `feat/pikoquality-technical-snapshot` fue retirada después de migrar el servicio a `main` y verificar arranque correcto.
+- El proceso sigue siendo frontend-consumido desde Calidad → PikoQuality y está protegido por el Frontend Safety Gate.
 
-Lifecycle unitario nació para impedir procesos masivos accidentales capaces de bloquear GitHub/Vercel/fuentes externas. Esa protección se mantiene, pero **no se renuncia a la automatización masiva**.
+## Batch Plex de Series
 
-La nueva estrategia es ejecutar muchas unidades canónicas de forma controlada. Vercel solo crea/controla runs; Neon mantiene cola/estado/checkpoints; un worker dedicado ejecutará los jobs con baja concurrencia y límites por fuente.
+El defecto PRE-V4 por ausencia del pool Plex quedó resuelto:
 
-Documento canónico: `docs/BATCH_AUTOPILOT_ARCHITECTURE.md`.
+- servicio `pikofilm-batch-plex-worker-v2` activo;
+- source `main`;
+- `Dockerfile.batch-plex`;
+- `npm run worker:batch-plex`;
+- adaptador actual para `PROC-SER-002`.
 
-Orden M46 aprobado:
-1. M46-A: control + cola + Admin sin tráfico batch externo — **implementado**;
-2. elegir host del worker;
-3. M46-B: FAST worker local/SQL;
-4. M46-C: APIs oficiales/controlables;
-5. M46-D: FilmAffinity/web sensible;
-6. M46-E: Autopilot Lifecycle;
-7. M46-F: evaluar sacar Discovery/ratings IMDb de GitHub Actions.
+Los hotfixes productivos de arranque del contenedor están en `main` y deben conservarse al integrar PRE-V4.
 
-## Deuda conocida importante
+## GitHub
 
-- **Siguiente decisión prioritaria:** seleccionar el host del execution plane antes de implementar M46-B.
-- M36–M42 siguen pendientes: retención, espacio, índices, snapshots y JSON/payloads en Neon.
-- M43–M45: CSS/layouts/componentes heredados.
-- El redirect `/plex` se conserva temporalmente por compatibilidad.
-- Quedan las issues funcionales abiertas ya depuradas.
+- PRs abiertos auditados: 0 en el momento del cierre del bloque PRE-V4 correspondiente.
+- La cuenta mantiene un gran número de ramas históricas; la limpieza masiva está pendiente de una allowlist y de decisión destructiva específica.
+- `pre-v4-readiness` concentra la auditoría y limpieza previa a V4.
+- `pre-v4-audit-tmp` está 0 commits por delante de `main` y es candidato de limpieza, pero no se elimina sin el gate de ramas.
+- `archive/railway-pikoquality-technical-snapshot-20260901` se conserva de momento como rama de archivo; no debe borrarse sólo por antigüedad.
 
-La lista completa está en `docs/ROADMAP_MIGRATION.md`.
+## Workflows
 
-## Documentación canónica actual
+Canónicos/útiles actualmente:
 
-1. `docs/FUNCTIONAL_SPECIFICATION_V2.md`
-2. `docs/TECHNICAL_SPECIFICATION_V2.md`
-3. `docs/BATCH_AUTOPILOT_ARCHITECTURE.md`
-4. `docs/INFRASTRUCTURE_EFFICIENCY.md`
-5. `docs/CANONICAL_DATA.md`
-6. `docs/ROADMAP_FRONTEND.md`
-7. `docs/ROADMAP_MIGRATION.md`
-8. `docs/ROADMAP_FUNCTIONAL.md`
-9. `docs/PROJECT_RULES.md`
-10. `docs/PROJECT_STATUS.md`
+- `ci.yml`
+- `imdb-discovery.yml`
+- `manual-maintenance.yml`
+- `neon-access-check.yml`
+- `neon-branch-first-migrations.yml`
 
-## Próxima línea recomendada de trabajo
+`neon-observability-migration.yml` permanece como workflow manual de migración histórica y requiere cierre de evidencia antes de retirarlo.
 
-1. desplegar manualmente M46-A y validar `/admin/batch` sin activar ninguna fuente;
-2. comparar y seleccionar runtime dedicado para el worker;
-3. implementar M46-B con jobs FAST/locales y lote piloto pequeño;
-4. demostrar lease, pausa, cancelación, idempotencia y recuperación antes de ampliar límites;
-5. ampliar después a APIs oficiales y finalmente fuentes sensibles.
+El one-shot `drop-legacy-batch-job-steps.yml` fue retirado en PRE-V4 después de confirmarse que `batch_job_steps` ya había sido eliminado y que la única lectura residual pertenecía al antiguo `/admin/batch`.
 
-**ChatGPT no realiza deployments.**
+## Política de migraciones Neon
+
+`neon-branch-first-migrations.yml` **no se dispara por cualquier push a `main`**. Tiene filtro de ruta `db/migrations/*.sql`.
+
+Por tanto los cambios de código, frontend, Dockerfiles o documentación fuera de esa carpeta no activan la aplicación de migraciones. Los cambios dentro de `db/migrations/*.sql` sí requieren revisión específica porque el workflow, tras validación en rama efímera, puede aplicar la migración a producción en el `push` posterior al merge.
+
+## Neon
+
+Proyecto: `pikofilm` (`red-silence-53441102`).
+
+La auditoría SQL destructiva P3 sigue bloqueada por `NEON-001`: el conector disponible presenta una incompatibilidad de esquema de parámetros y no permite usar de forma fiable las operaciones necesarias de inventario/SQL. Mientras ese bloqueo exista:
+
+- no se adivina el estado físico de tablas;
+- no se ejecutan DROP/ALTER destructivos;
+- se conserva evidencia de código y runtime para preparar candidatos.
+
+## Frontend Safety Gate
+
+Antes de retirar código, rutas, servicios, workers, workflows u objetos de datos se traza:
+
+`pantalla/control → acción → operación canónica → ejecutor/infra → datos`.
+
+Si existe consumidor frontend directo o indirecto, la decisión final es del usuario. Ante duda se conserva/investiga.
+
+## Limpieza PRE-V4 completada relevante
+
+- retirada de execution plane Lifecycle antiguo y workers duplicados aprobados;
+- retirada de `Dockerfile.api`, `railway.api.toml` y servicio temporal de backup aprobados;
+- retirada de artefactos temporales/revalidaciones;
+- cierre de PRs antiguos sin merge cuando su valor útil se rescató en issues vigentes;
+- migración Railway Technical Snapshot a `main`;
+- creación y estabilización del pool Railway Plex actual;
+- retirada de la primera generación `/admin/batch` y sus helpers exclusivos;
+- cierre de #190 como diseño ya superado y de #302 como bug histórico ya resuelto por el flujo actual de Novedades.
+
+## Riesgos / pendientes principales antes de V4
+
+1. **P3 Neon:** inventario físico y retirada segura de objetos legacy cuando `NEON-001` se resuelva.
+2. **Ramas GitHub:** reducir el gran histórico con allowlist y evidencia de merge/obsolescencia.
+3. **Documentación/issues:** seguir eliminando contratos históricos que contradigan el sistema vivo.
+4. **Dos raíces de migraciones:** `db/migrations/` es la ruta gobernada por el workflow actual; la raíz `migrations/` contiene migraciones históricas PikoQuality y debe clasificarse antes de consolidarla.
+5. **CSS/frontend legacy:** no retirar estilos por nombre sin trazado visual/consumer gate.
+6. **Sagas V2/V3 y otras capas de compatibilidad:** conservar hasta demostrar writer/readers y consumidores exactos.
+7. **CI final:** la rama PRE-V4 debe pasar tests + build antes de integrarse; el CI oficial se dispara actualmente en pull request.
+
+## Fuentes de verdad PRE-V4
+
+- `docs/PRE_V4_READINESS_PLAN.md`
+- `docs/PRE_V4_FRONTEND_SAFETY_GATE.md`
+- `docs/PRE_V4_AUDIT.md`
+- `docs/PRE_V4_EXECUTION_PLANE_AUDIT.md`
+- `docs/PRE_V4_WORKFLOWS_AUDIT.md`
+- `docs/PRE_V4_BATCH_UI_GENERATIONS_AUDIT.md`
+- `docs/PRE_V4_DBMIG_TRIGGER_AUDIT.md`
+
+## Próximo gate
+
+Continuar cerrando P2/P4/P5/P6 con evidencia de consumidores. P3 permanece bloqueada por el acceso Neon. No hacer limpieza masiva de ramas ni borrados físicos de base de datos sin su gate específico.
