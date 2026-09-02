@@ -20,6 +20,7 @@ Este árbol contiene únicamente documentación necesaria para comprender y modi
 
 ### Producto
 - `product/PRODUCT_AND_LIFECYCLE.md`
+- `product/V4_UX_FOUNDATION.md` — conclusiones del frontal V3 que sirven como contexto de arranque para diseñar V4; no es backlog ni especificación cerrada.
 
 ### Arquitectura
 - `architecture/SYSTEM_ARCHITECTURE.md`
