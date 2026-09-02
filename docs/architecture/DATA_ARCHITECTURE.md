@@ -4,9 +4,9 @@ Estado: **canónico**.
 
 ## Principio
 
-PikoFilm es la base audiovisual personal maestra. Neon/PostgreSQL mantiene datos editoriales, identidad, estados Lifecycle, referencias físicas, resultados de calidad, read models y estado/observabilidad de procesos. Plex sigue siendo la fuente de verdad de la presencia física y reproducción; no sustituye al catálogo editorial.
+Neon/PostgreSQL mantiene datos editoriales, identidad, Lifecycle, referencias físicas, resultados de calidad, read models y estado/observabilidad de procesos. Plex sigue siendo la fuente de verdad de presencia física y reproducción; no sustituye al catálogo editorial.
 
-## Capas de datos
+## Capas
 
 ```text
 Fuentes externas / Plex
@@ -15,62 +15,57 @@ Fuentes externas / Plex
 operaciones canónicas
         |
         +--> datos funcionales canónicos
-        +--> referencias / relaciones normalizadas
+        +--> relaciones normalizadas
         +--> Lifecycle
         +--> read models
         +--> observabilidad
         +--> estado operativo de ejecución
 ```
 
-### Datos funcionales canónicos
+### Datos funcionales
+El universo editorial, identidad externa, metadatos, ratings normalizados, exclusiones y decisiones manuales viven en modelos canónicos. Una representación derivada no debe convertirse en segunda fuente de verdad.
 
-Incluyen el universo editorial de películas/series, identidad externa, metadatos, ratings, exclusiones y decisiones manuales. Una representación derivada no debe convertirse en segunda fuente de verdad.
-
-### Normalización editorial
-
-Países y géneros usan vocabularios canónicos y aliases. Las relaciones N:M representan coproducciones y taxonomías sin depender de strings de una fuente concreta. Los valores no resolubles deben permanecer trazables para revisión. La especificación detallada vigente se mantiene en `docs/CANONICAL_DATA.md` mientras se consolida P6.
+### Normalización
+Países y géneros usan vocabularios canónicos/aliases y relaciones N:M. Las fuentes externas se normalizan antes de convertirse en datos de producto. Los valores no resolubles deben permanecer trazables para revisión.
 
 ### Estado físico
-
-Plex gobierna la existencia física. PikoFilm persiste referencias necesarias para cruzar esa realidad con el catálogo, validar archivos y calcular calidad técnica. La ausencia/presencia en Plex no define por sí sola la pertenencia editorial al catálogo.
+Plex gobierna la existencia física. PikoFilm persiste referencias necesarias para cruzar esa realidad con el catálogo, validar archivos y calcular calidad técnica.
 
 ### Lifecycle
-
-Lifecycle expresa el estado funcional derivado de cada entidad respecto al flujo de calidad/completitud. No debe existir una segunda máquina de estados paralela para resolver problemas locales. Su especificación funcional P6 debe derivarse del código vivo y del catálogo de procesos, no del documento histórico retirado `LIFECYCLE_CANONICAL_PROCESSES.md`.
+Lifecycle expresa estado funcional derivado. No debe existir una segunda máquina de estados paralela para resolver problemas locales. El contrato funcional vigente está en `../product/PRODUCT_AND_LIFECYCLE.md`.
 
 ### Read models
+Son derivados para servir UI/agregaciones eficientemente. Pueden ser regenerables cuando así se documente. No deben recibir escrituras funcionales que los conviertan accidentalmente en fuente canónica.
 
-Read models existen para servir UI/agregaciones de forma eficiente y pueden ser regenerables cuando así se documente. Ejemplos auditados: `piko_quality_aggregates`, vistas de nombres normalizados y modelos derivados de Series/Personas. Un read model no debe recibir escrituras funcionales que lo conviertan accidentalmente en fuente canónica.
+### Ratings y PikoScore
+`title_ratings` es la capa normalizada de ratings externos vigente. PikoScore 3 se calcula desde datos persistidos y no debe depender de llamadas externas durante el cálculo puro.
 
 ### Observabilidad
+`process_runs`, `process_run_events` y `process_run_errors` son la frontera canónica de ejecución. Véase `OBSERVABILITY.md`.
 
-`process_runs`, `process_run_events` y `process_run_errors` son la fuente canónica de ejecución. Véase `OBSERVABILITY.md`.
-
-### Estado Batch
-
-`batch_run_control`, `batch_run_items`, `batch_engine_control` y gobierno API son coordinación operativa. No sustituyen a observabilidad ni a datos funcionales.
+### Batch
+`batch_run_control`, `batch_run_items`, `batch_engine_control` y el gobierno API son coordinación operativa. No sustituyen a observabilidad ni a datos funcionales.
 
 ## Compatibilidad conocida
 
-- `pipeline_runs`: compatibilidad histórica. PQ-001 ya no escribe sus chunks. Su retirada física requiere comprobar todos los consumidores restantes.
-- `series_quality_runs`: compatibilidad temporal todavía usada por Series; no retirar hasta convergencia.
+Las estructuras de compatibilidad se conservan sólo mientras existan consumidores reales. Su mera presencia no las convierte en arquitectura canónica. Cualquier retirada requiere consumer sweep; UNKNOWN bloquea borrado.
 
-Las tablas Batch V1 retiradas no forman parte de la arquitectura: `batch_runs`, `batch_jobs`, `batch_process_state`, `batch_source_limits`, `batch_runtime_control`.
+Las tablas Batch V1 retiradas (`batch_runs`, `batch_jobs`, `batch_process_state`, `batch_source_limits`, `batch_runtime_control`) no forman parte de la arquitectura.
 
 ## Reglas de eficiencia
 
-- filtrar, agregar y contar en PostgreSQL cuando sea razonable;
-- evitar `SELECT *` y transferencias masivas sin necesidad;
+- filtrar/agregar en PostgreSQL cuando sea razonable;
+- evitar `SELECT *` y transferencias masivas innecesarias;
 - paginar lecturas grandes;
 - justificar índices, históricos y snapshots por valor/coste;
-- conservar trazabilidad editorial necesaria aunque un dato sea derivable;
-- definir regenerabilidad/retención para datos derivados de volumen significativo.
+- conservar trazabilidad editorial necesaria;
+- definir regenerabilidad/retención para derivados voluminosos.
 
-## Cambios estructurales
+## Cambio estructural
 
-1. auditar lectores y writers;
+1. auditar readers/writers;
 2. clasificar CANÓNICA / READ MODEL / COMPATIBILIDAD / REGENERABLE / LEGACY / UNKNOWN;
 3. UNKNOWN bloquea eliminación;
-4. cambios destructivos mediante migración revisable y smoke test;
-5. verificar producción tras aplicar;
-6. actualizar esta arquitectura y el catálogo de procesos si cambia una fuente de verdad.
+4. cambios destructivos mediante migración revisable + smoke;
+5. verificar producción;
+6. actualizar arquitectura y catálogo de procesos si cambia una fuente de verdad.
