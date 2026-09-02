@@ -8,8 +8,8 @@ Before proposing or changing behavior, read:
 
 1. `docs/AI_DEVELOPMENT_GUIDE.md`
 2. `docs/PROJECT_RULES.md`
-3. `docs/PRE_V4_READINESS_PLAN.md` while PRE-V4 remains active
-4. `docs/README.md` — canonical documentation map
+3. `docs/README.md` — canonical documentation map
+4. `docs/BASELINE_V4_START.md` — audited V3 baseline from which V4 starts
 5. `docs/processes/PROCESS_CATALOG.md`
 6. `docs/processes/BATCH_ARCHITECTURE.md`
 7. canonical architecture/product/operations documentation for the affected domain
