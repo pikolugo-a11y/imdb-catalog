@@ -47,6 +47,13 @@ Criterios:
 | `perf/identity-minimal-resolution` | 0 | 1291 | optimización absorbida |
 | `perf/identity-minimal-resolution-v2` | 0 | 1288 | optimización absorbida |
 | `perf/vercel-frankfurt` | 0 | 320 | configuración/perf absorbida |
+| `fix/api-worker-dockerfile` | 0 | 1217 | fix absorbido |
+| `fix/api-worker-entrypoint` | 0 | 1207 | fix absorbido |
+| `fix/batch-error-observability-ser003` | 0 | 57 | fix absorbido |
+| `fix/batch-error-visibility` | 0 | 1096 | fix absorbido |
+| `fix/batch-external-calls-counter` | 0 | 150 | fix absorbido |
+| `fix/batch-partial-status` | 0 | 33 | fix absorbido |
+| `fix/batch-preview-context-signature` | 0 | 1103 | fix absorbido |
 
 ## INVESTIGAR — contiene commits exclusivos
 
@@ -70,6 +77,7 @@ Criterios:
 | `experiment/identity-unit-fa-search-lab` | 1 | 1482 | cambia acción de Identidad; requiere revisión funcional |
 | `test/fa-python-5` | 7 | 1503 | workflow/probes Python/Vercel exclusivos; posible laboratorio histórico |
 | `test/fa-resolver-benchmark` | 3 | 1544 | workflow benchmark FA exclusivo |
+| `fix/batch-outcomes-compact-ui` | 5 | 1103 | cambios exclusivos de la antigua `/admin/batch`; probable legacy, pero revisar antes de clasificar para borrado |
 
 ## Nota
 
