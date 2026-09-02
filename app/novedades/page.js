@@ -10,7 +10,7 @@ import {requestNewsDiscoveryAction} from './discovery-actions';
 import {addManualCandidateAction,retryManualCandidateAction,restoreAndAddManualAction} from './manual-candidate-actions';
 import {removeManualCandidateAction} from './manual-remove-actions';
 import {admitNewsCandidateAction} from './catalog-admission-actions';
-import {excludeNewsCandidateAction} from './actions';
+import {excludeNewsCandidateAction} from './exclude-actions';
 export const dynamic='force-dynamic';
 function qs(p,patch={}){const x=new URLSearchParams();for(const[k,v]of Object.entries({...p,...patch}))if(v!==undefined&&v!==null&&v!=='')x.set(k,String(v));return x.toString()}
 function typeLabel(type){return type==='movie'?'Película':type==='tvMiniSeries'?'Miniserie':type==='tvSeries'?'Serie':'—'}
