@@ -32,7 +32,7 @@ El contexto puede cambiar `lane`, gobernanza de APIs, trazabilidad, cancelación
 - `batch_engine_control`: control global del motor.
 - `batch_api_source_limits` / usage: gobernanza de fuentes externas para lanes manual/Batch.
 
-Las antiguas `batch_runs`, `batch_jobs`, `batch_process_state`, `batch_source_limits` y `batch_runtime_control` fueron retiradas y **no son parte de la arquitectura**.
+Las antiguas `batch_runs`, `batch_jobs`, `batch_process_state`, `batch_source_limits` y `batch_runtime_control` fueron retiradas y **no son parte de la arquitectura**. Un contrato de regresión recorre el código vivo y prohíbe reintroducir referencias a esas relaciones retiradas.
 
 ## Runtime común
 
@@ -56,12 +56,18 @@ Las antiguas `batch_runs`, `batch_jobs`, `batch_process_state`, `batch_source_li
 | IV-002 | evidencia lista para validar | fast | 8 | `validateIdentityCanonical` | PARCIAL por guard |
 | DATA-001 | `DATA_INCOMPLETE` | api | 2 | `executeData001Canonical` | EXACTA |
 | DATA-002 | `PIKOSCORE_PENDING` con ratings ausentes/caducados | api | 2 | `refreshRatingsCanonical` | EXACTA funcional |
-| DATA-003 | títulos listos para PikoScore | fast | 8 | `executeData003Canonical` | DIVERGENTE respecto al individual |
+| DATA-003 | títulos listos para PikoScore | fast | 8 | `executeData003Canonical` | EXACTA en entrypoint vivo |
 | MOV-001 | `MOVIE_FILE_PENDING` + película Plex activa | fast | 8 | `executeMov001Canonical` | EXACTA |
 | SER-002 | detalle Plex ausente/invalidado | plex | 1 | `syncPlexSeriesDetailCore` | EXACTA |
 | SER-003 | referencia TMDb vencida/invalidada | api | 2 | `refreshSeriesUnitaryCanonical` | PARCIAL |
 | SER-004 | disponibilidad ES desconocida y recheck vencido | api | 2 | `confirmSeriesEsAvailabilityCanonical` | PARCIAL |
 | PER-001 | persona relevante sin refresh o >30 días/error | api | 2 | `refreshPersonFilmography` wrapper | DIVERGENTE observabilidad |
+
+### Corrección P5 sobre DATA-003
+
+La primera inspección encontró una exportación antigua de `calculatePikoScoreV3Action` dentro de `app/calidad/datos/actions.js` y parecía que el individual mantenía una receta propia. La auditoría del entrypoint vivo demostró que `/calidad/datos` importa en realidad `calculatePikoScoreV3Action` desde `app/calidad/datos/pikoscore-actions.js`, y ese entrypoint llama a `executeData003Canonical`, igual que Railway FAST.
+
+Por tanto **la paridad viva de DATA-003 es EXACTA**. La implementación antigua de `app/calidad/datos/actions.js` se considera candidata a limpieza física una vez cerrado el barrido de consumidores; su mera presencia no altera el contrato vivo.
 
 ## Pausa, reanudación y cancelación
 
@@ -96,13 +102,13 @@ Un PR/cambio que requiere editar una receta en `app/.../actions.js` y repetirla 
 
 ## Deudas P5 que afectan Batch
 
-- **DATA-003:** mover el individual a `executeData003Canonical` o extraer un core superior único.
 - **PER-001:** extraer core no observado; actualmente Batch llama al wrapper individual observado y produce doble frontera de ejecución.
-- **IV-001/IV-002:** decidir si `IDENTITY_REVIEW_REQUIRED` es exclusivamente manual. Si sí, el individual automático debe usar el mismo guard que Batch o documentarse como acción explícita de revalidación; si no, el selector Batch debe reflejar la política.
-- **SER-003/SER-004:** unificar postprocesado de read model dentro de la operación canónica o demostrar que ya ocurre dentro del core.
+- **IV-001/IV-002:** la diferencia de guard protege `IDENTITY_REVIEW_REQUIRED` frente a automatización masiva. Mantenerla como política explícita o, si cambia el producto, converger selector/guard de forma deliberada.
+- **SER-003/SER-004:** unificar postprocesado de read model dentro de la operación canónica o demostrar mediante contrato que individual y Batch producen el mismo read model.
 - **PQ-001:** retirar `pipeline_runs` interno cuando se consolide observabilidad; decidir si C6 vectorizado es una operación Batch especial válida o si debe existir core por item.
+- **Código histórico:** retirar sólo tras verificar consumidores la exportación DATA-003 antigua y otras generaciones previas; no inferir vigencia por presencia del archivo.
 
-## Prueba de regresión arquitectónica recomendada
+## Prueba de regresión arquitectónica
 
 Mantener tests que fallen si:
 - un adapter Batch deja de importar el core canónico esperado;
