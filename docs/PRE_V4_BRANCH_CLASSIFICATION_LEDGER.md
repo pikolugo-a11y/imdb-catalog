@@ -66,6 +66,24 @@ Criterios:
 | `feat/batch-validation-v1` | 0 | 123 | integración absorbida |
 | `feat/ser002-batch-v1` | 0 | 23 | SER-002 absorbido en main |
 | `feature/m46-a-control-queue` | 0 | 1237 | control/queue histórico absorbido |
+| `feat/process-runtime-id001-clean` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-impl` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-2` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-3` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-4` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-5` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-20260828` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-a` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-b` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-c` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-final` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-final2` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-safe` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-x` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-y` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-pilot-z` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `feat/process-runtime-id001-v1` | 0 | 600 | misma ref absorbida `8e6174cf...` |
 
 ## INVESTIGAR — contiene commits exclusivos
 
@@ -94,6 +112,11 @@ Criterios:
 | `feat/batch-duration-eta` | 4 | 1102 | UI/ETA de `/admin/batch` antigua + `batch-ui-metrics`; fuerte candidato a BORRAR |
 | `feat/batch-v1-iv001-iv002` | 12 | 143 | contiene implementación funcional de Validación/Batches; revisar paridad con main antes de borrar |
 | `feature/m46-b-fast-worker` | 3 | 1234 | worker FAST histórico `worker/batch-fast.mjs` + railway.toml; comparar con worker FAST canónico actual antes de descartar |
+| `feat/process-runtime-id001` | 8 | 600 | introduce una generación temprana de `process-runtime.js` e integración Identidad; revisar paridad con implementación canónica actual |
+
+## Evidencia de refs compartidas
+
+La API de ramas confirma que las 18 ramas `feat/process-runtime-id001-*` marcadas BORRAR arriba apuntan exactamente al mismo commit `8e6174cf5698e4a9edf55da09acbed784832f681`. Ese commit ya fue comparado contra `main` y devuelve `ahead_by=0`, `behind_by=600`, `files=[]`. Por ello no fue necesario repetir una comparación individual para cada alias de rama.
 
 ## Nota
 
