@@ -1,143 +1,243 @@
 # PikoFilm — PRE-V4 · Registro acumulativo de ramas GitHub
 
-Fecha de inicio: 2026-09-02
-Rama: `pre-v4-readiness`
+Fecha de inicio: 2026-09-02  
+Rama de trabajo: `pre-v4-readiness`
 
 ## Regla
 
-Este documento acumula la clasificación de ramas mientras se auditan. No se elimina ninguna rama desde este registro; la eliminación manual se hará más adelante, agrupada, cuando Roberto pueda hacerlo cómodamente.
+Este documento acumula la clasificación mientras se auditan las ramas. No se elimina ninguna rama durante esta fase; Roberto hará la limpieza manual agrupada cuando termine la revisión completa.
 
-Criterios:
-
-- **BORRAR**: comparación contra `main` con `ahead_by = 0`; la ref no conserva commits exclusivos.
-- **CONSERVAR**: rama activa/protegida o con valor operativo explícito.
-- **INVESTIGAR**: `ahead_by > 0`, divergencia o contenido exclusivo que requiere revisar antes de decidir.
-- **PROTEGIDA**: `main` y ramas activas de trabajo PRE-V4.
+- **BORRAR**: no conserva commits funcionales exclusivos que deban preservarse. El caso normal es `ahead_by=0`; cuando una rama tenga commits exclusivos puramente temporales deberá quedar explícitamente justificado antes de promoverla a BORRAR.
+- **CONSERVAR / PROTEGIDA**: rama activa o necesaria.
+- **INVESTIGAR**: contiene commits exclusivos o evidencia que todavía requiere contraste.
 
 ## PROTEGIDAS / CONSERVAR
 
-| Rama | Estado | Motivo |
-|---|---|---|
-| `main` | PROTEGIDA | Producción |
-| `pre-v4-readiness` | PROTEGIDA | Rama activa PRE-V4 |
-| `archive/railway-pikoquality-technical-snapshot-20260901` | INVESTIGAR | 20 commits ahead / 705 behind; conserva trabajo exclusivo PikoQuality/Technical |
+- `main` — producción.
+- `pre-v4-readiness` — rama PRE-V4 activa.
 
-## BORRAR — confirmado por comparación con main
+## INVESTIGAR prioritario
 
-| Rama | Ahead | Behind | Motivo |
-|---|---:|---:|---|
-| `pre-v4-audit-tmp` | 0 | 2 | temporal absorbida |
-| `cleanup/drop-batch-job-steps-direct` | 0 | 324 | one-shot absorbida |
-| `cleanup/retire-legacy-batch-ui` | 0 | 327 | cleanup absorbida |
-| `noop` | 0 | 237 | temporal absorbida |
-| `noop-check` | 0 | 1247 | temporal absorbida |
-| `tmp-ignore` | 0 | 8 | temporal absorbida |
-| `tmp-ignore2` | 0 | 8 | temporal absorbida |
-| `tmp-noop` | 0 | 1117 | temporal absorbida |
-| `ops/cleanup-id001-readonly-check` | 0 | 144 | verificación absorbida |
-| `ops/verify-id001-batch-readonly` | 0 | 147 | verificación absorbida |
-| `ops/revalidate-tt8442644` | 0 | 201 | diagnóstico absorbido |
-| `ops/revalidate-tt8442644-rerun` | 0 | 198 | diagnóstico absorbido |
-| `ops/revalidate-tt8442644-rerun3` | 0 | 195 | diagnóstico absorbido |
-| `ops/revalidate-tt8442644-rerun4` | 0 | 192 | diagnóstico absorbido |
-| `ops/vercel-deploy-iv-batch` | 0 | 120 | despliegue/verificación absorbida |
-| `validate-people-v2` | 0 | 954 | validación absorbida |
-| `validation-lifecycle-only` | 0 | 1420 | validación absorbida |
-| `test/brave-throttle-30` | 0 | 1473 | test histórico absorbido |
-| `perf/identity-minimal-resolution` | 0 | 1291 | optimización absorbida |
-| `perf/identity-minimal-resolution-v2` | 0 | 1288 | optimización absorbida |
-| `perf/vercel-frankfurt` | 0 | 320 | configuración/perf absorbida |
-| `fix/api-worker-dockerfile` | 0 | 1217 | fix absorbido |
-| `fix/api-worker-entrypoint` | 0 | 1207 | fix absorbido |
-| `fix/batch-error-observability-ser003` | 0 | 57 | fix absorbido |
-| `fix/batch-error-visibility` | 0 | 1096 | fix absorbido |
-| `fix/batch-external-calls-counter` | 0 | 150 | fix absorbido |
-| `fix/batch-partial-status` | 0 | 33 | fix absorbido |
-| `fix/batch-preview-context-signature` | 0 | 1103 | fix absorbido |
-| `feat/batch-double-accordion-global` | 0 | 73 | feature absorbida |
-| `feat/data-batch-double-accordion` | 0 | 82 | feature absorbida |
-| `feat/batch-engine-v1` | 0 | 238 | base del Batch Engine actual ya absorbida |
-| `feat/batch-api-id001` | 0 | 153 | integración Batch API absorbida |
-| `feat/batch-data003-pilot` | 0 | 219 | piloto absorbido |
-| `feat/batch-mov001` | 0 | 208 | integración absorbida |
-| `feat/batch-v1-data001` | 0 | 87 | integración absorbida |
-| `feat/batch-v1-data002` | 0 | 105 | integración absorbida |
-| `feat/batch-v1-ser003-ser004` | 0 | 60 | integración absorbida |
-| `feat/batch-validation-v1` | 0 | 123 | integración absorbida |
-| `feat/ser002-batch-v1` | 0 | 23 | SER-002 absorbido en main |
-| `feature/m46-a-control-queue` | 0 | 1237 | control/queue histórico absorbido |
-| `feat/process-runtime-id001-clean` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-impl` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-2` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-3` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-4` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-5` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-20260828` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-a` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-b` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-c` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-final` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-final2` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-safe` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-x` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-y` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-pilot-z` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `feat/process-runtime-id001-v1` | 0 | 600 | misma ref absorbida `8e6174cf...` |
-| `docs/architecture-efficiency` | 0 | 1315 | documentación absorbida |
-| `docs/cost-efficiency` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/efficiency` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/infra-efficiency` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-efficiency-architecture` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-efficiency-canonical` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-efficiency-final` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-efficiency-policy` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-efficiency-rule19` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-efficiency-rule-v2` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-policy` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-rule19` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
-| `docs/neon-efficiency-rule` | 0 | 1313 | documentación absorbida |
-| `docs/golden-rules-purpose` | 0 | 1329 | documentación absorbida |
-| `docs/cleanup-historical-docs` | 0 | 1316 | documentación absorbida |
-| `docs/status-after-m01-m07` | 0 | 1292 | documentación absorbida |
-| `docs-lifecycle-roadmaps` | 0 | 1332 | documentación absorbida |
+- `archive/railway-pikoquality-technical-snapshot-20260901` — 20 ahead / 705 behind; conserva trabajo exclusivo PikoQuality/Technical.
+- `develop` — 25 ahead / 1792 behind; generación V1 completa, histórica, aún no promovida a BORRAR.
+- `docs/procesos-automaticos-pa-001` — 25 ahead / 1451 behind; 23 documentos PA históricos que pueden aportar material a P5.
+- `feat/process-runtime-id001` — 8 ahead / 600; generación temprana de process-runtime + Identidad.
+- `feat/batch-v1-iv001-iv002` — 12 ahead / 143; implementación funcional de Validación/Batch; requiere paridad.
+- `feature/m46-b-fast-worker` — 3 ahead / 1234; worker FAST y Railway históricos; contrastar con worker actual.
+- `feat/exc001-canonical-exclusion` — 2 ahead / 394; incluye migración DB + workflow Neon temporal; bloqueado por P3/NEON-001.
+- `feat/materialized-lifecycle-plex-feedback` — 3 ahead / 1439; modifica Lifecycle/Novedades.
+- `agent/neon-storage-optimization` — 2 ahead / 1642; modifica PikoQuality enrichment y Plex sync.
 
-## INVESTIGAR — contiene commits exclusivos
+### INVESTIGAR — validaciones, laboratorios y generaciones históricas
 
-| Rama | Ahead | Behind | Contenido exclusivo observado |
-|---|---:|---:|---|
-| `validate-identity-throughput` | 3 | 1028 | cambios CI + triggers temporales |
-| `validate-mdblist-only-pikoscore` | 2 | 1025 | cambio CI + trigger temporal |
-| `validate-movie-detail-v3` | 1 | 1002 | fichero `.ci/validate-movie-detail-v3.txt` |
-| `validate-movie-quality-saga` | 1 | 999 | trigger CI temporal |
-| `validate-people-v2-final` | 1 | 949 | fichero de validación |
-| `validate-people-v2-final2` | 1 | 948 | fichero de validación |
-| `validate-pikoscore3-rollout` | 1 | 1034 | cambio CI histórico |
-| `validate-runtime-perf` | 2 | 1018 | triggers temporales de CI/perf |
-| `validate-sagas-redesign` | 1 | 991 | trigger CI temporal |
-| `validate-sagas-v2` | 3 | 985 | sólo artefactos de validación/CI observados |
-| `validate-series-detail-v3-fa-clean` | 1 | 1004 | fichero de validación CI |
-| `validate-series-detail-v3` | 1 | 1007 | fichero de validación CI |
-| `verify-identity-runtime-fix-2` | 1 | 838 | fichero de verificación CI |
-| `verify-identity-ui` | 5 | 841 | ficheros de verificación/notas históricas |
-| `diag/brave-single` | 1 | 1471 | endpoint de diagnóstico Brave exclusivo; revisar antes de descartar |
-| `experiment/identity-unit-fa-search-lab` | 1 | 1482 | cambia acción de Identidad; requiere revisión funcional |
-| `test/fa-python-5` | 7 | 1503 | workflow/probes Python/Vercel exclusivos; posible laboratorio histórico |
-| `test/fa-resolver-benchmark` | 3 | 1544 | workflow benchmark FA exclusivo |
-| `fix/batch-outcomes-compact-ui` | 5 | 1103 | cambios exclusivos de la antigua `/admin/batch`; probable legacy, pero revisar antes de clasificar para borrado |
-| `feat/batch-control-center-v1` | 7 | 1110 | sólo generación antigua `/admin/batch` + `lib/batch-control`; fuerte candidato a BORRAR por decisión de retirada, pendiente cierre de revisión |
-| `feat/batch-duration-eta` | 4 | 1102 | UI/ETA de `/admin/batch` antigua + `batch-ui-metrics`; fuerte candidato a BORRAR |
-| `feat/batch-v1-iv001-iv002` | 12 | 143 | contiene implementación funcional de Validación/Batches; revisar paridad con main antes de borrar |
-| `feature/m46-b-fast-worker` | 3 | 1234 | worker FAST histórico `worker/batch-fast.mjs` + railway.toml; comparar con worker FAST canónico actual antes de descartar |
-| `feat/process-runtime-id001` | 8 | 600 | introduce una generación temprana de `process-runtime.js` e integración Identidad; revisar paridad con implementación canónica actual |
-| `docs/procesos-automaticos-pa-001` | 25 | 1451 | 23 documentos históricos PA-001..PA-022; posible material útil para P5 aunque no sea fuente de verdad actual |
+- `validate-identity-throughput` — 3 ahead; CI/triggers temporales.
+- `validate-mdblist-only-pikoscore` — 2 ahead; CI/trigger temporal.
+- `validate-movie-detail-v3` — 1 ahead; marcador CI.
+- `validate-movie-quality-saga` — 1 ahead; marcador CI.
+- `validate-people-v2-final` — 1 ahead; fichero de validación.
+- `validate-people-v2-final2` — 1 ahead; fichero de validación.
+- `validate-pikoscore3-rollout` — 1 ahead; CI histórico.
+- `validate-runtime-perf` — 2 ahead; triggers temporales.
+- `validate-sagas-redesign` — 1 ahead; trigger CI.
+- `validate-sagas-v2` — 3 ahead; artefactos de validación/CI observados.
+- `validate-series-detail-v3-fa-clean` — 1 ahead; fichero de validación.
+- `validate-series-detail-v3` — 1 ahead; fichero de validación.
+- `verify-identity-runtime-fix-2` — 1 ahead; fichero de verificación.
+- `verify-identity-ui` — 5 ahead; ficheros de verificación/notas.
+- `diag/brave-single` — 1 ahead; endpoint diagnóstico Brave.
+- `experiment/identity-unit-fa-search-lab` — 1 ahead; modifica acción de Identidad.
+- `test/fa-python-5` — 7 ahead; probes/workflow Python-Vercel.
+- `test/fa-resolver-benchmark` — 3 ahead; benchmark FA.
+- `fix/batch-outcomes-compact-ui` — 5 ahead; exclusivamente generación `/admin/batch` antigua; fuerte candidato BORRAR tras decisión de retirar esa generación.
+- `feat/batch-control-center-v1` — 7 ahead; `/admin/batch` + `lib/batch-control`; fuerte candidato BORRAR.
+- `feat/batch-duration-eta` — 4 ahead; ETA/UI de `/admin/batch`; fuerte candidato BORRAR.
+- `remove-fa-ambiguos` — 3 ahead; retirada de antigua UI de ambiguos; revisar contra arquitectura actual.
+- `ux-v1.1` — 2 ahead; UX V1 histórica.
+- `v1.2-feedback` — 18 ahead; V1.2 histórica.
+- `v2/issues-24-31` — 35 ahead; generación V2 histórica; contiene orígenes de nombres aún usados como compatibilidad.
+- `feat/calidad-datos-248` — 4 ahead; cambios Calidad Datos.
+- `feat/calidad-global-224` — 10 ahead; dashboard Calidad.
+- `feat/data008-global-imdb-ratings` — 2 ahead; DATA-008 retirado actualmente; fuerte candidato BORRAR, falta cierre.
+- `feat/data-quality-center` — 7 ahead; primera generación del centro de Calidad Datos.
+- `feat/data-quality-observability-performance` — 4 ahead; perf/log Calidad Datos; ideas útiles ya preservadas históricamente en #449, falta cierre de rama.
+- `feat/data-quality-source-retries` — 4 ahead; retry de fuentes histórico.
+- `feat/fa-github-safe-search` — 6 ahead; Identity/FA histórico.
+- `feat/fa-python-fallback` — 4 ahead; fallback Python FA histórico.
+- `feat/home-audit-v2` — 8 ahead; Home histórico.
+- `feat/home-dashboard-v3` — 5 ahead; Home histórico.
+- `feat/home-third-review` — 7 ahead; incluye cron/dashboard snapshot y Vercel config; requiere contraste.
+- `feat/identity-one-by-one` — 1 ahead y el único cambio es `tmp-placeholder`; candidato directo a BORRAR en siguiente cierre.
+- `feat/identity-persist-ambiguities` — 6 ahead; UI/storage de ambiguos histórica.
+- `feat/identity-validation-phased-cache` — 11 ahead; workflow/Python/cache histórico.
+- `feat/m46c-filmaffinity` — 2 ahead; `tmp/noop-fa-fix` + pequeño worker SQL; candidato fuerte a BORRAR tras contraste.
+- `feat/omdb-news-intake` — 6 ahead / 1443 behind; generación antigua de intake manual OMDb/Novedades; requiere contraste con flujo NOV actual.
 
-## Evidencia de refs compartidas
+## BORRAR — confirmado sin commits exclusivos (`ahead_by=0`)
 
-La API de ramas confirma que las 18 ramas `feat/process-runtime-id001-*` marcadas BORRAR arriba apuntan exactamente al mismo commit `8e6174cf5698e4a9edf55da09acbed784832f681`. Ese commit ya fue comparado contra `main` y devuelve `ahead_by=0`, `behind_by=600`, `files=[]`.
+### Temporales / operaciones / validaciones
 
-La API también confirma que 12 ramas documentales de eficiencia/Neon apuntan al mismo commit `6edbf3ce66a105aa6376edbbf586a7a697489a1a`; la comparación de ese commit contra `main` devuelve `ahead_by=0`, `behind_by=1315`, `files=[]`.
+- `pre-v4-audit-tmp`
+- `cleanup/drop-batch-job-steps-direct`
+- `cleanup/retire-legacy-batch-ui`
+- `noop`
+- `noop-check`
+- `tmp-ignore`
+- `tmp-ignore2`
+- `tmp-noop`
+- `ops/cleanup-id001-readonly-check`
+- `ops/verify-id001-batch-readonly`
+- `ops/revalidate-tt8442644`
+- `ops/revalidate-tt8442644-rerun`
+- `ops/revalidate-tt8442644-rerun3`
+- `ops/revalidate-tt8442644-rerun4`
+- `ops/vercel-deploy-iv-batch`
+- `validate-people-v2`
+- `validation-lifecycle-only`
+- `test/brave-throttle-30`
+- `audit-unitary-identity-validation`
+- `chore/m46b-pilot-cleanup`
+- `chore/neon-project-switch`
+- `cleanup/catalog-legacy-actions`
+- `cleanup/retire-data008`
 
-## Nota
+### Performance / fixes absorbidos
 
-Una rama en INVESTIGAR puede terminar siendo BORRAR aunque tenga commits exclusivos si esos commits sólo son artefactos temporales/CI o implementaciones sustituidas sin valor funcional; pero no se promueve a BORRAR hasta revisar su contenido y confirmar que no conserva implementación útil.
+- `perf/identity-minimal-resolution`
+- `perf/identity-minimal-resolution-v2`
+- `perf/vercel-frankfurt`
+- `fix/api-worker-dockerfile`
+- `fix/api-worker-entrypoint`
+- `fix/batch-error-observability-ser003`
+- `fix/batch-error-visibility`
+- `fix/batch-external-calls-counter`
+- `fix/batch-partial-status`
+- `fix/batch-preview-context-signature`
+- `fix/series-detail-availability-refresh`
+- `fix/series-detail-availability-refresh-v2`
+
+### Batch / execution plane absorbido
+
+- `feat/batch-double-accordion-global`
+- `feat/data-batch-double-accordion`
+- `feat/batch-engine-v1`
+- `feat/batch-api-id001`
+- `feat/batch-data003-pilot`
+- `feat/batch-mov001`
+- `feat/batch-v1-data001`
+- `feat/batch-v1-data002`
+- `feat/batch-v1-ser003-ser004`
+- `feat/batch-validation-v1`
+- `feat/ser002-batch-v1`
+- `feature/m46-a-control-queue`
+
+### Process Runtime ID-001 — aliases absorbidos
+
+Las siguientes 18 refs apuntan al mismo commit `8e6174cf5698e4a9edf55da09acbed784832f681`, comparado contra `main` con ahead=0 / behind=600:
+
+- `feat/process-runtime-id001-clean`
+- `feat/process-runtime-id001-impl`
+- `feat/process-runtime-id001-pilot`
+- `feat/process-runtime-id001-pilot-2`
+- `feat/process-runtime-id001-pilot-3`
+- `feat/process-runtime-id001-pilot-4`
+- `feat/process-runtime-id001-pilot-5`
+- `feat/process-runtime-id001-pilot-20260828`
+- `feat/process-runtime-id001-pilot-a`
+- `feat/process-runtime-id001-pilot-b`
+- `feat/process-runtime-id001-pilot-c`
+- `feat/process-runtime-id001-pilot-final`
+- `feat/process-runtime-id001-pilot-final2`
+- `feat/process-runtime-id001-pilot-safe`
+- `feat/process-runtime-id001-pilot-x`
+- `feat/process-runtime-id001-pilot-y`
+- `feat/process-runtime-id001-pilot-z`
+- `feat/process-runtime-id001-v1`
+
+### Arquitectura M46 absorbida
+
+- `architecture/m46-batch-autopilot`
+- `architecture/m46-batch-autopilot-2`
+- `architecture/m46-batch-autopilot-final`
+- `architecture/m46-batch-autopilot-temp`
+- `architecture/m46-batch-autopilot-work`
+
+Las cuatro últimas comparten head `5d1b4f74dd18d013de8ad7e4e9f7924a5f78f549`, ya comparado ahead=0.
+
+### Documentación absorbida
+
+- `docs/architecture-efficiency`
+- `docs/cost-efficiency`
+- `docs/efficiency`
+- `docs/infra-efficiency`
+- `docs/neon-efficiency-architecture`
+- `docs/neon-efficiency-canonical`
+- `docs/neon-efficiency-final`
+- `docs/neon-efficiency-policy`
+- `docs/neon-efficiency-rule19`
+- `docs/neon-efficiency-rule-v2`
+- `docs/neon-policy`
+- `docs/neon-rule19`
+- `docs/neon-efficiency-rule`
+- `docs/golden-rules-purpose`
+- `docs/cleanup-historical-docs`
+- `docs/status-after-m01-m07`
+- `docs-lifecycle-roadmaps`
+
+Las primeras 12 del bloque comparten en su mayoría head `6edbf3ce66a105aa6376edbbf586a7a697489a1a`, ya comparado ahead=0.
+
+### Calidad / Home / Identidad / M46 absorbidos
+
+- `pikoscore-ratings-separation`
+- `pikoscore-v2`
+- `show-movie-file-pending`
+- `unify-fa-rating-fetch`
+- `unify-quality-frontends`
+- `unitary-data-quality-flow`
+- `unitary-identity-validation`
+- `feat/calidad-datos-operational-ux`
+- `feat/data001-observability`
+- `feat/data002-ratings-observability`
+- `feat/data003-pikoscore-observability`
+- `feat/data005-accept-incomplete-observability`
+- `feat/data-quality-manual-override-speed-layout`
+- `feat/data-quality-validation-gate`
+- `feat/home-db-storage`
+- `feat/home-fourth-review`
+- `feat/id-correction-core-iv003`
+- `feat/iv001-observability`
+- `feat/iv002-observability`
+- `feat/iv004-observed-manual-decision`
+- `feat/iv005-force-identity-association`
+- `feat/m46c-plex-probe`
+- `feat/m46c-tmdb-api-worker`
+- `feat/m46c-wikidata`
+- `feat/mov001-canonical-physical-validation`
+- `feat/mov002-observed-exception`
+- `feat/mov003-full-reprocessing-reset`
+
+### Novedades / Personas absorbidos
+
+- `feat/nov001-canonical-imdb-discovery`
+- `feat/nov002-manual-imdb-intake`
+- `feat/nov003-retry-manual-minimums`
+- `feat/nov004-restore-and-add`
+- `feat/nov006-remove-manual-candidate`
+- `feat/nov007-minimal-catalog-admission`
+- `feat/nov008-plex-news-seed-observed`
+- `feat/nov009-canonical-plex-sync`
+- `feat/nov010-plex-manual-imdb`
+- `feat/nov011-saga-intake`
+- `feat/nov016-restore-exclusion`
+- `feat/operations-reset-title`
+- `feat/per001-canonical-person-refresh`
+- `feat/per002-common-batch`
+
+## Frontend Safety Gate para ramas
+
+Borrar una ref que no contiene commits exclusivos no modifica el árbol de `main`, el frontend desplegado, Railway, Vercel ni Neon. Por eso estas refs pueden clasificarse BORRAR independientemente de que el código histórico contenido en su commit haya sido frontend-consumido: la implementación relevante ya está absorbida por la historia de `main`.
+
+Las ramas con commits exclusivos sí se mantienen en INVESTIGAR hasta demostrar si esos commits son sólo temporales/históricos o si conservan valor funcional no absorbido.
+
+## Estado
+
+Auditoría de ramas todavía en curso. No ejecutar limpieza manual hasta que todas estén clasificadas y se genere la lista final consolidada.
