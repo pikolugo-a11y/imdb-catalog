@@ -1,6 +1,6 @@
 # PikoFilm — Catálogo canónico de procesos
 
-Estado: **documentación canónica viva**. Este documento sustituye progresivamente a la issue #273 como fuente de verdad. El código vivo manda cuando exista discrepancia; la discrepancia debe corregirse y documentarse en el mismo bloque.
+Estado: **documentación canónica viva**. El código vivo manda cuando exista discrepancia. Este catálogo describe los entrypoints que realmente consume la UI, los executors y la frontera canónica; los módulos históricos no se consideran vigentes sólo por seguir presentes en el repositorio.
 
 ## Regla de arquitectura
 
@@ -10,157 +10,121 @@ Todo proceso funcional debe tener una única operación canónica reutilizable.
 
 `Batch -> selección/cola -> child process_run -> operación canónica X`
 
-Batch puede añadir selección, concurrencia, leases, pausa/reanudación/cancelación, rate limiting y agregación de métricas, pero **no puede mantener una segunda receta funcional**. Una modificación de X debe cambiar automáticamente individual y Batch.
+Batch puede añadir selección, concurrencia, leases, pausa/reanudación/cancelación, rate limiting y agregación de métricas, pero **no puede mantener una segunda receta funcional**.
 
-### Estados de paridad
-- **EXACTA**: individual y Batch llaman al mismo core canónico.
-- **PARCIAL**: comparten core, pero guards/Lifecycle/read-model/observabilidad difieren de forma funcionalmente relevante.
-- **DIVERGENTE**: existe lógica funcional duplicada o distinta.
-- **SIN BATCH**: proceso unitario/global sin Batch.
-- **NO APLICA**: decisión humana o proceso que no debe masificarse.
-- **PENDIENTE AUDITORÍA**: inventariado pero falta cerrar contraste de código vivo.
+Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards/postprocesado distintos; **DIVERGENTE** = frontera funcional u observabilidad duplicada; **SIN BATCH** = proceso unitario/global sin Batch; **NO APLICA** = decisión humana que no debe masificarse; **RETIRADO** = proceso ya eliminado del sistema vivo.
 
-## Inventario maestro auditado
+## Inventario maestro
 
-| PROC | Dominio | Función | Individual/global | Batch | Core canónico / implementación | Executor individual | Executor Batch | Paridad |
-|---|---|---|---|---|---|---|---|---|
-| PROC-ID-001 | Identidad | Resolver TMDb desde IMDb | individual | sí | `executeId001Canonical` | Vercel | Railway API | EXACTA |
-| PROC-ID-002 | Identidad | Corregir IDs manualmente | individual manual | no | `correctIdentityIds` | Vercel | — | NO APLICA |
-| PROC-IV-001 | Validación | Obtener/actualizar evidencia | individual | sí | `refreshIdentityEvidenceCanonical` | Vercel | Railway API | PARCIAL |
-| PROC-IV-002 | Validación | Validar/revalidar identidad | individual | sí | `validateIdentityCanonical` | Vercel | Railway FAST | PARCIAL |
-| PROC-IV-003 | Validación | Corregir IDs e invalidar evidencia | individual manual | no | `correctIdentityIds` + invalidación | Vercel | — | NO APLICA |
-| PROC-IV-004 | Validación | Decisión manual/reversión | individual manual | no | acción manual sobre `identity_validation` | Vercel | — | NO APLICA |
-| PROC-DATA-001 | Datos | Completar datos estructurales ausentes | individual | sí | `executeData001Canonical` | Vercel | Railway API | EXACTA |
-| PROC-DATA-002 | Datos | Refrescar ratings | individual | sí | `refreshRatingsCanonical` | Vercel | Railway API | EXACTA funcional / wrapper distinto |
-| PROC-DATA-003 | Datos | Calcular PikoScore 3 | individual | sí | **Batch:** `executeData003Canonical`; individual aún usa wrapper `pikoscore-v3.js` | Vercel | Railway FAST | DIVERGENTE |
-| PROC-DATA-005 | Datos | Aceptar datos incompletos | individual manual | no | `acceptIncompleteData` | Vercel | — | NO APLICA |
-| PROC-DATA-008 | Datos | Refresh global IMDb dataset | global | no vigente | objetivo inventariado; implementación a rehacer | — | — | PENDIENTE AUDITORÍA |
-| PROC-MOV-001 | Películas | Validar archivo físico | individual | sí | `executeMov001Canonical` | Vercel | Railway FAST | EXACTA |
-| PROC-MOV-002 | Películas | Aceptar finding como excepción | individual manual | no | `setMovieQualityFindingAction` | Vercel | — | NO APLICA |
-| PROC-MOV-003 | Películas | Confirmar corrección y reset completo | individual manual | no | `resetTitleForFullReprocessing` | Vercel | — | NO APLICA |
-| PROC-SER-001 | Series/Plex | Sincronización rápida global de series Plex | global | no | `syncPlexSeriesFastCore` | Vercel | — | SIN BATCH |
-| PROC-SER-002 | Series/Plex | Actualizar detalle Plex de una serie | individual | sí | `syncPlexSeriesDetailCore` | Vercel | Railway Plex | EXACTA |
-| PROC-SER-003 | Series | Actualizar referencia TMDb | individual | sí | `refreshSeriesUnitaryCanonical` | Vercel | Railway API | PARCIAL |
-| PROC-SER-004 | Series | Comprobar disponibilidad ES | individual | sí | `confirmSeriesEsAvailabilityCanonical` | Vercel | Railway API | PARCIAL |
-| PROC-SER-005 | Series | Decisión manual de anomalía/episodio | individual manual | no | acción observada + override | Vercel | — | NO APLICA |
-| PROC-SER-006 | Series | Reset manual de disponibilidad | individual manual | no | acción observada + `refreshSeriesUnitaryCore` | Vercel | — | NO APLICA |
-| PROC-NOV-001 | Novedades | Discovery IMDb global | global manual | no | `worker:imdb-discovery` | GitHub Actions | — | SIN BATCH |
-| PROC-NOV-002 | Novedades | Alta manual IMDb | individual manual | no | `resolveManualNewsCandidate` + persistencia | Vercel | — | NO APLICA |
-| PROC-NOV-003 | Novedades | Reintento de alta manual | individual manual | no | mismo resolver de NOV-002 | Vercel | — | NO APLICA |
-| PROC-NOV-004 | Novedades | Restaurar exclusión y alta manual | individual manual | no | restauración + resolver NOV | Vercel | — | NO APLICA |
-| PROC-NOV-005 | Novedades | Excluir candidato | individual manual | no | pendiente de cerrar entrypoint vivo | Vercel | — | PENDIENTE AUDITORÍA |
-| PROC-NOV-006 | Novedades | Retirar origen manual | individual manual | no | `removeManualCandidateAction` | Vercel | — | NO APLICA |
-| PROC-NOV-007 | Novedades | Admitir candidato al catálogo | individual manual | no | `admitNewsCandidateAction` | Vercel | — | NO APLICA |
-| PROC-NOV-008 | Novedades/Plex | Sembrar candidatos Plex | global encadenado | no | `seedPlexNewsCandidates` | Vercel | — | SIN BATCH |
-| PROC-NOV-009 | Novedades/Plex | Sincronización Plex global | global manual | no | `syncPlexFast` | Vercel | — | SIN BATCH |
-| PROC-NOV-010 | Novedades/Plex | Guardar IMDb manual para Plex no identificado | manual | no | pendiente de cerrar entrypoint vivo | Vercel | — | PENDIENTE AUDITORÍA |
-| PROC-NOV-011 | Sagas/Novedades | Enviar miembro de Saga a Novedades | individual manual | no | `addSagaMemberToNewsAction` | Vercel | — | NO APLICA |
-| PROC-NOV-016 | Novedades | Restaurar exclusión | manual | no | pendiente de cerrar entrypoint vivo | Vercel | — | PENDIENTE AUDITORÍA |
-| PROC-PER-001 | Personas | Refrescar perfil y filmografía | individual | sí | **individual:** `refreshPersonFilmography`; Batch llama ese wrapper | Vercel | Railway API | DIVERGENTE observabilidad |
-| PROC-PQ-001 | PikoQuality | Calcular C6 sobre snapshots listos | global/chunked | batch frontend | `processC6Batch` + `scorePikoQualityC6` | Vercel | Vercel | MODELO ESPECIAL / deuda |
-| PROC-PQ-002 | PikoQuality | Captura técnica Plex | global persistente | sí/controlado | Technical Snapshot worker | control Vercel | Railway Technical | MODELO ESPECIAL |
+| PROC | Dominio | Función viva | Tipo | Batch | Core / implementación viva | Executor | Paridad / estado |
+|---|---|---|---|---|---|---|---|
+| PROC-ID-001 | Identidad | Resolver TMDb desde IMDb | individual | sí | `executeId001Canonical` | Vercel / Railway API | EXACTA |
+| PROC-ID-002 | Identidad | Corregir identidad | manual | no | `correctIdentityIds` | Vercel | NO APLICA |
+| PROC-IV-001 | Validación | Obtener evidencia | individual | sí | `refreshIdentityEvidenceCanonical` | Vercel / Railway API | PARCIAL |
+| PROC-IV-002 | Validación | Validar identidad | individual | sí | `validateIdentityCanonical` | Vercel / Railway FAST | PARCIAL |
+| PROC-IV-003 | Validación | Corregir IDs e invalidar evidencia | manual | no | `correctIdentityIds` + invalidación | Vercel | NO APLICA |
+| PROC-IV-004 | Validación | Decisión manual / reversión | manual | no | `manual-actions.js` + `identity_validation.validation_details` | Vercel | NO APLICA |
+| PROC-IV-005 | Validación | Forzar asociación IMDb↔TMDb | manual excepcional | no | `forceIdentityIdsAction` | Vercel | NO APLICA |
+| PROC-DATA-001 | Datos | Completar datos estructurales | individual | sí | `executeData001Canonical` | Vercel / Railway API | EXACTA |
+| PROC-DATA-002 | Datos | Refrescar ratings | individual | sí | `refreshRatingsCanonical` | Vercel / Railway API | EXACTA funcional |
+| PROC-DATA-003 | Datos | Calcular PikoScore 3 | individual | sí | `executeData003Canonical` | Vercel / Railway FAST | EXACTA en entrypoint vivo |
+| PROC-DATA-005 | Datos | Aceptar datos incompletos | manual | no | `acceptIncompleteData` | Vercel | NO APLICA |
+| PROC-DATA-008 | Datos | Refresh global IMDb dataset | — | — | retirado; DATA-002 es la vía canónica por título | — | RETIRADO |
+| PROC-MOV-001 | Películas | Validar archivo físico | individual | sí | `executeMov001Canonical` | Vercel / Railway FAST | EXACTA |
+| PROC-MOV-002 | Películas | Aceptar finding como excepción | manual | no | `setMovieQualityFindingAction` | Vercel | NO APLICA |
+| PROC-MOV-003 | Películas | Reset tras corrección física | manual | no | `resetTitleForFullReprocessing` | Vercel | NO APLICA |
+| PROC-SER-001 | Series | Sync Plex rápido global | global | no | `syncPlexSeriesFastCore` | Vercel | SIN BATCH |
+| PROC-SER-002 | Series | Detalle Plex de serie | individual | sí | `syncPlexSeriesDetailCore` | Vercel / Railway Plex | EXACTA |
+| PROC-SER-003 | Series | Referencia TMDb | individual | sí | `refreshSeriesUnitaryCanonical` | Vercel / Railway API | PARCIAL |
+| PROC-SER-004 | Series | Disponibilidad España | individual | sí | `confirmSeriesEsAvailabilityCanonical` | Vercel / Railway API | PARCIAL |
+| PROC-SER-005 | Series | Resolver anomalía de episodio | manual | no | acción observada + override | Vercel | NO APLICA |
+| PROC-SER-006 | Series | Retirar override de disponibilidad | manual | no | acción observada + refresh | Vercel | NO APLICA |
+| PROC-NOV-001 | Novedades | Discovery IMDb global | global manual | no | GitHub Actions `imdb-discovery.yml` | GitHub Actions | SIN BATCH |
+| PROC-NOV-002 | Novedades | Alta manual IMDb | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
+| PROC-NOV-003 | Novedades | Reintento candidato manual | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
+| PROC-NOV-004 | Novedades | Restaurar exclusión + alta manual | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
+| PROC-NOV-005 | Novedades | Excluir candidato | manual | no | entrypoint vivo en `app/novedades/actions.js` sin `process_runs` | Vercel | DEUDA OBSERVABILIDAD |
+| PROC-NOV-006 | Novedades | Retirar origen manual | manual | no | `manual-remove-actions.js` | Vercel | NO APLICA |
+| PROC-NOV-007 | Novedades | Admitir candidato al catálogo | manual | no | `catalog-admission-actions.js` | Vercel | NO APLICA |
+| PROC-NOV-008 | Novedades/Plex | Sembrar candidatos Plex | global encadenado | no | `seedPlexNewsCandidates` | Vercel | SIN BATCH |
+| PROC-NOV-009 | Novedades/Plex | Sync Plex global | global manual | no | `syncPlexFast` | Vercel | SIN BATCH |
+| PROC-NOV-010 | Novedades/Plex | Guardar IMDb manual de Plex | manual | no | `plex-identity-actions.js` | Vercel | NO APLICA |
+| PROC-NOV-011 | Sagas/Novedades | Enviar miembro de Saga a Novedades | manual | no | `saga-news-actions.js` | Vercel | NO APLICA |
+| PROC-NOV-016 | Excluidas | Restaurar exclusión | manual | no | `app/catalogo/excluidas/actions.js` | Vercel | NO APLICA |
+| PROC-SAGA-001 | Sagas | Refrescar colecciones/miembros TMDb | global manual | no | `refreshSagas` (`lib/sagas-v2.js`) | Vercel | SIN BATCH |
+| PROC-PER-001 | Personas | Refrescar perfil y filmografía | individual | sí | `refreshPersonFilmography` | Vercel / Railway API | DIVERGENTE observabilidad |
+| PROC-PQ-001 | PikoQuality | Calcular C6 | global por chunks | frontend batch | `processC6Batch` + `scorePikoQualityC6` | Vercel | MODELO ESPECIAL / deuda |
+| PROC-PQ-002 | PikoQuality | Captura técnica Plex | global persistente | control especializado | Technical Snapshot worker | Vercel / Railway Technical | MODELO ESPECIAL |
+| PROC-OPS-001 | Operaciones | Reiniciar título desde Novedades | manual destructivo funcional | no | `resetTitleToNews` | Vercel | NO APLICA |
 
-## Fichas auditadas de procesos con Batch
+`restartMissingLifecycleAction` (`/calidad/sin-estado`) es una operación de reparación administrativa sin código PROC propio: únicamente recrea Lifecycle cuando falta. Debe permanecer excepcional y no masificarse por defecto.
 
-### PROC-ID-001 — Resolver identidad
-- Trigger individual: `/calidad/identidad` -> `obtainIdentityAction`.
-- Wrapper individual: `resolveIdentityUnitary()`.
-- Core: `executeId001Canonical(sql, imdbId, ...)`.
-- Fuente: TMDb `/find/{imdb}?external_source=imdb_id` si falta TMDb.
-- Persistencia principal: `movies.tmdb_id`, `tmdb_url`, `source_status`; recalcula Lifecycle.
-- Observabilidad: `process_runs` + events/errors.
-- Batch: `startId001Batch` selecciona `IDENTITY_PENDING`, crea `batch_run_control`/`batch_run_items`; Railway API llama el mismo `executeId001Canonical`.
-- Concurrencia Batch: máximo 3; API gate TMDb.
-- Paridad: **EXACTA**. Las diferencias son lane/API governance y orquestación.
+## Procesos con Batch
 
-### PROC-IV-001 — Evidencia de identidad
-- Individual: `refreshIdentityEvidenceAction` -> `refreshIdentityEvidence()` -> `refreshIdentityEvidenceCanonical`.
-- Batch: selección de evidencia incompleta -> Railway API -> `refreshIdentityEvidenceCanonical`.
-- Fuentes actuales del core: evidencia IMDb/TMDb y fallbacks definidos en `identity-validation-canonical.mjs`.
-- Paridad: **PARCIAL**: el individual acepta Lifecycle `IDENTITY_VALIDATION` o `IDENTITY_REVIEW_REQUIRED`; el adapter Batch exige únicamente `IDENTITY_VALIDATION`. Esta diferencia debe ser intencional/documentada o converger.
+### ID-001
+Trigger individual `/calidad/identidad` -> `obtainIdentityAction` -> `resolveIdentityUnitary` -> `executeId001Canonical`. Batch selecciona `IDENTITY_PENDING`, crea `batch_run_control`/`batch_run_items` y Railway API llama al mismo core. Fuente externa: TMDb. Escritura principal: identidad en `movies`; después Lifecycle. Concurrencia máxima 3 y API gate TMDb. **Paridad EXACTA**.
 
-### PROC-IV-002 — Validar identidad
-- Individual: `revalidateIdentityAction` -> `validateOne()` -> `validateIdentityCanonical`.
-- Batch: Railway FAST -> `validateIdentityCanonical`.
-- Persistencia: `identity_validation`; recalcula Lifecycle.
-- Paridad: **PARCIAL** por el mismo guard: individual permite REVIEW_REQUIRED; Batch sólo VALIDATION. El core sí es compartido.
+### IV-001 / IV-002
+Individual y Batch comparten respectivamente `refreshIdentityEvidenceCanonical` y `validateIdentityCanonical`. La diferencia actual es de selección/guard: el individual puede trabajar también sobre `IDENTITY_REVIEW_REQUIRED`, mientras Batch excluye revisión humana y sólo toma `IDENTITY_VALIDATION`. Se considera **PARCIAL pero intencionalmente conservadora** mientras la política sea “no automatizar revisión manual”.
 
-### PROC-DATA-001 — Completar datos
-- Individual: `updateDataAction` -> `updateDataQualityTitle` -> `executeData001Canonical(lane=manual)`.
-- Batch: selector `DATA_INCOMPLETE` -> Railway API -> `executeData001Canonical(lane=batch)`.
-- Fuentes: TMDb, OMDb y MDBList según capacidades/faltantes, bajo API gate.
-- Regla: sólo completar faltantes; respeta aceptación manual de incompletos.
-- Concurrencia Batch: 2.
-- Paridad: **EXACTA**.
+### DATA-001
+Individual `updateDataAction` -> `updateDataQualityTitle` -> `executeData001Canonical(lane=manual)`. Batch -> Railway API -> `executeData001Canonical(lane=batch)`. Fuentes gobernadas por API gate. Concurrencia 2. **EXACTA**.
 
-### PROC-DATA-002 — Ratings
-- Individual: `refreshRatingsAction` -> `refreshRatingsForTitle` -> `refreshRatingsCanonical(lane=manual)`.
-- Batch: selector de ratings ausentes/caducados -> Railway API -> `refreshRatingsCanonical(lane=batch)`.
-- Concurrencia Batch: 2.
-- Paridad funcional: **EXACTA**. El wrapper individual añade auditoría `runlog`; Batch expresa métricas mediante process runtime. Debe mantenerse la equivalencia de resultado/Lifecycle.
+### DATA-002
+Individual `refreshRatingsAction` -> `refreshRatingsForTitle` -> `refreshRatingsCanonical`; Batch -> mismo core. El wrapper individual añade auditoría histórica, pero la operación funcional es la misma. Concurrencia 2. **EXACTA funcional**.
 
-### PROC-DATA-003 — PikoScore 3
-- Individual actual: `calculatePikoScoreV3Action` evalúa con `evaluatePikoScoreV3ForTitle`, persiste con `calculateAndSavePikoScoreV3ForTitle` y recalcula Lifecycle desde la action.
-- Batch: Railway FAST llama `executeData003Canonical`, que contiene evaluación, persistencia, `admin_events` y reconciliación Lifecycle propia.
-- Ambos usan `computePikoScoreV3`, pero **no comparten la operación completa**.
-- Paridad: **DIVERGENTE**. Prioridad alta: el individual debe delegar en `executeData003Canonical` (o ambos en un core superior común). Hasta entonces un cambio de persistencia/Lifecycle puede divergir.
+### DATA-003
+El entrypoint que usa realmente `/calidad/datos` importa `calculatePikoScoreV3Action` desde `app/calidad/datos/pikoscore-actions.js`; esa acción ejecuta `executeData003Canonical`. Railway FAST usa exactamente el mismo core. Por tanto la divergencia detectada inicialmente correspondía a una exportación antigua todavía presente en `app/calidad/datos/actions.js`, no al entrypoint vivo. Paridad viva: **EXACTA**. Pendiente de limpieza física: retirar esa implementación duplicada muerta cuando se cierre el barrido de consumidores.
 
-### PROC-MOV-001 — Validación física película
-- Individual: `validateMovieFile` -> `executeMov001Canonical`.
-- Batch: selector `MOVIE_FILE_PENDING` -> Railway FAST -> mismo `executeMov001Canonical`.
-- Paridad: **EXACTA**.
+### MOV-001
+Individual y Railway FAST usan `executeMov001Canonical`. **EXACTA**.
 
-### PROC-SER-002 — Detalle Plex serie
-- Individual: `syncPlexSeriesDetail` -> `syncPlexSeriesDetailCore`.
-- Batch: Railway Plex -> `syncPlexSeriesDetailCore`.
-- Paridad: **EXACTA**. Batch sólo adapta métricas/resultados.
+### SER-002
+Individual y Railway Plex usan `syncPlexSeriesDetailCore`. **EXACTA**.
 
-### PROC-SER-003 — Referencia TMDb serie
-- Individual: `refreshSeriesUnitary` -> `refreshSeriesUnitaryCore` -> `refreshSeriesUnitaryCanonical`.
-- Batch: Railway API -> `refreshSeriesUnitaryCanonical` y después reconstruye read model.
-- Paridad: **PARCIAL**: el wrapper individual y el adapter Batch no son idénticos en auditoría/read-model. Hay que verificar que el individual siempre reconstruya el mismo read model y que `apiGate`/lane no alteren semántica.
+### SER-003 / SER-004
+Comparten core funcional con Batch, pero el adapter Railway reconstruye explícitamente el read model de Series después de cada item. El individual llega a esa reconstrucción a través de sus wrappers/acciones. Debe mantenerse un contrato de prueba que garantice equivalencia. **PARCIAL** por postprocesado, no por receta principal.
 
-### PROC-SER-004 — Disponibilidad España
-- Individual: `confirmSeriesEsAvailability` -> `confirmSeriesEsAvailabilityCanonical`.
-- Batch: Railway API -> mismo core + reconstrucción explícita de read model.
-- Paridad: **PARCIAL** por postprocesado/read-model; lógica principal compartida.
+### PER-001
+La lógica funcional sí se reutiliza, pero `refreshPersonFilmography()` crea su propio `process_run`. El adapter Batch lo llama dentro del child run que ya crea `executeClaimedItem`, produciendo una frontera observacional anidada. Objetivo: extraer `refreshPersonFilmographyCanonical(sql,id,{trace,...})`; individual y Batch deben envolver ese core. **DIVERGENTE en arquitectura/observabilidad**.
 
-### PROC-PER-001 — Personas
-- Individual canónico actual: `refreshPersonFilmography()` crea su propio `process_run` individual y ejecuta toda la lógica TMDb/persistencia.
-- Batch: Railway API adapter llama **`refreshPersonFilmography()`**, por lo que cada item Batch crea otro proceso observado anidado además del child run creado por `executeClaimedItem`.
-- Paridad funcional: reutiliza la misma receta, pero la frontera canónica está mal colocada.
-- Estado: **DIVERGENTE en observabilidad/arquitectura**. Debe extraerse un `refreshPersonFilmographyCanonical(sql,id,{trace,lane,apiGate})`; individual y Batch deben envolver ese core, no invocarse wrapper-observado dentro de wrapper-observado.
+## Procesos globales y especializados
 
-## Procesos globales/especiales
+### NOV-001
+Vercel crea la solicitud observada y hace dispatch de `.github/workflows/imdb-discovery.yml`; GitHub Actions ejecuta el discovery con el `run_id` canónico. Es una excepción explícita y acotada al modelo Railway persistente.
 
-### PROC-NOV-001
-Manual desde Novedades. Vercel crea `process_runs` y hace dispatch de `.github/workflows/imdb-discovery.yml`; GitHub Actions ejecuta `npm run worker:imdb-discovery` con el `run_id` canónico. Excepción explícita a Railway porque es un job global acotado, no un motor continuo.
+### NOV-009 -> NOV-008
+La actualización Plex global y la siembra posterior de candidatos son dos procesos observados separados y correlacionados. Es composición global, no Batch de operaciones unitarias.
 
-### PROC-NOV-009 -> PROC-NOV-008
-La acción de Novedades ejecuta primero sincronización Plex global (`PROC-NOV-009`) y, si ésta termina, ejecuta la siembra de candidatos (`PROC-NOV-008`) como proceso observado separado y correlacionado. No es Batch de procesos unitarios; es una composición global explícita.
+### SAGA-001
+`refreshSagas()` es el refresco canónico observado de colecciones TMDb. Tiene límite 120, concurrencia 6, escribe `saga_collections` y `saga_collection_members`, resuelve IMDb por TMDb y registra errores por colección/fuente. No tiene Batch común porque su unidad de trabajo es un refresco global acotado.
 
-### PROC-PQ-001
-El frontend crea un `process_runs` Batch y ejecuta chunks de `processC6Batch`. Ese módulo además crea `pipeline_runs` internos por chunk. Es **compatibilidad temporal** y explica por qué `pipeline_runs` no puede eliminarse aún. La evolución objetivo debe eliminar la doble trazabilidad y definir una operación canónica de evaluación C6 por item o una justificación formal de vectorización.
+### PQ-001
+La UI crea un `process_runs` global y ejecuta chunks de `processC6Batch`; cada chunk aún genera además un `pipeline_runs`. Esa doble trazabilidad es **compatibilidad temporal** y mantiene `pipeline_runs` vivo. Debe converger antes de eliminar ese modelo histórico.
 
-### PROC-PQ-002
-El control se solicita desde Vercel (`process_runs` + estado técnico) y el worker persistente de Railway realiza scan/capture. Es un Batch técnico especializado; pausa/reanudación/cancelación se gobiernan mediante estado solicitado, no por el Batch Engine común.
+### PQ-002
+Vercel solicita/controla captura técnica y Railway mantiene el worker persistente. Pausa/reanudación/cancelación usan su control especializado, no `batch_engine_control`.
 
-## Procesos manuales
+## Decisiones manuales
 
-ID-002, IV-003/004, DATA-005, MOV-002/003 y SER-005/006 son decisiones/correcciones humanas. **No deben recibir Batch automáticamente.** Si en el futuro se propone masificarlos, requiere decisión de producto explícita.
+ID-002, IV-003/004/005, DATA-005, MOV-002/003, SER-005/006, NOV-002/003/004/005/006/007/010/011/016 y OPS-001 son decisiones/correcciones humanas. No deben recibir Batch automáticamente.
 
 ## Hallazgos P5 abiertos
 
-1. **P5-H01 — DATA-003 divergente (alta):** individual y Batch comparten fórmula, pero no la operación canónica completa.
-2. **P5-H02 — PER-001 frontera canónica incorrecta (alta):** Batch llama un wrapper que crea otro `process_run`; extraer core puro compartido.
-3. **P5-H03 — IV-001/002 guards distintos (media):** individual admite `IDENTITY_REVIEW_REQUIRED`; Batch no. Confirmar intención y codificarla como política o converger.
-4. **P5-H04 — SER-003/004 postprocesado distinto (media):** asegurar paridad del read model y observabilidad tras el core.
-5. **P5-H05 — PikoQuality doble modelo (alta):** PROC-PQ-001 usa `process_runs` + `pipeline_runs`; consolidar.
-6. **P5-H06 — referencia a tabla Batch V1 eliminada (crítica):** `app/calidad/validacion-identidad/actions.js` conserva `clearBatchManualReview()` contra `batch_process_state`, tabla ya retirada. Una decisión manual de validación puede fallar. Debe eliminarse esa dependencia y conservar la decisión únicamente en el modelo canónico `identity_validation.validation_details`.
-7. **P5-H07 — código Novedades duplicado/legacy (alta):** `app/novedades/actions.js` conserva vías antiguas de Discovery/alta manual (incluido dispatch a `imdb-manual-candidate.yml` y lógica `pipeline_runs`/override) coexistiendo con los entrypoints nuevos `discovery-actions.js` y `manual-candidate-actions.js`. Confirmar consumidores del page y retirar la vía muerta para evitar dos generaciones funcionales.
-8. **P5-H08 — documentación Lifecycle histórica desactualizada:** `docs/LIFECYCLE_CANONICAL_PROCESSES.md` describe FA obligatorio, PikoScore 2 y Batch antiguo; no debe usarse como fuente canónica hasta consolidarlo/retirarlo en P6.
-9. **P5-H09 — NOV-005/010/016 y DATA-008:** inventariados pero requieren cierre de auditoría de entrypoints/implementación viva antes de declararlos canónicos.
+1. **P5-H01 — PER-001 (alta):** extraer core puro para eliminar observabilidad anidada en Batch.
+2. **P5-H02 — NOV-005 (media):** el botón vivo de exclusión todavía entra por `app/novedades/actions.js` y no crea `process_runs`; migrarlo a acción observada propia.
+3. **P5-H03 — Series (media):** mantener contrato explícito de paridad de read model para SER-003/004.
+4. **P5-H04 — PikoQuality (alta antes de retirar `pipeline_runs`):** eliminar doble modelo de trazabilidad de PQ-001 o justificar formalmente la vectorización.
+5. **P5-H05 — código histórico (media):** `app/actions.js`, `app/novedades/actions.js` y la exportación DATA-003 antigua contienen rutas/generaciones previas. Auditar consumidores y retirar sólo lo realmente no usado.
+6. **P5-H06 — documentación histórica (alta para P6):** `docs/LIFECYCLE_CANONICAL_PROCESSES.md` describe reglas antiguas y no debe tratarse como fuente canónica.
 
-## Regla de mantenimiento IA
+## Hallazgos cerrados en este bloque
 
-Toda modificación de un PROC debe actualizar esta ficha en el mismo cambio si altera trigger, core, fuentes, persistencia, Lifecycle, observabilidad, executor, Batch, retry, idempotencia o infraestructura. Si se añade un PROC nuevo, se añade aquí antes de considerar terminado el cambio. Si se elimina, se registra la sustitución y se retira cuando no queden consumidores.
+- **DATA-003:** el entrypoint vivo ya comparte `executeData003Canonical` con Batch; reclasificado a EXACTA.
+- **DATA-008:** formalmente RETIRADO; cualquier optimización global futura debe seguir siendo infraestructura interna de DATA-002, no una segunda vía funcional.
+- **IV-005, NOV-010, NOV-016, SAGA-001 y OPS-001:** incorporados al inventario maestro.
+- **Batch V1:** eliminadas las referencias residuales encontradas en las acciones vivas de decisión manual de Validación de identidad; un contrato de regresión impide reintroducir `batch_process_state`, `batch_jobs`, `batch_runtime_control` o `batch_source_limits` en código vivo.
+
+## Regla para nuevas implementaciones
+
+Antes de añadir o modificar un proceso: definir PROC, operación canónica, trigger, executor, fuentes, lecturas/escrituras, transición Lifecycle, observabilidad, error/retry/idempotencia y, si existe Batch, demostrar que llama al mismo core. Cualquier excepción debe quedar registrada aquí antes de considerarse PRE-V4 ready.
