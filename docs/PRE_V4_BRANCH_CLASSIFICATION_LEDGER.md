@@ -84,6 +84,23 @@ Criterios:
 | `feat/process-runtime-id001-pilot-y` | 0 | 600 | misma ref absorbida `8e6174cf...` |
 | `feat/process-runtime-id001-pilot-z` | 0 | 600 | misma ref absorbida `8e6174cf...` |
 | `feat/process-runtime-id001-v1` | 0 | 600 | misma ref absorbida `8e6174cf...` |
+| `docs/architecture-efficiency` | 0 | 1315 | documentación absorbida |
+| `docs/cost-efficiency` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/efficiency` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/infra-efficiency` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-efficiency-architecture` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-efficiency-canonical` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-efficiency-final` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-efficiency-policy` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-efficiency-rule19` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-efficiency-rule-v2` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-policy` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-rule19` | 0 | 1315 | misma ref documental absorbida `6edbf3ce...` |
+| `docs/neon-efficiency-rule` | 0 | 1313 | documentación absorbida |
+| `docs/golden-rules-purpose` | 0 | 1329 | documentación absorbida |
+| `docs/cleanup-historical-docs` | 0 | 1316 | documentación absorbida |
+| `docs/status-after-m01-m07` | 0 | 1292 | documentación absorbida |
+| `docs-lifecycle-roadmaps` | 0 | 1332 | documentación absorbida |
 
 ## INVESTIGAR — contiene commits exclusivos
 
@@ -113,10 +130,13 @@ Criterios:
 | `feat/batch-v1-iv001-iv002` | 12 | 143 | contiene implementación funcional de Validación/Batches; revisar paridad con main antes de borrar |
 | `feature/m46-b-fast-worker` | 3 | 1234 | worker FAST histórico `worker/batch-fast.mjs` + railway.toml; comparar con worker FAST canónico actual antes de descartar |
 | `feat/process-runtime-id001` | 8 | 600 | introduce una generación temprana de `process-runtime.js` e integración Identidad; revisar paridad con implementación canónica actual |
+| `docs/procesos-automaticos-pa-001` | 25 | 1451 | 23 documentos históricos PA-001..PA-022; posible material útil para P5 aunque no sea fuente de verdad actual |
 
 ## Evidencia de refs compartidas
 
-La API de ramas confirma que las 18 ramas `feat/process-runtime-id001-*` marcadas BORRAR arriba apuntan exactamente al mismo commit `8e6174cf5698e4a9edf55da09acbed784832f681`. Ese commit ya fue comparado contra `main` y devuelve `ahead_by=0`, `behind_by=600`, `files=[]`. Por ello no fue necesario repetir una comparación individual para cada alias de rama.
+La API de ramas confirma que las 18 ramas `feat/process-runtime-id001-*` marcadas BORRAR arriba apuntan exactamente al mismo commit `8e6174cf5698e4a9edf55da09acbed784832f681`. Ese commit ya fue comparado contra `main` y devuelve `ahead_by=0`, `behind_by=600`, `files=[]`.
+
+La API también confirma que 12 ramas documentales de eficiencia/Neon apuntan al mismo commit `6edbf3ce66a105aa6376edbbf586a7a697489a1a`; la comparación de ese commit contra `main` devuelve `ahead_by=0`, `behind_by=1315`, `files=[]`.
 
 ## Nota
 
