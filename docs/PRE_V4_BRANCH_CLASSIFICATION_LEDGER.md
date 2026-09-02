@@ -71,6 +71,12 @@ Este documento acumula la clasificación mientras se auditan las ramas. No se el
 - `feat/identity-validation-phased-cache` — 11 ahead; workflow/Python/cache histórico.
 - `feat/m46c-filmaffinity` — 2 ahead; `tmp/noop-fa-fix` + pequeño worker SQL; candidato fuerte a BORRAR tras contraste.
 - `feat/omdb-news-intake` — 6 ahead / 1443 behind; generación antigua de intake manual OMDb/Novedades; requiere contraste con flujo NOV actual.
+- `fix/identity-validation-resume` — 2 ahead / 1500 behind; conserva cambios exclusivos en workflow + worker de refresh de validación; requiere contraste con runtime actual.
+- `fix/lifecycle-dockerfile` — 1 ahead / 1165 behind; Dockerfile.lifecycle exclusivo de ejecución histórica. Mantener INVESTIGAR hasta cerrar ejecución-plane.
+- `fix/lifecycle-railway-config` — 1 ahead / 1164 behind; railway.lifecycle.toml exclusivo histórico. Mantener INVESTIGAR hasta cerrar Railway/ejecución-plane.
+- `fix/lifecycle-skip-cached-source-budget` — 1 ahead / 1143 behind; modifica worker lifecycle histórico. Requiere contraste con plano actual antes de descartar.
+- `fix/manual-news-state-flow` — 1 ahead / 1445 behind; cambio exclusivo en `lib/news-v1.js`; requiere contraste con Novedades actual.
+- `fix/novedades-remove-plex-duplicate` — 1 ahead / 1446 behind; cambia `app/novedades/layout.js`; candidato histórico pero por tocar montaje frontend permanece INVESTIGAR hasta cerrar Safety Gate.
 
 ## BORRAR — confirmado sin commits exclusivos (`ahead_by=0`)
 
@@ -114,6 +120,21 @@ Este documento acumula la clasificación mientras se auditan las ramas. No se el
 - `fix/batch-preview-context-signature`
 - `fix/series-detail-availability-refresh`
 - `fix/series-detail-availability-refresh-v2`
+- `fix/identity-validation-batch-selection`
+- `fix/identity-validation-worker-parity`
+- `fix/iv003-show-result`
+- `fix/m46b-result-summary`
+- `fix/m46c-fa-sql-type`
+- `fix/m46c-lifecycle-reconcile`
+- `fix/m46c-omdb`
+- `fix/m46c-omdb-null-scores`
+- `fix/m46c-plex-docker-copy`
+- `fix/mov001-effective-duration-fingerprint`
+- `fix/mov001-fingerprint-order`
+- `fix/mov001-postgres-fingerprint`
+- `fix/nov008-concurrency-lock`
+- `fix/novedades-plex-header`
+- `fix/novedades-sql-hotfix`
 
 ### Batch / execution plane absorbido
 
@@ -240,4 +261,4 @@ Las ramas con commits exclusivos sí se mantienen en INVESTIGAR hasta demostrar 
 
 ## Estado
 
-Auditoría de ramas todavía en curso. No ejecutar limpieza manual hasta que todas estén clasificadas y se genere la lista final consolidada.
+Inventario vivo confirmado el 2026-09-02: **345 ramas** mediante paginación completa del repositorio. Auditoría todavía en curso. En este bloque se añadieron 18 ramas `ahead_by=0` a BORRAR y 5 ramas con commits exclusivos a INVESTIGAR. No ejecutar limpieza manual hasta que todas estén clasificadas y se genere la lista final consolidada.
