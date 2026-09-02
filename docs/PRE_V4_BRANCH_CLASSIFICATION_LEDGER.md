@@ -54,6 +54,18 @@ Criterios:
 | `fix/batch-external-calls-counter` | 0 | 150 | fix absorbido |
 | `fix/batch-partial-status` | 0 | 33 | fix absorbido |
 | `fix/batch-preview-context-signature` | 0 | 1103 | fix absorbido |
+| `feat/batch-double-accordion-global` | 0 | 73 | feature absorbida |
+| `feat/data-batch-double-accordion` | 0 | 82 | feature absorbida |
+| `feat/batch-engine-v1` | 0 | 238 | base del Batch Engine actual ya absorbida |
+| `feat/batch-api-id001` | 0 | 153 | integración Batch API absorbida |
+| `feat/batch-data003-pilot` | 0 | 219 | piloto absorbido |
+| `feat/batch-mov001` | 0 | 208 | integración absorbida |
+| `feat/batch-v1-data001` | 0 | 87 | integración absorbida |
+| `feat/batch-v1-data002` | 0 | 105 | integración absorbida |
+| `feat/batch-v1-ser003-ser004` | 0 | 60 | integración absorbida |
+| `feat/batch-validation-v1` | 0 | 123 | integración absorbida |
+| `feat/ser002-batch-v1` | 0 | 23 | SER-002 absorbido en main |
+| `feature/m46-a-control-queue` | 0 | 1237 | control/queue histórico absorbido |
 
 ## INVESTIGAR — contiene commits exclusivos
 
@@ -78,7 +90,11 @@ Criterios:
 | `test/fa-python-5` | 7 | 1503 | workflow/probes Python/Vercel exclusivos; posible laboratorio histórico |
 | `test/fa-resolver-benchmark` | 3 | 1544 | workflow benchmark FA exclusivo |
 | `fix/batch-outcomes-compact-ui` | 5 | 1103 | cambios exclusivos de la antigua `/admin/batch`; probable legacy, pero revisar antes de clasificar para borrado |
+| `feat/batch-control-center-v1` | 7 | 1110 | sólo generación antigua `/admin/batch` + `lib/batch-control`; fuerte candidato a BORRAR por decisión de retirada, pendiente cierre de revisión |
+| `feat/batch-duration-eta` | 4 | 1102 | UI/ETA de `/admin/batch` antigua + `batch-ui-metrics`; fuerte candidato a BORRAR |
+| `feat/batch-v1-iv001-iv002` | 12 | 143 | contiene implementación funcional de Validación/Batches; revisar paridad con main antes de borrar |
+| `feature/m46-b-fast-worker` | 3 | 1234 | worker FAST histórico `worker/batch-fast.mjs` + railway.toml; comparar con worker FAST canónico actual antes de descartar |
 
 ## Nota
 
-Una rama en INVESTIGAR puede terminar siendo BORRAR aunque tenga commits exclusivos si esos commits sólo son artefactos temporales/CI sin valor funcional; pero no se promueve a BORRAR hasta revisar su contenido y confirmar que no conserva implementación útil.
+Una rama en INVESTIGAR puede terminar siendo BORRAR aunque tenga commits exclusivos si esos commits sólo son artefactos temporales/CI o implementaciones sustituidas sin valor funcional; pero no se promueve a BORRAR hasta revisar su contenido y confirmar que no conserva implementación útil.
