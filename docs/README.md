@@ -9,7 +9,7 @@ Este árbol contiene únicamente documentación necesaria para comprender y modi
 1. `/AGENTS.md`
 2. `AI_DEVELOPMENT_GUIDE.md`
 3. `PROJECT_RULES.md`
-4. `PRE_V4_READINESS_PLAN.md` mientras PRE-V4 siga activo
+4. `BASELINE_V4_START.md`
 5. `processes/PROCESS_CATALOG.md`
 6. `processes/BATCH_ARCHITECTURE.md`
 7. documentación canónica del dominio afectado
@@ -41,9 +41,9 @@ Este árbol contiene únicamente documentación necesaria para comprender y modi
 - `development/AI_CHANGE_CHECKLIST.md`
 - `/AGENTS.md`
 
-### PRE-V4
-- `PRE_V4_READINESS_PLAN.md` es el único documento temporal de PRE-V4 que se mantiene durante el cierre.
-- Al superar el gate final, debe sustituirse por un único baseline/cierre final o eliminarse si `README.md` y la arquitectura ya contienen todo lo necesario.
+### Baseline V4
+- `BASELINE_V4_START.md` fija el cierre PRE-V4 y el commit de partida auditado para V4.
+- V4 crea decisiones e issues desde cero; no hereda automáticamente propuestas V3/PRE-V4.
 
 ## Regla documental
 
