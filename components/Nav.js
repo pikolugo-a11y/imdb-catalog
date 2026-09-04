@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {useEffect,useState} from 'react';
+import GlobalSearch from './GlobalSearch';
 
 const desktopItems=[
   ['/','Inicio','⌂'],
@@ -53,7 +54,7 @@ export default function Nav(){
 
     <header className="v4-header">
       <strong>{current}</strong>
-      <div className="v4-search-placeholder" aria-label="Buscador global pendiente de conexión"><span aria-hidden="true">⌕</span><span>Buscar en PikoFilm…</span></div>
+      <GlobalSearch/>
     </header>
 
     <nav className="v4-mobile-nav" aria-label="Navegación principal móvil">
