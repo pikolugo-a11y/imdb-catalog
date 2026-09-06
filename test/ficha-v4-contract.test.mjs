@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const page=fs.readFileSync('app/catalogo/[imdbId]/page.js','utf8');
+const extras=fs.readFileSync('lib/movie-detail-extras.js','utf8');
 const confirm=fs.readFileSync('app/catalogo/[imdbId]/ExcludeTitleForm.js','utf8');
 const css=fs.readFileSync('app/catalogo/[imdbId]/ficha-v4.css','utf8');
 const error=fs.readFileSync('app/catalogo/[imdbId]/error.js','utf8');
@@ -32,12 +33,22 @@ test('Series show compact season integrity without viewing semantics',()=>{
   assert.match(page,/sin seguimiento de visionado/i);
 });
 
-test('Saga context is compact and secondary',()=>{
+test('Saga context is compact, secondary and counts real PikoFilm membership',()=>{
   assert.match(page,/Saga \/ colección/);
   assert.match(page,/en PikoFilm/);
   assert.match(page,/en Plex/);
+  assert.match(page,/Boolean\(x\.display_title\)/);
   assert.match(css,/\.fv4-saga-strip/);
   assert.doesNotMatch(page,/te faltan|completar la saga|por ver/i);
+});
+
+test('Only real pending human quality findings surface as contextual attention',()=>{
+  assert.match(extras,/movie_quality_findings/);
+  assert.match(extras,/f\.status='pending'/);
+  assert.match(page,/⚠ Requiere tu atención/);
+  assert.match(page,/Abrir en Calidad/);
+  assert.match(page,/fallos técnicos y reintentos siguen perteneciendo a Operaciones/i);
+  assert.match(css,/\.fv4-attention/);
 });
 
 test('Source identifiers link out in a new tab when an origin URL exists',()=>{
