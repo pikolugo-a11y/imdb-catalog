@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const saga=fs.readFileSync('lib/sagas-v2.js','utf8');
 const page=fs.readFileSync('app/sagas/page.js','utf8');
 const detail=fs.readFileSync('app/sagas/[name]/page.js','utf8');
+const refreshActions=fs.readFileSync('app/sagas/refresh-actions.js','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
 
 test('SAGA-001 is the canonical observed manual TMDb saga refresh',()=>{
@@ -22,7 +23,7 @@ test('SAGA-001 keeps the existing writer/read-model contract and bounded refresh
   assert.match(saga,/saga_collection_members/);
   assert.match(saga,/sc\.refreshed_at ASC NULLS FIRST/);
   assert.match(saga,/Math\.min\(120/);
-  assert.match(saga,/pool\(ids,6/);
+  assert.match(saga,/targetCollectionId\?1:6/);
   assert.match(page,/getSagasDashboard/);
   assert.match(detail,/getSagaDetailV3/);
 });
@@ -50,6 +51,17 @@ test('SAGA-001 prioritizes cached member identity mismatches for self-healing',(
   assert.match(saga,/identity_mismatch_count/);
   assert.match(saga,/m\.tmdb_id::text IS DISTINCT FROM sm\.tmdb_movie_id::text/);
   assert.match(saga,/COALESCE\(sm\.identity_mismatch_count,0\)>0/);
+});
+
+test('SAGA-001 supports an exact collection refresh from saga detail',()=>{
+  assert.match(saga,/collectionId/);
+  assert.match(saga,/targetCollectionId/);
+  assert.match(saga,/SELECT tmdb_collection_id FROM saga_collections WHERE tmdb_collection_id::text=\$\{targetCollectionId\} LIMIT 1/);
+  assert.match(refreshActions,/refreshSagas\(\{collectionId/);
+  assert.match(refreshActions,/revalidatePath\(`\/sagas\/\$\{collectionId\}`\)/);
+  assert.match(detail,/refreshSagaCollectionAction/);
+  assert.match(detail,/fields=\{\{collectionId:name\}\}/);
+  assert.match(detail,/Actualizar esta saga/);
 });
 
 test('SAGA-001 refresh is atomic per collection and prioritizes inconsistent collections for self-healing',()=>{
