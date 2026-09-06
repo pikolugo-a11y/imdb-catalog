@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import ActionButton from './ActionButton';
 import BatchAutoRefresh from './BatchAutoRefresh';
 import {startMov001BatchAction,pauseMov001BatchAction,resumeMov001BatchAction,cancelMov001BatchAction} from '@/app/calidad/peliculas/batch-actions';

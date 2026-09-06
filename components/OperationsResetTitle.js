@@ -1,6 +1,6 @@
 'use client';
 import {useActionState} from 'react';
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {resetTitleToNewsAction} from '@/app/admin/actions';
 
 const initial={ok:null,message:''};

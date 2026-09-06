@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {Poster} from '@/components/MediaCard';
 import Segmented from '@/components/Segmented';
 import ActionButton from '@/components/ActionButton';

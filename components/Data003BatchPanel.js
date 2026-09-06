@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import ActionButton from './ActionButton';
 import BatchAutoRefresh from './BatchAutoRefresh';
 import Data001BatchPanel from './Data001BatchPanel';

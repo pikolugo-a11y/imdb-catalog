@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {getQualityHomeSnapshot} from '@/lib/quality-home';
 import './quality-dashboard.css';
 import './quality-home-overrides.css';

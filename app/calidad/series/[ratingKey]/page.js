@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {headers} from 'next/headers';
 import {notFound} from 'next/navigation';
 import ActionButton from '@/components/ActionButton';

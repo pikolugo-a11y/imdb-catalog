@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import ActionButton from '@/components/ActionButton';
 import {getSagasDashboard} from '@/lib/sagas-v3';
 import {refreshSagasAction} from '@/app/actions';

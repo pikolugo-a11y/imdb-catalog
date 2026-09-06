@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {Poster} from '@/components/MediaCard';
 import {getMovieQualityDashboard} from '@/lib/movie-quality-dashboard';
 import {validateMovieFileAction,qualityAction,saveMovieQualitySettingsAction,correctedMovieResetAction} from './actions';

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {redirect} from 'next/navigation';
 import {restoreExclusionAction} from './actions';
 import {EXCLUDED_V4_PAGE_SIZE,excludedV4Href,getExcludedV4,parseExcludedV4} from '@/lib/excluded-v4-queries';

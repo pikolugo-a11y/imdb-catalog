@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {PIKOQUALITY_ACTIVE_VERSION} from '../../../lib/pikoquality-version.mjs';
 import {getPikoQualityState} from '../../../lib/pikoquality-state';
 import {getPikoQualityLibrary} from '../../../lib/pikoquality-library';

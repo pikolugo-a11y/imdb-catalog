@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import IdentityRetryButton from '@/components/IdentityRetryButton';
 import IdentityCorrectionPanel from '@/components/IdentityCorrectionPanel';
 import IdentityExcludeButton from '@/components/IdentityExcludeButton';

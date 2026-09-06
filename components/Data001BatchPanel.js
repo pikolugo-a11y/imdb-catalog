@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import BatchAutoRefresh from './BatchAutoRefresh';
 import {startData001BatchAction,pauseData001BatchAction,resumeData001BatchAction,cancelData001BatchAction} from '@/app/calidad/datos/batch-actions';
 const nf=n=>Number(n||0).toLocaleString('es-ES');

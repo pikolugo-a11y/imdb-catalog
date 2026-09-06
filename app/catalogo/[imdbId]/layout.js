@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {getLifecycleForIds} from '@/lib/lifecycle';
 import './lifecycle-detail.css';
 import './series-command-v3.css';

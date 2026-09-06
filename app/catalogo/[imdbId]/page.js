@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {notFound} from 'next/navigation';
 import {getCatalogItem,getSeriesDetail,getSagaDetail} from '@/lib/queries';
 import {getCatalogRatings} from '@/lib/catalog-ratings';
