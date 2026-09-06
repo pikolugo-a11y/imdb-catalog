@@ -1,6 +1,20 @@
 'use server';
 import {revalidatePath} from 'next/cache';
 import {refreshSagas} from '@/lib/sagas-v2';
+import {startSagaFullRefreshBatch} from '@/lib/saga-batch';
+
+export async function refreshAllSagasAction(){
+  try{
+    const r=await startSagaFullRefreshBatch();
+    revalidatePath('/sagas');
+    revalidatePath('/admin');
+    if(r.empty)return{ok:true,message:'No hay sagas para actualizar'};
+    if(r.reused)return{ok:true,message:`Actualización completa ya en curso · ${r.queued} pendientes`};
+    return{ok:true,message:`Actualización completa en Railway iniciada · ${r.total} sagas en cola`};
+  }catch(error){
+    return{ok:false,message:error?.message||'No se pudo iniciar la actualización completa de sagas'};
+  }
+}
 
 export async function refreshSagaCollectionAction(_prevState,formData){
   try{
