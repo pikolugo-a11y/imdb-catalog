@@ -9,8 +9,22 @@ async function sha256(value){
   return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+function notFound(){
+  return new NextResponse('Not Found',{
+    status:404,
+    headers:{
+      'content-type':'text/plain; charset=utf-8',
+      'cache-control':'private, no-store, max-age=0',
+      'x-robots-tag':'noindex, nofollow, noarchive',
+    },
+  });
+}
+
 export async function middleware(request){
   const {pathname,searchParams}=request.nextUrl;
+
+  // Never execute malformed dynamic routes that can be emitted by legacy data.
+  if(pathname.endsWith('/null')||pathname.endsWith('/undefined'))return notFound();
 
   // Keep the daily Vercel cron and crawler directives reachable without opening
   // any database-backed application surface.
@@ -34,14 +48,7 @@ export async function middleware(request){
   const cookie=request.cookies.get(ACCESS_COOKIE)?.value;
   if(cookie&&await sha256(cookie)===ACCESS_HASH)return NextResponse.next();
 
-  return new NextResponse('Not Found',{
-    status:404,
-    headers:{
-      'content-type':'text/plain; charset=utf-8',
-      'cache-control':'private, no-store, max-age=0',
-      'x-robots-tag':'noindex, nofollow, noarchive',
-    },
-  });
+  return notFound();
 }
 
 export const config={
