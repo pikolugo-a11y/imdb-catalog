@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const page=fs.readFileSync('app/catalogo/[imdbId]/page.js','utf8');
 const extras=fs.readFileSync('lib/movie-detail-extras.js','utf8');
+const layout=fs.readFileSync('app/catalogo/[imdbId]/layout.js','utf8');
 const confirm=fs.readFileSync('app/catalogo/[imdbId]/ExcludeTitleForm.js','utf8');
 const css=fs.readFileSync('app/catalogo/[imdbId]/ficha-v4.css','utf8');
 const error=fs.readFileSync('app/catalogo/[imdbId]/error.js','utf8');
@@ -22,6 +23,12 @@ test('Ficha V4 uses Plex only as physical inventory and quality context',()=>{
   assert.match(page,/Copia física/);
   assert.match(page,/PikoQuality/);
   assert.doesNotMatch(page,/Visto|No visto|Continuar viendo|Recomendad|pendiente de ver/i);
+});
+
+test('Ficha never contradicts a current PikoQuality with stale TECH_PENDING Lifecycle',()=>{
+  assert.match(layout,/state\.state==='TECH_PENDING'/);
+  assert.match(layout,/getMovieDetailExtras\(imdbId\)/);
+  assert.match(layout,/currentQuality\?\.score!=null/);
 });
 
 test('Series show compact season integrity without viewing semantics',()=>{
