@@ -23,6 +23,7 @@ const qBand=b=>({excellent:'Excelente',very_good:'Muy buena',correct:'Correcta',
 const qClass=b=>b==='excellent'||b==='very_good'?'good':b==='correct'?'mid':b==='improvable'?'warn':'bad';
 const sourceLabel=s=>({imdb:'IMDb',tmdb:'TMDb',trakt:'Trakt',letterboxd:'Letterboxd',rt_audience:'RT audiencia',rt_critics:'RT críticos',metacritic:'Metacritic',metacritic_user:'MC usuarios',roger_ebert:'Roger Ebert'}[s]||s);
 const familyLabel=f=>({audience:'Audiencia',cinephile:'Cinéfilos',critics:'Crítica'}[f]||f);
+const attentionLabel=t=>({duration:'Duración sospechosa',filename:'Nombre de archivo sospechoso',duplicate:'Varias versiones asociadas'}[t]||'Revisión de la copia física');
 const crewRelevant=xs=>(xs||[]).filter(c=>{const j=String(c.job||'').toLowerCase();return /director|creator|created by|creador|showrunner/.test(j)}).slice(0,6);
 const safeBack=v=>{const s=String(v||'');return s.startsWith('/catalogo')&&!s.startsWith('//')?s:'/catalogo'};
 
@@ -60,7 +61,8 @@ function SourceLinks({item,plexId,series=false}){
 }
 
 function MovieDetail({item,back,ratingsData,qualityData,saga}){
-  const inPlex=item.effective_status==='in_plex',director=crewRelevant((item.credits||[]).filter(c=>c.credit_type!=='cast'))[0]||null,qualityReady=qualityData?.score!=null,sagaTitles=saga?.titles||[],inCatalog=sagaTitles.filter(x=>x.imdb_id).length,inPlexSaga=sagaTitles.filter(x=>x.effective_status==='in_plex').length;
+  const inPlex=item.effective_status==='in_plex',director=crewRelevant((item.credits||[]).filter(c=>c.credit_type!=='cast'))[0]||null,qualityReady=qualityData?.score!=null,sagaTitles=saga?.titles||[],inCatalog=sagaTitles.filter(x=>Boolean(x.display_title)).length,inPlexSaga=sagaTitles.filter(x=>x.effective_status==='in_plex').length;
+  const attentionHref=qualityData?.attention_id?`/calidad/peliculas?type=${encodeURIComponent(qualityData.attention_type||'')}&q=${encodeURIComponent(qualityData.plex_title||item.display_title||'')}`:null;
   return <main className="ficha-v4">
     <div className="fv4-back"><Link href={back}>← Volver</Link><span>Película</span></div>
     <section className="fv4-hero">
@@ -71,11 +73,13 @@ function MovieDetail({item,back,ratingsData,qualityData,saga}){
 
     <section className="fv4-status-row"><article><span>Plex</span><b>{inPlex?'Disponible físicamente':'Sin Plex'}</b><small>{inPlex?'Presencia confirmada en tu biblioteca':'Estado neutral de colección'}</small></article><article><span>PikoQuality</span><b>{inPlex?(qualityReady?`${Math.round(Number(qualityData.score))} · ${qBand(qualityData.band)}`:'—'):'—'}</b><small>{inPlex?(qualityReady?[qualityData.resolution,qualityData.video_codec].filter(Boolean).join(' · ')||'Copia analizada':'Sin análisis vigente'):'Sólo aplica cuando existe copia física'}</small></article></section>
 
+    {attentionHref&&<section className="fv4-attention"><div><span>⚠ Requiere tu atención</span><b>{attentionLabel(qualityData.attention_type)}</b><small>Hay una decisión pendiente sobre la copia física. Los fallos técnicos y reintentos siguen perteneciendo a Operaciones.</small></div><Link href={attentionHref}>Abrir en Calidad →</Link></section>}
+
     {inPlex&&qualityData&&<section className="fv4-secondary-panel fv4-copy"><div className="fv4-section-head"><div><span>Copia física</span><h2>Datos técnicos</h2></div></div><div className="fv4-tech-grid"><span><b>Resolución</b>{qualityData.resolution||'—'}</span><span><b>Vídeo</b>{qualityData.video_codec||'—'}</span><span><b>Bitrate</b>{bitrate(qualityData.bitrate)}</span><span><b>Audio</b>{qualityData.audio_codec||'—'}{qualityData.audio_channels?` · ${qualityData.audio_channels} canales`:''}</span><span><b>Tamaño</b>{size(qualityData.file_size_bytes)}</span></div></section>}
 
     <ExternalRatings ratingsData={ratingsData}/>
 
-    {saga&&sagaTitles.length>0&&<section className="fv4-secondary-panel fv4-saga"><div className="fv4-section-head"><div><span>Saga / colección</span><h2>{saga.name||item.collection_name}</h2><small>{inCatalog}/{sagaTitles.length} en PikoFilm · {inPlexSaga}/{sagaTitles.length} en Plex</small></div><Link href={`/sagas/${item.tmdb_collection_id}`}>Abrir saga →</Link></div><div className="fv4-saga-strip">{sagaTitles.map((x,i)=>{const current=x.imdb_id===item.imdb_id,body=<><span className="fv4-saga-index">{i+1}</span><div><b>{x.display_title||x.title}</b><small>{x.year||'—'} · {x.imdb_id?'En PikoFilm':'Fuera de PikoFilm'} · {x.effective_status==='in_plex'?'En Plex':'Sin Plex'}</small></div></>;return x.imdb_id?<Link className={current?'current':''} href={`/catalogo/${x.imdb_id}`} key={`${x.imdb_id}-${i}`}>{body}</Link>:<div className={current?'current':''} key={`${x.title}-${i}`}>{body}</div>})}</div></section>}
+    {saga&&sagaTitles.length>0&&<section className="fv4-secondary-panel fv4-saga"><div className="fv4-section-head"><div><span>Saga / colección</span><h2>{saga.name||item.collection_name}</h2><small>{inCatalog}/{sagaTitles.length} en PikoFilm · {inPlexSaga}/{sagaTitles.length} en Plex</small></div><Link href={`/sagas/${item.tmdb_collection_id}`}>Abrir saga →</Link></div><div className="fv4-saga-strip">{sagaTitles.map((x,i)=>{const current=x.imdb_id===item.imdb_id,catalogued=Boolean(x.display_title),body=<><span className="fv4-saga-index">{i+1}</span><div><b>{x.display_title||x.title}</b><small>{x.year||'—'} · {catalogued?'En PikoFilm':'Fuera de PikoFilm'} · {x.effective_status==='in_plex'?'En Plex':'Sin Plex'}</small></div></>;return catalogued&&x.imdb_id?<Link className={current?'current':''} href={`/catalogo/${x.imdb_id}`} key={`${x.imdb_id}-${i}`}>{body}</Link>:<div className={current?'current':''} key={`${x.tmdb_movie_id||x.title}-${i}`}>{body}</div>})}</div></section>}
 
     <Credits item={item}/>
     <SourceLinks item={item} plexId={qualityData?.rating_key}/>
