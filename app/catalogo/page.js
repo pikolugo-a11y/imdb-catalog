@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {redirect} from 'next/navigation';
 import {Poster} from '@/components/MediaCard';
 import CatalogFiltersV4 from '@/components/CatalogFiltersV4';
