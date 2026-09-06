@@ -25,10 +25,12 @@ test('Catalog V4 keeps server pagination, stable URL state and neutral Plex sema
   assert.doesNotMatch(page,/Falta|Faltan/);
 });
 
-test('Catalog V4 supports multi-genre OR and AND filtering on complete genre data',()=>{
+test('Catalog V4 supports multi-genre OR and AND filtering on canonical genre schema',()=>{
   assert.match(query,/genreMode==='all'/);
-  assert.match(query,/count\(DISTINCT g\.genre\)/);
-  assert.match(query,/EXISTS\(SELECT 1 FROM movie_genres_canonical/);
+  assert.match(query,/count\(DISTINCT g\.name_es\)/);
+  assert.match(query,/movie_genres_canonical mgc JOIN genres g ON g\.id=mgc\.genre_id/);
+  assert.match(query,/SELECT name_es value FROM genres/);
+  assert.doesNotMatch(query,/g\.genre/);
   assert.match(page,/className="more">\+\{more\}/);
 });
 
