@@ -1,55 +1,65 @@
 import Link from 'next/link';
-import {MediaCard} from '@/components/MediaCard';
-import CatalogFiltersV3 from '@/components/CatalogFiltersV3';
-import CatalogSortV3 from '@/components/CatalogSortV3';
-import {getCatalogV3,getCatalogFiltersV3,getCatalogStatsV3,catalogPageSize} from '@/lib/catalog-v3-queries';
-import {excludeTitle,restoreTitle} from '@/app/actions';
-import './catalog-v3.css';
-import './catalog-kpi-tweak.css';
+import {redirect} from 'next/navigation';
+import {Poster} from '@/components/MediaCard';
+import CatalogFiltersV4 from '@/components/CatalogFiltersV4';
+import {CATALOG_V4_PAGE_SIZE,catalogV4Href,getCatalogV4,getCatalogV4Genres,parseCatalogV4} from '@/lib/catalog-v4-queries';
+import './catalog-v4.css';
 
 export const dynamic='force-dynamic';
 
-function qs(p,patch={}){const x=new URLSearchParams();const source={...p,...patch};for(const[k,v]of Object.entries(source)){const value=Array.isArray(v)?v.join(','):v;if(value!==undefined&&value!==null&&value!=='')x.set(k,String(value));}return x.toString();}
-function pct(n,total){return total?`${Math.round((Number(n||0)/Number(total))*100)}%`:'0%'}
-function StateIcon({kind}){const icons={total:'▦',missing:'!',plex:'✓'};return <span className={`catalog-stat-icon ${kind}`} aria-hidden="true">{icons[kind]}</span>}
-function StateDot({state}){return <span className={`catalog-state-dot ${state}`} aria-hidden="true"/>}
-function list(v){const raw=Array.isArray(v)?v.join(','):String(v||'');return [...new Set(raw.split(',').map(x=>x.trim()).filter(Boolean))]}
-function n(v){const x=Number.parseInt(Array.isArray(v)?v[0]:v,10);return Number.isFinite(x)?x:null}
-function fmt1(v){const x=Number(v);return Number.isFinite(x)?x.toFixed(1):'—'}
-function runtime(v){const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';const h=Math.floor(x/60),m=x%60;return h?`${h}h ${m?`${m}m`:''}`:`${m}m`}
-function genresText(v){const a=Array.isArray(v)?v:[];return a.length>2?`${a.slice(0,2).join(', ')} +${a.length-2}`:a.join(', ')||'—'}
-function firstCountry(v){const s=String(v||'').trim();if(!s)return '—';return s.split(/\s*[·,;|]\s*/).filter(Boolean)[0]||s}
-function statusLabel(v){return v==='in_plex'?'En Plex':'Falta'}
+const fmt=v=>v==null?'—':Number(v).toFixed(1);
+const typeLabel=v=>v==='Miniserie'?'Miniserie':v==='Serie'?'Serie':'Película';
+function genrePreview(genres=[],max=3){const shown=genres.slice(0,max),more=Math.max(0,genres.length-max);return <div className="cv4-genre-chips" title={genres.join(', ')}>{shown.map(g=><span key={g}>{g}</span>)}{more>0&&<span className="more">+{more}</span>}{!genres.length&&<span className="empty">—</span>}</div>}
+function scoreSortHref(s,key){const same=s.sort===key,defaultDir=key==='title'?'asc':'desc',dir=same?(s.dir==='asc'?'desc':'asc'):defaultDir;return catalogV4Href(s,{sort:key,dir,page:1})}
+function arrow(s,key){return s.sort===key?<span aria-hidden="true">{s.dir==='asc'?'↑':'↓'}</span>:null}
+function titleHref(r,returnTo){return `/catalogo/${r.imdb_id}?from=${encodeURIComponent(returnTo)}`}
 
 export default async function Catalogo({searchParams}){
-  const p=await searchParams;const view=p.view==='list'?'list':'grid';
-  const [rows,f,stats]=await Promise.all([getCatalogV3({...p,view}),getCatalogFiltersV3(),getCatalogStatsV3(p)]);
-  const page=Math.max(1,n(p.page)||1),pageSize=catalogPageSize(view),total=Number(stats.total||0),pages=Math.max(1,Math.ceil(total/pageSize)),safePage=Math.min(page,pages),first=total?((safePage-1)*pageSize)+1:0,last=Math.min(safePage*pageSize,total);
-  const returnTo='/catalogo?'+qs(p,{notice:'',undo:''});const genres=list(p.genres||p.genre),legacyYear=n(p.year);
-  const safeStatus=String(p.status||'')==='acquiring'?'missing':String(p.status||'');
-  const initial={q:String(p.q||''),type:String(p.type||''),status:safeStatus,genres,genreMode:p.genreMode==='all'?'all':'any',yearFrom:n(p.yearFrom)??legacyYear??'',yearTo:n(p.yearTo)??legacyYear??''};
-  const hasFilters=Boolean(initial.q||initial.type||initial.status||genres.length||initial.yearFrom||initial.yearTo),sort=String(p.sort||'score'),dir=String(p.dir||(sort==='title'?'asc':'desc'));
-  const statItems=[['total','Total',stats.total,'100%'],['missing','Faltan',stats.missing,pct(stats.missing,total)],['plex','Plex',stats.in_plex,pct(stats.in_plex,total)]];
-  const pageHref=x=>'/catalogo?'+qs(p,{status:safeStatus,page:x});
-  const sortHref=key=>{const current=sort===key,nextDir=current?(dir==='asc'?'desc':'asc'):(key==='title'?'asc':'desc');return '/catalogo?'+qs(p,{status:safeStatus,sort:key,dir:nextDir,page:1,view:'list'});};
-  const arrow=key=>sort===key?(dir==='asc'?' ↑':' ↓'):'';
+  const raw=await searchParams,s0=parseCatalogV4(raw);
+  if(raw.view==='grid'||raw.type||raw.status==='missing'||(raw.scope&&!['all','movies','series'].includes(raw.scope))||(raw.sort&&!['score','year','title'].includes(raw.sort))||(raw.dir&&!['asc','desc'].includes(raw.dir)))redirect(catalogV4Href(s0));
+  const genresPromise=getCatalogV4Genres();
+  const result=await getCatalogV4(raw),genres=await genresPromise,s=result.state;
+  const total=Number(result.summary.total||0),pages=result.pageCount;
+  if(!s.invalidYearRange&&total>0&&Number(raw.page||1)>pages)redirect(catalogV4Href(s,{page:pages}));
+  const first=total?((s.page-1)*CATALOG_V4_PAGE_SIZE)+1:0,last=Math.min(s.page*CATALOG_V4_PAGE_SIZE,total),returnTo=catalogV4Href(s);
+  const tabHref=scope=>catalogV4Href(s,{scope,page:1});
+  const pageHref=page=>catalogV4Href(s,{page});
+  const clearHref=catalogV4Href(s,{q:'',plex:'all',genres:[],genreMode:'any',yearFrom:null,yearTo:null,page:1});
+  const sagaHref=`/sagas?catalogReturn=${encodeURIComponent(returnTo)}`;
+  const hasFilters=Boolean(s.q||s.plex!=='all'||s.genres.length||s.yearFrom!=null||s.yearTo!=null);
+  return <div className="catalog-v4">
+    <header className="cv4-hero">
+      <div><span className="cv4-eyebrow">Base audiovisual</span><h1>Catálogo</h1><p>Tu colección maestra, ordenada para encontrar, comparar y consultar.</p></div>
+      <Link className="cv4-excluded-link" href="/catalogo/excluidas"><span aria-hidden="true">⊘</span> Excluidas</Link>
+    </header>
 
-  return <div className="catalog-v3 catalog-v3-rebuild catalog-r4">
-    {p.notice==='excluded'&&p.undo&&<div className="toast success catalog-toast"><span>Título excluido correctamente.</span><form action={restoreTitle}><input type="hidden" name="imdbId" value={p.undo}/><input type="hidden" name="returnTo" value={returnTo}/><button>Deshacer</button></form></div>}
+    <nav className="cv4-tabs" aria-label="Secciones del catálogo">
+      <Link className={s.scope==='all'?'active':''} href={tabHref('all')}>Todo</Link>
+      <Link className={s.scope==='movies'?'active':''} href={tabHref('movies')}>Películas</Link>
+      <Link className={s.scope==='series'?'active':''} href={tabHref('series')}>Series</Link>
+      <Link href={sagaHref}>Sagas <span aria-hidden="true">↗</span></Link>
+    </nav>
 
-    <div className="catalog-filter-shell catalog-filter-shell-r4"><CatalogFiltersV3 genres={f.genres} minYear={f.minYear} maxYear={f.maxYear} initial={initial}/></div>
+    <CatalogFiltersV4 genres={genres} invalidYearRange={s.invalidYearRange}/>
 
-    <section className="catalog-stat-strip catalog-stat-strip-r4" aria-label="Resumen del catálogo">{statItems.map(([kind,label,value,percent])=><article key={kind} className={`catalog-stat ${kind}`}><StateIcon kind={kind}/><div><strong>{Number(value||0).toLocaleString('es-ES')}</strong><span>{label}</span></div><small>{percent}</small></article>)}</section>
+    <section className="cv4-summary" aria-label="Resumen de resultados">
+      <article><span>Total</span><strong>{total.toLocaleString('es-ES')}</strong></article>
+      <article><span>En Plex</span><strong>{Number(result.summary.in_plex||0).toLocaleString('es-ES')}</strong></article>
+      <article><span>Sin Plex</span><strong>{Number(result.summary.without_plex||0).toLocaleString('es-ES')}</strong></article>
+    </section>
 
-    <div className="catalog-resultbar catalog-resultbar-r4">
-      <span>Mostrando <b>{first.toLocaleString('es-ES')}–{last.toLocaleString('es-ES')}</b> de <b>{total.toLocaleString('es-ES')}</b>{hasFilters?' filtrados':''}</span>
-      <div className="catalog-result-tools"><Link className="catalog-excluded catalog-excluded-inline" href="/catalogo/excluidas">◉ Excluidas</Link>{view==='grid'&&<CatalogSortV3 sort={sort} dir={dir}/>}<div className="catalog-view-switch catalog-view-inline" aria-label="Vista"><span>Vista</span><div><Link className={view==='grid'?'active':''} href={'/catalogo?'+qs(p,{status:safeStatus,view:'grid',page:1})} title="Carátulas">▦</Link><Link className={view==='list'?'active':''} href={'/catalogo?'+qs(p,{status:safeStatus,view:'list',page:1})} title="Tabla">☷</Link></div></div></div>
+    <div className="cv4-toolbar">
+      <div><strong>{first.toLocaleString('es-ES')}–{last.toLocaleString('es-ES')}</strong><span> de {total.toLocaleString('es-ES')}{hasFilters?' filtrados':''}</span></div>
+      <div className="cv4-view"><span>Vista</span><Link className={s.view==='list'?'active':''} href={catalogV4Href(s,{view:'list'})} aria-label="Vista lista">☷</Link><Link className={s.view==='posters'?'active':''} href={catalogV4Href(s,{view:'posters'})} aria-label="Vista carátulas">▦</Link></div>
     </div>
 
-    {rows.length===0?<div className="catalog-empty"><b>No hay títulos con estos criterios</b><span>Prueba a limpiar o cambiar los filtros.</span></div>:view==='grid'?
-      <div className="media-grid catalog-poster-grid catalog-poster-grid-r4">{rows.map(r=><article className="media-action catalog-poster-item" key={r.imdb_id}><div className="catalog-poster-wrap"><MediaCard item={r} href={`/catalogo/${r.imdb_id}?from=${encodeURIComponent(returnTo)}`}/><span className={`catalog-flow-badge ${r.lifecycle.tone}`}>{r.lifecycle.label}</span><span className={`catalog-poster-status ${r.effective_status||'missing'}`} title={statusLabel(r.effective_status)}>{r.effective_status==='in_plex'?'✓':'!'}</span>{r.effective_status!=='in_plex'&&<div className="quick-actions catalog-card-actions"><form action={excludeTitle}><input type="hidden" name="imdbId" value={r.imdb_id}/><input type="hidden" name="returnTo" value={returnTo}/><button className="danger-soft">Excluir</button></form></div>}</div></article>)}</div>:
-      <div className="catalog-table-wrap"><table className="catalog-data-table"><thead><tr><th><Link href={sortHref('title')}>Título{arrow('title')}</Link></th><th><Link href={sortHref('year')}>Año{arrow('year')}</Link></th><th><Link href={sortHref('type')}>Tipo{arrow('type')}</Link></th><th>Flujo</th><th>Géneros</th><th>País</th><th className="num"><Link href={sortHref('score')}>PikoScore{arrow('score')}</Link></th><th className="num"><Link href={sortHref('imdb')}>IMDb{arrow('imdb')}</Link></th><th className="num"><Link href={sortHref('votes')}>Votos{arrow('votes')}</Link></th><th className="num"><Link href={sortHref('runtime')}>Duración{arrow('runtime')}</Link></th><th><Link href={sortHref('status')}>Plex{arrow('status')}</Link></th><th>Acciones</th></tr></thead><tbody>{rows.map(r=>{const href=`/catalogo/${r.imdb_id}?from=${encodeURIComponent(returnTo)}`;return <tr key={r.imdb_id}><td className="catalog-table-title"><Link href={href}>{r.display_title}</Link><small>{r.original_title&&r.original_title!==r.display_title?r.original_title:''}</small></td><td>{r.year||'—'}</td><td>{r.type||'—'}</td><td><Link href={r.lifecycle.area} className={`catalog-flow-inline ${r.lifecycle.tone}`}>{r.lifecycle.label}</Link></td><td title={(r.genres||[]).join(', ')}>{genresText(r.genres)}</td><td title={r.country||''}>{firstCountry(r.country)}</td><td className="num score-cell">{fmt1(r.final_rating)}</td><td className="num">{fmt1(r.imdb_rating)}</td><td className="num">{Number(r.imdb_votes||0).toLocaleString('es-ES')}</td><td className="num">{runtime(r.runtime)}</td><td><span className="catalog-list-state"><StateDot state={r.effective_status==='in_plex'?'plex':'missing'}/>{statusLabel(r.effective_status)}</span></td><td className="catalog-table-actions"><Link className="catalog-table-action-link" href={href}>Ver</Link>{r.effective_status!=='in_plex'&&<form action={excludeTitle}><input type="hidden" name="imdbId" value={r.imdb_id}/><input type="hidden" name="returnTo" value={returnTo}/><button>Excluir</button></form>}</td></tr>})}</tbody></table></div>}
+    {s.invalidYearRange?<section className="cv4-state invalid"><strong>Revisa el rango de años</strong><p>El año inicial no puede ser posterior al año final. No se ha ejecutado la búsqueda.</p></section>:
+    result.rows.length===0?<section className="cv4-state"><strong>No hay títulos que coincidan con estos filtros</strong><p>La consulta es válida, pero no devuelve obras de PikoFilm.</p>{hasFilters&&<Link href={clearHref}>Limpiar filtros</Link>}</section>:
+    s.view==='posters'?<div className="cv4-poster-grid">{result.rows.map(r=><Link className="cv4-poster-card" key={r.imdb_id} href={titleHref(r,returnTo)}><div className="cv4-poster-art"><Poster path={r.poster_path} title={r.display_title}/><span className={`cv4-plex-dot ${r.effective_status==='in_plex'?'in':'out'}`} title={r.effective_status==='in_plex'?'En Plex':'Sin Plex'}>{r.effective_status==='in_plex'?'✓':'—'}</span></div><div className="cv4-poster-copy"><strong>{r.display_title}</strong><span>{r.year||'—'} · {typeLabel(r.type)}</span><div><b>{fmt(r.final_rating)}</b><small>PikoScore</small><em>{r.effective_status==='in_plex'?'En Plex':'Sin Plex'}</em></div></div></Link>)}</div>:
+    <div className="cv4-table-shell"><table className="cv4-table"><thead><tr><th><Link href={scoreSortHref(s,'title')}>Título {arrow(s,'title')}</Link></th><th><Link href={scoreSortHref(s,'year')}>Año {arrow(s,'year')}</Link></th><th>Tipo</th><th>Géneros</th><th className="num"><Link href={scoreSortHref(s,'score')}>PikoScore {arrow(s,'score')}</Link></th><th className="num">PikoQuality</th><th>Plex</th></tr></thead><tbody>{result.rows.map(r=><tr key={r.imdb_id}><td className="cv4-title"><Link href={titleHref(r,returnTo)}>{r.display_title}</Link></td><td>{r.year||'—'}</td><td>{typeLabel(r.type)}</td><td>{genrePreview(r.genres)}</td><td className="num cv4-score">{fmt(r.final_rating)}</td><td className="num">{fmt(r.pikoquality)}</td><td><span className={`cv4-plex ${r.effective_status==='in_plex'?'in':'out'}`}><i aria-hidden="true"/>{r.effective_status==='in_plex'?'En Plex':'Sin Plex'}</span></td></tr>)}</tbody></table>
+      <div className="cv4-mobile-list">{result.rows.map(r=><Link key={r.imdb_id} href={titleHref(r,returnTo)} className="cv4-mobile-row"><strong>{r.display_title}</strong><span>{r.year||'—'} · {typeLabel(r.type)} · {(r.genres||[]).slice(0,2).join(', ')||'Sin género'}{r.genres?.length>2?` +${r.genres.length-2}`:''}</span><div><b>{fmt(r.final_rating)} <small>PikoScore</small></b><b>{fmt(r.pikoquality)} <small>PikoQuality</small></b><em className={r.effective_status==='in_plex'?'in':'out'}>{r.effective_status==='in_plex'?'En Plex':'Sin Plex'}</em></div></Link>)}</div>
+    </div>}
 
-    {total>pageSize&&<nav className="catalog-pagination" aria-label="Paginación"><Link className={safePage<=1?'disabled':''} href={pageHref(Math.max(1,safePage-1))}>‹</Link>{safePage>2&&<Link href={pageHref(1)}>1</Link>}{safePage>3&&<span>…</span>}{[safePage-1,safePage,safePage+1].filter(x=>x>=1&&x<=pages).map(x=><Link key={x} className={x===safePage?'active':''} href={pageHref(x)}>{x}</Link>)}{safePage<pages-2&&<span>…</span>}{safePage<pages-1&&<Link href={pageHref(pages)}>{pages}</Link>}<Link className={safePage>=pages?'disabled':''} href={pageHref(Math.min(pages,safePage+1))}>›</Link></nav>}
+    {!s.invalidYearRange&&total>CATALOG_V4_PAGE_SIZE&&<nav className="cv4-pagination" aria-label="Paginación"><Link className={s.page<=1?'disabled':''} href={pageHref(Math.max(1,s.page-1))}>‹ <span>Anterior</span></Link><div>{s.page>2&&<Link href={pageHref(1)}>1</Link>}{s.page>3&&<i>…</i>}{[s.page-1,s.page,s.page+1].filter(x=>x>=1&&x<=pages).map(x=><Link key={x} className={x===s.page?'active':''} href={pageHref(x)}>{x}</Link>)}{s.page<pages-2&&<i>…</i>}{s.page<pages-1&&<Link href={pageHref(pages)}>{pages}</Link>}</div><Link className={s.page>=pages?'disabled':''} href={pageHref(Math.min(pages,s.page+1))}><span>Siguiente</span> ›</Link></nav>}
   </div>;
 }
