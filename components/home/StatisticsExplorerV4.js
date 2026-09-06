@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {useState} from 'react';
 import {nf,pct,score,decadeLabel} from '@/lib/home-format';
 const tabs=[['dna','ADN'],['plex','Plex'],['score','PikoScore'],['countries','Países'],['sagas','Sagas'],['profile','Perfil'],['composition','Composición']];

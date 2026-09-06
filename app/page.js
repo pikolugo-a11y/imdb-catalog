@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import Segmented from '@/components/Segmented';
 import StatisticsExplorerV4 from '@/components/home/StatisticsExplorerV4';
 import HistoryChart from '@/components/home/HistoryChart';

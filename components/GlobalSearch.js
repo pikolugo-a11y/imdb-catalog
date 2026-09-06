@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {useEffect,useRef,useState} from 'react';
 
 const empty={titles:[],people:[],sagas:[]};

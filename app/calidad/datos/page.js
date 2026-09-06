@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import ActionButton from '@/components/ActionButton';
 import IdentityExcludeButton from '@/components/IdentityExcludeButton';
 import DataQualityManualControls from '@/components/DataQualityManualControls';

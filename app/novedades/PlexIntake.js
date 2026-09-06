@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {db} from '@/lib/db';
 import PlexSyncButton from '@/components/PlexSyncButton';
 

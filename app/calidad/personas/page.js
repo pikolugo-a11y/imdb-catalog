@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {getPeopleQualityOverview} from '@/lib/people-quality';
 import {getPeopleBatchPanelState} from '@/lib/people-batch';
 import {refreshPersonFilmographyAction} from '@/app/personas/actions';

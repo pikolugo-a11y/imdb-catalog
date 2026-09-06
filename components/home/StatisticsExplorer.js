@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {useEffect,useMemo,useState} from 'react';
 import {nf,one,pct,score,pp,decadeLabel} from '@/lib/home-format';
 import {eligibleRows,mostCovered,bestScore} from '@/lib/home-statistics';

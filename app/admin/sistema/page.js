@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import DatabaseStoragePanel from '@/components/home/DatabaseStoragePanel';
 import {db} from '@/lib/db';
 export const dynamic='force-dynamic';

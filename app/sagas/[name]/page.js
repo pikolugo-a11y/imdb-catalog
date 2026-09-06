@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {notFound} from 'next/navigation';
 import {getSagaDetailV3} from '@/lib/sagas-v3';
 import {addSagaMemberToNewsAction} from '@/app/sagas/saga-news-actions';

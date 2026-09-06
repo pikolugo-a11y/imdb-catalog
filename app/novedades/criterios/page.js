@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {getNewsSettings} from '@/lib/news-v1';
 import {saveNewsSettingsAction} from '../actions';
 export const dynamic='force-dynamic';

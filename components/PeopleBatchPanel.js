@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import BatchAutoRefresh from './BatchAutoRefresh';
 import {startPeopleBatchAction,pausePeopleBatchAction,resumePeopleBatchAction,cancelPeopleBatchAction} from '@/app/calidad/personas/batch-actions';
 const nf=n=>Number(n||0).toLocaleString('es-ES');const pct=(d,t)=>t?Math.min(100,Math.round(Number(d||0)*1000/Number(t))/10):0;

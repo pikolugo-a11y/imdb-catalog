@@ -1,5 +1,5 @@
 import './news.css';
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {getNewsV1,getNewsSettings} from '@/lib/news-v1';
 import {getNewsDiscoveryStatus} from '@/lib/news-discovery-status';
 import {countryLabel} from '@/lib/country-display';

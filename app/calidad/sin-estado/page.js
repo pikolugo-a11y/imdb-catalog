@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/NoPrefetchLink';
 import {db} from '@/lib/db';
 import {restartMissingLifecycleAction} from './actions';
 export const dynamic='force-dynamic';
