@@ -21,6 +21,9 @@ Este árbol contiene únicamente documentación necesaria para comprender y modi
 ### Producto
 - `product/PRODUCT_AND_LIFECYCLE.md`
 - `product/V4_UX_FOUNDATION.md` — conclusiones del frontal V3 que sirven como contexto de arranque para diseñar V4; no es backlog ni especificación cerrada.
+- `product/V4_CATALOGO.md` — contrato funcional vigente del Catálogo V4.
+- `product/V4_FICHA.md` — contrato funcional vigente de la Ficha V4.
+- `product/V4_PERSONAS.md` — contrato funcional vigente de Personas V4.
 
 ### Arquitectura
 - `architecture/SYSTEM_ARCHITECTURE.md`
