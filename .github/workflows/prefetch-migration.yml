@@ -2,7 +2,8 @@ name: One-off no-prefetch migration
 
 on:
   push:
-    branches: [audit/vercel-prefetch-all]
+    branches:
+      - audit/vercel-prefetch-all
 
 permissions:
   contents: write
@@ -23,13 +24,13 @@ jobs:
           while IFS= read -r -d '' file; do
             [ "$file" = "components/NoPrefetchLink.js" ] && continue
             python - "$file" <<'PY'
-import pathlib,sys
-p=pathlib.Path(sys.argv[1])
-s=p.read_text()
-s=s.replace("from 'next/link'", "from '@/components/NoPrefetchLink'")
-s=s.replace('from "next/link"', 'from "@/components/NoPrefetchLink"')
-p.write_text(s)
-PY
+          import pathlib,sys
+          p=pathlib.Path(sys.argv[1])
+          s=p.read_text()
+          s=s.replace("from 'next/link'", "from '@/components/NoPrefetchLink'")
+          s=s.replace('from "next/link"', 'from "@/components/NoPrefetchLink"')
+          p.write_text(s)
+          PY
           done < <(find app components -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.mjs' -o -name '*.tsx' \) -print0)
           git rm .github/workflows/prefetch-migration.yml
           git config user.name 'github-actions[bot]'
