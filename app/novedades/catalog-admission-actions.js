@@ -6,8 +6,8 @@ import {executeObservedProcess} from '@/lib/process-runtime';
 import {recomputeLifecycleForIds} from '@/lib/lifecycle';
 
 function imdbIdOf(formData){const id=String(formData.get('imdbId')||'').trim();if(!/^tt\d+$/.test(id))throw new Error('IMDb ID inválido');return id}
-function refresh(id){revalidatePath('/novedades');revalidatePath('/catalogo');revalidatePath(`/catalogo/${id}`);revalidatePath('/calidad');revalidatePath('/calidad/identidad');revalidatePath('/admin');revalidatePath('/')}
-function candidateOrigin(candidate){const snap=candidate.source_snapshot||{},isManual=snap.manual===true||snap.manual==='true',isPlex=snap.origin==='plex'||snap.matchedRule==='plex',isSaga=snap.origin==='saga'||snap.matchedRule==='saga_manual';return isPlex?'plex':isManual?'manual':isSaga?'saga':'discovery'}
+function refresh(id){revalidatePath('/novedades');revalidatePath('/catalogo');revalidatePath('/catalogo/excluidas');revalidatePath(`/catalogo/${id}`);revalidatePath('/calidad');revalidatePath('/calidad/identidad');revalidatePath('/admin');revalidatePath('/')}
+function candidateOrigin(candidate){const snap=candidate.source_snapshot||{},isRestored=snap.restoredFromExclusion===true||snap.restoredFromExclusion==='true',isManual=snap.manual===true||snap.manual==='true',isPlex=snap.origin==='plex'||snap.matchedRule==='plex',isSaga=snap.origin==='saga'||snap.matchedRule==='saga_manual';return isRestored?'manual':isPlex?'plex':isManual?'manual':isSaga?'saga':'discovery'}
 function movieType(candidateType){return candidateType==='movie'?'Película':candidateType==='tvMiniSeries'?'Miniserie':candidateType==='tvSeries'?'Serie':null}
 
 async function linkPlexCandidate(sql,imdbId,snap){
@@ -20,12 +20,22 @@ async function linkPlexCandidate(sql,imdbId,snap){
 export async function admitNewsCandidateAction(formData){
   const imdbId=imdbIdOf(formData),sql=db(),requestKey=`PROC-NOV-007:${imdbId}:${Math.floor(Date.now()/3000)}`;
   const observed=await executeObservedProcess({processCode:'PROC-NOV-007',runKind:'individual',triggerSource:'novedades_manual',executor:'vercel',entityType:'title',entityId:imdbId,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:'/novedades',operation:'admit_candidate_to_catalog'}},async trace=>{
-    const[existing]=await sql`SELECT imdb_id FROM movies WHERE imdb_id=${imdbId} LIMIT 1`;
-    if(existing)return{technicalStatus:'succeeded',functionalResult:'no_change',after:{already_catalogued:true},message:'El IMDb ya estaba en el catálogo'};
     const[candidate]=await sql`SELECT * FROM catalog_candidates WHERE imdb_id=${imdbId} LIMIT 1`;
+    const[existing]=await sql`SELECT imdb_id FROM movies WHERE imdb_id=${imdbId} LIMIT 1`;
+    const snap=candidate?.source_snapshot||{},restored=snap.restoredFromExclusion===true||snap.restoredFromExclusion==='true';
+    if(existing&&restored){
+      if(!candidate||candidate.eligibility_status!=='eligible')return{technicalStatus:'succeeded',functionalResult:'blocked',after:{reason:'not_eligible',eligibility_status:candidate?.eligibility_status||null},message:'El candidato restaurado todavía no está listo'};
+      await trace.event({eventType:'step_started',step:'admission',entityType:'title',entityId:imdbId,message:'Confirmando readmisión explícita de título restaurado',data:{restored_from_exclusion:true}});
+      await sql`DELETE FROM catalog_exclusions WHERE imdb_id=${imdbId}`;
+      await sql`UPDATE catalog_candidates SET eligibility_status='catalogued',processed_at=now(),updated_at=now(),source_snapshot=(COALESCE(source_snapshot,'{}'::jsonb)-'pendingCatalogAdmission')||${JSON.stringify({cataloguedAt:new Date().toISOString(),catalogAdmission:'restored_explicit'})}::jsonb WHERE imdb_id=${imdbId}`;
+      await recomputeLifecycleForIds([imdbId]);
+      await trace.event({eventType:'step_completed',step:'admission',entityType:'title',entityId:imdbId,message:'Readmisión confirmada; bloqueo de exclusión retirado',data:{restored_from_exclusion:true}});
+      return{technicalStatus:'succeeded',functionalResult:'updated',after:{catalogued:true,restored:true},metrics:{admitted:1,external_calls:0},message:'Título restaurado y admitido explícitamente al catálogo'};
+    }
+    if(existing)return{technicalStatus:'succeeded',functionalResult:'no_change',after:{already_catalogued:true},message:'El IMDb ya estaba en el catálogo'};
     if(!candidate)return{technicalStatus:'succeeded',functionalResult:'blocked',after:{reason:'missing_candidate'},message:'Candidato no encontrado'};
     if(candidate.eligibility_status!=='eligible')return{technicalStatus:'succeeded',functionalResult:'blocked',after:{reason:'not_eligible',eligibility_status:candidate.eligibility_status},message:'El candidato todavía no está listo'};
-    const snap=candidate.source_snapshot||{},origin=candidateOrigin(candidate),type=movieType(candidate.candidate_type),title=String(snap.title||snap.originalTitle||'').trim();
+    const origin=candidateOrigin(candidate),type=movieType(candidate.candidate_type),title=String(snap.title||snap.originalTitle||'').trim();
     if(!type||!title||title===imdbId)return{technicalStatus:'succeeded',functionalResult:'blocked',after:{reason:'minimum_identity_missing',title:title||null,candidate_type:candidate.candidate_type||null},message:'Faltan título o tipo para admitir el candidato'};
     const inclusionOrigin=origin==='plex'?'plex':origin==='manual'?'imdb_manual':origin==='saga'?'saga':'imdb_discovery';
     const movieOrigin=origin==='plex'?'plex_news':origin==='manual'?'imdb_manual':origin==='saga'?'saga_news':'imdb_discovery';
