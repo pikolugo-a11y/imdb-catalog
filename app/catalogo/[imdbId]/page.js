@@ -4,145 +4,122 @@ import {getCatalogItem,getSeriesDetail,getSagaDetail} from '@/lib/queries';
 import {getCatalogRatings} from '@/lib/catalog-ratings';
 import {getSeriesDashboard} from '@/lib/series-dashboard';
 import {getMovieDetailExtras} from '@/lib/movie-detail-extras';
-import {excludeTitle} from '@/app/actions';
-import './detail-editorial.css';
-import './series-command.css';
-import './movie-command.css';
+import ExcludeTitleForm from './ExcludeTitleForm';
+import './ficha-v4.css';
 
 export const dynamic='force-dynamic';
 
 const img=p=>p?`https://image.tmdb.org/t/p/w342${p}`:null;
 const isSeries=t=>t==='Serie'||t==='Miniserie';
-const n=v=>v==null?'—':Number(v).toLocaleString('es-ES');
+const cleanTitle=t=>String(t||'').replace(/\s*\((?:Serie de TV|TV Series)\)\s*$/i,'');
+const fmt=v=>v==null?'—':Number(v).toFixed(1);
+const fmt2=v=>v==null?'—':Number(v).toFixed(2);
+const votes=v=>v==null?'—':Number(v).toLocaleString('es-ES');
+const date=v=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('es-ES')};
+const runtime=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';const h=Math.floor(x/60),m=x%60;return h?`${h} h${m?` ${m} min`:''}`:`${m} min`};
+const bitrate=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';return x>=1000?`${(x/1000).toFixed(1)} Mbps`:`${x} Kbps`};
+const size=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';return `${(x/1073741824).toFixed(1)} GB`};
 const qBand=b=>({excellent:'Excelente',very_good:'Muy buena',correct:'Correcta',improvable:'Mejorable',deficient:'Mala'}[b]||'—');
 const qClass=b=>b==='excellent'||b==='very_good'?'good':b==='correct'?'mid':b==='improvable'?'warn':'bad';
-const cleanSeriesTitle=t=>String(t||'').replace(/\s*\((?:Serie de TV|TV Series)\)\s*$/i,'');
-const flagFor=c=>({'Estados Unidos':'🇺🇸','España':'🇪🇸','Reino Unido':'🇬🇧','Francia':'🇫🇷','Italia':'🇮🇹','Alemania':'🇩🇪','Canadá':'🇨🇦','Japón':'🇯🇵','Corea del Sur':'🇰🇷','Australia':'🇦🇺','México':'🇲🇽','Argentina':'🇦🇷','Brasil':'🇧🇷','Suecia':'🇸🇪','Noruega':'🇳🇴','Dinamarca':'🇩🇰','Finlandia':'🇫🇮','Irlanda':'🇮🇪','Bélgica':'🇧🇪','Países Bajos':'🇳🇱','Nueva Zelanda':'🇳🇿'}[c]||'🌐');
-const relevantCrew=credits=>(credits||[]).filter(c=>{const j=String(c.job||'').toLowerCase();return /creator|created by|showrunner|director|director de|creador/.test(j)&&!/staff writer|writer|screenplay|novel/.test(j)}).slice(0,4);
 const sourceLabel=s=>({imdb:'IMDb',tmdb:'TMDb',trakt:'Trakt',letterboxd:'Letterboxd',rt_audience:'RT audiencia',rt_critics:'RT críticos',metacritic:'Metacritic',metacritic_user:'MC usuarios',roger_ebert:'Roger Ebert'}[s]||s);
 const familyLabel=f=>({audience:'Audiencia',cinephile:'Cinéfilos',critics:'Crítica'}[f]||f);
-const marketLabel=m=>m==='spain'?'Mercado España':m==='global'?'Mercado global':'Mercado sin definir';
-const score1=v=>v==null?'—':Number(v).toFixed(1);
-const score2=v=>v==null?'—':Number(v).toFixed(2);
-const dateShort=v=>v?new Date(v).toLocaleDateString('es-ES'):'—';
-const runtimeLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';const h=Math.floor(x/60),m=x%60;return h?`${h} h ${m?`${m} min`:''}`:`${m} min`;};
-const bitrateLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';return x>=1000?`${(x/1000).toFixed(1)} Mbps`:`${x} Kbps`;};
-const sizeLabel=v=>{const x=Number(v);if(!Number.isFinite(x)||x<=0)return '—';return `${(x/1073741824).toFixed(1)} GB`;};
+const attentionLabel=t=>({duration:'Duración sospechosa',filename:'Nombre de archivo sospechoso',duplicate:'Varias versiones asociadas'}[t]||'Revisión de la copia física');
+const crewRelevant=xs=>(xs||[]).filter(c=>{const j=String(c.job||'').toLowerCase();return /director|creator|created by|creador|showrunner/.test(j)}).slice(0,6);
+const safeBack=v=>{const s=String(v||'');return s.startsWith('/catalogo')&&!s.startsWith('//')?s:'/catalogo'};
 
-function EditorialSeries({item,back,operational,dashboard,ratingsData}){
-  const cast=item.credits.filter(c=>c.credit_type==='cast').slice(0,8);
-  const crew=relevantCrew(item.credits.filter(c=>c.credit_type!=='cast'));
-  const s=item.series;
-  const total=s?.official_episodes||s?.diagnosed||0;
-  const present=s?.present||0;
-  const coverage=total?Math.round(100*present/total):0;
-  const episodes=operational?.episodes||[];
-  const seasonNums=[...new Set(episodes.map(e=>Number(e.season_number)).filter(x=>x>0))];
-  const qBySeason=new Map((dashboard?.seasonQuality||[]).map(x=>[Number(x.season_index),x]));
-  const seasonCards=seasonNums.map(sn=>{const es=episodes.filter(e=>Number(e.season_number)===sn);const p=es.filter(e=>e.effective_status==='present').length;const m=es.filter(e=>e.effective_status==='missing_actionable').length;const u=es.filter(e=>e.effective_status==='availability_unknown').length;const na=es.filter(e=>e.effective_status==='not_available_es').length;return{sn,total:es.length,p,m,u,na,pct:es.length?Math.round(100*p/es.length):0,quality:qBySeason.get(sn)||null}});
-  const quality=dashboard?.quality||null;
-  const title=cleanSeriesTitle(item.display_title);
-  const release=item.release_date?new Date(item.release_date).toLocaleDateString('es-ES'):item.year||'—';
-  const hasIssue=(s?.not_available_es||0)>0||!item.imdb_id||!item.tmdb_id||!s?.show_rating_key;
-  const ratings=ratingsData?.ratings||[];
-  const pikoReady=ratingsData?.score!=null;
-  const confidence=ratingsData?.confidence==null?null:Number(ratingsData.confidence);
-  const families=ratingsData?.contributions||[];
-  const pikoVersion=String(ratingsData?.version||'').replace('3.0.0-experimental.','3.0 · v');
-  return <>
-    <div className="editorial-crumbs"><Link href={back}>Catálogo</Link><span>›</span><span>Series</span><span>›</span><b>{title}</b></div>
-    <section className="series-command series-command-v3">
-      <div className="series-command-main">{item.poster_path?<img className="command-poster" src={img(item.poster_path)} alt=""/>:<div className="command-poster"/>}<div className="command-copy">
-        <div className="eyebrow">{item.type} · {item.effective_status==='in_plex'?'EN PLEX':'CATÁLOGO'}</div><h1>{title}</h1>
-        {item.original_title&&cleanSeriesTitle(item.original_title)!==title&&<p className="editorial-original">{cleanSeriesTitle(item.original_title)}</p>}{item.tagline&&<p className="editorial-tagline">{item.tagline}</p>}
-        <div className="command-facts"><span><b>Géneros</b>{(item.genres||[]).join(' · ')||'—'}</span><span><b>País</b><i>{flagFor(item.country)}</i>{item.country||'—'}</span><span><b>Estreno</b>{release}</span></div>
-        {crew[0]&&<div className="hero-credit"><span>{crew[0].job||'Creador / dirección'}</span><b>{crew[0].name}</b></div>}
-        <div className="hero-synopsis"><span>SINOPSIS</span><p>{item.overview||'Sin sinopsis enriquecida disponible.'}</p></div>
-      </div></div>
-      <div className="series-intelligence">
-        <div className={`piko-console ${pikoReady?'ready':'pending'}`}>
-          <div className="piko-console-score"><span>★ PikoScore</span><strong>{pikoReady?score2(ratingsData.score):'—'}</strong><small>{pikoReady?'Valoración PikoFilm':'Pendiente de cálculo'}</small></div>
-          <div className="piko-console-trust">
-            <div className="piko-console-head"><div><span>CONFIANZA</span><b>{confidence==null?'—':`${confidence.toFixed(1)}%`}</b></div><div className="piko-evidence"><span>{ratingsData?.sourceCount||ratings.length} fuentes</span><span>{ratingsData?.familyCount||families.length} familias</span></div></div>
-            <div className="confidence-track"><i style={{width:`${Math.max(0,Math.min(100,confidence||0))}%`}}/></div>
-            <div className="piko-context"><span>{marketLabel(ratingsData?.market)}</span>{pikoVersion&&<span>{pikoVersion}</span>}{ratingsData?.calculatedAt&&<span>Calculado {dateShort(ratingsData.calculatedAt)}</span>}</div>
-            {families.length>0&&<div className="family-strip">{families.map(f=><div key={f.family}><span>{familyLabel(f.family)}</span><b>{score1(f.score)}</b><small>{Math.round(Number(f.weight||0)*100)}% peso</small></div>)}</div>}
-          </div>
-        </div>
-        <div className="source-board"><div className="source-board-head"><div><span>RATINGS DISPONIBLES</span><b>{ratings.length} señales actuales</b></div>{ratingsData?.refreshedAt&&<small>Actualizados {dateShort(ratingsData.refreshedAt)}</small>}</div>{ratings.length?<div className="source-grid">{ratings.map(r=><div className={`source-chip ${r.rating_type||''}`} key={r.source}><div><span>{sourceLabel(r.source)}</span><strong>{score1(r.normalized_rating)}</strong></div><small>{r.votes==null?'Volumen no publicado':`${n(r.votes)} votos/reseñas`}</small></div>)}</div>:<div className="source-empty">Todavía no hay ratings MDBList guardados para esta serie.</div>}</div>
-        <div className="series-health-row">
-          <div className={`quality-summary ${quality?qClass(quality.band):'pending'}`}><span>PIKOQUALITY</span>{quality?<><strong>{quality.score}</strong><b>{qBand(quality.band)}</b><small>{quality.analyzed_count}/{quality.total_count} episodios analizados</small></>:<><strong>···</strong><b>Calculando</b><small>Pendiente de agregados</small></>}</div>
-          <div className={`hero-coverage coverage-compact ${coverage===100?'good':coverage>=80?'warn':'bad'}`}><div className="hero-ring" style={{'--pct':`${coverage*3.6}deg`}}><strong>{coverage}%</strong></div><div><span>COBERTURA PLEX</span><b>{present} / {total||'—'}</b><small>{s?.missing||0} faltan · {s?.unknown||0} por confirmar</small></div></div>
-        </div>
-        {hasIssue&&<div className="hero-alerts">{(s?.not_available_es||0)>0&&<span>⚠ {s.not_available_es} episodios no disponibles en España</span>}{(!item.imdb_id||!item.tmdb_id||!s?.show_rating_key)&&<span>⚠ Revisar identidad de la serie en Calidad</span>}</div>}
-      </div>
-    </section>
-    <section className="series-tools series-tools-v3"><div className="tool-ids"><a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer"><b>IMDb ↗</b>{item.imdb_id}</a>{item.tmdb_id?<a href={`https://www.themoviedb.org/tv/${item.tmdb_id}`} target="_blank" rel="noreferrer"><b>TMDb ↗</b>{item.tmdb_id}</a>:<span><b>TMDb</b>Falta</span>}<span><b>Plex</b>{s?.show_rating_key||'—'}</span></div><div className="series-tool-actions"><form action={excludeTitle}><input type="hidden" name="imdbId" value={item.imdb_id}/><input type="hidden" name="returnTo" value={back}/><button className="series-exclude">Excluir serie</button></form></div></section>
-    {seasonCards.length>0&&<section className="editorial-card editorial-seasons compact-seasons"><div className="section-head"><div><h2>Temporadas</h2><p>{seasonCards.length} temporadas · {total||episodes.length} episodios oficiales</p></div>{s?.show_rating_key&&<Link href={`/calidad/series/${s.show_rating_key}`}>Ver todos los episodios →</Link>}</div><div className="season-strip">{seasonCards.map(x=><Link href={s?.show_rating_key?`/calidad/series/${s.show_rating_key}?season=${x.sn}`:'#'} className={`season-tile ${x.pct===100?'complete':x.pct>0?'partial':'empty'}`} key={x.sn}><div><b>T{x.sn}</b><span className="season-quality">{x.quality?`PQ ${x.quality.score}`:'PQ —'}</span></div><div className="season-percent"><strong>{x.pct}%</strong><span>{x.p}/{x.total}</span></div><i><em style={{width:`${x.pct}%`}}/></i><small>{x.m?`${x.m} faltan`:x.na?`${x.na} no disp. ES`:x.u?`${x.u} por confirmar`:'Completa'}</small></Link>)}</div></section>}
-    {crew.length>0&&<section className="editorial-card series-crew"><h2>Creadores y dirección</h2><div className="creator-grid">{crew.map((c,i)=><Link href={`/personas/${c.tmdb_person_id}`} key={`${c.tmdb_person_id}-${i}`}><b>{c.name}</b><span>{c.job||c.credit_type}</span></Link>)}</div></section>}
-    <section className="editorial-card editorial-cast"><div className="section-head"><div><h2>Reparto principal</h2><p>Acceso a la filmografía disponible en PikoFilm.</p></div></div>{cast.length?<div className="editorial-cast-grid">{cast.map((c,i)=><Link className="editorial-person" href={`/personas/${c.tmdb_person_id}`} key={`${c.tmdb_person_id}-${i}`}>{img(c.profile_path)?<img src={img(c.profile_path)} alt=""/>:<div className="ph"/>}<b>{c.name}</b><span>{c.character_name||'Reparto'}</span></Link>)}</div>:<p className="editorial-overview">Sin reparto enriquecido disponible.</p>}</section>
-  </>;
+function PlexBadge({inPlex}){return <span className={`fv4-plex ${inPlex?'in':'out'}`}><i aria-hidden="true"/>{inPlex?'En Plex':'Sin Plex'}</span>}
+
+function ScoreHero({ratingsData}){
+  const ratings=ratingsData?.ratings||[],families=ratingsData?.contributions||[],confidence=ratingsData?.confidence==null?null:Number(ratingsData.confidence),ready=ratingsData?.score!=null;
+  return <section className="fv4-score-block">
+    <div className="fv4-score-main"><span>★ PikoScore</span><strong>{ready?fmt2(ratingsData.score):'—'}</strong><small>{ready?'Valoración PikoFilm':'Sin cálculo vigente'}</small></div>
+    <div className="fv4-score-context">
+      <div className="fv4-score-meta"><span>Confianza <b>{confidence==null?'—':`${confidence.toFixed(0)}%`}</b></span><span><b>{ratingsData?.sourceCount||ratings.length}</b> fuentes</span><span><b>{ratingsData?.familyCount||families.length}</b> familias</span></div>
+      {confidence!=null&&<div className="fv4-confidence"><i style={{width:`${Math.max(0,Math.min(100,confidence))}%`}}/></div>}
+      {families.length>0&&<div className="fv4-families">{families.map(f=><span key={f.family}><b>{familyLabel(f.family)}</b>{fmt(f.score)}</span>)}</div>}
+      {ratingsData?.calculatedAt&&<small>Calculado {date(ratingsData.calculatedAt)}</small>}
+    </div>
+  </section>;
 }
 
-function EditorialMovie({item,back,ratingsData,qualityData,saga}){
-  const cast=item.credits.filter(c=>c.credit_type==='cast').slice(0,12);
-  const crew=item.credits.filter(c=>c.credit_type!=='cast').slice(0,8);
-  const director=crew.find(c=>/director/i.test(String(c.job||'')))||crew[0]||null;
+function ExternalRatings({ratingsData}){
   const ratings=ratingsData?.ratings||[];
-  const families=ratingsData?.contributions||[];
-  const confidence=ratingsData?.confidence==null?null:Number(ratingsData.confidence);
-  const pikoReady=ratingsData?.score!=null;
-  const release=item.release_date?new Date(item.release_date).toLocaleDateString('es-ES'):item.year||'—';
-  const plex=item.effective_status==='in_plex';
-  const qualityReady=qualityData?.score!=null;
-  const sagaTitles=saga?.titles||[];
-  const sagaOwned=sagaTitles.filter(x=>x.effective_status==='in_plex').length;
-  return <div className="movie-v3">
-    <div className="editorial-crumbs"><Link href={back}>Catálogo</Link><span>›</span><span>Películas</span><span>›</span><b>{item.display_title}</b></div>
-    <section className="movie-hero">
-      {item.poster_path?<img className="movie-poster" src={img(item.poster_path)} alt=""/>:<div className="movie-poster"/>}
-      <div className="movie-copy">
-        <div className="eyebrow">PELÍCULA · {plex?'EN PLEX':'CATÁLOGO'}</div>
-        <h1>{item.display_title} {item.year&&<small>({item.year})</small>}</h1>
-        {item.original_title&&item.original_title!==item.display_title&&<p className="movie-original">{item.original_title}</p>}
-        <div className="movie-tags">{(item.genres||[]).slice(0,4).map(g=><span key={g}>{g}</span>)}</div>
-        <div className="movie-facts"><span><b>Año</b>{item.year||'—'}</span><span><b>Duración</b>{runtimeLabel(item.runtime)}</span><span><b>País</b>{flagFor(item.country)} {item.country||'—'}</span><span><b>Estreno</b>{release}</span></div>
-        {director&&<div className="hero-credit"><span>{director.job||'Dirección'}</span><b>{director.name}</b></div>}
-        {item.tagline&&<p className="editorial-tagline">{item.tagline}</p>}
-        <div className="movie-synopsis"><span>SINOPSIS</span><p>{item.overview||'Sin sinopsis enriquecida disponible.'}</p></div>
-        <div className="movie-hero-actions">{plex&&<Link className="primary" href="/plex">✓ En tu Plex</Link>}<a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer">IMDb ↗</a>{item.tmdb_id&&<a href={`https://www.themoviedb.org/movie/${item.tmdb_id}`} target="_blank" rel="noreferrer">TMDb ↗</a>}</div>
-      </div>
-      <div className="movie-intelligence">
-        <div className="movie-piko"><div className="movie-piko-score"><span>★ PikoScore</span><strong>{pikoReady?score2(ratingsData.score):'—'}</strong><small>{pikoReady?'Valoración PikoFilm':'Pendiente de cálculo'}</small></div><div className="movie-trust"><div className="movie-trust-head"><div><span>CONFIANZA</span><b>{confidence==null?'—':`${confidence.toFixed(1)}%`}</b></div><div className="movie-trust-badges"><i>{ratingsData?.sourceCount||ratings.length} fuentes</i><i>{ratingsData?.familyCount||families.length} familias</i><i>{marketLabel(ratingsData?.market)}</i></div></div><div className="movie-trust-track"><i style={{width:`${Math.max(0,Math.min(100,confidence||0))}%`}}/></div>{families.length>0&&<div className="movie-families">{families.map(f=><div className="movie-family" key={f.family}><span>{familyLabel(f.family)}</span><b>{score1(f.score)}</b><small>{Math.round(Number(f.weight||0)*100)}% peso</small></div>)}</div>}</div></div>
-        <div className="movie-source-board"><div className="movie-source-head"><div><span>VALORACIONES</span><b>{ratings.length} señales actuales</b></div>{ratingsData?.refreshedAt&&<small>Actualizadas {dateShort(ratingsData.refreshedAt)}</small>}</div>{ratings.length?<div className="movie-source-grid">{ratings.map(r=><div className="movie-source" key={r.source}><div><span>{sourceLabel(r.source)}</span><strong>{score1(r.normalized_rating)}</strong></div><small>{r.votes==null?'Volumen no publicado':`${n(r.votes)} votos/reseñas`}</small></div>)}</div>:<div className="movie-empty">Pendiente de ratings MDBList.</div>}</div>
-      </div>
-    </section>
+  if(!ratings.length)return null;
+  return <section className="fv4-secondary-panel fv4-ratings"><div className="fv4-section-head"><div><span>Contexto externo</span><h2>Valoraciones de origen</h2></div>{ratingsData?.refreshedAt&&<small>Actualizadas {date(ratingsData.refreshedAt)}</small>}</div><div className="fv4-rating-strip">{ratings.map(r=><article key={r.source}><span>{sourceLabel(r.source)}</span><b>{fmt(r.normalized_rating)}</b><small>{r.votes==null?'Sin volumen publicado':`${votes(r.votes)} votos/reseñas`}</small></article>)}</div></section>;
+}
 
-    <section className="movie-status-grid movie-status-grid-4">
-      <div className={`movie-status-card ${plex?'ok':'warn'}`}><span>PLEX</span><strong>{plex?'Disponible en Plex':'No está en Plex'}</strong><small>{item.resolution?`Resolución detectada: ${item.resolution}`:'Estado sincronizado con tu biblioteca'}</small></div>
-      <div className={`movie-status-card pikoquality-card ${qualityReady?qClass(qualityData.band):plex?'warn':''}`}><span>PIKOQUALITY</span><div className="movie-quality-inline"><strong>{qualityReady?Math.round(Number(qualityData.score)):'—'}</strong><div><b>{qualityReady?qBand(qualityData.band):plex?'Pendiente de análisis':'Solo disponible en Plex'}</b><small>{qualityReady?[qualityData.resolution,qualityData.video_codec].filter(Boolean).join(' · '):'Calidad técnica de tu copia'}</small></div></div></div>
-      <div className={`movie-status-card ${item.imdb_id&&item.tmdb_id?'ok':'warn'}`}><span>IDENTIDAD</span><strong>{item.imdb_id&&item.tmdb_id?'Verificada':'Pendiente'}</strong><small>IMDb {item.imdb_id} · TMDb {item.tmdb_id||'falta'}</small></div>
-      <div className="movie-status-card"><span>PIKOSCORE</span><strong>{pikoReady?`v${String(ratingsData?.version||'3.0').replace('3.0.0-experimental.','3.0.')}`:'Pendiente'}</strong><small>{ratingsData?.calculatedAt?`Calculado ${dateShort(ratingsData.calculatedAt)}`:'Todavía sin cálculo vigente'}</small></div>
-    </section>
-
-    {qualityData&&<section className="movie-panel movie-copy-quality"><div className="movie-panel-head"><div><span>TU COPIA</span><h2>PikoQuality</h2></div><div className={`movie-quality-dial ${qClass(qualityData.band)}`}><strong>{qualityReady?Math.round(Number(qualityData.score)):'—'}</strong><small>/100</small></div></div><div className="movie-copy-quality-grid"><div><b>Valoración</b><span>{qualityReady?qBand(qualityData.band):'Pendiente'}</span></div><div><b>Resolución</b><span>{qualityData.resolution||'—'}</span></div><div><b>Vídeo</b><span>{qualityData.video_codec||'—'}</span></div><div><b>Bitrate</b><span>{bitrateLabel(qualityData.bitrate)}</span></div><div><b>Audio</b><span>{qualityData.audio_codec||'—'}{qualityData.audio_channels?` · ${qualityData.audio_channels} canales`:''}</span></div><div><b>Tamaño</b><span>{sizeLabel(qualityData.file_size_bytes)}</span></div></div><Link className="movie-quality-link" href="/calidad/pikoquality">Abrir PikoQuality completo →</Link></section>}
-
-    {saga&&sagaTitles.length>0&&<section className="movie-panel movie-saga-panel"><div className="movie-saga-head"><div><span>SAGA / COLECCIÓN</span><h2>{saga.name||item.collection_name}</h2><small>{sagaOwned}/{sagaTitles.length} en Plex</small></div><Link href={`/sagas/${item.tmdb_collection_id}`}>Ver saga completa →</Link></div><div className="movie-saga-strip">{sagaTitles.map((x,i)=>{const current=x.imdb_id===item.imdb_id,poster=x.catalog_poster||x.poster_path;const body=<><div className="movie-saga-poster-wrap">{poster?<img src={img(poster)} alt=""/>:<div className="movie-saga-ph"/>}<span className="movie-saga-order">{i+1}</span><span className={`movie-saga-state ${x.effective_status==='in_plex'?'owned':'missing'}`}>{x.effective_status==='in_plex'?'✓':'!'}</span></div><b>{x.display_title||x.title}</b><small>{x.year||'—'} · PikoScore {x.final_rating!=null?score1(x.final_rating):'—'}</small></>;return x.imdb_id?<Link className={`movie-saga-card ${current?'current':''}`} href={`/catalogo/${x.imdb_id}`} key={`${x.imdb_id}-${i}`}>{body}</Link>:<div className={`movie-saga-card ${current?'current':''}`} key={`${x.title}-${i}`}>{body}</div>})}</div></section>}
-
-    <div className="movie-grid">
-      <section className="movie-panel"><h2>Información</h2><div className="movie-info"><div><b>Director</b><span>{director?.name||'—'}</span></div><div><b>País</b><span>{item.country||'—'}</span></div><div><b>Estreno</b><span>{release}</span></div><div><b>Duración</b><span>{runtimeLabel(item.runtime)}</span></div><div><b>Idioma original</b><span>{item.original_language||'—'}</span></div><div><b>Clasificación</b><span>{item.certification||'—'}</span></div><div><b>Géneros</b><span>{(item.genres||[]).join(', ')||'—'}</span></div><div><b>Saga</b><span>{item.collection_name&&item.tmdb_collection_id?<Link className="movie-saga-link" href={`/sagas/${item.tmdb_collection_id}`}>{item.collection_name} →</Link>:item.collection_name||'—'}</span></div></div></section>
-      <section className="movie-panel"><div className="section-head"><h2>Reparto principal</h2></div>{cast.length?<div className="movie-cast">{cast.map((c,i)=><Link className="movie-person" href={`/personas/${c.tmdb_person_id}`} key={`${c.tmdb_person_id}-${i}`}>{img(c.profile_path)?<img src={img(c.profile_path)} alt=""/>:<div className="ph"/>}<b>{c.name}</b><span>{c.character_name||'Reparto'}</span></Link>)}</div>:<div className="movie-empty">Sin reparto enriquecido disponible.</div>}</section>
-      {crew.length>0&&<section className="movie-panel"><h2>Equipo principal</h2><div className="movie-team">{crew.map((c,i)=><Link href={`/personas/${c.tmdb_person_id}`} key={`${c.tmdb_person_id}-${i}`}><b>{c.name}</b><span>{c.job||c.credit_type}</span></Link>)}</div></section>}
-      <section className="movie-panel"><h2>Calidad de datos</h2><div className="movie-info"><div><b>Identidad</b><span>{item.imdb_id&&item.tmdb_id?'IMDb + TMDb correctos':'Revisar en Calidad → Identidad'}</span></div><div><b>Ratings</b><span>{ratings.length?`${ratings.length} fuentes actuales`:'Pendientes'}</span></div><div><b>Sinopsis</b><span>{item.overview?'Disponible':'Pendiente'}</span></div><div><b>Carátula</b><span>{item.poster_path?'Disponible':'Pendiente'}</span></div></div></section>
-    </div>
-
-    <section className="movie-admin"><div className="ids"><a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer"><b>IMDb</b>{item.imdb_id} ↗</a>{item.tmdb_id?<a href={`https://www.themoviedb.org/movie/${item.tmdb_id}`} target="_blank" rel="noreferrer"><b>TMDb</b>{item.tmdb_id} ↗</a>:<span><b>TMDb</b>Falta</span>}</div><div className="movie-admin-actions"><form action={excludeTitle}><input type="hidden" name="imdbId" value={item.imdb_id}/><input type="hidden" name="returnTo" value={back}/><button className="danger">Excluir película</button></form></div></section>
+function Credits({item,series=false}){
+  const credits=item.credits||[],cast=credits.filter(c=>c.credit_type==='cast').slice(0,series?8:10),crew=crewRelevant(credits.filter(c=>c.credit_type!=='cast'));
+  return <div className="fv4-credit-layout">
+    {crew.length>0&&<section className="fv4-secondary-panel"><div className="fv4-section-head"><div><span>{series?'Creación y dirección':'Dirección'}</span><h2>Equipo principal</h2></div></div><div className="fv4-crew-list">{crew.map((c,i)=><Link href={c.tmdb_person_id?`/personas/${c.tmdb_person_id}`:'#'} key={`${c.tmdb_person_id||c.name}-${i}`}><b>{c.name}</b><span>{c.job||'Equipo principal'}</span></Link>)}</div></section>}
+    <section className="fv4-secondary-panel"><div className="fv4-section-head"><div><span>Personas</span><h2>Reparto principal</h2></div></div>{cast.length?<div className="fv4-cast">{cast.map((c,i)=><Link href={c.tmdb_person_id?`/personas/${c.tmdb_person_id}`:'#'} key={`${c.tmdb_person_id||c.name}-${i}`} className="fv4-person">{img(c.profile_path)?<img src={img(c.profile_path)} alt=""/>:<div className="fv4-person-ph"/>}<span><b>{c.name}</b><small>{c.character_name||'Reparto'}</small></span></Link>)}</div>:<p className="fv4-muted">Sin reparto enriquecido disponible.</p>}</section>
   </div>;
 }
 
+function SourceLinks({item,plexId,series=false}){
+  return <section className="fv4-sourcebar"><div><span>Identificadores</span><nav>{item.imdb_id&&<a href={`https://www.imdb.com/title/${item.imdb_id}/`} target="_blank" rel="noreferrer"><b>IMDb</b>{item.imdb_id} ↗</a>}{item.tmdb_id&&<a href={`https://www.themoviedb.org/${series?'tv':'movie'}/${item.tmdb_id}`} target="_blank" rel="noreferrer"><b>TMDb</b>{item.tmdb_id} ↗</a>}{plexId&&<span><b>Plex</b>{plexId}</span>}</nav></div></section>;
+}
+
+function MovieDetail({item,back,ratingsData,qualityData,saga}){
+  const inPlex=item.effective_status==='in_plex',director=crewRelevant((item.credits||[]).filter(c=>c.credit_type!=='cast'))[0]||null,qualityReady=qualityData?.score!=null,sagaTitles=saga?.titles||[],inCatalog=sagaTitles.filter(x=>Boolean(x.display_title)).length,inPlexSaga=sagaTitles.filter(x=>x.effective_status==='in_plex').length;
+  const attentionHref=qualityData?.attention_id?`/calidad/peliculas?type=${encodeURIComponent(qualityData.attention_type||'')}&q=${encodeURIComponent(qualityData.plex_title||item.display_title||'')}`:null;
+  return <main className="ficha-v4">
+    <div className="fv4-back"><Link href={back}>← Volver</Link><span>Película</span></div>
+    <section className="fv4-hero">
+      <div className="fv4-poster-wrap">{item.poster_path?<img src={img(item.poster_path)} alt=""/>:<div className="fv4-poster-ph"/>}</div>
+      <div className="fv4-identity"><div className="fv4-kicker"><span>Película</span><PlexBadge inPlex={inPlex}/>{qualityReady&&<span className={`fv4-quality-chip ${qClass(qualityData.band)}`}>PikoQuality {Math.round(Number(qualityData.score))}</span>}</div><h1>{item.display_title}</h1>{item.original_title&&item.original_title!==item.display_title&&<p className="fv4-original">{item.original_title}</p>}<div className="fv4-genres">{(item.genres||[]).slice(0,5).map(g=><span key={g}>{g}</span>)}</div><div className="fv4-facts"><span><b>Año</b>{item.year||'—'}</span><span><b>Duración</b>{runtime(item.runtime)}</span><span><b>País</b>{item.country||'—'}</span><span><b>Estreno</b>{date(item.release_date)}</span></div>{director&&<Link className="fv4-lead-credit" href={director.tmdb_person_id?`/personas/${director.tmdb_person_id}`:'#'}><span>{director.job||'Dirección'}</span><b>{director.name}</b></Link>}{item.tagline&&<p className="fv4-tagline">{item.tagline}</p>}<div className="fv4-synopsis"><span>Sinopsis</span><p>{item.overview||'Sin sinopsis enriquecida disponible.'}</p></div></div>
+      <ScoreHero ratingsData={ratingsData}/>
+    </section>
+
+    <section className="fv4-status-row"><article><span>Plex</span><b>{inPlex?'Disponible físicamente':'Sin Plex'}</b><small>{inPlex?'Presencia confirmada en tu biblioteca':'Estado neutral de colección'}</small></article><article><span>PikoQuality</span><b>{inPlex?(qualityReady?`${Math.round(Number(qualityData.score))} · ${qBand(qualityData.band)}`:'—'):'—'}</b><small>{inPlex?(qualityReady?[qualityData.resolution,qualityData.video_codec].filter(Boolean).join(' · ')||'Copia analizada':'Sin análisis vigente'):'Sólo aplica cuando existe copia física'}</small></article></section>
+
+    {attentionHref&&<section className="fv4-attention"><div><span>⚠ Requiere tu atención</span><b>{attentionLabel(qualityData.attention_type)}</b><small>Hay una decisión pendiente sobre la copia física. Los fallos técnicos y reintentos siguen perteneciendo a Operaciones.</small></div><Link href={attentionHref}>Abrir en Calidad →</Link></section>}
+
+    {inPlex&&qualityData&&<section className="fv4-secondary-panel fv4-copy"><div className="fv4-section-head"><div><span>Copia física</span><h2>Datos técnicos</h2></div></div><div className="fv4-tech-grid"><span><b>Resolución</b>{qualityData.resolution||'—'}</span><span><b>Vídeo</b>{qualityData.video_codec||'—'}</span><span><b>Bitrate</b>{bitrate(qualityData.bitrate)}</span><span><b>Audio</b>{qualityData.audio_codec||'—'}{qualityData.audio_channels?` · ${qualityData.audio_channels} canales`:''}</span><span><b>Tamaño</b>{size(qualityData.file_size_bytes)}</span></div></section>}
+
+    <ExternalRatings ratingsData={ratingsData}/>
+
+    {saga&&sagaTitles.length>0&&<section className="fv4-secondary-panel fv4-saga"><div className="fv4-section-head"><div><span>Saga / colección</span><h2>{saga.name||item.collection_name}</h2><small>{inCatalog}/{sagaTitles.length} en PikoFilm · {inPlexSaga}/{sagaTitles.length} en Plex</small></div><Link href={`/sagas/${item.tmdb_collection_id}`}>Abrir saga →</Link></div><div className="fv4-saga-strip">{sagaTitles.map((x,i)=>{const current=x.imdb_id===item.imdb_id,catalogued=Boolean(x.display_title),body=<><span className="fv4-saga-index">{i+1}</span><div><b>{x.display_title||x.title}</b><small>{x.year||'—'} · {catalogued?'En PikoFilm':'Fuera de PikoFilm'} · {x.effective_status==='in_plex'?'En Plex':'Sin Plex'}</small></div></>;return catalogued&&x.imdb_id?<Link className={current?'current':''} href={`/catalogo/${x.imdb_id}`} key={`${x.imdb_id}-${i}`}>{body}</Link>:<div className={current?'current':''} key={`${x.tmdb_movie_id||x.title}-${i}`}>{body}</div>})}</div></section>}
+
+    <Credits item={item}/>
+    <SourceLinks item={item} plexId={qualityData?.rating_key}/>
+    <section className="fv4-actions"><div><span>Gestión</span><p>Esta acción afecta a la pertenencia de la obra a PikoFilm.</p></div><ExcludeTitleForm imdbId={item.imdb_id} returnTo={back} label="Excluir de PikoFilm"/></section>
+  </main>;
+}
+
+function SeriesDetail({item,back,operational,dashboard,ratingsData}){
+  const s=item.series||{},inPlex=item.effective_status==='in_plex',episodes=operational?.episodes||[],seasonNums=[...new Set(episodes.map(e=>Number(e.season_number)).filter(x=>x>0))],qBySeason=new Map((dashboard?.seasonQuality||[]).map(x=>[Number(x.season_index),x]));
+  const seasons=seasonNums.map(sn=>{const es=episodes.filter(e=>Number(e.season_number)===sn),present=es.filter(e=>e.effective_status==='present').length,total=es.length,quality=qBySeason.get(sn)||null;return{sn,present,total,complete:total>0&&present===total,quality}});
+  const total=s.official_episodes||s.diagnosed||episodes.length||0,present=s.present||0,complete=total>0&&present===total,title=cleanTitle(item.display_title);
+  return <main className="ficha-v4">
+    <div className="fv4-back"><Link href={back}>← Volver</Link><span>{item.type}</span></div>
+    <section className="fv4-hero">
+      <div className="fv4-poster-wrap">{item.poster_path?<img src={img(item.poster_path)} alt=""/>:<div className="fv4-poster-ph"/>}</div>
+      <div className="fv4-identity"><div className="fv4-kicker"><span>{item.type}</span><PlexBadge inPlex={inPlex}/>{dashboard?.quality?.score!=null&&<span className={`fv4-quality-chip ${qClass(dashboard.quality.band)}`}>PikoQuality {Math.round(Number(dashboard.quality.score))}</span>}</div><h1>{title}</h1>{item.original_title&&cleanTitle(item.original_title)!==title&&<p className="fv4-original">{cleanTitle(item.original_title)}</p>}<div className="fv4-genres">{(item.genres||[]).slice(0,5).map(g=><span key={g}>{g}</span>)}</div><div className="fv4-facts"><span><b>Año</b>{item.year||'—'}</span><span><b>País</b>{item.country||'—'}</span><span><b>Estreno</b>{date(item.release_date)}</span><span><b>Temporadas</b>{s.official_seasons||seasons.length||'—'}</span></div><div className="fv4-synopsis"><span>Sinopsis</span><p>{item.overview||'Sin sinopsis enriquecida disponible.'}</p></div></div>
+      <ScoreHero ratingsData={ratingsData}/>
+    </section>
+
+    <section className="fv4-status-row"><article><span>Plex</span><b>{inPlex?'Disponible físicamente':'Sin Plex'}</b><small>{total?`${present}/${total} episodios presentes`:'Sin cobertura de episodios disponible'}</small></article><article><span>Integridad física</span><b>{total?(complete?'✓ Completa':'× Pendiente'):'—'}</b><small>{total?`${present}/${total} capítulos`:'Sin referencia oficial suficiente'}</small></article></section>
+
+    {seasons.length>0&&<section className="fv4-secondary-panel fv4-seasons"><div className="fv4-section-head"><div><span>Temporadas</span><h2>Estado físico por temporada</h2><small>Presencia en Plex y calidad de la copia, sin seguimiento de visionado.</small></div></div><div className="fv4-season-strip">{seasons.map(x=><article className={x.complete?'complete':'pending'} key={x.sn}><div><b>T{x.sn}</b><span>{x.complete?'✓ Completa':'× Pendiente'}</span></div><strong>{x.present}/{x.total}</strong><small>{x.quality?.score!=null?`PikoQuality ${Math.round(Number(x.quality.score))} · ${qBand(x.quality.band)}`:'PikoQuality —'}</small></article>)}</div></section>}
+
+    <ExternalRatings ratingsData={ratingsData}/>
+    <Credits item={item} series/>
+    <SourceLinks item={item} plexId={s.show_rating_key} series/>
+    <section className="fv4-actions"><div><span>Gestión</span><p>Esta acción afecta a la pertenencia de la obra a PikoFilm.</p></div><ExcludeTitleForm imdbId={item.imdb_id} returnTo={back} label="Excluir de PikoFilm"/></section>
+  </main>;
+}
+
 export default async function Ficha({params,searchParams}){
-  const{imdbId}=await params,p=await searchParams,item=await getCatalogItem(imdbId);if(!item)notFound();const back=p.from&&String(p.from).startsWith('/catalogo')?p.from:'/catalogo';
-  if(isSeries(item.type)){const[operational,dashboard,ratingsData]=await Promise.all([item.series?.show_rating_key?getSeriesDetail(item.series.show_rating_key):null,item.series?.show_rating_key?getSeriesDashboard(item.series.show_rating_key):null,getCatalogRatings(imdbId)]);return <EditorialSeries item={item} back={back} operational={operational} dashboard={dashboard} ratingsData={ratingsData}/>;}
-  const[ratingsData,qualityData,saga]=await Promise.all([getCatalogRatings(imdbId),getMovieDetailExtras(imdbId),item.tmdb_collection_id?getSagaDetail(item.tmdb_collection_id):null]);
-  return <EditorialMovie item={item} back={back} ratingsData={ratingsData} qualityData={qualityData} saga={saga}/>;
+  const {imdbId}=await params,p=await searchParams,back=safeBack(p?.from);
+  const item=await getCatalogItem(imdbId);
+  if(!item)notFound();
+  if(isSeries(item.type)){
+    const results=await Promise.allSettled([item.series?.show_rating_key?getSeriesDetail(item.series.show_rating_key):null,item.series?.show_rating_key?getSeriesDashboard(item.series.show_rating_key):null,getCatalogRatings(imdbId)]);
+    const value=i=>results[i].status==='fulfilled'?results[i].value:null;
+    return <SeriesDetail item={item} back={back} operational={value(0)} dashboard={value(1)} ratingsData={value(2)}/>;
+  }
+  const results=await Promise.allSettled([getCatalogRatings(imdbId),getMovieDetailExtras(imdbId),item.tmdb_collection_id?getSagaDetail(item.tmdb_collection_id):null]);
+  const value=i=>results[i].status==='fulfilled'?results[i].value:null;
+  return <MovieDetail item={item} back={back} ratingsData={value(0)} qualityData={value(1)} saga={value(2)}/>;
 }
