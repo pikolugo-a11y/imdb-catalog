@@ -32,6 +32,7 @@ test('Catalog V4 uses no-prefetch navigation for high-fanout title lists',()=>{
   assert.doesNotMatch(catalog,/import Link from 'next\/link'/);
 });
 
+// Global guardrail: no application screen may bypass the shared navigation primitive.
 test('all PikoFilm application navigation goes through NoPrefetchLink',()=>{
   const offenders=[];
   for(const file of [...sourceFiles('app'),...sourceFiles('components')]){
