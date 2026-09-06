@@ -42,9 +42,12 @@ test('Saga context is compact, secondary and counts real PikoFilm membership',()
   assert.doesNotMatch(page,/te faltan|completar la saga|por ver/i);
 });
 
-test('Only real pending human quality findings surface as contextual attention',()=>{
+test('Only active human quality cases surface as contextual attention',()=>{
   assert.match(extras,/movie_quality_findings/);
+  assert.match(extras,/JOIN catalog_lifecycle cl ON cl\.imdb_id=f\.imdb_id AND cl\.lifecycle_state='MOVIE_FILE_REVIEW'/);
+  assert.match(extras,/f\.rating_key=p\.rating_key/);
   assert.match(extras,/f\.status='pending'/);
+  assert.match(extras,/f\.finding_type IN\('duration','filename','duplicate'\)/);
   assert.match(page,/⚠ Requiere tu atención/);
   assert.match(page,/Abrir en Calidad/);
   assert.match(page,/fallos técnicos y reintentos siguen perteneciendo a Operaciones/i);
