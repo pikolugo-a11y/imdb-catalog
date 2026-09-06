@@ -36,6 +36,7 @@ test('Excluidas V4 is a simple searchable reversible history',()=>{
   assert.match(excludedQuery,/EXCLUDED_V4_PAGE_SIZE=50/);
   assert.match(excludedQuery,/excluded_at DESC NULLS LAST/);
   assert.match(excluded,/Título/);assert.match(excluded,/Año/);assert.match(excluded,/Tipo/);assert.match(excluded,/Fecha de exclusión/);assert.match(excluded,/Restaurar/);
-  assert.doesNotMatch(excluded,/PikoScore|PikoQuality|IMDb|Motivo contiene|Ordenar/);
+  assert.doesNotMatch(excluded,/PikoScore|PikoQuality|Motivo contiene|Ordenar|imdb_rating/);
+  assert.doesNotMatch(excluded,/<th>IMDb<\/th>/);
   assert.match(excluded,/No hay títulos excluidos que coincidan con esta búsqueda/);
 });
