@@ -27,16 +27,29 @@ test('SAGA-001 keeps the existing writer/read-model contract and bounded refresh
   assert.match(detail,/getSagaDetailV3/);
 });
 
-test('SAGA-001 resolves IMDb without the removed tmdb_external_ids relation',()=>{
+test('SAGA-001 validates IMDb identity against TMDb instead of trusting stale saga cache',()=>{
   assert.doesNotMatch(saga,/tmdb_external_ids/);
   assert.match(saga,/SELECT imdb_id FROM saga_collection_members WHERE tmdb_movie_id=/);
   assert.match(saga,/\/external_ids/);
+  assert.doesNotMatch(saga,/if\(known\?\.imdb_id\)return known\.imdb_id/);
+  assert.match(saga,/known\.imdb_id!==canonical/);
+  assert.match(saga,/identityCorrections\+\+/);
+  assert.match(saga,/repair_member_identity/);
+  assert.match(saga,/const imdbId=await imdbForTmdb\(sql,p\.id,trace,issues\)/);
+  assert.match(saga,/m\.imdb_id=\$\{imdbId\}/);
+  assert.match(saga,/identity_corrections/);
   assert.match(saga,/recordProcessError\(trace\.runId/);
   assert.match(saga,/step:'resolve_imdb'/);
   assert.match(saga,/step:'refresh_collection'/);
   assert.match(saga,/externalCall/);
   assert.match(detail,/external_imdb_id/);
   assert.match(detail,/addSagaMemberToNewsAction/);
+});
+
+test('SAGA-001 prioritizes cached member identity mismatches for self-healing',()=>{
+  assert.match(saga,/identity_mismatch_count/);
+  assert.match(saga,/m\.tmdb_id::text IS DISTINCT FROM sm\.tmdb_movie_id::text/);
+  assert.match(saga,/COALESCE\(sm\.identity_mismatch_count,0\)>0/);
 });
 
 test('SAGA-001 refresh is atomic per collection and prioritizes inconsistent collections for self-healing',()=>{
