@@ -35,6 +35,8 @@ jobs:
         run: node scripts/pikoscore-v3-selfcheck.mjs
       - name: Validar Calidad global
         run: npm run test:quality
+      - name: Validar navegación sin prefetch masivo
+        run: node --test test/no-prefetch-navigation-contract.test.mjs
       - name: Build
         env:
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
