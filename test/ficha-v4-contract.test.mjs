@@ -25,10 +25,9 @@ test('Ficha V4 uses Plex only as physical inventory and quality context',()=>{
   assert.doesNotMatch(page,/Visto|No visto|Continuar viendo|Recomendad|pendiente de ver/i);
 });
 
-test('Ficha never contradicts a current PikoQuality with stale TECH_PENDING Lifecycle',()=>{
-  assert.match(layout,/state\.state==='TECH_PENDING'/);
-  assert.match(layout,/getMovieDetailExtras\(imdbId\)/);
-  assert.match(layout,/currentQuality\?\.score!=null/);
+test('Ficha V4 never exposes technical Lifecycle pipeline status',()=>{
+  assert.doesNotMatch(layout,/getLifecycleForIds|TECH_PENDING|PikoQuality pendiente|ESTADO DEL CICLO DE VIDA/);
+  assert.match(layout,/return children/);
 });
 
 test('Series show compact season integrity without viewing semantics',()=>{
