@@ -3,40 +3,56 @@ import ActionButton from '@/components/ActionButton';
 import {getSagasDashboard} from '@/lib/sagas-v3';
 import {getSagaFullRefreshState} from '@/lib/saga-batch';
 import {refreshAllSagasAction,pauseSagaFullRefreshAction,resumeSagaFullRefreshAction,cancelSagaFullRefreshAction} from '@/app/sagas/refresh-actions';
-import './sagas-modern.css';
+import './sagas-v4.css';
 
 export const dynamic='force-dynamic';
-const poster=(p,w='w342')=>p?`https://image.tmdb.org/t/p/${w}${p}`:null;
+const poster=(p,w='w185')=>p?`https://image.tmdb.org/t/p/${w}${p}`:null;
 const nf=n=>Number(n||0).toLocaleString('es-ES');
 function qs(p,patch={}){const x=new URLSearchParams();for(const[k,v]of Object.entries({...p,...patch}))if(v!==undefined&&v!==null&&v!=='')x.set(k,String(v));return x.toString()}
-const stateMeta={all:'Todas',incomplete:'En progreso',one:'A una película',complete:'Completas',not_started:'Sin empezar'};
+const stateMeta={all:'Todas',one:'A una película',partial:'Parciales',complete:'Completas',no_plex:'Sin Plex'};
 
-function Kpi({p,state,label,value,help,active}){return <Link href={'/sagas?'+qs(p,{state,page:1})} className={`saga-kpi ${state} ${active?'active':''}`}><span>{label}</span><strong>{nf(value)}</strong><small>{help}</small></Link>}
-function MiniSaga({r}){return <Link href={`/sagas/${r.tmdb_collection_id}`} className="saga-mini-card">{poster(r.poster_path)?<img src={poster(r.poster_path)} alt=""/>:<div className="saga-poster-empty">Saga</div>}<div><span>A UNA PELÍCULA</span><h3>{r.name_clean}</h3><p>{r.owned}/{r.actionable_total} relevantes en Plex · {Math.round(Number(r.pct)||0)}%</p>{r.saga_score!=null&&<b>★ {Number(r.saga_score).toFixed(2)} <small>{r.scored_count}/{r.catalog_total} valoradas</small></b>}</div></Link>}
-function SagaCard({r}){const pct=Math.round(Number(r.pct)||0),complete=Number(r.missing)===0,notStarted=Number(r.owned)===0,one=Number(r.missing)===1;const tone=complete?'complete':notStarted?'pending':one?'almost':'progress';const status=complete?'Completa':notStarted?'Sin empezar':one?'Falta 1':'En progreso';return <Link className={`saga-modern-card ${tone}`} href={`/sagas/${r.tmdb_collection_id}`} style={r.backdrop_path?{'--saga-bg':`url(${poster(r.backdrop_path,'w780')})`}:undefined}><div className="saga-card-overlay"/><div className="saga-card-top"><div><span className={`saga-state ${tone}`}>{status}</span><h3>{r.name_clean}</h3></div>{r.saga_score!=null&&<div className="saga-score-badge"><span>PikoScore</span><strong>{Number(r.saga_score).toFixed(2)}</strong><small>{r.scored_count}/{r.catalog_total}</small></div>}</div><div className="saga-card-visual">{poster(r.poster_path)?<img src={poster(r.poster_path)} alt=""/>:<div className="saga-poster-empty">Saga</div>}<div className="saga-progress-ring" style={{'--pct':`${pct*3.6}deg`}}><strong>{pct}%</strong><span>completa</span></div></div><div className="saga-progress-line"><i style={{width:`${pct}%`}}/></div><div className="saga-card-metrics"><div><strong>{r.owned}/{r.actionable_total}</strong><span>En Plex</span></div><div><strong>{r.missing}</strong><span>Faltan</span></div><div><strong>{r.outside_catalog}</strong><span>Fuera catálogo</span></div><div><strong>{r.first_year||'—'}{r.last_year&&r.last_year!==r.first_year?`–${r.last_year}`:''}</strong><span>Periodo</span></div></div><div className="saga-card-cta"><span>{complete?'Colección al día':one?'A una película de completarla':notStarted?'Todavía sin empezar':`${r.missing} películas pendientes`}</span><b>Ver colección →</b></div></Link>}
-function Pager({p,page,pages}){if(pages<=1)return null;return <div className="saga-pager"><Link className={page<=1?'disabled':''} href={'/sagas?'+qs(p,{page:Math.max(1,page-1)})}>← Anterior</Link><span>Página <b>{page}</b> de <b>{pages}</b></span><Link className={page>=pages?'disabled':''} href={'/sagas?'+qs(p,{page:Math.min(pages,page+1)})}>Siguiente →</Link></div>}
+function statusOf(r){
+  if(Number(r.actionable_total)>0&&Number(r.missing)===0)return{label:'Completa en Plex',tone:'complete'};
+  if(Number(r.owned)>0&&Number(r.missing)===1)return{label:'Falta 1',tone:'almost'};
+  if(Number(r.owned)>0)return{label:'Parcial en Plex',tone:'partial'};
+  return{label:'Sin Plex',tone:'empty'};
+}
+function Pager({p,page,pages}){if(pages<=1)return null;return <div className="sv4-pager"><Link className={page<=1?'disabled':''} href={'/sagas?'+qs(p,{page:Math.max(1,page-1)})}>← Anterior</Link><span>Página <b>{page}</b> de <b>{pages}</b></span><Link className={page>=pages?'disabled':''} href={'/sagas?'+qs(p,{page:Math.min(pages,page+1)})}>Siguiente →</Link></div>}
 
 export default async function Sagas({searchParams}){
-  const p=await searchParams,state=p.state||'all',sort=p.sort||'easy',q=p.q||'',page=Math.max(1,Number(p.page)||1);
-  const[data,batch]=await Promise.all([getSagasDashboard({q,state,sort,page,pageSize:48}),getSagaFullRefreshState()]);
-  const s=data.stats,globalPct=s.movies?Math.round(100*s.owned_movies/s.movies):0;
-  const run=batch.active,c=batch.counts,enginePaused=batch.engine?.desired_state==='paused',locallyPaused=run?.desired_state==='paused',effectivePaused=enginePaused||locallyPaused;
+  const p=await searchParams,state=p.state||'all',sort=p.sort||'priority',q=p.q||'',page=Math.max(1,Number(p.page)||1);
+  const[data,batch]=await Promise.all([getSagasDashboard({q,state,sort,page,pageSize:50}),getSagaFullRefreshState()]);
+  const s=data.stats,run=batch.active,c=batch.counts,enginePaused=batch.engine?.desired_state==='paused',locallyPaused=run?.desired_state==='paused',effectivePaused=enginePaused||locallyPaused;
   const processed=c?Number(c.succeeded||0)+Number(c.failed||0)+Number(c.cancelled||0):0,batchPct=c?.total?Math.round(100*processed/Number(c.total)):0;
-  return <main className="sagas-modern">
-    <header className="sagas-hero"><div><div className="eyebrow">Colecciones · Plex · PikoFilm</div><h1>Sagas y colecciones</h1><p>{nf(s.all)} sagas · {nf(s.movies)} películas relevantes · {nf(s.owned_movies)} en Plex · {nf(s.missing_movies)} pendientes · {nf(s.outside_catalog)} fuera de catálogo.</p></div>{!run&&<ActionButton action={refreshAllSagasAction} label="↻ Actualizar todas las sagas" pendingLabel="Preparando actualización…"/>}</header>
+  return <main className="sv4">
+    <header className="sv4-hero">
+      <div><span className="sv4-eyebrow">PikoFilm · Colecciones cinematográficas</span><h1>Sagas</h1><p>Qué colecciones tienes físicamente en Plex, cuáles están casi completas y qué títulos quedan fuera de PikoFilm o todavía no son exigibles.</p></div>
+      {!run&&<ActionButton action={refreshAllSagasAction} label="↻ Actualizar todas" pendingLabel="Preparando actualización…"/>}
+    </header>
 
-    {run&&<section className="saga-summary"><div className="saga-overview-ring" style={{'--pct':`${batchPct*3.6}deg`}}><strong>{batchPct}%</strong></div><div><span>ACTUALIZACIÓN GLOBAL</span><strong>{processed} <i>de {Number(c?.total||0)}</i></strong><small>{effectivePaused?(enginePaused?'Pausada por el Batch Engine global':'Pausada manualmente'):`${Number(c?.active||0)} en curso · ${Number(c?.queued||0)} en cola`} · {Number(c?.failed||0)} fallidas</small></div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{!enginePaused&&(locallyPaused?<ActionButton action={resumeSagaFullRefreshAction} fields={{runId:run.run_id}} label="Reanudar" pendingLabel="Reanudando…"/>:<ActionButton action={pauseSagaFullRefreshAction} fields={{runId:run.run_id}} label="Pausar" pendingLabel="Pausando…"/>)}<ActionButton action={cancelSagaFullRefreshAction} fields={{runId:run.run_id}} label="Cancelar actualización" pendingLabel="Cancelando…"/>{enginePaused&&<Link className="saga-next-cta" href="/admin">Motor global pausado · abrir Operaciones</Link>}</div></section>}
+    {run&&<section className="sv4-batch"><div><span>ACTUALIZACIÓN GLOBAL</span><strong>{batchPct}% · {processed}/{Number(c?.total||0)}</strong><small>{effectivePaused?(enginePaused?'Pausada por el Batch Engine global':'Pausada manualmente'):`${Number(c?.active||0)} activas · ${Number(c?.queued||0)} en cola`} · {Number(c?.failed||0)} fallidas</small></div><div className="sv4-batch-actions">{!enginePaused&&(locallyPaused?<ActionButton action={resumeSagaFullRefreshAction} fields={{runId:run.run_id}} label="Reanudar" pendingLabel="Reanudando…"/>:<ActionButton action={pauseSagaFullRefreshAction} fields={{runId:run.run_id}} label="Pausar" pendingLabel="Pausando…"/>)}<ActionButton action={cancelSagaFullRefreshAction} fields={{runId:run.run_id}} label="Cancelar" pendingLabel="Cancelando…"/>{enginePaused&&<Link href="/admin">Abrir Operaciones →</Link>}</div></section>}
 
-    <section className="saga-summary"><div className="saga-overview-ring" style={{'--pct':`${globalPct*3.6}deg`}}><strong>{globalPct}%</strong></div><div><span>COBERTURA GLOBAL</span><strong>{nf(s.owned_movies)} <i>de {nf(s.movies)}</i></strong><small>Películas relevantes y exigibles disponibles en Plex</small></div><div className="saga-summary-stat"><b>{nf(s.missing_movies)}</b><span>pendientes</span></div></section>
+    <section className="sv4-kpis">
+      <Link href="/sagas?state=one"><span>A una película</span><strong>{nf(s.one)}</strong><small>máxima prioridad</small></Link>
+      <Link href="/sagas?state=partial"><span>Parciales</span><strong>{nf(s.partial)}</strong><small>presencia física incompleta</small></Link>
+      <Link href="/sagas?state=complete"><span>Completas</span><strong>{nf(s.complete)}</strong><small>todo lo exigible en Plex</small></Link>
+      <Link href="/sagas?state=no_plex"><span>Sin Plex</span><strong>{nf(s.no_plex)}</strong><small>ningún título exigible</small></Link>
+      <div><span>No exigibles</span><strong>{nf(s.cinema+s.upcoming)}</strong><small>{nf(s.cinema)} en cines · {nf(s.upcoming)} próximas</small></div>
+      <div><span>Fuera de PikoFilm</span><strong>{nf(s.outside_catalog)}</strong><small>descubrimiento, no penalizan</small></div>
+    </section>
 
-    <section className="saga-kpis"><Kpi p={p} state="all" label="Todas" value={s.all} help="Colecciones activas" active={state==='all'}/><Kpi p={p} state="incomplete" label="En progreso" value={s.incomplete} help="Ya has empezado" active={state==='incomplete'}/><Kpi p={p} state="one" label="A una película" value={s.one} help="Casi completas" active={state==='one'}/><Kpi p={p} state="complete" label="Completas" value={s.complete} help="Al día según catálogo" active={state==='complete'}/><Kpi p={p} state="not_started" label="Sin empezar" value={s.not_started} help="0 relevantes en Plex" active={state==='not_started'}/></section>
+    <section className="sv4-toolbar">
+      <nav>{Object.entries(stateMeta).map(([k,label])=><Link key={k} className={state===k?'active':''} href={'/sagas?'+qs(p,{state:k,page:1})}>{label}</Link>)}</nav>
+      <form method="get"><input type="hidden" name="state" value={state}/><input name="q" defaultValue={q} placeholder="Buscar saga…"/><select name="sort" defaultValue={sort}><option value="priority">Prioridad de colección</option><option value="score">Mejor PikoScore</option><option value="pct">Mayor presencia Plex</option><option value="missing">Menos títulos pendientes</option><option value="name">Nombre</option></select><button>Aplicar</button>{(q||state!=='all'||sort!=='priority')&&<Link href="/sagas">Limpiar</Link>}</form>
+    </section>
 
-    {data.almost.length>0&&<section className="saga-almost"><div className="saga-section-head"><div><span>PRÓXIMAS VICTORIAS</span><h2>A una película de completar</h2></div><Link href="/sagas?state=one">Ver todas →</Link></div><div className="saga-mini-strip">{data.almost.slice(0,5).map(r=><MiniSaga key={r.tmdb_collection_id} r={r}/>)}</div></section>}
-
-    <section className="saga-controls"><nav>{Object.entries(stateMeta).map(([k,label])=><Link key={k} className={state===k?'active':''} href={'/sagas?'+qs(p,{state:k,page:1})}>{label}</Link>)}</nav><form method="get"><input type="hidden" name="state" value={state}/><input name="q" defaultValue={q} placeholder="Buscar saga…"/><select name="sort" defaultValue={sort}><option value="easy">Más fácil de completar</option><option value="pct">Mayor cobertura</option><option value="score">Mejor PikoScore</option><option value="missing_desc">Más faltantes</option><option value="name">Nombre</option></select><button>Aplicar</button>{(q||state!=='all'||sort!=='easy')&&<Link href="/sagas">Limpiar</Link>}</form></section>
-
-    <div className="saga-section-head"><div><span>{stateMeta[state]||'Sagas'}</span><h2>{nf(data.total)} colecciones</h2></div><small>48 por página</small></div>
-    {data.rows.length===0?<div className="saga-empty"><b>No hay sagas en esta vista</b><p>Prueba otros filtros.</p></div>:<section className="saga-modern-grid">{data.rows.map(r=><SagaCard key={r.tmdb_collection_id} r={r}/>)}</section>}
+    <section className="sv4-table-wrap">
+      <div className="sv4-section-head"><div><span>{stateMeta[state]||'Sagas'}</span><h2>{nf(data.total)} colecciones</h2></div><small>50 por página · orden predeterminado: casi completas → parciales → completas → sin Plex</small></div>
+      {data.rows.length===0?<div className="sv4-empty">No hay sagas con estos filtros.</div>:<>
+        <table className="sv4-table"><thead><tr><th>Saga</th><th>Estado</th><th>En Plex</th><th>Faltan</th><th>PikoScore</th><th>Disponibilidad</th><th>Fuera PikoFilm</th><th>Periodo</th><th></th></tr></thead><tbody>{data.rows.map(r=>{const st=statusOf(r);return <tr key={r.tmdb_collection_id}><td><Link className="sv4-title" href={`/sagas/${r.tmdb_collection_id}`}>{poster(r.poster_path)?<img src={poster(r.poster_path)} alt=""/>:<span className="sv4-poster-empty">S</span>}<span><b>{r.name_clean}</b><small>{r.catalog_total} en PikoFilm · {r.total} en TMDb</small></span></Link></td><td><span className={`sv4-state ${st.tone}`}>{st.label}</span></td><td><b>{r.owned}/{r.actionable_total}</b></td><td>{Number(r.missing)||'—'}</td><td>{r.saga_score!=null?<b className="sv4-score">{Number(r.saga_score).toFixed(2)}</b>:'—'}</td><td><span className="sv4-muted">{Number(r.cinema_count)?`${r.cinema_count} en cines`:''}{Number(r.cinema_count)&&Number(r.upcoming_count)?' · ':''}{Number(r.upcoming_count)?`${r.upcoming_count} próximas`:''}{!Number(r.cinema_count)&&!Number(r.upcoming_count)?'Todo exigible':' '}</span></td><td>{Number(r.outside_catalog)||'—'}</td><td>{r.first_year||'—'}{r.last_year&&r.last_year!==r.first_year?`–${r.last_year}`:''}</td><td><Link className="sv4-open" href={`/sagas/${r.tmdb_collection_id}`}>Abrir →</Link></td></tr>})}</tbody></table>
+        <div className="sv4-mobile-list">{data.rows.map(r=>{const st=statusOf(r);return <Link href={`/sagas/${r.tmdb_collection_id}`} key={r.tmdb_collection_id}><div><b>{r.name_clean}</b><span className={`sv4-state ${st.tone}`}>{st.label}</span></div><p>{r.owned}/{r.actionable_total} en Plex · {r.missing} faltan · PikoScore {r.saga_score!=null?Number(r.saga_score).toFixed(2):'—'}</p><small>{r.cinema_count} en cines · {r.upcoming_count} próximas · {r.outside_catalog} fuera de PikoFilm</small></Link>})}</div>
+      </>}
+    </section>
     <Pager p={{state,sort,q}} page={data.page} pages={data.pages}/>
   </main>;
 }
