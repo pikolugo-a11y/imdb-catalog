@@ -17,10 +17,13 @@ Personas V4 es una superficie de descubrimiento cinematográfico. Permite explor
 7. `Otros créditos` sigue disponible como vista secundaria con motivo del descarte, sin contaminar relevancia ni PikoScore medio.
 8. La tabla principal expone Persona, Rol, Filmografía relevante, PikoScore medio, En Plex y Fuera de PikoFilm. Cobertura y Pendientes dejan de ser métricas protagonistas de Personas.
 9. El refresco de perfil/filmografía es una acción manual explícita desde la ficha. Entrar, buscar, filtrar o navegar por Personas no provoca llamadas externas pesadas.
+10. **Ranking canónico de relevancia para PikoFilm.** Destacados prioriza presencia real en PikoFilm/Plex, filmografía relevante y calidad con confianza por tamaño de muestra. Una única obra con PikoScore alto no puede dominar a personas con una muestra amplia. La popularidad TMDb queda como señal secundaria. Cambiar esta fórmula no exige refrescar todas las filmografías ni dispara llamadas externas. El orden `Mejor PikoScore` usa igualmente una señal de PikoScore fiable, ponderada por número de obras valoradas, mientras la columna visible sigue mostrando el PikoScore medio real.
 
 ## Relevancia interna
 
-La implementación usa exclusivamente datos ya persistidos en la lectura principal. La señal combina PikoScore medio, cantidad de obras relevantes con función logarítmica y popularidad persistida de la persona. Las funciones logarítmicas introducen rendimientos decrecientes para que acumular muchos créditos no desplace automáticamente a personas con filmografías más importantes y mejor valoradas.
+La implementación usa exclusivamente datos ya persistidos en la lectura principal. La señal principal combina presencia real en Plex/PikoFilm, cantidad de obras relevantes con función logarítmica y PikoScore con una penalización de confianza cuando existen pocas obras valoradas. La popularidad persistida de TMDb actúa sólo como desempate secundario. Las funciones logarítmicas introducen rendimientos decrecientes para que acumular muchos créditos no desplace automáticamente a personas con filmografías más importantes y mejor representadas en la biblioteca.
+
+El orden `Mejor PikoScore fiable` no modifica el PikoScore mostrado. Sólo evita que una media basada en una o dos películas se trate como estadísticamente equivalente a otra construida sobre decenas de obras.
 
 Los coeficientes son un detalle de calibración interno y pueden ajustarse con evidencia real sin convertir la relevancia en una nueva nota editorial visible. Cualquier cambio que altere el propósito funcional del ranking requiere nueva decisión de producto.
 
