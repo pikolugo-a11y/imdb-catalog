@@ -4,10 +4,11 @@ import fs from 'node:fs';
 
 const source=fs.readFileSync(new URL('../lib/people-dashboard.js',import.meta.url),'utf8');
 
-test('refreshed Personas dashboard uses person_filmography as canonical universe',()=>{
-  assert.match(source,/WITH legacy AS/);
+test('refreshed Personas dashboard uses person_filmography as canonical visible metrics',()=>{
+  assert.match(source,/paged AS/);
   assert.match(source,/canonical AS/);
   assert.match(source,/FROM person_filmography f/);
+  assert.match(source,/WHERE f\.tmdb_person_id=ANY/);
   assert.match(source,/filmography_refreshed_at IS NOT NULL THEN COALESCE\(c\.role_movies,0\)/);
   assert.match(source,/filmography_refreshed_at IS NOT NULL THEN COALESCE\(c\.plex_movies,0\)/);
   assert.match(source,/filmography_refreshed_at IS NOT NULL THEN c\.avg_score/);
@@ -22,7 +23,7 @@ test('canonical relevance matches Persona detail semantics',()=>{
 });
 
 test('unrefreshed people retain bounded legacy fallback',()=>{
-  assert.match(source,/ELSE l\.legacy_role_movies/);
-  assert.match(source,/ELSE l\.legacy_plex_movies/);
-  assert.match(source,/ELSE l\.legacy_avg_score/);
+  assert.match(source,/ELSE p\.legacy_role_movies/);
+  assert.match(source,/ELSE p\.legacy_plex_movies/);
+  assert.match(source,/ELSE p\.legacy_avg_score/);
 });
