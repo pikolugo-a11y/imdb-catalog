@@ -19,11 +19,16 @@ test('Personas V4 is relevance-first and keeps the approved discovery table',()=
   assert.match(css,/\.pv4-mobile-list/);
 });
 
-test('Person relevance uses quality and diminishing returns instead of raw credits',()=>{
+test('Person relevance is library-aware and quality is confidence-weighted',()=>{
   assert.match(dashboard,/sort\):'relevance'/);
   assert.match(dashboard,/relevance_score/);
-  assert.match(dashboard,/ln\(1\+GREATEST\(b\.(?:legacy_)?role_movies/);
-  assert.match(dashboard,/COALESCE\(b\.(?:legacy_)?avg_score,0\)\*12/);
+  assert.match(dashboard,/ln\(1\+GREATEST\(b\.legacy_plex_movies,0\)\)\*28/);
+  assert.match(dashboard,/ln\(1\+GREATEST\(b\.legacy_role_movies,0\)\)\*10/);
+  assert.match(dashboard,/legacy_scored::numeric\/\(b\.legacy_scored\+8\)/);
+  assert.match(dashboard,/trusted_score/);
+  assert.match(dashboard,/CASE WHEN \$\{sort\}='score' THEN trusted_score/);
+  assert.match(page,/Mejor PikoScore fiable/);
+  assert.match(page,/Una sola nota alta no domina el ranking/);
   assert.match(dashboard,/mc\.credit_type='cast'/);
   assert.match(dashboard,/lower\(COALESCE\(mc\.job,''\)\)='director'/);
   assert.match(dashboard,/outside_relevant/);
