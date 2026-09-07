@@ -9,6 +9,8 @@ const worker=fs.readFileSync('worker/batch-api-worker.mjs','utf8');
 const page=fs.readFileSync('app/sagas/page.js','utf8');
 const detail=fs.readFileSync('app/sagas/[name]/page.js','utf8');
 const refreshActions=fs.readFileSync('app/sagas/refresh-actions.js','utf8');
+const adminActions=fs.readFileSync('app/admin/batch-engine-actions.js','utf8');
+const opsControl=fs.readFileSync('components/OperationsBatchControl.js','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
 
 test('SAGA-001 is the canonical observed manual TMDb saga refresh',()=>{
@@ -42,6 +44,25 @@ test('Global Sagas refresh queues the complete universe in Railway instead of st
   assert.match(page,/refreshAllSagasAction/);
   assert.match(page,/Actualizar todas las sagas/);
   assert.doesNotMatch(page,/refreshSagasAction/);
+});
+
+test('Global Sagas refresh exposes real progress and safe pause resume cancel controls',()=>{
+  assert.match(sagaBatch,/getSagaFullRefreshState/);
+  assert.match(sagaBatch,/count\(\*\) FILTER\(WHERE status='queued'\)/);
+  assert.match(sagaBatch,/pauseSagaFullRefresh/);
+  assert.match(sagaBatch,/resumeSagaFullRefresh/);
+  assert.match(sagaBatch,/cancelSagaFullRefresh/);
+  assert.match(refreshActions,/pauseSagaFullRefreshAction/);
+  assert.match(refreshActions,/resumeSagaFullRefreshAction/);
+  assert.match(refreshActions,/cancelSagaFullRefreshAction/);
+  assert.match(page,/ACTUALIZACIÓN GLOBAL/);
+  assert.match(page,/Cancelar actualización/);
+  assert.match(page,/Motor global pausado/);
+  assert.match(adminActions,/pauseBatchAction/);
+  assert.match(adminActions,/resumeBatchAction/);
+  assert.match(adminActions,/cancelBatchAction/);
+  assert.match(opsControl,/items_processed/);
+  assert.match(opsControl,/Cancelar/);
 });
 
 test('Railway API worker owns one saga collection per durable batch item',()=>{
