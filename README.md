@@ -12,8 +12,8 @@ PikoFilm separa cuatro conceptos:
 
 - **Catálogo:** universo editorial y punto único de consulta.
 - **Plex:** presencia física real de archivos y sistema de reproducción.
-- **Novedades:** única puerta de entrada para Discovery, Plex y altas manuales.
-- **Lifecycle:** estado materializado que decide qué proceso corresponde a cada título.
+- **Novedades:** única puerta de entrada para Manual, Plex, Discovery, Sagas y Personas; todos comparten intake y preparación canónicos.
+- **Lifecycle:** estado materializado que decide qué proceso corresponde a cada título y cuya continuación V4 se inicia automáticamente tras la admisión.
 
 Flujo común:
 
@@ -25,7 +25,7 @@ Después:
 - película en Plex → `Validación de película → PikoQuality → COMPLETE`;
 - serie en Plex → `Referencia/diagnóstico de episodios → PikoQuality → COMPLETE`.
 
-Las exclusiones están fuera del flujo hasta restauración explícita.
+Las exclusiones están fuera del flujo hasta restauración explícita. Los bloqueos funcionales se muestran en su fase y la ejecución transversal queda trazada en Operaciones.
 
 ## PikoScore
 
@@ -63,6 +63,7 @@ GitHub contiene código, no el catálogo masivo. Neon es la fuente de verdad per
 - [`docs/FUNCTIONAL_SPECIFICATION_V2.md`](docs/FUNCTIONAL_SPECIFICATION_V2.md) — especificación funcional actual.
 - [`docs/TECHNICAL_SPECIFICATION_V2.md`](docs/TECHNICAL_SPECIFICATION_V2.md) — arquitectura técnica actual.
 - [`docs/CANONICAL_DATA.md`](docs/CANONICAL_DATA.md) — modelo canónico de países y géneros.
+- [`docs/product/V4_NOVEDADES.md`](docs/product/V4_NOVEDADES.md) — contrato funcional de Novedades V4, intake común y Lifecycle Continuation.
 - [`docs/ROADMAP_FRONTEND.md`](docs/ROADMAP_FRONTEND.md) — mejoras del frontal.
 - [`docs/ROADMAP_MIGRATION.md`](docs/ROADMAP_MIGRATION.md) — limpieza/adaptación de legado.
 - [`docs/ROADMAP_FUNCTIONAL.md`](docs/ROADMAP_FUNCTIONAL.md) — futuras evoluciones.
