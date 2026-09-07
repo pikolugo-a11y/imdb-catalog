@@ -1,7 +1,7 @@
 import Link from '@/components/NoPrefetchLink';
 import ActionButton from '@/components/ActionButton';
 import {getSagasDashboard} from '@/lib/sagas-v3';
-import {refreshSagasAction} from '@/app/actions';
+import {refreshAllSagasAction} from '@/app/sagas/refresh-actions';
 import './sagas-modern.css';
 
 export const dynamic='force-dynamic';
@@ -20,7 +20,7 @@ export default async function Sagas({searchParams}){
   const data=await getSagasDashboard({q,state,sort,page,pageSize:48});
   const s=data.stats,globalPct=s.movies?Math.round(100*s.owned_movies/s.movies):0;
   return <main className="sagas-modern">
-    <header className="sagas-hero"><div><div className="eyebrow">Colecciones · Plex · PikoFilm</div><h1>Sagas y colecciones</h1><p>{nf(s.all)} sagas · {nf(s.movies)} películas relevantes · {nf(s.owned_movies)} en Plex · {nf(s.missing_movies)} pendientes · {nf(s.outside_catalog)} fuera de catálogo.</p></div><ActionButton action={refreshSagasAction} label="↻ Actualizar sagas" pendingLabel="Actualizando…"/></header>
+    <header className="sagas-hero"><div><div className="eyebrow">Colecciones · Plex · PikoFilm</div><h1>Sagas y colecciones</h1><p>{nf(s.all)} sagas · {nf(s.movies)} películas relevantes · {nf(s.owned_movies)} en Plex · {nf(s.missing_movies)} pendientes · {nf(s.outside_catalog)} fuera de catálogo.</p></div><ActionButton action={refreshAllSagasAction} label="↻ Actualizar todas las sagas" pendingLabel="Preparando actualización…"/></header>
 
     <section className="saga-summary"><div className="saga-overview-ring" style={{'--pct':`${globalPct*3.6}deg`}}><strong>{globalPct}%</strong></div><div><span>COBERTURA GLOBAL</span><strong>{nf(s.owned_movies)} <i>de {nf(s.movies)}</i></strong><small>Películas relevantes y exigibles disponibles en Plex</small></div><div className="saga-summary-stat"><b>{nf(s.missing_movies)}</b><span>pendientes</span></div></section>
 
