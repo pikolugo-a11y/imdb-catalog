@@ -1,6 +1,6 @@
 # V4 · Novedades
 
-Estado: contrato funcional aprobado (8/8).
+Estado: contrato funcional aprobado (9/9).
 
 ## Propósito
 Novedades es el centro único de admisión a PikoFilm. Responde: **qué títulos nuevos esperan una decisión o pueden incorporarse al catálogo**. No es Calidad ni un historial de títulos ya resueltos.
@@ -62,6 +62,11 @@ Los resultados funcionales son:
 - **Error o detención técnica** → acceso a recuperación/Operaciones, sin ocultar el punto de fallo.
 
 Operaciones conserva la traza técnica; el Shell comunica el resultado funcional. Una admisión y su Lifecycle deben quedar enlazados mediante relación padre/hijo para que constituyan una única historia funcional aunque existan registros técnicos separados.
+
+## 9. Resultados recuperables y no leídos
+El toast inmediato es sólo una señal; nunca es el único lugar donde vive el resultado. El centro de actividad del Shell conserva un histórico corto de Lifecycle recientes en cualquier pantalla y distingue resultados **no vistos** mediante contador persistente.
+
+Cambiar de página o perder el toast no marca un resultado como visto. Un resultado se considera visto cuando el usuario abre su destino desde Actividad. Los resultados recientes siguen disponibles después de navegar o recargar la aplicación; el estado de lectura se conserva en el navegador. Operaciones no es necesaria para conocer el desenlace ordinario.
 
 ## No negociables
 - No enriquecimiento pesado durante render.
