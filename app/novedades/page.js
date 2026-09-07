@@ -11,6 +11,7 @@ import {savePlexIdentityFromNewsAction} from './plex-identity-actions';
 import {retryNewsPreparationAction} from './intake-actions';
 import {requestNewsDiscoveryAction} from './discovery-actions';
 export const dynamic='force-dynamic';
+// PlexSyncButton owns the canonical last-sync query: process_code='PROC-NOV-009'.
 const WEEK_MS=7*24*60*60*1000;
 const qs=(p,patch={})=>{const x=new URLSearchParams();for(const[k,v]of Object.entries({...p,...patch}))if(v!==undefined&&v!==null&&v!=='')x.set(k,String(v));return x.toString()};
 const typeLabel=t=>t==='movie'?'Película':t==='tvMiniSeries'?'Miniserie':t==='tvSeries'?'Serie':'—';
