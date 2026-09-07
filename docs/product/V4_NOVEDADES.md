@@ -1,6 +1,6 @@
 # V4 · Novedades
 
-Estado: contrato funcional aprobado (9/9).
+Estado: contrato funcional aprobado (10/10).
 
 ## Propósito
 Novedades es el centro único de admisión a PikoFilm. Responde: **qué títulos nuevos esperan una decisión o pueden incorporarse al catálogo**. No es Calidad ni un historial de títulos ya resueltos.
@@ -67,6 +67,11 @@ Operaciones conserva la traza técnica; el Shell comunica el resultado funcional
 El toast inmediato es sólo una señal; nunca es el único lugar donde vive el resultado. El centro de actividad del Shell conserva un histórico corto de Lifecycle recientes en cualquier pantalla y distingue resultados **no vistos** mediante contador persistente.
 
 Cambiar de página o perder el toast no marca un resultado como visto. Un resultado se considera visto cuando el usuario abre su destino desde Actividad. Los resultados recientes siguen disponibles después de navegar o recargar la aplicación; el estado de lectura se conserva en el navegador. Operaciones no es necesaria para conocer el desenlace ordinario.
+
+## 10. Un solo Lifecycle automático a la vez
+PikoFilm sólo admite un nuevo título cuando no existe otro `PROC-LC-001` en estado `queued` o `running`. Si el usuario pulsa **Añadir a PikoFilm** mientras otro título está procesándose, la admisión se bloquea antes de crear la película: el candidato permanece **Lista** en Novedades, se muestra un aviso con el título que está en curso y el usuario puede volver a lanzarlo cuando termine.
+
+Nunca se debe retirar un candidato de Novedades sólo para descubrir después que el Lifecycle estaba ocupado. El bloqueo por ocupación es funcional y esperado, no un error técnico.
 
 ## No negociables
 - No enriquecimiento pesado durante render.
