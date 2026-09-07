@@ -4,6 +4,7 @@ import Link from '@/components/NoPrefetchLink';
 import {usePathname} from 'next/navigation';
 import {useEffect,useState} from 'react';
 import GlobalSearch from './GlobalSearch';
+import LifecycleActivity from './LifecycleActivity';
 
 const desktopItems=[
   ['/','Inicio','⌂'],
@@ -54,7 +55,7 @@ export default function Nav(){
 
     <header className="v4-header">
       <strong>{current}</strong>
-      <GlobalSearch/>
+      <div className="v4-header-tools"><GlobalSearch/><LifecycleActivity/></div>
     </header>
 
     <nav className="v4-mobile-nav" aria-label="Navegación principal móvil">

@@ -1,6 +1,6 @@
 # V4 · Novedades
 
-Estado: contrato funcional aprobado (7/7).
+Estado: contrato funcional aprobado (8/8).
 
 ## Propósito
 Novedades es el centro único de admisión a PikoFilm. Responde: **qué títulos nuevos esperan una decisión o pueden incorporarse al catálogo**. No es Calidad ni un historial de títulos ya resueltos.
@@ -32,6 +32,8 @@ Orden por defecto: Lista → Atención → Procesando; dentro de cada grupo, det
 
 La tabla se diseña alrededor de datos fiables en esta fase: Título, Tipo, IMDb, Origen/evidencias, contexto, Estado, Detectada y Acciones. Año sólo acompaña al título cuando existe. País, ratings, votos, PikoScore y demás no son columnas estructurales de Novedades.
 
+Discovery conserva su control manual y su regla operativa existente: puede lanzarse como máximo una vez cada 7 días. Novedades debe mostrar la última ejecución, la próxima fecha disponible y el botón de lanzamiento; V4 no puede ocultar una capacidad heredada sin decisión explícita.
+
 ## 5. Decisión humana
 En Lista las acciones principales son **Añadir a PikoFilm** y **Excluir**. Excluir bloquea globalmente el IMDb y exige confirmación clara. Retirar una propuesta manual es distinto: elimina esa evidencia manual, no crea una exclusión global.
 
@@ -44,10 +46,22 @@ El clic de admisión es la última acción humana ordinaria: debe iniciar **Life
 
 La continuación debe ser durable/asíncrona (Railway/Batch Engine), no una cadena larga durante render o request de Vercel. Se detiene sólo al completar, llegar a una decisión humana, encontrar un bloqueo funcional real o un error no recuperable automáticamente.
 
+Al pulsar Añadir, el usuario permanece en Novedades. No se navega automáticamente a una ficha todavía transitoria.
+
 ## 7. Observabilidad transversal
 Toda continuación automática es monitorizable desde Operaciones: título, origen, inicio, pasos, estado actual, errores, intentos y punto de detención. Un fallo no reinicia ciegamente desde cero; debe poder reanudarse/reintentarse desde estado persistido.
 
 Cada fase sigue siendo responsable de mostrar su bloqueo funcional. Ejemplo: un fallo/bloqueo de Calidad de datos debe ser visible en Calidad de datos; Operaciones conserva simultáneamente la traza técnica completa. Esta regla aplica a cada fase recorrida por Lifecycle.
+
+## 8. Feedback persistente del procesamiento automático
+El usuario no debe tener que abrir Operaciones para saber cómo terminó una admisión automática. El Shell mantiene un centro de actividad persistente con los Lifecycle recientes y muestra un aviso cuando una ejecución cambia de procesando a resultado final.
+
+Los resultados funcionales son:
+- **Completa** → acceso directo a la ficha.
+- **Necesita revisión** → acceso directo al área exacta de Calidad que requiere decisión humana.
+- **Error o detención técnica** → acceso a recuperación/Operaciones, sin ocultar el punto de fallo.
+
+Operaciones conserva la traza técnica; el Shell comunica el resultado funcional. Una admisión y su Lifecycle deben quedar enlazados mediante relación padre/hijo para que constituyan una única historia funcional aunque existan registros técnicos separados.
 
 ## No negociables
 - No enriquecimiento pesado durante render.
@@ -55,3 +69,4 @@ Cada fase sigue siendo responsable de mostrar su bloqueo funcional. Ejemplo: un 
 - No pipelines de preparación distintos por origen.
 - No estados “Procesando” eternos sin ejecución activa.
 - No automatizaciones opacas: toda mutación automática deja traza en Operaciones.
+- Ninguna fase automática puede repetirse indefinidamente sin cambio de Lifecycle: la falta de progreso debe detenerse y quedar trazada.
