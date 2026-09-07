@@ -1,7 +1,8 @@
 import Link from '@/components/NoPrefetchLink';
 import ActionButton from '@/components/ActionButton';
 import {getSagasDashboard} from '@/lib/sagas-v3';
-import {refreshAllSagasAction} from '@/app/sagas/refresh-actions';
+import {getSagaFullRefreshState} from '@/lib/saga-batch';
+import {refreshAllSagasAction,pauseSagaFullRefreshAction,resumeSagaFullRefreshAction,cancelSagaFullRefreshAction} from '@/app/sagas/refresh-actions';
 import './sagas-modern.css';
 
 export const dynamic='force-dynamic';
@@ -17,10 +18,14 @@ function Pager({p,page,pages}){if(pages<=1)return null;return <div className="sa
 
 export default async function Sagas({searchParams}){
   const p=await searchParams,state=p.state||'all',sort=p.sort||'easy',q=p.q||'',page=Math.max(1,Number(p.page)||1);
-  const data=await getSagasDashboard({q,state,sort,page,pageSize:48});
+  const[data,batch]=await Promise.all([getSagasDashboard({q,state,sort,page,pageSize:48}),getSagaFullRefreshState()]);
   const s=data.stats,globalPct=s.movies?Math.round(100*s.owned_movies/s.movies):0;
+  const run=batch.active,c=batch.counts,enginePaused=batch.engine?.desired_state==='paused',locallyPaused=run?.desired_state==='paused',effectivePaused=enginePaused||locallyPaused;
+  const processed=c?Number(c.succeeded||0)+Number(c.failed||0)+Number(c.cancelled||0):0,batchPct=c?.total?Math.round(100*processed/Number(c.total)):0;
   return <main className="sagas-modern">
-    <header className="sagas-hero"><div><div className="eyebrow">Colecciones · Plex · PikoFilm</div><h1>Sagas y colecciones</h1><p>{nf(s.all)} sagas · {nf(s.movies)} películas relevantes · {nf(s.owned_movies)} en Plex · {nf(s.missing_movies)} pendientes · {nf(s.outside_catalog)} fuera de catálogo.</p></div><ActionButton action={refreshAllSagasAction} label="↻ Actualizar todas las sagas" pendingLabel="Preparando actualización…"/></header>
+    <header className="sagas-hero"><div><div className="eyebrow">Colecciones · Plex · PikoFilm</div><h1>Sagas y colecciones</h1><p>{nf(s.all)} sagas · {nf(s.movies)} películas relevantes · {nf(s.owned_movies)} en Plex · {nf(s.missing_movies)} pendientes · {nf(s.outside_catalog)} fuera de catálogo.</p></div>{!run&&<ActionButton action={refreshAllSagasAction} label="↻ Actualizar todas las sagas" pendingLabel="Preparando actualización…"/>}</header>
+
+    {run&&<section className="saga-summary"><div className="saga-overview-ring" style={{'--pct':`${batchPct*3.6}deg`}}><strong>{batchPct}%</strong></div><div><span>ACTUALIZACIÓN GLOBAL</span><strong>{processed} <i>de {Number(c?.total||0)}</i></strong><small>{effectivePaused?(enginePaused?'Pausada por el Batch Engine global':'Pausada manualmente'):`${Number(c?.active||0)} en curso · ${Number(c?.queued||0)} en cola`} · {Number(c?.failed||0)} fallidas</small></div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{!enginePaused&&(locallyPaused?<ActionButton action={resumeSagaFullRefreshAction} fields={{runId:run.run_id}} label="Reanudar" pendingLabel="Reanudando…"/>:<ActionButton action={pauseSagaFullRefreshAction} fields={{runId:run.run_id}} label="Pausar" pendingLabel="Pausando…"/>)}<ActionButton action={cancelSagaFullRefreshAction} fields={{runId:run.run_id}} label="Cancelar actualización" pendingLabel="Cancelando…"/>{enginePaused&&<Link className="saga-next-cta" href="/admin">Motor global pausado · abrir Operaciones</Link>}</div></section>}
 
     <section className="saga-summary"><div className="saga-overview-ring" style={{'--pct':`${globalPct*3.6}deg`}}><strong>{globalPct}%</strong></div><div><span>COBERTURA GLOBAL</span><strong>{nf(s.owned_movies)} <i>de {nf(s.movies)}</i></strong><small>Películas relevantes y exigibles disponibles en Plex</small></div><div className="saga-summary-stat"><b>{nf(s.missing_movies)}</b><span>pendientes</span></div></section>
 
