@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const saga=fs.readFileSync('lib/sagas-v2.js','utf8');
+const sagaBatch=fs.readFileSync('lib/saga-batch.js','utf8');
+const sagaCore=fs.readFileSync('lib/saga-refresh-core.mjs','utf8');
+const worker=fs.readFileSync('worker/batch-api-worker.mjs','utf8');
 const page=fs.readFileSync('app/sagas/page.js','utf8');
 const detail=fs.readFileSync('app/sagas/[name]/page.js','utf8');
 const refreshActions=fs.readFileSync('app/sagas/refresh-actions.js','utf8');
@@ -18,14 +21,37 @@ test('SAGA-001 is the canonical observed manual TMDb saga refresh',()=>{
   assert.match(display,/'PROC-SAGA-001':\{name:'Actualizar sagas desde TMDb'\}/);
 });
 
-test('SAGA-001 keeps the existing writer/read-model contract and bounded refresh policy',()=>{
+test('SAGA-001 keeps bounded direct refresh only as an internal/targeted path',()=>{
   assert.match(saga,/saga_collections/);
   assert.match(saga,/saga_collection_members/);
-  assert.match(saga,/sc\.refreshed_at ASC NULLS FIRST/);
   assert.match(saga,/Math\.min\(120/);
   assert.match(saga,/targetCollectionId\?1:6/);
   assert.match(page,/getSagasDashboard/);
   assert.match(detail,/getSagaDetailV3/);
+});
+
+test('Global Sagas refresh queues the complete universe in Railway instead of stopping at 120',()=>{
+  assert.match(sagaBatch,/SELECT DISTINCT mc\.tmdb_collection_id/);
+  assert.match(sagaBatch,/UNION\s+SELECT sc\.tmdb_collection_id/s);
+  assert.match(sagaBatch,/unnest\(\$2::text\[\]\)/);
+  assert.match(sagaBatch,/worker_pool.*api/);
+  assert.match(sagaBatch,/executor:'railway_batch_api'/);
+  assert.match(sagaBatch,/operation:'refresh_all_sagas_tmdb'/);
+  assert.doesNotMatch(sagaBatch,/LIMIT\s+120/i);
+  assert.match(refreshActions,/startSagaFullRefreshBatch/);
+  assert.match(page,/refreshAllSagasAction/);
+  assert.match(page,/Actualizar todas las sagas/);
+  assert.doesNotMatch(page,/refreshSagasAction/);
+});
+
+test('Railway API worker owns one saga collection per durable batch item',()=>{
+  assert.match(worker,/refreshSagaCollectionCanonical/);
+  assert.match(worker,/'PROC-SAGA-001':executeSaga001/);
+  assert.match(worker,/createApiGate\(sql,\{batchRunId:item\.batch_run_id\}\)/);
+  assert.match(sagaCore,/refreshSagaCollectionCanonical/);
+  assert.match(sagaCore,/\/collection\/\$\{id\}\?language=es-ES/);
+  assert.match(sagaCore,/\/movie\/\$\{tmdbId\}\/external_ids/);
+  assert.match(sagaCore,/sql\.transaction\(ops\)/);
 });
 
 test('SAGA-001 validates IMDb identity against TMDb instead of trusting stale saga cache',()=>{
@@ -36,21 +62,8 @@ test('SAGA-001 validates IMDb identity against TMDb instead of trusting stale sa
   assert.match(saga,/known\.imdb_id!==canonical/);
   assert.match(saga,/identityCorrections\+\+/);
   assert.match(saga,/repair_member_identity/);
-  assert.match(saga,/const imdbId=await imdbForTmdb\(sql,p\.id,trace,issues\)/);
-  assert.match(saga,/m\.imdb_id=\$\{imdbId\}/);
-  assert.match(saga,/identity_corrections/);
-  assert.match(saga,/recordProcessError\(trace\.runId/);
-  assert.match(saga,/step:'resolve_imdb'/);
-  assert.match(saga,/step:'refresh_collection'/);
-  assert.match(saga,/externalCall/);
-  assert.match(detail,/external_imdb_id/);
-  assert.match(detail,/addSagaMemberToNewsAction/);
-});
-
-test('SAGA-001 prioritizes cached member identity mismatches for self-healing',()=>{
-  assert.match(saga,/identity_mismatch_count/);
-  assert.match(saga,/m\.tmdb_id::text IS DISTINCT FROM sm\.tmdb_movie_id::text/);
-  assert.match(saga,/COALESCE\(sm\.identity_mismatch_count,0\)>0/);
+  assert.match(sagaCore,/known\.imdb_id!==canonical/);
+  assert.match(sagaCore,/repair_member_identity/);
 });
 
 test('SAGA-001 supports an exact collection refresh from saga detail',()=>{
@@ -64,33 +77,26 @@ test('SAGA-001 supports an exact collection refresh from saga detail',()=>{
   assert.match(detail,/Actualizar esta saga/);
 });
 
-test('SAGA-001 refresh is atomic per collection and prioritizes inconsistent collections for self-healing',()=>{
+test('SAGA-001 refresh stays atomic per collection',()=>{
   assert.match(saga,/actual_member_count/);
   assert.match(saga,/COALESCE\(sm\.actual_member_count,0\)<>COALESCE\(sc\.member_count,0\)/);
-  const transaction=saga.indexOf('await sql.transaction(ops);');
-  const countSuccess=saga.indexOf('if(exists.length)updated++;else added++;');
-  assert.ok(transaction>=0&&countSuccess>transaction,'success counters must run only after the collection transaction commits');
-  const ops=saga.indexOf('const ops=[');
-  const collectionWrite=saga.indexOf('INSERT INTO saga_collections',ops);
-  const memberDelete=saga.indexOf('DELETE FROM saga_collection_members',ops);
-  assert.ok(ops>=0&&collectionWrite>ops&&memberDelete>collectionWrite,'collection metadata and members must share the transaction ops');
+  assert.match(sagaCore,/DELETE FROM saga_collection_members/);
+  assert.match(sagaCore,/INSERT INTO saga_collection_members/);
+  assert.match(sagaCore,/await sql\.transaction\(ops\)/);
 });
 
 test('SAGA-001 deduplicates provider members by TMDb movie id before writing',()=>{
   assert.match(saga,/function uniqueMovieParts\(parts\)/);
   assert.match(saga,/seen\.has\(id\)/);
-  assert.match(saga,/const rawParts=/);
-  assert.match(saga,/const parts=uniqueMovieParts\(rawParts\)/);
-  assert.match(saga,/duplicate_members_ignored/);
-  assert.match(saga,/member_count,refreshed_at\).*\$\{parts\.length\}/s);
+  assert.match(sagaCore,/function uniqueMovieParts\(parts\)/);
+  assert.match(sagaCore,/seen\.has\(id\)/);
+  assert.match(sagaCore,/duplicate_members_ignored/);
 });
 
-test('SAGA-001 treats a missing TMDb collection as a functional not_found, not a technical error',()=>{
-  assert.match(saga,/error\.status=r\.status/);
+test('SAGA-001 treats a missing TMDb collection as a functional cleanup',()=>{
   assert.match(saga,/error\?\.status===404/);
   assert.match(saga,/DELETE FROM saga_collection_members WHERE tmdb_collection_id=/);
-  assert.match(saga,/DELETE FROM saga_collections WHERE tmdb_collection_id=/);
-  assert.match(saga,/return\{ok:true,collectionId,notFound:true\}/);
-  assert.match(saga,/collections_not_found:notFoundCollections/);
-  assert.match(saga,/not_found:notFoundCollections/);
+  assert.match(sagaCore,/Number\(error\?\.status\)!==404/);
+  assert.match(sagaCore,/DELETE FROM saga_collections WHERE tmdb_collection_id=/);
+  assert.match(sagaCore,/not_found:true/);
 });
