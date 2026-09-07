@@ -22,8 +22,8 @@ test('Personas V4 is relevance-first and keeps the approved discovery table',()=
 test('Person relevance uses quality and diminishing returns instead of raw credits',()=>{
   assert.match(dashboard,/sort\):'relevance'/);
   assert.match(dashboard,/relevance_score/);
-  assert.match(dashboard,/ln\(1\+GREATEST\(b\.role_movies/);
-  assert.match(dashboard,/COALESCE\(b\.avg_score,0\)\*12/);
+  assert.match(dashboard,/ln\(1\+GREATEST\(b\.(?:legacy_)?role_movies/);
+  assert.match(dashboard,/COALESCE\(b\.(?:legacy_)?avg_score,0\)\*12/);
   assert.match(dashboard,/mc\.credit_type='cast'/);
   assert.match(dashboard,/lower\(COALESCE\(mc\.job,''\)\)='director'/);
   assert.match(dashboard,/outside_relevant/);
