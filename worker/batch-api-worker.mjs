@@ -1,6 +1,6 @@
 import {claimBatchItem,executeClaimedItem,reconcileExpiredLeases,heartbeatPool,batchSql,refreshParent} from '../lib/batch-worker-runtime.mjs';
 import {executeId001Canonical} from '../lib/id001-canonical.mjs';
-import {refreshIdentityEvidenceCanonical} from '../lib/identity-validation-canonical.mjs';
+import {refreshIdentityEvidenceCanonical,validateIdentityCanonical} from '../lib/identity-validation-canonical.mjs';
 import {executeData001Canonical} from '../lib/data001-canonical.mjs';
 import {refreshRatingsCanonical} from '../lib/ratings-refresh-core.mjs';
 import {refreshSeriesUnitaryCanonical} from '../lib/series-unitary-core.mjs';
@@ -26,7 +26,14 @@ async function executeLifecycleContinuation(sql,id,{trace,item}){
   await trace?.event?.({eventType:'continuation_state',step:'lifecycle',message:`Lifecycle: ${state||'sin estado'}`,data:{state,iteration:guard}});
   if(!state)return{technicalStatus:'partial',functionalResult:'pending',after:{state:null,steps},message:'Lifecycle no disponible'};
   if(state==='IDENTITY_PENDING'){const r=await executeId001Canonical(sql,id,{trace,lane:'batch',apiGate:createApiGate(sql,{batchRunId:item.batch_run_id}),recomputeLifecycle:recomputeIdentityLifecycle});steps.push({state,process:'PROC-ID-001',result:r?.functionalResult||null});continue;}
-  if(state==='IDENTITY_VALIDATION'){const r=await executeIv001(sql,id,{trace,item});steps.push({state,process:'PROC-IV-001',result:r?.functionalResult||null});return{technicalStatus:r.technicalStatus||'succeeded',functionalResult:'pending',after:{state:'IDENTITY_VALIDATION',steps,blocked_in:'/calidad/validacion-identidad'},message:'Evidencia preparada; decisión de identidad visible en Calidad'};}
+  if(state==='IDENTITY_VALIDATION'){
+   const r=await executeIv001(sql,id,{trace,item});steps.push({state,process:'PROC-IV-001',result:r?.functionalResult||null});
+   if(!r.complete)return{technicalStatus:r.technicalStatus||'succeeded',functionalResult:'pending',after:{state:'IDENTITY_VALIDATION',steps,blocked_in:'/calidad/validacion-identidad',human_decision:true},message:'Evidencia de identidad incompleta; decisión visible en Calidad'};
+   const validation=await validateIdentityCanonical(sql,id,{trace});steps.push({state,process:'PROC-IV-002',result:validation.status,score:validation.score??null});
+   await recomputeLifecycleWithSql(sql,[id]);
+   if(validation.status==='valid'){await trace?.event?.({eventType:'continuation_auto_approved',step:'identity_validation',message:'Identidad validada automáticamente por evidencia fuerte',data:{status:validation.status,score:validation.score??null}});continue;}
+   return{technicalStatus:'succeeded',functionalResult:'pending',after:{state:'IDENTITY_VALIDATION',steps,blocked_in:'/calidad/validacion-identidad',validation_status:validation.status,validation_score:validation.score??null,human_decision:true},message:`Identidad ${validation.status}; decisión visible en Calidad`};
+  }
   if(state==='DATA_INCOMPLETE'){const r=await executeData001(sql,id,{trace,item});steps.push({state,process:'PROC-DATA-001',result:r?.functionalResult||null});if(r?.functionalResult==='pending')return{technicalStatus:r.technicalStatus||'partial',functionalResult:'pending',after:{state,steps,blocked_in:'/calidad/datos'},message:'Datos incompletos; bloqueo visible en Calidad'};continue;}
   if(state==='PIKOSCORE_PENDING'){const r=await executeData002(sql,id,{trace,item});steps.push({state,process:'PROC-DATA-002',result:r?.functionalResult||null});if(r?.functionalResult==='pending')return{technicalStatus:r.technicalStatus||'partial',functionalResult:'pending',after:{state,steps,blocked_in:'/calidad/datos'},message:'Ratings/PikoScore pendientes; visible en Calidad'};continue;}
   if(state==='SERIES_SYNC_PENDING'){const[row]=await sql`SELECT pcs.rating_key FROM plex_catalog_status pcs WHERE pcs.imdb_id=${id} AND pcs.status='in_plex' LIMIT 1`;if(!row?.rating_key)return{technicalStatus:'partial',functionalResult:'pending',after:{state,steps,blocked_in:'/calidad/series'},message:'Serie sin ratingKey Plex para continuar'};const r=await executeSer003(sql,row.rating_key,{trace,item});steps.push({state,process:'PROC-SER-003',result:r?.functionalResult||null});continue;}
