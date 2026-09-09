@@ -533,3 +533,27 @@ El usuario podrá, cuando la naturaleza del trabajo lo permita:
 - los cambios relevantes de planificación realizados por el usuario también deben quedar representados posteriormente en Actividad como hechos funcionales trazables.
 
 Los controles técnicos de workers, concurrencia, colas, capacidad o infraestructura permanecerán en **Operaciones V4**. Actividad/Calendario gobierna la intención y planificación funcional del trabajo, no la mecánica interna de ejecución.
+
+## Decisión 22 — Cambios puntuales frente a reglas recurrentes
+
+**Aprobada.**
+
+Cuando el usuario modifique manualmente una tarea futura que procede de una regla recurrente, el cambio afectará **por defecto sólo a esa ejecución concreta**.
+
+Mover, priorizar, bloquear o marcar como pico deliberado una ocurrencia individual no debe alterar silenciosamente las siguientes ejecuciones generadas por la misma recurrencia.
+
+### Modificación de la recurrencia
+
+Para cambiar también las siguientes ejecuciones, la interfaz deberá ofrecer una acción explícita y diferenciada, por ejemplo `Cambiar también las próximas` o una formulación equivalente clara.
+
+La modificación global de la recurrencia debe dejar visible qué regla funcional cambia y cuál será el efecto futuro antes de aplicarse.
+
+### Principios
+
+- seguridad por defecto: una edición puntual no modifica una serie completa;
+- no se reescribirá una recurrencia por inferencia a partir de un solo cambio manual;
+- las excepciones puntuales deben poder convivir con la regla recurrente canónica sin duplicar schedulers;
+- si una excepción futura deja de ser válida o se elimina, la recurrencia original podrá volver a determinar esa ocurrencia cuando corresponda;
+- los cambios sobre una regla recurrente deben quedar trazados funcionalmente para poder entender después qué se cambió y desde cuándo.
+
+El objetivo es evitar que un ajuste operativo de un día termine alterando accidentalmente cientos de ejecuciones futuras.
