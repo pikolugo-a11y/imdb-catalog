@@ -557,3 +557,30 @@ La modificación global de la recurrencia debe dejar visible qué regla funciona
 - los cambios sobre una regla recurrente deben quedar trazados funcionalmente para poder entender después qué se cambió y desde cuándo.
 
 El objetivo es evitar que un ajuste operativo de un día termine alterando accidentalmente cientos de ejecuciones futuras.
+
+## Decisión 23 — Demanda futura conocida todavía sin fecha
+
+**Aprobada.**
+
+Actividad/Calendario V4 debe mostrar también el **trabajo futuro que PikoFilm sabe que deberá realizar aunque todavía no tenga una fecha o franja concreta asignada**.
+
+Ese trabajo aparecerá con un estado funcional equivalente a **`Pendiente de planificar`**, de modo que la carga prevista sea visible desde el momento en que se conoce y no únicamente cuando el scheduler termine de distribuirla.
+
+### Ciclo funcional
+
+Una unidad o bloque de trabajo futuro podrá evolucionar de forma comprensible por estados como:
+
+`Pendiente de planificar -> Planificado -> En curso -> Completado`
+
+Y, cuando corresponda, podrá terminar en otros resultados funcionales ya definidos como completado con incidencias, sin cambios, fallido o cancelado.
+
+### Reglas
+
+- la demanda futura conocida debe contar para la estimación global de carga aunque aún no tenga fecha;
+- debe poder agruparse por tipo funcional, volumen y ventana temporal esperada para evitar materializar miles de filas innecesarias;
+- el planificador automático deberá poder tomar esa demanda pendiente y distribuirla dentro de sus límites funcionales seguros;
+- cuando una demanda tenga fecha límite, prioridad, dependencia temporal o restricción conocida, esa información debe acompañarla antes de planificarla;
+- ninguna tarea conocida debe quedar fuera de la visión de carga sólo porque todavía no tenga una posición concreta en el calendario;
+- la transición de `Pendiente de planificar` a `Planificado` debe quedar reflejada sin duplicar trabajo ni crear un scheduler paralelo.
+
+El objetivo es que Actividad/Calendario represente **toda la carga futura conocida**, tanto la ya programada como la todavía pendiente de distribución, para poder detectar picos y capacidad insuficiente con la máxima antelación posible.
