@@ -13,6 +13,23 @@ test('Actividad V4 usa observabilidad canónica para histórico y no crea activi
   assert.doesNotMatch(migration,/activity_logs|activity_events/);
 });
 
+test('búsqueda y detalle resuelven entidades humanas sin copiar nombres al log',()=>{
+  const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
+  assert.match(source,/LEFT JOIN movies am/);
+  assert.match(source,/LEFT JOIN people ap/);
+  assert.match(source,/LEFT JOIN saga_collections ascg/);
+  assert.match(source,/am\.title_es/);
+  assert.match(page,/\/catalogo\/\$\{imdbId\}/);
+});
+
+test('Actividad nunca muestra mensajes técnicos crudos de process_run_errors',()=>{
+  const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
+  assert.doesNotMatch(source,/SELECT error_id,occurred_at,entity_type,entity_id,message/);
+  assert.match(source,/functionalMessage/);
+  assert.match(source,/nextStep/);
+  assert.doesNotMatch(page,/x\.message/);
+});
+
 test('calendario futuro persiste intención mínima y conserva vínculo con ejecución real',()=>{
   const migration=read('db/migrations/20260910_process_planning_v1.sql');
   assert.match(migration,/CREATE TABLE IF NOT EXISTS process_plans/);
@@ -36,7 +53,16 @@ test('Actividad ofrece cronología, calendario, planificación manual y refresco
   assert.match(page,/Cronología/);assert.match(page,/Calendario/);assert.match(page,/Pendiente de planificar/);
   assert.match(page,/Mantener como pico/);assert.match(page,/Cambiar prioridad/);assert.match(page,/Ver detalle técnico en Operaciones/);
   assert.match(actions,/PROC-PLAN-001/);assert.match(actions,/before:/);assert.match(actions,/after:/);
+  assert.match(actions,/Europe\/Madrid/);assert.match(page,/Europe\/Madrid/);
   assert.match(refresh,/30000/);assert.match(refresh,/visibilityState/);
+});
+
+test('calendario detecta picos agregados usando carga histórica real',()=>{
+  const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
+  assert.match(source,/percentile_cont\(0\.75\)/);
+  assert.match(source,/estimatedLoad>baseline\*1\.5/);
+  assert.match(page,/Carga que merece revisión/);
+  assert.match(page,/PikoFilm respetará este pico/);
 });
 
 test('navegación reemplaza el popover lifecycle por Actividad global',()=>{
