@@ -219,3 +219,38 @@ Esta jerarquía es exclusivamente de presentación. **No puede ocultar ni descar
 El objetivo es que el usuario pueda detectar de inmediato qué necesita atención sin tener que revisar manualmente cientos de actividades correctas o rutinarias.
 
 La definición exacta de iconografía, color, densidad, badges, agrupación y responsive pertenece a la implementación UX/UI, manteniendo coherencia con PikoFilm V4 y sin introducir lenguaje técnico innecesario.
+
+## Decisión 11 — Detalle funcional primero
+
+**Aprobada.**
+
+Al abrir una entrada de Actividad, la experiencia debe mostrar primero un **detalle funcional orientado al usuario**, no una consola técnica ni una vista de ejecución interna.
+
+Ese detalle debe poder incluir, según corresponda:
+
+- qué ocurrió;
+- cuál fue el resultado;
+- qué cambios concretos se produjeron;
+- entidad o entidades afectadas;
+- origen de la acción;
+- fecha y hora;
+- estado actual;
+- siguiente paso conocido cuando exista.
+
+Cuando una actividad global o masiva tenga afectados concretos, el detalle funcional podrá permitir consultar esa lista bajo demanda sin volcar cientos de filas en la cronología principal.
+
+### Acceso a Operaciones
+
+Cuando exista necesidad de diagnóstico o administración técnica, Actividad podrá ofrecer un acceso secundario y discreto del tipo **`Ver detalle técnico en Operaciones`**.
+
+Ese salto debe conservar la correlación con la ejecución técnica correspondiente cuando exista, pero los identificadores, códigos internos, stack traces, workers, retries y demás telemetría no deben contaminar el detalle funcional principal.
+
+La regla de navegación es por tanto:
+
+`Actividad -> explicación funcional -> entidad afectada / detalle de cambios`
+
+Y sólo cuando sea necesario:
+
+`Actividad -> Ver detalle técnico en Operaciones -> ejecución/diagnóstico`
+
+Actividad sigue siendo la superficie para entender **qué hizo PikoFilm y qué resultado tuvo**; Operaciones sigue siendo la superficie para entender **cómo se ejecutó técnicamente**.
