@@ -25,6 +25,9 @@ Este árbol contiene únicamente documentación necesaria para comprender y modi
 - `product/V4_FICHA.md` — contrato funcional vigente de la Ficha V4.
 - `product/V4_PERSONAS.md` — contrato funcional vigente de Personas V4.
 - `product/V4_SAGAS.md` — contrato funcional vigente de Sagas V4.
+- `product/V4_NOVEDADES.md` — contrato funcional vigente de Novedades V4.
+- `product/V4_CALIDAD.md` — contrato funcional vigente de Calidad V4.
+- `product/V4_ACTIVIDAD.md` — contrato funcional vigente de Actividad V4: cronología, calendario y planificación funcional.
 
 ### Arquitectura
 - `architecture/SYSTEM_ARCHITECTURE.md`

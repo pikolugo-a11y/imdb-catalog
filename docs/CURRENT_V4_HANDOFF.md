@@ -1,6 +1,6 @@
 # PikoFilm V4 — Handoff canónico de continuidad
 
-Última actualización: 2026-09-09
+Última actualización: 2026-09-10
 
 Este documento existe para poder abrir una conversación nueva sin depender del historial del chat. Debe leerse al comienzo de cualquier nueva sesión junto con `AGENTS.md`, `docs/README.md`, `docs/BASELINE_V4_START.md` y las fuentes canónicas del dominio que se vaya a trabajar.
 
@@ -10,13 +10,14 @@ Este documento existe para poder abrir una conversación nueva sin depender del 
 - `Calidad V4` está **implementada y mergeada a `main`** mediante PR **#502**.
 - Merge de Calidad V4: `b1db67c0315229fd3ec3f04f693b5475a2872d3d`.
 - Calidad queda basada en las **75 decisiones aprobadas** del contrato `docs/product/V4_CALIDAD.md`.
-- UX elegida: **modelo híbrido**.
-- La antigua rama `feat/calidad-v4-hybrid` ya no contiene trabajo pendiente respecto a `main`; quedó absorbida por PR #502.
+- `Actividad V4` está **cerrada funcionalmente e implementada** en PR **#504**, con contrato canónico `docs/product/V4_ACTIVIDAD.md`.
+- Actividad V4 sustituye el antiguo popover Lifecycle por una superficie global `/actividad` de pasado, presente y futuro.
+- El único bloque funcional de V4 pendiente después de Actividad es **Operaciones V4**.
 - El usuario realiza exclusivamente los deployments de producción en Vercel. ChatGPT **no despliega Vercel**.
 
-## Calidad V4 recién cerrada
+## Calidad V4 cerrada
 
-La implementación mergeada incluye:
+La implementación incluye:
 
 - hub principal de Calidad con lectura funcional;
 - separación transversal entre `Requieren atención`, `En seguimiento automático` y `Al día`;
@@ -29,6 +30,34 @@ La implementación mergeada incluye:
 - contratos/tests que protegen la arquitectura V4.
 
 El sync global Plex **sigue siendo manual**. No debe introducirse polling automático de Plex.
+
+## Actividad V4 cerrada
+
+Fuente funcional: `docs/product/V4_ACTIVIDAD.md`.
+
+La implementación de PR #504 incluye:
+
+- cronología global derivada de `process_runs`, `process_run_events` y `process_run_errors`, sin crear un log paralelo;
+- ventana funcional detallada de 30 días;
+- filtros, búsqueda funcional y resolución de entidades humanas desde tablas canónicas;
+- agrupación de actividad masiva sin perder cobertura funcional;
+- tratamiento funcional de errores sin exponer mensajes técnicos crudos;
+- calendario futuro apoyado en un modelo mínimo `process_plans`, enlazado con `process_runs` al ejecutarse;
+- planificación y redistribución automática de mantenimiento rutinario dentro de límites seguros;
+- respeto a prioridades, bloqueos, fechas y picos deliberados;
+- detección de picos de carga usando referencia histórica real;
+- acciones manuales de calendario trazadas mediante `PROC-PLAN-001`;
+- reconciliación/planificación automática mediante `PROC-PLAN-002` y cron horario;
+- agrupación de vencimientos por proceso para no duplicar Batch activos;
+- aplazamiento seguro cuando un Batch incompatible ya está en curso;
+- extracción del mantenimiento automático de Calidad del antiguo cron `dashboard-snapshot`;
+- purga automática de planes terminales tras 30 días;
+- refresco visual moderado e incremental mientras se consulta Actividad;
+- retirada del estado leído/no leído en `localStorage` del antiguo popover Lifecycle;
+- Global Plex sync continúa estrictamente manual;
+- tests de Actividad V4 integrados en el gate global de CI.
+
+Principio arquitectónico permanente: **Actividad explica qué pasó y qué resultado tuvo; Operaciones explica cómo ocurrió técnicamente.**
 
 ## Cómo trabajamos
 
@@ -43,27 +72,9 @@ Regla permanente de producto y desarrollo:
 7. Después del deploy, el usuario hace la aceptación funcional/visual y ChatGPT corrige lo necesario.
 8. Evitar proliferación de ramas: **una rama de trabajo por bloque** siempre que sea posible.
 
-## Fuente de verdad UX
-
-Para Calidad:
-
-- contrato funcional: `docs/product/V4_CALIDAD.md`;
-- solución UX: **híbrida**;
-- boceto seleccionado en la biblioteca de trabajo: `V4-UX-014-calidad-estructura-hibrida.png`;
-- V3 puede servir como referencia de lenguaje y patrones conocidos, pero el diseño final es responsabilidad de ChatGPT y debe sentirse como una evolución V4 coherente, no un clon de V3.
-
-## Qué queda después de Calidad
-
-El siguiente trabajo de V4, según el punto alcanzado con el usuario, es:
-
-1. **Actividad V4**.
-2. **Operaciones V4**.
-
-El usuario ha dejado explícitamente indicado que éstos son los dos bloques que quedan después de Calidad. No retroceder a rediseñar verticales ya cerrados salvo regresión real detectada en pruebas.
-
 ## Estado de verticales cerradas que no deben perderse
 
-Entre los bloques ya cerrados antes de Calidad están Personas, Sagas y Novedades V4, además de las superficies previas del plan V4 que ya estaban cerradas. Sus contratos/documentación canónica prevalecen sobre recuerdos conversacionales.
+Entre los bloques ya cerrados están Personas, Sagas, Novedades, Calidad y Actividad V4. Sus contratos/documentación canónica prevalecen sobre recuerdos conversacionales.
 
 Especialmente:
 
@@ -71,13 +82,22 @@ Especialmente:
 - Sagas V4: cerrada e implementada.
 - Novedades V4: cerrada e implementada.
 - Calidad V4: **75/75 decisiones cerradas, implementada y mergeada en PR #502**.
+- Actividad V4: **decisiones cerradas e implementación completa en PR #504**.
+
+## Qué queda en V4
+
+Sólo queda:
+
+1. **Operaciones V4**.
+
+No retroceder a rediseñar verticales ya cerrados salvo regresión real detectada en pruebas o validación de producción.
 
 ## Regla de continuidad para la próxima conversación
 
 La próxima conversación debe empezar leyendo este documento y verificando `main` antes de decidir nada nuevo.
 
-No asumir que hay que rehacer Calidad. No volver a una decisión anterior por pérdida de contexto. Si aparece una discrepancia entre este handoff y el sistema vivo, verificar Git/código/producción y corregir la documentación de forma explícita.
+No asumir que hay que rehacer Calidad o Actividad. No volver a una decisión anterior por pérdida de contexto. Si aparece una discrepancia entre este handoff y el sistema vivo, verificar Git/código/producción y corregir la documentación de forma explícita.
 
 ## Prompt recomendado para arrancar un chat nuevo
 
-> Seguimos con PikoFilm V4 en el repo `pikolugo-a11y/imdb-catalog`. Antes de responder, lee `AGENTS.md`, `docs/README.md`, `docs/BASELINE_V4_START.md` y especialmente `docs/CURRENT_V4_HANDOFF.md`. Calidad V4 acaba de quedar implementada y mergeada en PR #502; no la rehagas. Tú haces UX, implementación, tests, PR y merge; yo hago sólo el deploy de producción en Vercel y la validación visual/funcional. Cada decisión aprobada debe persistirse en Git antes de avanzar. Nos quedan Actividad V4 y Operaciones V4. Continúa exactamente desde el handoff y dime cuál es el siguiente paso.
+> Seguimos con PikoFilm V4 en el repo `pikolugo-a11y/imdb-catalog`. Antes de responder, lee `AGENTS.md`, `docs/README.md`, `docs/BASELINE_V4_START.md` y especialmente `docs/CURRENT_V4_HANDOFF.md`. Calidad V4 está cerrada en PR #502 y Actividad V4 está cerrada en PR #504; no las rehagas. Tú haces UX, implementación, tests, PR y merge; yo hago sólo el deploy de producción en Vercel y la validación visual/funcional. Cada decisión aprobada debe persistirse en Git antes de avanzar. Sólo nos queda Operaciones V4. Continúa exactamente desde el handoff y dime cuál es el siguiente paso.

@@ -56,6 +56,8 @@ Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards
 | PROC-PQ-001 | PikoQuality | Calcular C6 | global por chunks | frontend batch | `processC6Batch` + `scorePikoQualityC6` | Vercel | MODELO ESPECIAL canónico |
 | PROC-PQ-002 | PikoQuality | Captura técnica Plex | global persistente | control especializado | Technical Snapshot worker | Vercel / Railway Technical | MODELO ESPECIAL |
 | PROC-HOME-001 | Home | Snapshot histórico diario del Dashboard | global automático pasivo | no | `/api/cron/dashboard-snapshot` → `captureDashboardSnapshot` | Vercel Cron | SIN BATCH / excepción automática |
+| PROC-PLAN-001 | Actividad | Cambiar planificación futura | manual | no | `app/actividad/actions.js` → `process_plans` | Vercel | NO APLICA |
+| PROC-PLAN-002 | Actividad | Reconciliar, equilibrar y despachar planificación segura | global automático | orquesta Batch existentes | `runActivityPlanner` | Vercel Cron | MODELO ESPECIAL |
 | PROC-OPS-001 | Operaciones | Reiniciar título desde Novedades | manual destructivo funcional | no | `resetTitleToNews` | Vercel | NO APLICA |
 
 `restartMissingLifecycleAction` (`/calidad/sin-estado`) es una operación de reparación administrativa sin código PROC propio: únicamente recrea Lifecycle cuando falta. Debe permanecer excepcional y no masificarse por defecto.
@@ -64,7 +66,7 @@ Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards
 
 Un proceso es Batch común sólo cuando existe una operación individual canónica que puede repetirse sobre una selección de entidades sin cambiar su semántica. El Batch Engine común persiste el padre en `process_runs`, gobierna la ejecución en `batch_run_control`, materializa unidades en `batch_run_items` y crea un child `process_run` por intento. Los pools vigentes son `api`, `fast` y `plex`; el worker Technical y PQ-001 son modelos especializados y no deben forzarse artificialmente dentro del Batch Engine.
 
-La UI inicia los Batch de forma explícita. **No existe inicio automático del Batch Engine por cron o worker.** Esto no impide procesos automáticos pasivos expresamente inventariados, como `PROC-HOME-001`, que no ejecutan Lifecycle ni trabajo funcional por título. La selección, concurrencia, leases, reintentos y API governance son infraestructura de ejecución, no procesos funcionales nuevos.
+La UI puede iniciar Batch explícitamente y, desde Actividad V4, `PROC-PLAN-002` puede iniciar **únicamente los Batch rutinarios declarados seguros** para mantenimiento automático, siempre llamando a sus starters canónicos y respetando ventanas, prioridades y protecciones. La lista inicial es MOV-001, SER-002 como continuación de invalidaciones ya detectadas, SER-003, SER-004, DATA-002, PER-001 y PQ-001. **PROC-NOV-009 y el sync Plex global permanecen manuales y nunca forman parte del planificador automático.** La selección, concurrencia, leases, reintentos y API governance siguen siendo infraestructura de ejecución, no procesos funcionales nuevos.
 
 ## Procesos con Batch común
 
@@ -87,7 +89,7 @@ El entrypoint vivo de `/calidad/datos` usa `calculatePikoScoreV3Action` y ejecut
 Individual y Railway FAST usan `executeMov001Canonical`. **EXACTA**.
 
 ### SER-002
-Individual y Railway Plex usan `syncPlexSeriesDetailCore`. **EXACTA**.
+Individual y Railway Plex usan `syncPlexSeriesDetailCore`. **EXACTA**. El planificador automático sólo puede continuar invalidaciones que ya existen; no inicia un escaneo Plex global.
 
 ### SER-003 / SER-004
 Comparten core funcional con Batch. El adapter Railway reconstruye explícitamente el read model de Series después de cada item y el individual lo reconstruye a través de su wrapper. `test/series-read-model-parity-contract.test.mjs` fija esa equivalencia. **PARCIAL controlada** por postprocesado, no por receta principal.
@@ -101,7 +103,7 @@ Comparten core funcional con Batch. El adapter Railway reconstruye explícitamen
 Vercel crea la solicitud observada y hace dispatch de `.github/workflows/imdb-discovery.yml`; GitHub Actions ejecuta Discovery con el `run_id` canónico. Es una excepción explícita, manual y no persistente al modelo Railway.
 
 ### NOV-009 -> NOV-008
-La actualización Plex global y la siembra posterior de candidatos son dos procesos observados separados y correlacionados. Es composición global, no Batch de operaciones unitarias.
+La actualización Plex global y la siembra posterior de candidatos son dos procesos observados separados y correlacionados. Es composición global, no Batch de operaciones unitarias. El inicio de NOV-009 sigue siendo manual.
 
 ### SAGA-001
 `refreshSagas()` es el refresco canónico observado de colecciones TMDb. Tiene límite 120, concurrencia 6, escribe `saga_collections` y `saga_collection_members`, resuelve IMDb por TMDb y registra errores por colección/fuente. No usa Batch común porque su unidad de trabajo es un refresco global acotado.
@@ -113,17 +115,21 @@ La UI crea **un único `process_runs` canónico** para la ejecución C6 y proces
 Vercel solicita/controla captura técnica y Railway mantiene el worker persistente. Pausa/reanudación/cancelación usan su control especializado, no `batch_engine_control`.
 
 ### HOME-001
-`vercel.json` programa `/api/cron/dashboard-snapshot` a las `02:15 UTC` diariamente. Es una **excepción automática pasiva**: captura agregados históricos del Dashboard y no ejecuta Lifecycle, no llama procesos por título y no pertenece al Batch Engine. La issue #335 queda abierta exclusivamente para medir/optimizar coste y reducir el cálculo a las métricas realmente persistidas; su existencia como proceso ya no depende de esa issue.
+`vercel.json` programa `/api/cron/dashboard-snapshot` a las `02:15 UTC` diariamente. Es una **excepción automática pasiva** dedicada a capturar agregados históricos del Dashboard y almacenamiento. El mantenimiento rutinario de Calidad ya no se concentra en este cron; se gobierna desde `PROC-PLAN-002`.
+
+### PLAN-001 / PLAN-002
+`process_plans` persiste únicamente intención futura, excepciones, prioridad, ventana segura y vínculo a la ejecución real; no sustituye a `process_runs` ni crea un log de Actividad. PLAN-001 observa cambios manuales con before/after compacto. PLAN-002 corre cada hora, reconcilia demanda conocida, estima carga con ejecuciones recientes, distribuye trabajo flexible, replanifica retrasos seguros y despacha mediante starters Batch existentes. Las ejecuciones resultantes siguen observándose bajo su PROC funcional original.
 
 ## Decisiones manuales
 
-ID-002, IV-003/004/005, DATA-005, MOV-002/003, SER-005/006, NOV-002/003/004/005/006/007/010/011/016 y OPS-001 son decisiones/correcciones humanas. No deben recibir Batch automáticamente.
+ID-002, IV-003/004/005, DATA-005, MOV-002/003, SER-005/006, NOV-002/003/004/005/006/007/010/011/016, PLAN-001 y OPS-001 son decisiones/correcciones humanas. No deben recibir Batch automáticamente.
 
 NOV-005 ya entra por una acción observada propia (`exclude-actions.js`), persiste la exclusión global y registra la decisión en `process_runs`/eventos. No se considera candidato a Batch.
 
 ## Modelos de estado y observabilidad
 
-- `process_runs` + `process_run_events` + `process_run_errors`: **fuente canónica de observabilidad de ejecución**.
+- `process_runs` + `process_run_events` + `process_run_errors`: **fuente canónica de observabilidad de ejecución** y del histórico/presente de Actividad V4.
+- `process_plans`: **intención funcional futura mínima** para calendario/autoplanificación. No es un log ni duplica resultados de ejecución.
 - `batch_run_control` + `batch_run_items` + `batch_engine_control`: **estado operativo canónico del Batch Engine**; no sustituyen a `process_runs`.
 - `pipeline_runs`: **compatibilidad histórica**. PQ-001 ya no lo escribe. No eliminar físicamente sin un gate específico de consumidores.
 - `series_quality_runs`: **compatibilidad temporal de Series**; el flujo manual vigente todavía lo utiliza y la UI mantiene lectura de último estado. No retirar durante P5.
@@ -141,7 +147,7 @@ NOV-005 ya entra por una acción observada propia (`exclude-actions.js`), persis
 
 ## Corrección P7
 
-La limpieza de issues detectó un proceso automático real omitido por P5: `PROC-HOME-001`. La evidencia viva es el cron declarado en `vercel.json`. Se incorpora aquí antes de cerrar el inventario de issues. La omisión documental no altera la arquitectura Batch ni autoriza nuevos procesos automáticos.
+La limpieza de issues detectó un proceso automático real omitido por P5: `PROC-HOME-001`. La evidencia viva es el cron declarado en `vercel.json`. Se incorpora aquí antes de cerrar el inventario de issues. La omisión documental no altera la arquitectura Batch ni autoriza nuevos procesos automáticos fuera de los expresamente inventariados. Actividad V4 añade `PROC-PLAN-002` como segunda excepción automática explícita y limitada a la lista segura documentada arriba.
 
 ## Gate P5
 
@@ -149,4 +155,4 @@ P5 queda funcionalmente cerrado: los contratos de CI de observabilidad/paridad p
 
 ## Regla para nuevas implementaciones
 
-Antes de añadir o modificar un proceso: definir PROC, operación canónica, trigger, executor, fuentes, lecturas/escrituras, transición Lifecycle, observabilidad, error/retry/idempotencia y, si existe Batch, demostrar que llama al mismo core. Cualquier excepción debe quedar registrada aquí antes de considerarse PRE-V4 ready.
+Antes de añadir o modificar un proceso: definir PROC, operación canónica, trigger, executor, fuentes, lecturas/escrituras, transición Lifecycle, observabilidad, error/retry/idempotencia y, si existe Batch, demostrar que llama al mismo core. Cualquier excepción debe quedar registrada aquí antes de considerarse vigente.
