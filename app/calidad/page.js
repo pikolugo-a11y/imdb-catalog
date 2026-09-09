@@ -9,13 +9,13 @@ const statusText=s=>s?.key==='healthy'?'Al día':s?.key==='pending'?'Seguimiento
 
 function AreaRow({stage}){return <div className="qv4-area-row"><span>{stage.label}</span><b className={stage.status.key}>{stage.count?`${nf(stage.count)} · ${statusText(stage.status)}`:'Al día'}</b></div>}
 
-function SpecializedCard({stage,kind,icon,description}){return <Link href={stage.href} className={`qv4-surface ${kind}`}><div className="qv4-surface-head"><span className="qv4-surface-icon">{icon}</span><span className="qv4-surface-badge">Página especializada</span></div><h3>{stage.label}</h3><p>{description}</p><div className="qv4-area-list"><AreaRow stage={stage}/><div className="qv4-area-row"><span>{kind==='series'?'Plex · TMDb · España':'Archivo físico · PikoQuality'}</span><b>{kind==='series'?'Detalle por serie':'Flujo físico'}</b></div></div><div className="qv4-surface-cta"><span>{stage.cta}</span><b>→</b></div></Link>}
+function SpecializedCard({stage,kind,icon,description,tracking=0}){return <Link href={stage.href} className={`qv4-surface ${kind}`}><div className="qv4-surface-head"><span className="qv4-surface-icon">{icon}</span><span className="qv4-surface-badge">Página especializada</span></div><h3>{stage.label}</h3><p>{description}</p><div className="qv4-area-list"><AreaRow stage={stage}/>{tracking>0&&<div className="qv4-area-row"><span>Seguimiento automático</span><b className="pending">{nf(tracking)}</b></div>}<div className="qv4-area-row"><span>{kind==='series'?'Plex · TMDb · España':'Archivo físico · PikoQuality'}</span><b>{kind==='series'?'Detalle por serie':'Flujo físico'}</b></div></div><div className="qv4-surface-cta"><span>{stage.cta}</span><b>→</b></div></Link>}
 
 export default async function Calidad(){
   const home=await getQualityHomeSnapshot();
   const byId=Object.fromEntries(home.stages.map(stage=>[stage.id,stage]));
   const attention=home.priorityItems.slice(0,5);
-  const tracking=home.stages.filter(s=>s.status.key==='pending').slice(0,4);
+  const tracking=[...home.stages.filter(s=>s.status.key==='pending').map(s=>({id:s.id,label:s.label,count:s.count,href:s.href})),...(home.trackingExtras?.movies?[{id:'movies-tracking',label:'Películas',count:home.trackingExtras.movies,href:'/calidad/peliculas'}]:[]),...(home.trackingExtras?.series?[{id:'series-tracking',label:'Series',count:home.trackingExtras.series,href:'/calidad/series?view=tracking'}]:[])].slice(0,5);
   return <div className="qv4-page">
     <header className="qv4-hero"><div><div className="qv4-eyebrow">Calidad V4 · salud funcional</div><h1>Calidad</h1><p>Una vista para saber qué necesita tu decisión, qué está resolviendo PikoFilm y qué está al día. El detalle técnico sigue en Operaciones.</p></div><div className={`qv4-global qv4-${home.globalStatus.key}`}>{home.globalStatus.label}</div></header>
 
@@ -25,11 +25,11 @@ export default async function Calidad(){
 
     <section className="qv4-hybrid-grid">
       <Link href="/calidad/centro" className="qv4-surface center"><div className="qv4-surface-head"><span className="qv4-surface-icon">▦</span><span className="qv4-surface-badge">Centro común</span></div><h3>Centro de Calidad</h3><p>Identidad, validación, datos, Personas, PikoQuality e integridad Lifecycle reunidos bajo el mismo patrón.</p><div className="qv4-area-list">{home.centerStages.map(stage=><AreaRow key={stage.id} stage={stage}/>)}</div><div className="qv4-surface-cta"><span>Abrir Centro de Calidad</span><b>→</b></div></Link>
-      <SpecializedCard stage={byId.movies} kind="movies" icon="▤" description="Validación del archivo actual, incidencias físicas y deuda histórica sin mezclarla con el resto de Calidad."/>
-      <SpecializedCard stage={byId.series} kind="series" icon="▣" description="La superficie más viva: episodios, temporadas, cambios de Plex, referencia TMDb y disponibilidad España."/>
+      <SpecializedCard stage={byId.movies} kind="movies" icon="▤" tracking={home.trackingExtras?.movies} description="Validación del archivo actual, incidencias físicas y deuda histórica sin mezclarla con el resto de Calidad."/>
+      <SpecializedCard stage={byId.series} kind="series" icon="▣" tracking={home.trackingExtras?.series} description="La superficie más viva: episodios, temporadas, cambios de Plex, referencia TMDb y disponibilidad España."/>
     </section>
 
-    <section className="qv4-priority"><div className="qv4-priority-copy"><b>{attention.length?'Lo que merece tu atención ahora':'No hay decisiones prioritarias'}</b><span>{attention.length?'Sólo aparecen bloqueos o revisiones humanas reales.':'El mantenimiento pendiente continúa en segundo plano y no se convierte en una tarea para ti.'}</span></div><div className="qv4-priority-items">{attention.map(item=><Link key={`${item.id}-${item.href}`} href={item.href}>{item.label} · {nf(item.count)}</Link>)}{!attention.length&&tracking.map(stage=><Link className="tracking" key={stage.id} href={stage.href}>{stage.label} · {nf(stage.count)}</Link>)}</div></section>
+    <section className="qv4-priority"><div className="qv4-priority-copy"><b>{attention.length?'Lo que merece tu atención ahora':'No hay decisiones prioritarias'}</b><span>{attention.length?'Sólo aparecen bloqueos o revisiones humanas reales.':'El mantenimiento pendiente continúa en segundo plano y no se convierte en una tarea para ti.'}</span></div><div className="qv4-priority-items">{attention.map(item=><Link key={`${item.id}-${item.href}`} href={item.href}>{item.label} · {nf(item.count)}</Link>)}{!attention.length&&tracking.map(item=><Link className="tracking" key={item.id} href={item.href}>{item.label} · {nf(item.count)}</Link>)}</div></section>
 
     <section className="qv4-lifecycle"><div className="qv4-lifecycle-main"><div className="qv4-lifecycle-top"><span>Lifecycle global</span><b>{nf(home.complete)} de {nf(home.activeTotal)} · {pct(home.progressPct)}</b></div><progress max="100" value={home.progressPct}/></div><Link href="/calidad/centro">Ver integridad y áreas comunes →</Link></section>
   </div>;
