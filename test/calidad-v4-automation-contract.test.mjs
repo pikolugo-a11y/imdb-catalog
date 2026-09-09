@@ -28,11 +28,9 @@ test('el sync Plex global manual encadena validación física, Series y captura 
 test('Series aplica cadencia adaptativa TMDb y mantiene UNKNOWN como seguimiento automático',()=>{
   const domain=read('lib/series-quality-domain.mjs');
   assert.match(domain,/SER004_RECHECK_DAYS=14/);
-  assert.match(domain,/180/);
-  assert.match(domain,/365/);
-  assert.match(domain,/1095/);
-  assert.match(domain,/return addDays\(base,7\)/);
-  assert.match(domain,/return addDays\(base,30\)/);
+  assert.match(domain,/ageYears<2\?180:ageYears<10\?365:1095/);
+  assert.match(domain,/base\.getTime\(\)\+7\*DAY/);
+  assert.match(domain,/base\.getTime\(\)\+30\*DAY/);
   assert.match(domain,/automatic:true/);
 });
 
