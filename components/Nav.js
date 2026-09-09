@@ -4,7 +4,6 @@ import Link from '@/components/NoPrefetchLink';
 import {usePathname} from 'next/navigation';
 import {useEffect,useState} from 'react';
 import GlobalSearch from './GlobalSearch';
-import LifecycleActivity from './LifecycleActivity';
 
 const desktopItems=[
   ['/','Inicio','⌂'],
@@ -12,11 +11,12 @@ const desktopItems=[
   ['/personas','Personas','♙'],
   ['/novedades','Novedades','✦'],
   ['/calidad','Calidad','✓'],
+  ['/actividad','Actividad','◷'],
   ['/admin','Operaciones','⚙'],
 ];
 
 const mobileItems=desktopItems.slice(0,4);
-const secondaryItems=[['/calidad','Calidad','✓'],['/admin','Operaciones','⚙']];
+const secondaryItems=[['/calidad','Calidad','✓'],['/actividad','Actividad','◷'],['/admin','Operaciones','⚙']];
 const qualityPrimaryItems=[
   ['/calidad/centro','Centro de Calidad'],
   ['/calidad/peliculas','Películas'],
@@ -49,7 +49,7 @@ export default function Nav(){
   const active=href=>href==='/'?path==='/':path.startsWith(href);
   const current=sectionLabel(path);
   const inQuality=path.startsWith('/calidad');
-  const moreActive=inQuality||path.startsWith('/admin')||path.startsWith('/sagas');
+  const moreActive=inQuality||path.startsWith('/actividad')||path.startsWith('/admin')||path.startsWith('/sagas');
   const qualityActive=href=>{
     if(href==='/calidad/centro')return path.startsWith('/calidad/centro')||['/calidad/identidad','/calidad/validacion-identidad','/calidad/datos','/calidad/personas','/calidad/pikoquality','/calidad/sin-estado'].some(p=>path.startsWith(p));
     return path.startsWith(href);
@@ -74,7 +74,7 @@ export default function Nav(){
 
     <header className="v4-header">
       <strong>{current}</strong>
-      <div className="v4-header-tools"><GlobalSearch/><LifecycleActivity/></div>
+      <div className="v4-header-tools"><GlobalSearch/></div>
     </header>
 
     <nav className="v4-mobile-nav" aria-label="Navegación principal móvil">
