@@ -179,3 +179,25 @@ La misma actividad debe evolucionar hasta reflejar su desenlace final. No se deb
 - el detalle técnico de estados internos, heartbeats, leases, intentos y workers permanece en Operaciones V4.
 
 La implementación debe evitar escrituras de progreso excesivas. Sólo se persistirá o recalculará el progreso con la granularidad necesaria para una UX útil y eficiente, sin convertir Actividad en un stream de telemetría de alta frecuencia.
+
+## Decisión 9 — Resultado concreto y ausencia de cambios
+
+**Aprobada.**
+
+El resultado de una actividad debe explicar **qué cambió realmente** siempre que el proceso disponga de esa información. No debe limitarse a estados genéricos como `correcto` o `completado` cuando pueda expresar el efecto funcional producido.
+
+Ejemplos de intención de lenguaje:
+
+- `Datos actualizados de Heat.` Resultado: `Se actualizaron duración, país y 2 valoraciones.`
+- `Ficha de persona actualizada.` Resultado: `Se añadieron 3 títulos a la filmografía.`
+- `Sincronización Plex completada.` Resultado: `12 títulos cambiaron de estado físico y 2 aparecieron nuevos.`
+
+Cuando una comprobación o actualización termine correctamente **sin producir cambios**, Actividad debe decirlo expresamente, por ejemplo: `Comprobado: no había cambios.`
+
+### Contrato de resultado funcional
+
+Los procesos deberán exponer o permitir derivar un resumen funcional pequeño de su efecto cuando sea razonable y eficiente. Ese resumen debe priorizar cambios significativos para el usuario, no dumps de campos, payloads técnicos ni diferencias internas irrelevantes.
+
+En procesos globales o masivos, el resultado podrá agregarse por cantidades y categorías y cargar el detalle de afectados sólo bajo demanda. En procesos individuales, podrá enumerar directamente los cambios principales.
+
+La exigencia de explicar el cambio no justifica duplicar grandes estados en Actividad: se conservará únicamente el resumen mínimo necesario y se reutilizarán los datos canónicos existentes cuando resulte más eficiente.
