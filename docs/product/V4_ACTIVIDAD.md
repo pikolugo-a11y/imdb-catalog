@@ -584,3 +584,35 @@ Y, cuando corresponda, podrá terminar en otros resultados funcionales ya defini
 - la transición de `Pendiente de planificar` a `Planificado` debe quedar reflejada sin duplicar trabajo ni crear un scheduler paralelo.
 
 El objetivo es que Actividad/Calendario represente **toda la carga futura conocida**, tanto la ya programada como la todavía pendiente de distribución, para poder detectar picos y capacidad insuficiente con la máxima antelación posible.
+
+## Decisión 24 — Retrasos y replanificación automática segura
+
+**Aprobada.**
+
+Cuando una tarea o bloque planificado **no se ejecute dentro de la fecha o franja prevista**, Actividad/Calendario V4 debe detectarlo y reflejarlo con un estado funcional equivalente a **`Retrasada`**, en lugar de dejarla simplemente en una fecha pasada como si nada hubiera ocurrido.
+
+### Tratamiento según naturaleza del trabajo
+
+- si la tarea es flexible y desplazable, PikoFilm podrá **replanificarla automáticamente** en el siguiente hueco seguro;
+- si tiene fecha límite, prioridad, dependencia temporal o una consecuencia relevante por el retraso, deberá elevarse como **atención necesaria**;
+- si pertenece a un pico deliberado protegido por el usuario, no se dispersará automáticamente ignorando esa decisión;
+- si la tarea ya no tiene sentido ejecutar por haber expirado su ventana funcional, deberá quedar con un resultado claro en lugar de reprogramarse sin criterio.
+
+### Trazabilidad funcional
+
+La transición debe explicarse en lenguaje de usuario, por ejemplo:
+
+- `No se ejecutó en la franja prevista; se reprogramó para mañana.`
+- `La tarea se retrasó y necesita revisión porque vence hoy.`
+
+La replanificación automática segura debe actualizar inmediatamente el calendario y conservar la relación con la tarea original, evitando crear duplicados o perder trazabilidad.
+
+### Principios
+
+- detectar retrasos de forma automática;
+- replanificar sin intervención sólo cuando sea funcionalmente seguro;
+- no alterar prioridades o protecciones manuales;
+- destacar únicamente los retrasos que realmente requieran acción del usuario;
+- mantener separada la explicación funcional en Actividad de las causas técnicas detalladas, que pertenecerán a Operaciones V4.
+
+El objetivo es que el calendario se autocorrija ante desviaciones rutinarias sin ocultar incumplimientos importantes ni obligar al usuario a reorganizar manualmente trabajo flexible.
