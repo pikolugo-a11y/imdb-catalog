@@ -15,16 +15,22 @@ test('Calidad incorpora Personas en la segunda fila operativa',()=>{
   assert.match(nav,/\['\/calidad\/personas','Personas'\]/);
 });
 
-test('calidad de Personas clasifica nunca, caducada, error y correcta',()=>{
+test('calidad de Personas usa vigencia adaptativa 30/90/365/1095 y conserva estados',()=>{
   const source=read('lib/people-quality.js');
-  assert.match(source,/PERSON_QUALITY_MAX_AGE_DAYS=30/);
+  assert.match(source,/PERSON_QUALITY_MAX_AGE_DAYS=1095/);
+  assert.match(source,/deathday IS NOT NULL THEN 1095/);
+  assert.match(source,/last_work_date>=CURRENT_DATE-INTERVAL '1 year' THEN 30/);
+  assert.match(source,/last_work_date>=CURRENT_DATE-INTERVAL '3 years' THEN 90/);
+  assert.match(source,/last_work_date>=CURRENT_DATE-INTERVAL '10 years' THEN 365/);
+  assert.match(source,/ELSE 1095 END refresh_days/);
+  assert.match(source,/filmography_refreshed_at<now\(\)-\(r\.refresh_days\|\|' days'\)::interval/);
   assert.match(source,/technical_status='failed'/);
   assert.match(source,/THEN 'error'/);
   assert.match(source,/THEN 'never'/);
-  assert.match(source,/interval '30 days'/);
   assert.match(source,/THEN 'stale'/);
   assert.match(source,/ELSE 'ok'/);
   assert.match(source,/process_code='PROC-PER-001'/);
+  assert.match(source,/adaptiveFreshness:true/);
 });
 
 test('Calidad Personas ejecuta PER-001 directamente y mantiene ficha como detalle',()=>{
