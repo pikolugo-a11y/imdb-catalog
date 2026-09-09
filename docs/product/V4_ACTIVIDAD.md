@@ -254,3 +254,26 @@ Y sólo cuando sea necesario:
 `Actividad -> Ver detalle técnico en Operaciones -> ejecución/diagnóstico`
 
 Actividad sigue siendo la superficie para entender **qué hizo PikoFilm y qué resultado tuvo**; Operaciones sigue siendo la superficie para entender **cómo se ejecutó técnicamente**.
+
+## Decisión 12 — Búsqueda funcional eficiente
+
+**Aprobada.**
+
+Actividad V4 permitirá buscar dentro de la ventana de retención de 30 días por **entidad y por texto funcional**.
+
+La búsqueda debe poder localizar, cuando existan, actividades relacionadas con:
+
+- títulos de películas o series;
+- personas;
+- sagas;
+- texto visible de la actividad o de su resumen funcional.
+
+El caso de uso esperado es poder escribir, por ejemplo, `Heat` y recuperar lo que PikoFilm hizo con esa entidad durante los últimos 30 días sin recorrer manualmente toda la cronología.
+
+### Rendimiento de búsqueda
+
+La búsqueda debe resolverse cerca de PostgreSQL y sobre el conjunto mínimo necesario. No se cargará el histórico en el navegador para filtrarlo en cliente.
+
+La implementación debe usar consultas selectivas y los índices estrictamente necesarios según el modelo final, evitando índices redundantes o estructuras de búsqueda costosas que no aporten valor real dentro de una ventana pequeña de 30 días.
+
+La búsqueda es una herramienta de navegación sobre la misma fuente funcional de Actividad; no crea una copia, índice documental externo ni un segundo sistema de logging.
