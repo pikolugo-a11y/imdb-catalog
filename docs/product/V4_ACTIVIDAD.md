@@ -616,3 +616,32 @@ La replanificación automática segura debe actualizar inmediatamente el calenda
 - mantener separada la explicación funcional en Actividad de las causas técnicas detalladas, que pertenecerán a Operaciones V4.
 
 El objetivo es que el calendario se autocorrija ante desviaciones rutinarias sin ocultar incumplimientos importantes ni obligar al usuario a reorganizar manualmente trabajo flexible.
+
+## Decisión 25 — Ventana funcional segura de planificación
+
+**Aprobada.**
+
+Cada tipo de trabajo automático deberá declarar o permitir derivar una **ventana funcional segura de planificación/replanificación** que marque hasta dónde puede desplazarse sin perjudicar el resultado esperado.
+
+La ventana podrá ser amplia para trabajo rutinario y estrecha para procesos ligados a estrenos, fechas límite, dependencias temporales u otros momentos funcionalmente relevantes.
+
+### Uso por el planificador
+
+PikoFilm utilizará esa ventana para decidir automáticamente:
+
+- cuándo puede mover trabajo flexible para equilibrar carga;
+- hasta qué fecha o franja puede retrasarlo sin degradar su función;
+- cuándo una tarea retrasada todavía puede replanificarse de forma segura;
+- cuándo una tarea deja de ser desplazable y debe mantener su fecha, elevar atención o considerarse expirada.
+
+La ventana funcional segura debe combinarse con prioridad, fechas límite, bloqueos manuales y picos deliberados. Ninguna optimización de carga podrá violar esas restricciones.
+
+### Reglas
+
+- cada proceso relevante debe disponer de una política explícita o derivable; no se asumirá que todo es igualmente flexible;
+- si la ventana no puede determinarse con fiabilidad, se aplicará una política conservadora antes que mover trabajo potencialmente sensible;
+- cambiar la ventana de un tipo de proceso debe afectar a la planificación futura sin reescribir resultados históricos;
+- la definición funcional debe mantenerse independiente de detalles técnicos como workers, colas o concurrencia;
+- el sistema debe poder explicar de forma sencilla por qué una tarea pudo moverse o por qué tuvo que mantenerse.
+
+El objetivo es que la autoplanificación sea **segura por diseño**: equilibrar carga sólo dentro del margen temporal que cada proceso realmente permite.
