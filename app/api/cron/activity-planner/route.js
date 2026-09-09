@@ -12,8 +12,8 @@ export async function GET(request){
   try{
     const observed=await executeObservedProcess({processCode:'PROC-PLAN-002',runKind:'system',triggerSource:'activity_planner',executor:'vercel',entityType:'planning',entityId:'automatic',idempotencyKey:`PROC-PLAN-002:${hourKey()}`,context:{surface:'/actividad',operation:'reconcile_plan_dispatch',automatic:true}},async()=>{
       const result=await runActivityPlanner();
-      const created=result.demand.reduce((n,x)=>n+Number(x.created||0),0);
-      return{functionalResult:created||result.dispatched.length?'updated':'no_change',metrics:{created_plans:created,dispatched:result.dispatched.length,demand:result.demand},message:created||result.dispatched.length?`Planificación actualizada: ${created} bloques nuevos, ${result.dispatched.length} lanzados`:'Planificación revisada sin cambios'};
+      const created=result.demand.reduce((n,x)=>n+Number(x.created||0),0),launched=result.dispatched.filter(x=>x.runId).length,deferred=result.dispatched.filter(x=>x.deferred).length,failed=result.dispatched.filter(x=>x.error).length;
+      return{functionalResult:created||launched||deferred||failed?'updated':'no_change',metrics:{created_plans:created,launched,deferred,failed,demand:result.demand},message:created||launched||deferred||failed?`Planificación revisada: ${created} bloques nuevos, ${launched} lanzados, ${deferred} aplazados${failed?`, ${failed} con incidencia`:''}`:'Planificación revisada sin cambios'};
     });
     return NextResponse.json({ok:true,reused:observed.reused,runId:observed.runId,result:observed.result||null});
   }catch(error){return NextResponse.json({ok:false,error:String(error?.message||error),runId:error?.runId||null},{status:500});}
