@@ -157,3 +157,25 @@ Ejemplos de intención de lenguaje:
 La taxonomía final de etiquetas de origen debe ser pequeña, estable y orientada al usuario. No debe trasladar a Actividad términos como nombres de workers Railway, lanes, leases, jobs, identificadores internos o códigos PROC.
 
 El origen es contexto de presentación y trazabilidad funcional; no sustituye a la información principal obligatoria de cada entrada: **qué hizo PikoFilm y cuál fue el resultado**.
+
+## Decisión 8 — Actividad en curso y resultado final
+
+**Aprobada.**
+
+Actividad V4 podrá mostrar procesos o acciones funcionalmente relevantes **mientras estén en curso**, cuando esa información ayude al usuario a entender qué está haciendo PikoFilm en ese momento.
+
+Una actividad en curso debe expresar el trabajo funcional y su progreso en lenguaje de usuario, por ejemplo:
+
+- `Actualizando datos de 48 títulos` — **En curso**.
+- Resultado actual: `31 completados, 17 pendientes`.
+
+La misma actividad debe evolucionar hasta reflejar su desenlace final. No se deben crear varias entradas duplicadas para representar inicio, progreso y final del mismo hecho funcional cuando puedan mantenerse como una única actividad correlacionada.
+
+### Regla de actualización
+
+- inicio relevante -> actividad visible como **En curso**;
+- progreso -> actualización de la misma actividad cuando aporte información útil;
+- finalización -> la misma actividad pasa a resultado final: completada, completada con incidencias, sin cambios, fallida, cancelada u otro desenlace funcional equivalente;
+- el detalle técnico de estados internos, heartbeats, leases, intentos y workers permanece en Operaciones V4.
+
+La implementación debe evitar escrituras de progreso excesivas. Sólo se persistirá o recalculará el progreso con la granularidad necesaria para una UX útil y eficiente, sin convertir Actividad en un stream de telemetría de alta frecuencia.
