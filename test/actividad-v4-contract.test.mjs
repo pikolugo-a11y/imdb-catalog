@@ -86,3 +86,12 @@ test('cron horario planifica y snapshot diario ya no concentra mantenimiento',()
   assert.match(plannerCron,/PROC-PLAN-002/);assert.match(plannerCron,/runActivityPlanner/);
   assert.doesNotMatch(snapshot,/qualityMaintenance|startMov001Batch|startSeriesBatch|startData002Batch|startPeopleBatch|processC6Batch/);
 });
+
+test('planes terminales se purgan tras la ventana funcional de 30 días',()=>{
+  const retention=read('lib/process-planning-retention.js'),plannerCron=read('app/api/cron/activity-planner/route.js');
+  assert.match(retention,/PROCESS_PLAN_RETENTION_DAYS=30/);
+  assert.match(retention,/status IN \('completed','cancelled','expired'\)/);
+  assert.match(retention,/DELETE FROM process_plans/);
+  assert.match(plannerCron,/purgeTerminalProcessPlans/);
+  assert.match(plannerCron,/purged_plans/);
+});
