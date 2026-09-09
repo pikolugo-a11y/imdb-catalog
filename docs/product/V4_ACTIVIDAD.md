@@ -300,3 +300,22 @@ Ejemplo de intención:
 La correlación debe reutilizar identificadores o relaciones canónicas de ejecución cuando existan. No se creará una segunda infraestructura de tracing sólo para Actividad.
 
 El objetivo es que el usuario pueda entender **qué acción desencadenó qué consecuencias** manteniendo la cronología legible y la cobertura funcional completa.
+
+## Decisión 14 — Autoactualización eficiente
+
+**Aprobada.**
+
+Actividad V4 se actualizará automáticamente mientras el usuario la esté consultando, pero de forma **ligera, incremental y eficiente**.
+
+La autoactualización debe priorizar una sensación de actividad casi en tiempo real sin convertir la pantalla en una fuente de consultas constantes a Neon.
+
+### Regla funcional y de coste
+
+- la pantalla podrá refrescarse periódicamente con una cadencia moderada;
+- cada refresco debe solicitar únicamente actividad nueva o cambios relevantes desde la última posición conocida, siempre que la arquitectura lo permita;
+- no se recargará el histórico completo ni se repetirán agregaciones masivas en cada actualización;
+- la actualización de actividades en curso debe reutilizar la misma entrada correlacionada hasta su resultado final;
+- si la pestaña no está activa o el usuario no está mirando Actividad, la implementación podrá reducir o suspender el refresco para evitar consultas innecesarias;
+- no se introducirá polling agresivo, streaming de alta frecuencia ni escrituras adicionales sólo para animar la interfaz.
+
+La cadencia exacta, estrategia incremental, revalidación al recuperar foco y comportamiento responsive pertenecen a la implementación UX/técnica, siempre con el objetivo de **máxima utilidad con coste mínimo de base de datos**.
