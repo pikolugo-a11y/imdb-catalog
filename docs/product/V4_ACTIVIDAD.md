@@ -43,3 +43,31 @@ Cada entrada de Actividad debe responder de forma clara a dos preguntas:
 Por tanto, no basta con registrar que un proceso se ejecutó. La entrada debe expresar el efecto funcional y su desenlace, por ejemplo: datos actualizados correctamente, título excluido, sincronización Plex completada con cambios, PikoScore recalculado, acción sin cambios necesarios o actualización fallida.
 
 Cuando exista una entidad funcional afectada, la entrada debe identificarla y permitir navegar hacia ella. El lenguaje será humano y orientado al catálogo, no una transcripción de estados o nombres técnicos internos.
+
+## Decisión 3 — Cobertura completa y agrupación
+
+**Aprobada.**
+
+Actividad V4 debe tener **cobertura funcional completa de todo lo que ocurre en PikoFilm**, incluido el trabajo automático. No será una selección editorial de unos pocos eventos representativos ni una muestra parcial de procesos visibles.
+
+La implementación deberá recoger todos los cambios, acciones y resultados con significado funcional que produzcan los procesos del sistema, tanto manuales como automáticos, siempre traducidos a lenguaje comprensible para el usuario. La existencia de cientos de ejecuciones automáticas no justifica omitir actividad: obliga a resumirla y presentarla mejor.
+
+### Regla de agrupación
+
+Cuando una acción global o masiva afecte a muchas entidades, Actividad mostrará una **entrada principal resumida** que explique qué se hizo y cuál fue el resultado agregado, por ejemplo:
+
+- sincronización Plex completada;
+- 23 títulos actualizados;
+- 4 títulos nuevos detectados;
+- 2 títulos sin cambios;
+- 1 incidencia funcional encontrada.
+
+Cuando tenga sentido, esa entrada permitirá consultar el detalle de las entidades afectadas sin convertir la cronología principal en cientos de filas.
+
+Las acciones individuales mostrarán directamente la entidad afectada y su resultado.
+
+### Garantía funcional
+
+La agrupación es sólo una decisión de presentación. **No puede provocar pérdida de información funcional.** Todo cambio relevante debe quedar representado directa o indirectamente en Actividad y poder explicarse en lenguaje de usuario.
+
+Actividad no mostrará detalles puramente internos de ejecución —workers, leases, heartbeats, trazas, estados técnicos intermedios— salvo cuando deban traducirse a una consecuencia funcional visible. El detalle técnico completo seguirá perteneciendo a Operaciones V4.
