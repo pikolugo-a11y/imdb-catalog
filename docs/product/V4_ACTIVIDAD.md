@@ -479,3 +479,33 @@ La estimación servirá para:
 Cuando no haya suficiente histórico fiable para estimar un proceso, PikoFilm usará una estimación conservadora o una clasificación inicial definida por el propio proceso, antes que asumir carga mínima.
 
 El cálculo debe reutilizar datos canónicos de ejecución y agregados ligeros cuando sea posible, evitando generar telemetría duplicada sólo para alimentar Actividad. El detalle técnico de capacidad y protección frente a saturación seguirá perteneciendo a **Operaciones V4**.
+
+## Decisión 20 — Aviso anticipado cuando la carga futura siga siendo excesiva
+
+**Aprobada.**
+
+Cuando PikoFilm detecte que una concentración futura de trabajo **seguirá siendo excesiva incluso después de redistribuir automáticamente toda la carga rutinaria y flexible que sea seguro mover**, Actividad V4 debe advertirlo antes de la ejecución.
+
+El aviso se expresará en lenguaje funcional y comprensible, por ejemplo:
+
+- `El jueves hay una carga prevista muy alta.`
+- `Aunque se reparta el trabajo flexible, seguirán quedando 420 actualizaciones concentradas.`
+
+### Opciones funcionales
+
+La interfaz deberá permitir al usuario entender y decidir entre dos caminos principales:
+
+1. **Mantener el pico**: conservar la concentración planificada y tratarla como una decisión deliberada que Operaciones deberá preparar dentro de los límites disponibles.
+2. **Reducir o posponer carga no prioritaria**: desplazar o aplazar trabajo que no tenga prioridad, fecha límite ni dependencia temporal estricta para reducir el riesgo.
+
+Actividad no ajustará directamente workers, concurrencia, colas o infraestructura. Esas medidas pertenecen a **Operaciones V4**.
+
+### Principios
+
+- el aviso debe producirse con antelación suficiente para que todavía sea posible actuar;
+- debe explicar qué volumen o tipo de trabajo genera la concentración y por qué no pudo suavizarse más;
+- no debe bloquear automáticamente un pico deliberado decidido por el usuario;
+- si la capacidad operativa conocida impone una restricción real, esa restricción debe poder consultarse desde Operaciones sin trasladar detalle técnico innecesario a Actividad;
+- cuando se reduzca o posponga carga, el calendario futuro deberá reflejar inmediatamente la nueva planificación.
+
+El objetivo es que un problema de capacidad previsto **nunca aparezca por sorpresa el día de ejecución** cuando ya podía detectarse a partir de la planificación conocida.
