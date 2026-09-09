@@ -509,3 +509,27 @@ Actividad no ajustará directamente workers, concurrencia, colas o infraestructu
 - cuando se reduzca o posponga carga, el calendario futuro deberá reflejar inmediatamente la nueva planificación.
 
 El objetivo es que un problema de capacidad previsto **nunca aparezca por sorpresa el día de ejecución** cuando ya podía detectarse a partir de la planificación conocida.
+
+## Decisión 21 — Acciones funcionales desde el calendario
+
+**Aprobada.**
+
+El calendario futuro de Actividad V4 no será únicamente de consulta. Permitirá al usuario realizar **acciones funcionales de planificación** directamente sobre tareas o bloques planificados, sin convertir la vista en una consola técnica.
+
+El usuario podrá, cuando la naturaleza del trabajo lo permita:
+
+- cambiar la prioridad funcional;
+- mover la fecha o franja prevista;
+- bloquear una tarea o bloque para impedir su redistribución automática;
+- desbloquear posteriormente esa protección;
+- marcar una concentración como **pico deliberado** para que PikoFilm la respete y no intente suavizarla automáticamente.
+
+### Reglas
+
+- toda modificación debe reflejarse inmediatamente en la planificación futura;
+- una tarea fijada manualmente por el usuario debe quedar claramente diferenciada de una posición elegida automáticamente;
+- PikoFilm no podrá deshacer de forma automática una decisión manual protegida mientras siga vigente;
+- si una reprogramación solicitada por el usuario entra en conflicto con una fecha límite, dependencia funcional o restricción real, la interfaz deberá explicarlo antes de aplicar un resultado incoherente;
+- los cambios relevantes de planificación realizados por el usuario también deben quedar representados posteriormente en Actividad como hechos funcionales trazables.
+
+Los controles técnicos de workers, concurrencia, colas, capacidad o infraestructura permanecerán en **Operaciones V4**. Actividad/Calendario gobierna la intención y planificación funcional del trabajo, no la mecánica interna de ejecución.
