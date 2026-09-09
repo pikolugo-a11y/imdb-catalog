@@ -15,7 +15,16 @@ test('Calidad V4 usa navegación híbrida de tres superficies',()=>{
 
 test('Centro de Calidad agrupa las áreas comunes sin eliminar sus rutas funcionales',()=>{
   const center=read('app/calidad/centro/page.js');
-  for(const route of ['/calidad/identidad','/calidad/validacion-identidad','/calidad/datos','/calidad/personas','/calidad/pikoquality','/calidad/sin-estado'])assert.ok(center.includes(route),`Falta ${route}`);
+  const domain=read('lib/quality-home-domain.mjs');
+  for(const route of ['/calidad/identidad','/calidad/validacion-identidad','/calidad/datos','/calidad/personas','/calidad/pikoquality','/calidad/sin-estado'])assert.ok(domain.includes(route),`Falta ${route}`);
+  assert.match(domain,/QUALITY_CENTER_STAGE_IDS=.*identity.*validation.*data.*people.*pikoquality.*recovery/);
+  assert.match(center,/home\.stages/);
+  assert.match(center,/byId\.identity/);
+  assert.match(center,/byId\.validation/);
+  assert.match(center,/byId\.data/);
+  assert.match(center,/byId\.people/);
+  assert.match(center,/byId\.pikoquality/);
+  assert.match(center,/byId\.recovery/);
   assert.match(center,/no existe una cola transversal/i);
 });
 
