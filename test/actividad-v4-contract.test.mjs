@@ -69,6 +69,8 @@ test('Actividad ofrece cronología, calendario, planificación manual y refresco
 test('calendario detecta picos agregados usando carga histórica real',()=>{
   const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
   assert.match(source,/percentile_cont\(0\.75\)/);
+  assert.match(source,/date_trunc\('day',requested_at\) AS bucket_day/);
+  assert.doesNotMatch(source,/date_trunc\('day',requested_at\) day/);
   assert.match(source,/estimatedLoad>baseline\*1\.5/);
   assert.match(page,/Carga que merece revisión/);
   assert.match(page,/PikoFilm respetará este pico/);
