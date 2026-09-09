@@ -383,3 +383,35 @@ La planificación no debe asumir que todo pico es incorrecto. El usuario podrá 
 - la planificación debe reutilizar la programación y arquitectura canónicas existentes; no se creará un segundo scheduler sólo para Actividad.
 
 La decisión exacta sobre **hasta qué punto PikoFilm puede aplicar automáticamente una redistribución sugerida** frente a requerir aprobación del usuario se fijará en una decisión funcional posterior antes de implementar ese comportamiento.
+
+## Decisión 17 — Autoplanificación de carga rutinaria con límites
+
+**Aprobada.**
+
+PikoFilm podrá **redistribuir automáticamente la carga rutinaria y flexible** cuando detecte una planificación claramente descompensada, con el objetivo de mantener trabajo constante, reducir picos evitables y aprovechar capacidad ociosa en días o franjas posteriores.
+
+La redistribución automática no necesita aprobación individual del usuario cuando se trate de trabajo rutinario, no urgente y desplazable dentro de su ventana funcional segura.
+
+### Límites obligatorios
+
+PikoFilm **no moverá automáticamente**:
+
+- tareas o procesos con fecha límite funcional;
+- trabajo marcado expresamente como prioritario por el usuario;
+- picos de carga que el usuario haya decidido mantener deliberadamente;
+- ejecuciones cuya semántica dependa de una fecha/hora concreta;
+- trabajo cuya reprogramación pueda alterar el resultado funcional esperado.
+
+Cuando exista duda sobre si una tarea es realmente desplazable, se conservará la programación existente antes que asumir que puede moverse.
+
+### Transparencia
+
+El calendario debe dejar claro cuándo una carga fue redistribuida automáticamente y explicar el motivo en lenguaje de usuario, por ejemplo: `Se repartieron 600 actualizaciones entre tres días para evitar un pico de carga.`
+
+El usuario conservará capacidad para revisar la planificación y para forzar o mantener concentraciones deliberadas cuando lo necesite.
+
+### Preparación para picos deliberados
+
+Cuando el usuario decida mantener un pico, PikoFilm no intentará suavizarlo contra esa decisión. En su lugar deberá tratarlo como carga prevista prioritaria y hacer visible, dentro de los límites de Actividad y Operaciones, que el sistema debe estar preparado para esa concentración y qué restricciones operativas puedan aplicar.
+
+La lógica concreta de capacidad, concurrencia, workers, colas, límites y protección operativa pertenece a **Operaciones V4**. Actividad es responsable de mostrar la planificación, la intención funcional y el efecto de la redistribución sin exponer complejidad técnica innecesaria.
