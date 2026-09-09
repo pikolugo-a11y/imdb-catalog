@@ -4,10 +4,11 @@ import fs from 'node:fs';
 
 const root=new URL('../',import.meta.url);
 const read=path=>fs.readFileSync(new URL(path,root),'utf8');
-const exists=path=>fs.existsSync(new URL(path,root));
 const actions=read('app/calidad/pikoquality/actions.js');
+const page=read('app/calidad/pikoquality/page.js');
 const runner=read('app/calidad/pikoquality/C6BatchRunner.js');
 const batch=read('lib/pikoquality-c6-batch.js');
+const runtime=read('lib/pikoquality-c6-runtime.mjs');
 const display=read('lib/process-display.js');
 
 test('PQ-001 is one canonical observed Batch across chunks',()=>{
@@ -35,7 +36,15 @@ test('C6 uses bounded chunks without changing its scoring core',()=>{
   assert.match(runner,/bloques de hasta/);
 });
 
-test('individual PikoQuality analysis entry is retired',()=>{
-  assert.equal(exists('app/calidad/pikoquality/AnalyzeForm.js'),false);
-  assert.doesNotMatch(actions,/analyzeOnePikoQualityAction|analyzeMoviePikoQuality|PikoQualityPrerequisiteError/);
+test('PikoQuality conserva Recalcular ahora por entidad usando el core C6 vigente',()=>{
+  assert.match(actions,/recalculatePikoQualityEntityAction/);
+  assert.match(actions,/scorePikoQualityRatingKeys/);
+  assert.match(actions,/runKind:'individual'/);
+  assert.match(actions,/triggerSource:'calidad_pikoquality_unitary'/);
+  assert.match(actions,/pikoquality_recalculate/);
+  assert.match(runtime,/export async function scorePikoQualityRatingKeys/);
+  assert.match(page,/recalculatePikoQualityEntityAction/);
+  assert.match(page,/Recalcular ahora/);
+  assert.match(page,/name="ratingKey" value=\{r\.href_key\}/);
+  assert.match(page,/name="seasonIndex" value=\{r\.season_index\}/);
 });
