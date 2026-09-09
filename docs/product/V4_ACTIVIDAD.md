@@ -115,3 +115,26 @@ Los procesos globales o masivos se presentarán agrupados y sus detalles se carg
 - si datos técnicos de `process_runs`/eventos/errores tienen una retención distinta necesaria para Operaciones, se decidirá expresamente en Operaciones V4 y no se asumirá desde Actividad.
 
 El objetivo es mantener cobertura funcional completa dentro de la ventana de 30 días sin convertir Actividad en una fuente de coste creciente o una segunda plataforma de logging.
+
+## Decisión 6 — Cronología única con filtros
+
+**Aprobada.**
+
+Actividad V4 tendrá una **única cronología global** de lo que ocurre en PikoFilm. No habrá historiales funcionales separados e independientes por módulo.
+
+La vista principal mostrará los acontecimientos más recientes de todos los dominios y permitirá acotar la cronología mediante filtros rápidos, al menos por:
+
+- Todo;
+- Catálogo;
+- Plex;
+- Calidad;
+- Personas;
+- Sagas;
+- Novedades;
+- Errores.
+
+Además, la UX podrá ofrecer filtro por fecha y búsqueda textual cuando aporten valor, siempre aplicados de forma eficiente en PostgreSQL.
+
+La cronología única debe preservar la visión global de **qué está haciendo PikoFilm**, mientras que los filtros sirven únicamente para reducir el conjunto visible. Filtrar no crea fuentes de actividad paralelas ni duplica registros.
+
+La selección exacta de controles, disposición, densidad visual y comportamiento responsive pertenece al diseño UX/UI de implementación, responsabilidad de ChatGPT, respetando este contrato funcional.
