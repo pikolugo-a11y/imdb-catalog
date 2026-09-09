@@ -415,3 +415,29 @@ El usuario conservará capacidad para revisar la planificación y para forzar o 
 Cuando el usuario decida mantener un pico, PikoFilm no intentará suavizarlo contra esa decisión. En su lugar deberá tratarlo como carga prevista prioritaria y hacer visible, dentro de los límites de Actividad y Operaciones, que el sistema debe estar preparado para esa concentración y qué restricciones operativas puedan aplicar.
 
 La lógica concreta de capacidad, concurrencia, workers, colas, límites y protección operativa pertenece a **Operaciones V4**. Actividad es responsable de mostrar la planificación, la intención funcional y el efecto de la redistribución sin exponer complejidad técnica innecesaria.
+
+## Decisión 18 — Horizonte de planificación de 30 días
+
+**Aprobada.**
+
+Actividad V4 mostrará un horizonte futuro de **30 días** para la planificación funcional de trabajo automático.
+
+La precisión será distinta según cercanía temporal:
+
+- **próximos 7 días**: detalle suficiente por día y, cuando aporte valor, por franja horaria o bloque funcional de carga;
+- **días 8 a 30**: visión más agregada por día, volumen previsto y tipos principales de trabajo;
+- **más allá de 30 días**: no se cargará planificación detallada de forma ordinaria, salvo tareas o procesos especiales con fecha fija cuya visibilidad resulte funcionalmente relevante.
+
+### Objetivo
+
+El horizonte debe ser suficiente para detectar y corregir con antelación:
+
+- acumulaciones de carga;
+- días prácticamente vacíos frente a días saturados;
+- coincidencia de procesos pesados;
+- oportunidades de redistribuir trabajo flexible;
+- picos deliberados que deban conservarse y prepararse.
+
+La vista no debe materializar miles de futuras ejecuciones si pueden representarse mediante planificación agregada, reglas recurrentes o estimaciones derivadas de la programación canónica existente.
+
+La implementación debe calcular y consultar únicamente la ventana necesaria para la pantalla actual y evitar convertir la previsión futura en una fuente significativa de coste de Neon.
