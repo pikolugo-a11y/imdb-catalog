@@ -66,6 +66,16 @@ test('Actividad ofrece cronología, calendario, planificación manual y refresco
   assert.match(refresh,/30000/);assert.match(refresh,/visibilityState/);
 });
 
+test('Actividad permite forzar recálculo inmediato reutilizando el planificador canónico',()=>{
+  const page=read('app/actividad/page.js'),actions=read('app/actividad/actions.js');
+  assert.match(page,/Recalcular planificación ahora/);
+  assert.match(page,/action=\{recalculatePlanningNow\}/);
+  assert.match(actions,/runActivityPlanner/);
+  assert.match(actions,/operation:'recalculate_planning_now'/);
+  assert.match(actions,/triggerSource:'activity_manual'/);
+  assert.doesNotMatch(actions,/PROC-NOV-009|syncPlexFastCore|scanPlexTechnicalLibrary/);
+});
+
 test('calendario detecta picos agregados usando carga histórica real',()=>{
   const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
   assert.match(source,/percentile_cont\(0\.75\)/);
