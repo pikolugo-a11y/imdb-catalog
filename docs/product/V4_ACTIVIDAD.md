@@ -92,3 +92,26 @@ Ejemplos de intención de lenguaje:
 Actividad no debe mostrar stack traces, códigos internos, excepciones, nombres de worker ni causas técnicas detalladas. Esos datos pertenecen a Operaciones V4.
 
 Cuando exista una entidad funcional afectada, la actividad de error debe permitir navegar hacia ella. Cuando sea útil para diagnóstico o administración, podrá ofrecer un acceso desde la actividad hacia la vista técnica correspondiente en Operaciones, sin contaminar el lenguaje principal de usuario.
+
+## Decisión 5 — Retención y eficiencia
+
+**Aprobada.**
+
+Actividad V4 debe ser rápida de cargar y barata de mantener. La retención detallada de actividad funcional será de **30 días**. Todo registro de actividad funcional con más de 30 días se eliminará mediante una política de purga controlada.
+
+No se conservará indefinidamente un histórico detallado de Actividad ni se crearán miles de logs redundantes que aumenten el coste de Neon. La implementación debe reutilizar la observabilidad canónica existente y persistir sólo la información funcional mínima necesaria para explicar qué hizo PikoFilm y cuál fue el resultado, evitando duplicación de datos técnicos.
+
+### Rendimiento
+
+La vista principal debe consultar únicamente el rango y volumen necesarios para renderizar la pantalla actual. Debe usar paginación o carga incremental, filtros aplicados en PostgreSQL y consultas selectivas; no debe descargar el histórico completo ni ejecutar agregaciones costosas en el frontend.
+
+Los procesos globales o masivos se presentarán agrupados y sus detalles se cargarán sólo bajo demanda cuando el usuario los consulte.
+
+### Retención
+
+- detalle funcional disponible: últimos 30 días;
+- registros anteriores a 30 días: purga automática/controlada;
+- la purga debe respetar integridad referencial y no borrar estado funcional vigente del catálogo;
+- si datos técnicos de `process_runs`/eventos/errores tienen una retención distinta necesaria para Operaciones, se decidirá expresamente en Operaciones V4 y no se asumirá desde Actividad.
+
+El objetivo es mantener cobertura funcional completa dentro de la ventana de 30 días sin convertir Actividad en una fuente de coste creciente o una segunda plataforma de logging.
