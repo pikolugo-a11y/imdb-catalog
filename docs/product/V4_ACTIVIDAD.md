@@ -28,3 +28,18 @@ Actividad **no** será la consola técnica del sistema. Los detalles de `process
 - **Operaciones V4** = visión técnica/administrativa: cómo se ejecutó, estado operativo, errores, retry, Batch, workers y mantenimiento.
 
 Esta separación no crea una nueva fuente de verdad de observabilidad: Actividad debe construirse sobre la información canónica existente y sus read models/derivados cuando corresponda, sin inventar un sistema paralelo de logs.
+
+## Decisión 2 — Contenido de cada entrada
+
+**Aprobada.**
+
+Actividad mostrará únicamente acontecimientos con **significado funcional** para el usuario. No mostrará ruido interno de ejecución como leases, heartbeats, reclamación de workers, intentos técnicos intermedios, progreso interno de items o detalles equivalentes; esos datos pertenecen a Operaciones V4.
+
+Cada entrada de Actividad debe responder de forma clara a dos preguntas:
+
+1. **Qué hizo PikoFilm.**
+2. **Cuál fue el resultado.**
+
+Por tanto, no basta con registrar que un proceso se ejecutó. La entrada debe expresar el efecto funcional y su desenlace, por ejemplo: datos actualizados correctamente, título excluido, sincronización Plex completada con cambios, PikoScore recalculado, acción sin cambios necesarios o actualización fallida.
+
+Cuando exista una entidad funcional afectada, la entrada debe identificarla y permitir navegar hacia ella. El lenguaje será humano y orientado al catálogo, no una transcripción de estados o nombres técnicos internos.
