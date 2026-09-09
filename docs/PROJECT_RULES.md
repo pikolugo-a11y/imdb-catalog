@@ -29,6 +29,7 @@ PikoFilm es una **base de datos audiovisual personal maestra**. Gobierna selecci
 19. **Observabilidad única.** `process_runs` + eventos/errores son la frontera canónica. No crear otro `*_runs` sin demostrar necesidad.
 20. **Documentación histórica fuera de `main`.** Si un documento deja de describir el presente, se consolida o elimina; Git conserva la historia.
 21. **V4 empieza desde cero.** El baseline auditado no arrastra backlog V3/PRE-V4. Las decisiones, prioridades e issues V4 se crean de nuevo y sólo cuando exista trabajo real decidido.
+22. **Gate de persistencia de decisiones.** Toda decisión funcional o UX que el usuario apruebe debe escribirse **inmediatamente en la documentación canónica de Git antes de presentar la siguiente decisión**. Una decisión no se considera cerrada sólo porque conste en el chat. El chat es el espacio de deliberación; Git es la fuente durable. Si existe un boceto visual, Git debe conservar al menos su especificación textual, estado (vigente/sustituido) y referencia estable al artefacto de trabajo.
 
 ## Cierre de sesión significativa
 
