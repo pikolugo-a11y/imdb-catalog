@@ -3,6 +3,7 @@
 import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
 import {processC6Batch,C6_BATCH_SIZE,getC6BatchState} from '@/lib/pikoquality-c6-batch';
+import {scorePikoQualityRatingKeys} from '@/lib/pikoquality-c6-runtime.mjs';
 import {getTechnicalControl,setTechnicalArmed,setTechnicalRequestedState} from '@/lib/plex-technical-control.mjs';
 import {startProcessRun,addProcessEvent,recordProcessError,finishProcessRun} from '@/lib/process-runtime';
 import {getActiveTechnicalProcessRun} from '@/lib/pikoquality-technical-observability.mjs';
@@ -14,6 +15,38 @@ const TECH_PROCESS_CODE='PROC-PQ-002';
 const TECH_ENTITY_TYPE='plex_library';
 const TECH_ENTITY_ID='technical_snapshot';
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const revalidatePikoQuality=()=>{revalidatePath('/calidad/pikoquality');revalidatePath('/calidad/peliculas');revalidatePath('/calidad/series');revalidatePath('/catalogo');revalidatePath('/admin')};
+
+export async function recalculatePikoQualityEntityAction(formData){
+  const kind=String(formData?.get('kind')||''),ratingKey=String(formData?.get('ratingKey')||'').trim(),seasonIndex=Number(formData?.get('seasonIndex'));
+  if(!['movie','season'].includes(kind)||!ratingKey)throw new Error('Entidad PikoQuality inválida');
+  const sql=db();let keys=[],entityId=ratingKey;
+  if(kind==='movie'){
+    const rows=await sql`SELECT rating_key FROM plex_items WHERE rating_key=${ratingKey} AND active AND item_type='movie' LIMIT 1`;
+    keys=rows.map(r=>String(r.rating_key));
+  }else{
+    if(!Number.isInteger(seasonIndex)||seasonIndex<0)throw new Error('Temporada PikoQuality inválida');
+    entityId=`${ratingKey}:${seasonIndex}`;
+    const rows=await sql`SELECT rating_key FROM plex_items WHERE grandparent_rating_key=${ratingKey} AND parent_index=${seasonIndex} AND active AND item_type='episode' ORDER BY rating_key`;
+    keys=rows.map(r=>String(r.rating_key));
+  }
+  if(!keys.length)throw new Error('No hay archivo físico activo para recalcular PikoQuality');
+  const started=await startProcessRun({processCode:C6_PROCESS_CODE,runKind:'individual',triggerSource:'calidad_pikoquality_unitary',executor:'vercel',entityType:kind,entityId,context:{operation:'recalculate_now',rating_key:ratingKey,season_index:kind==='season'?seasonIndex:null,items_requested:keys.length}});
+  const runId=started.run.run_id;
+  try{
+    await addProcessEvent(runId,{eventType:'step_started',step:'pikoquality_recalculate',entityType:kind,entityId,message:'Recálculo PikoQuality solicitado',data:{items_requested:keys.length}});
+    const result=await scorePikoQualityRatingKeys(sql,keys);
+    if(result.processed<=0)throw new Error('La captura técnica vigente todavía no está disponible para esta entidad');
+    await addProcessEvent(runId,{eventType:'step_finished',step:'pikoquality_recalculate',entityType:kind,entityId,message:'PikoQuality recalculado',data:{processed:result.processed,formula_version:result.version,aggregates:result.aggregates}});
+    await finishProcessRun(runId,{technicalStatus:'succeeded',functionalResult:'updated',metrics:{items_requested:keys.length,items_processed:result.processed,formula_version:result.version},message:'Recálculo PikoQuality completado'});
+    revalidatePikoQuality();
+  }catch(error){
+    await recordProcessError(runId,{error,step:'pikoquality_recalculate',source:'vercel',retryable:false}).catch(()=>{});
+    await finishProcessRun(runId,{technicalStatus:'failed',functionalResult:'pending',message:'No se pudo recalcular PikoQuality'}).catch(()=>{});
+    throw error;
+  }
+}
 
 export async function startC6BatchRunAction(){
   const sql=db();
@@ -52,7 +85,7 @@ export async function runC6BatchChunkAction(runId){
     if(result.remaining===0){
       await finishProcessRun(id,{technicalStatus:'succeeded',functionalResult:'updated',metrics:{formula_version:result.version,remaining:0,last_block_processed:result.processed,last_block_items_per_second:result.itemsPerSecond,aggregates:result.aggregates||null},message:'Cálculo C6 completado'});
     }
-    revalidatePath('/calidad/pikoquality');revalidatePath('/calidad/peliculas');revalidatePath('/catalogo');revalidatePath('/admin');
+    revalidatePikoQuality();
     return{...result,completed:result.remaining===0,runId:id};
   }catch(error){
     await recordProcessError(id,{error,step:'c6_batch',source:'vercel',retryable:true}).catch(()=>{});
