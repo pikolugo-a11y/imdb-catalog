@@ -6,6 +6,7 @@ const root=new URL('../',import.meta.url);
 const read=path=>fs.readFileSync(new URL(path,root),'utf8');
 const actions=read('app/calidad/pikoquality/actions.js');
 const page=read('app/calidad/pikoquality/page.js');
+const operations=read('app/admin/pikoquality/page.js');
 const runner=read('app/calidad/pikoquality/C6BatchRunner.js');
 const batch=read('lib/pikoquality-c6-batch.js');
 const runtime=read('lib/pikoquality-c6-runtime.mjs');
@@ -47,4 +48,14 @@ test('PikoQuality conserva Recalcular ahora por entidad usando el core C6 vigent
   assert.match(page,/Recalcular ahora/);
   assert.match(page,/name="ratingKey" value=\{r\.href_key\}/);
   assert.match(page,/name="seasonIndex" value=\{r\.season_index\}/);
+});
+
+test('Calidad no expone barridos técnicos masivos y los deriva a Operaciones',()=>{
+  assert.doesNotMatch(page,/TechnicalRunFlow/);
+  assert.doesNotMatch(page,/C6BatchRunner/);
+  assert.match(page,/href="\/admin\/pikoquality"/);
+  assert.match(page,/SEGUIMIENTO AUTOMÁTICO/);
+  assert.match(operations,/TechnicalRunFlow/);
+  assert.match(operations,/C6BatchRunner/);
+  assert.match(actions,/triggerSource:'operations_pikoquality_manual'/);
 });
