@@ -4,15 +4,20 @@ import fs from 'node:fs';
 
 const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
-test('Calidad incorpora Personas en la segunda fila operativa',()=>{
+test('Calidad integra Personas en el Centro común del modelo híbrido',()=>{
   const domain=read('lib/quality-home-domain.mjs');
   const page=read('app/calidad/page.js');
   const nav=read('components/Nav.js');
   assert.match(domain,/id:'people'/);
   assert.match(domain,/href:'\/calidad\/personas'/);
-  assert.match(page,/StageCard stage=\{byId\.movies\}\/><StageCard stage=\{byId\.series\}\/><StageCard stage=\{byId\.people\}\/><StageCard stage=\{byId\.pikoquality\}/);
-  assert.doesNotMatch(page,/Entidades relacionadas/);
-  assert.match(nav,/\['\/calidad\/personas','Personas'\]/);
+  assert.match(page,/Centro de Calidad/);
+  assert.match(page,/home\.centerStages\.map/);
+  assert.match(page,/SpecializedCard stage=\{byId\.movies\}/);
+  assert.match(page,/SpecializedCard stage=\{byId\.series\}/);
+  assert.doesNotMatch(page,/StageCard stage=\{byId\.people\}/);
+  assert.match(nav,/\['\/calidad\/centro','Centro de Calidad'\]/);
+  assert.match(nav,/\['\/calidad\/personas','Centro · Personas'\]/);
+  assert.doesNotMatch(nav,/qualityPrimaryItems=\[[\s\S]*\['\/calidad\/personas','Personas'\]/);
 });
 
 test('calidad de Personas usa vigencia adaptativa 30/90/365/1095 y conserva estados',()=>{
