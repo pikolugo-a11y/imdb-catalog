@@ -319,3 +319,26 @@ La autoactualización debe priorizar una sensación de actividad casi en tiempo 
 - no se introducirá polling agresivo, streaming de alta frecuencia ni escrituras adicionales sólo para animar la interfaz.
 
 La cadencia exacta, estrategia incremental, revalidación al recuperar foco y comportamiento responsive pertenecen a la implementación UX/técnica, siempre con el objetivo de **máxima utilidad con coste mínimo de base de datos**.
+
+## Decisión 15 — Compactación de actividad repetitiva homogénea
+
+**Aprobada.**
+
+Cuando se produzcan muchas actividades del mismo tipo, homogéneas y cercanas en el tiempo, Actividad V4 podrá **compactarlas visualmente en una entrada agrupada** para mantener la cronología legible.
+
+Ejemplo de intención:
+
+- `Actualizaciones automáticas — 80 títulos.`
+- Resultado agregado: `76 actualizados, 4 sin cambios.`
+
+Al abrir el grupo, el usuario podrá consultar las actuaciones individuales y el resultado de cada una cuando ese detalle exista y sea útil.
+
+### Reglas de compactación
+
+- la compactación es exclusivamente de presentación y no puede eliminar cobertura funcional;
+- sólo se agruparán actividades realmente homogéneas y correlacionables por tipo/origen/ventana temporal;
+- cualquier fallo, bloqueo o incidencia que requiera atención debe conservar visibilidad y prioridad, aunque pertenezca al conjunto agrupado;
+- no se crearán copias de los registros sólo para representar el grupo: el resumen debe derivarse de la misma fuente funcional o de un read model ligero;
+- el detalle se cargará bajo demanda y no se enviarán cientos de filas al navegador al cargar la cronología principal.
+
+El objetivo es absorber el volumen de procesos automáticos sin convertir Actividad en una lista interminable, manteniendo siempre disponible la explicación de qué ocurrió y cuál fue el resultado.
