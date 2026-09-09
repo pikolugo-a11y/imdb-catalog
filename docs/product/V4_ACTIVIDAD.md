@@ -201,3 +201,21 @@ Los procesos deberán exponer o permitir derivar un resumen funcional pequeño d
 En procesos globales o masivos, el resultado podrá agregarse por cantidades y categorías y cargar el detalle de afectados sólo bajo demanda. En procesos individuales, podrá enumerar directamente los cambios principales.
 
 La exigencia de explicar el cambio no justifica duplicar grandes estados en Actividad: se conservará únicamente el resumen mínimo necesario y se reutilizarán los datos canónicos existentes cuando resulte más eficiente.
+
+## Decisión 10 — Prioridad visual por relevancia funcional
+
+**Aprobada.**
+
+Actividad V4 mantendrá accesible toda la actividad funcional dentro de la ventana de retención, pero no tratará todas las entradas con el mismo peso visual.
+
+La cronología aplicará una jerarquía visual basada en relevancia funcional:
+
+- actividad rutinaria completada correctamente -> presentación compacta;
+- actividad con cambios relevantes -> mayor énfasis visual;
+- actividad que requiere atención, quedó bloqueada, falló o necesita intervención -> énfasis claro y prioritario.
+
+Esta jerarquía es exclusivamente de presentación. **No puede ocultar ni descartar actividad funcional.** Todo seguirá disponible en la cronología y mediante filtros.
+
+El objetivo es que el usuario pueda detectar de inmediato qué necesita atención sin tener que revisar manualmente cientos de actividades correctas o rutinarias.
+
+La definición exacta de iconografía, color, densidad, badges, agrupación y responsive pertenece a la implementación UX/UI, manteniendo coherencia con PikoFilm V4 y sin introducir lenguaje técnico innecesario.
