@@ -277,3 +277,26 @@ La búsqueda debe resolverse cerca de PostgreSQL y sobre el conjunto mínimo nec
 La implementación debe usar consultas selectivas y los índices estrictamente necesarios según el modelo final, evitando índices redundantes o estructuras de búsqueda costosas que no aporten valor real dentro de una ventana pequeña de 30 días.
 
 La búsqueda es una herramienta de navegación sobre la misma fuente funcional de Actividad; no crea una copia, índice documental externo ni un segundo sistema de logging.
+
+## Decisión 13 — Correlación de cambios encadenados
+
+**Aprobada.**
+
+Cuando una acción funcional origine una cadena de efectos posteriores relacionados, Actividad V4 debe poder **correlacionarlos bajo una actividad principal** para explicar la historia completa sin presentar hechos derivados como si fueran sucesos totalmente independientes.
+
+Ejemplo de intención:
+
+- `Sincronización Plex completada.` Resultado principal: `12 títulos cambiaron.`
+- Efectos derivados relacionados: `se revisó calidad de 12 títulos`, `se actualizaron 4 series`, `se recalculó PikoQuality de 9 títulos`, `1 título quedó pendiente de revisión`.
+
+### Regla funcional
+
+- la acción origen debe poder actuar como actividad principal;
+- los efectos derivados deben seguir siendo identificables y consultables;
+- la agrupación no puede ocultar resultados, errores ni cambios funcionales;
+- cuando un efecto derivado requiera atención, debe conservar su prioridad visual aunque pertenezca a una cadena;
+- si no existe una correlación fiable, los hechos se mostrarán separados antes que inventar una relación falsa.
+
+La correlación debe reutilizar identificadores o relaciones canónicas de ejecución cuando existan. No se creará una segunda infraestructura de tracing sólo para Actividad.
+
+El objetivo es que el usuario pueda entender **qué acción desencadenó qué consecuencias** manteniendo la cronología legible y la cobertura funcional completa.
