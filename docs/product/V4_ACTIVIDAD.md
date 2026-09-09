@@ -71,3 +71,24 @@ Las acciones individuales mostrarán directamente la entidad afectada y su resul
 La agrupación es sólo una decisión de presentación. **No puede provocar pérdida de información funcional.** Todo cambio relevante debe quedar representado directa o indirectamente en Actividad y poder explicarse en lenguaje de usuario.
 
 Actividad no mostrará detalles puramente internos de ejecución —workers, leases, heartbeats, trazas, estados técnicos intermedios— salvo cuando deban traducirse a una consecuencia funcional visible. El detalle técnico completo seguirá perteneciendo a Operaciones V4.
+
+## Decisión 4 — Tratamiento funcional de fallos
+
+**Aprobada.**
+
+Los fallos también forman parte de Actividad cuando tengan una consecuencia funcional para el usuario. Deben explicarse en lenguaje comprensible, no mediante mensajes técnicos crudos.
+
+Cada fallo visible en Actividad debe expresar:
+
+1. **Qué no se pudo completar o qué salió mal funcionalmente.**
+2. **Cuál es la consecuencia actual.**
+3. **Qué ocurrirá después**, cuando exista un siguiente paso conocido: reintento automático, pendiente de revisión manual, bloqueo hasta corregir un dato, proceso detenido, etc.
+
+Ejemplos de intención de lenguaje:
+
+- `No se pudieron actualizar los datos de Heat.` Resultado: `La actualización quedó pendiente y PikoFilm volverá a intentarlo automáticamente.`
+- `No se pudo identificar correctamente Heat.` Resultado: `Necesita revisión manual antes de continuar.`
+
+Actividad no debe mostrar stack traces, códigos internos, excepciones, nombres de worker ni causas técnicas detalladas. Esos datos pertenecen a Operaciones V4.
+
+Cuando exista una entidad funcional afectada, la actividad de error debe permitir navegar hacia ella. Cuando sea útil para diagnóstico o administración, podrá ofrecer un acceso desde la actividad hacia la vista técnica correspondiente en Operaciones, sin contaminar el lenguaje principal de usuario.
