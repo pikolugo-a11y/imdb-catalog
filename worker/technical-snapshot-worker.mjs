@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {scanPlexTechnicalLibrary} from '../lib/plex-technical-scan.mjs';
 import {claimTechnicalBatch} from '../lib/plex-technical-queue.mjs';
 import {captureTechnicalRatingKey} from '../lib/plex-technical-capture.mjs';
+import {scorePikoQualityRatingKeys} from '../lib/pikoquality-c6-runtime.mjs';
 import {getTechnicalControl,heartbeatTechnicalWorker} from '../lib/plex-technical-control.mjs';
 import {getActiveTechnicalProcessRun,addTechnicalProcessEvent,mergeTechnicalProcessContext,addTechnicalCaptureCounters,recordTechnicalProcessError,finishTechnicalProcessRun,reconcileStoppedTechnicalProcessRun} from '../lib/pikoquality-technical-observability.mjs';
 
@@ -21,10 +22,10 @@ const workerId=`technical-${process.pid}-${randomUUID().slice(0,8)}`;
 
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let lastScanAt=0;
-let totalClaimed=0,totalOk=0,totalFailed=0;
+let totalClaimed=0,totalOk=0,totalFailed=0,totalScored=0;
 
 async function processChunk(rows,runId){
-  let ok=0,failed=0,attempted=0;
+  let ok=0,failed=0,attempted=0,scored=0;const successful=[];
   for(let pos=0;pos<rows.length;pos+=concurrency){
     const control=await getTechnicalControl(sql);
     if(!control.armed||control.requested_state!=='running')break;
@@ -33,14 +34,22 @@ async function processChunk(rows,runId){
     attempted+=results.length;
     for(let i=0;i<results.length;i++){
       const result=results[i],row=chunk[i];
-      if(result.status==='fulfilled')ok++;
+      if(result.status==='fulfilled'){ok++;successful.push(String(row.rating_key));}
       else{
         failed++;
         await recordTechnicalProcessError(sql,runId,{error:result.reason,step:'technical_capture',entityType:'plex_item',entityId:String(row.rating_key),retryable:true,detail:{rating_key:String(row.rating_key)}}).catch(()=>{});
       }
     }
   }
-  return{ok,failed,attempted};
+  if(successful.length){
+    try{
+      const quality=await scorePikoQualityRatingKeys(sql,successful);scored=Number(quality.processed||0);
+      await addTechnicalProcessEvent(sql,runId,{eventType:'step_finished',step:'pikoquality_recalculate',message:'PikoQuality recalculado sobre la evidencia técnica nueva',data:{captured:successful.length,scored,aggregate_seasons:quality.aggregates?.seasons||0,aggregate_shows:quality.aggregates?.shows||0,formula_version:quality.version}});
+    }catch(error){
+      await recordTechnicalProcessError(sql,runId,{error,step:'pikoquality_recalculate',entityType:'plex_item_set',entityId:'captured_batch',retryable:true,detail:{rating_keys:successful.slice(0,100)}}).catch(()=>{});
+    }
+  }
+  return{ok,failed,attempted,scored};
 }
 
 async function maybeScan(runId,force=false){
@@ -64,7 +73,7 @@ async function finishIfEmpty(runId,scan){
   const errors=Number(summary?.error_count||0)||0;
   const technicalStatus=errors>0?'partial':'succeeded';
   const functionalResult=errors>0?'pending':(created+changed>0?'updated':'no_change');
-  await finishTechnicalProcessRun(sql,runId,{technicalStatus,functionalResult,message:errors>0?'Captura técnica completada con incidencias':'Captura técnica completada',metrics:{scan_total:Number(context.scan_total||0)||0,created,changed,capture_ok:captureOk,capture_failed:captureFailed}});
+  await finishTechnicalProcessRun(sql,runId,{technicalStatus,functionalResult,message:errors>0?'Captura técnica completada con incidencias':'Captura técnica completada',metrics:{scan_total:Number(context.scan_total||0)||0,created,changed,capture_ok:captureOk,capture_failed:captureFailed,pikoquality_scored:totalScored}});
 }
 
 async function reconcileIdleRun(){
@@ -80,19 +89,19 @@ async function cycle(){
   if(!control.armed){
     const reconciled=await reconcileIdleRun();
     await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});
-    return{control:'disarmed',claimed:0,ok:0,failed:0,reconciled};
+    return{control:'disarmed',claimed:0,ok:0,failed:0,scored:0,reconciled};
   }
-  if(control.requested_state==='paused'){await heartbeatTechnicalWorker(sql,{workerId,actualState:'paused'});return{control:'paused',claimed:0,ok:0,failed:0}}
+  if(control.requested_state==='paused'){await heartbeatTechnicalWorker(sql,{workerId,actualState:'paused'});return{control:'paused',claimed:0,ok:0,failed:0,scored:0}}
   if(control.requested_state==='stopped'){
     const reconciled=await reconcileIdleRun();
     await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});
-    return{control:'stopped',claimed:0,ok:0,failed:0,reconciled};
+    return{control:'stopped',claimed:0,ok:0,failed:0,scored:0,reconciled};
   }
 
   const active=await getActiveTechnicalProcessRun(sql);
   if(!active){
     await heartbeatTechnicalWorker(sql,{workerId,actualState:'error',lastError:'No existe una ejecución PROC-PQ-002 activa'});
-    return{control:'missing_process_run',claimed:0,ok:0,failed:0};
+    return{control:'missing_process_run',claimed:0,ok:0,failed:0,scored:0};
   }
   const runId=String(active.run_id);
   await heartbeatTechnicalWorker(sql,{workerId,actualState:'running'});
@@ -102,17 +111,17 @@ async function cycle(){
   if(!rows.length){
     await heartbeatTechnicalWorker(sql,{workerId,actualState:'completed'});
     await finishIfEmpty(runId,scan);
-    return{scan,claimed:0,ok:0,failed:0,queue_empty:true};
+    return{scan,claimed:0,ok:0,failed:0,scored:0,queue_empty:true};
   }
 
   const started=Date.now();
   const result=await processChunk(rows,runId);
   const elapsed=Date.now()-started;
-  totalClaimed+=result.attempted;totalOk+=result.ok;totalFailed+=result.failed;
+  totalClaimed+=result.attempted;totalOk+=result.ok;totalFailed+=result.failed;totalScored+=result.scored;
   await addTechnicalCaptureCounters(sql,runId,{claimed:result.attempted,ok:result.ok,failed:result.failed});
-  await addTechnicalProcessEvent(sql,runId,{eventType:'batch_progress',step:'technical_capture',message:'Bloque técnico completado',durationMs:elapsed,data:{claimed:result.attempted,ok:result.ok,failed:result.failed,batch_size:batchSize}});
+  await addTechnicalProcessEvent(sql,runId,{eventType:'batch_progress',step:'technical_capture',message:'Bloque técnico completado',durationMs:elapsed,data:{claimed:result.attempted,ok:result.ok,failed:result.failed,scored:result.scored,batch_size:batchSize}});
   await heartbeatTechnicalWorker(sql,{workerId,actualState:'running',lastBatchOk:result.ok,lastBatchFailed:result.failed,lastBatchMs:elapsed});
-  return{scan,claimed:result.attempted,ok:result.ok,failed:result.failed};
+  return{scan,claimed:result.attempted,ok:result.ok,failed:result.failed,scored:result.scored};
 }
 
 console.log(`[technical-snapshot-worker] controller started id=${workerId} batch=${batchSize} concurrency=${concurrency} scanEveryMs=${scanEveryMs}`);
@@ -121,7 +130,7 @@ for(;;){
   const started=Date.now();
   try{
     const result=await cycle();
-    console.log('[technical-snapshot-worker]',JSON.stringify({...result,elapsed_ms:Date.now()-started,total_claimed:totalClaimed,total_ok:totalOk,total_failed:totalFailed}));
+    console.log('[technical-snapshot-worker]',JSON.stringify({...result,elapsed_ms:Date.now()-started,total_claimed:totalClaimed,total_ok:totalOk,total_failed:totalFailed,total_scored:totalScored}));
     if(['disarmed','paused','stopped','missing_process_run'].includes(result.control)||result.claimed===0)await sleep(idleMs);
   }catch(error){
     console.error('[technical-snapshot-worker] cycle failed',error);
