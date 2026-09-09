@@ -48,6 +48,15 @@ test('planificador automático sólo usa procesos seguros y nunca sincroniza Ple
   assert.match(planner,/replanDelayed/);
 });
 
+test('planificador agrupa vencimientos por proceso y no duplica Batch activos',()=>{
+  const planner=read('lib/process-planning.js');
+  assert.match(planner,/groups=new Map\(\)/);
+  assert.match(planner,/group\.volume\+=Number\(row\.planned_volume\|\|0\)/);
+  assert.match(planner,/getActiveBatch\(processCode,sql\)/);
+  assert.match(planner,/deferred:true/);
+  assert.match(planner,/reason:'active_batch'/);
+});
+
 test('Actividad ofrece cronología, calendario, planificación manual y refresco moderado',()=>{
   const page=read('app/actividad/page.js'),actions=read('app/actividad/actions.js'),refresh=read('app/actividad/ActivityRefresh.js');
   assert.match(page,/Cronología/);assert.match(page,/Calendario/);assert.match(page,/Pendiente de planificar/);
