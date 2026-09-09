@@ -22,11 +22,14 @@ async function mutatePlan(planId,operation,apply){
 export async function recalculatePlanningNow(){
   const observed=await executeObservedProcess({processCode:'PROC-PLAN-001',runKind:'individual',triggerSource:'activity_manual',executor:'vercel',entityType:'planning',entityId:'global',context:{surface:'/actividad',operation:'recalculate_planning_now'}},async()=>{
     const result=await runActivityPlanner();
-    const created=result.demand.reduce((sum,item)=>sum+Number(item.created||0),0);
-    const detected=result.demand.reduce((sum,item)=>sum+Number(item.due||0),0);
+    const immediateCreated=result.demand.reduce((sum,item)=>sum+Number(item.created||0),0);
+    const futureCreated=(result.forecast||[]).reduce((sum,item)=>sum+Number(item.created||0),0);
+    const immediateDetected=result.demand.reduce((sum,item)=>sum+Number(item.due||0),0);
+    const futureDetected=(result.forecast||[]).reduce((sum,item)=>sum+Number(item.future||0),0);
+    const created=immediateCreated+futureCreated,detected=immediateDetected+futureDetected;
     const launched=result.dispatched.filter(item=>item.runId).length;
     const deferred=result.dispatched.filter(item=>item.deferred).length;
-    return{functionalResult:created||launched?'updated':'no_change',metrics:{detected,created,launched,deferred},after:{detected,created,launched,deferred},message:created||launched?`Planificación recalculada: ${created} bloques creados y ${launched} procesos lanzados`:'Planificación revisada: no había cambios pendientes'};
+    return{functionalResult:created||launched?'updated':'no_change',metrics:{detected,created,launched,deferred,immediateDetected,futureDetected},after:{detected,created,launched,deferred,immediateDetected,futureDetected},message:created||launched?`Planificación recalculada: ${detected} tareas detectadas, ${created} bloques creados y ${launched} procesos lanzados`:'Planificación revisada: no había cambios pendientes'};
   });
   revalidatePath('/actividad');
   return observed.runId;
