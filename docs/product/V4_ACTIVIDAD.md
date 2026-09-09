@@ -342,3 +342,44 @@ Al abrir el grupo, el usuario podrá consultar las actuaciones individuales y el
 - el detalle se cargará bajo demanda y no se enviarán cientos de filas al navegador al cargar la cronología principal.
 
 El objetivo es absorber el volumen de procesos automáticos sin convertir Actividad en una lista interminable, manteniendo siempre disponible la explicación de qué ocurrió y cuál fue el resultado.
+
+## Decisión 16 — Eje temporal completo: histórico, presente y calendario futuro
+
+**Aprobada y ampliada por el usuario.**
+
+Actividad V4 no será sólo un historial de lo ya ocurrido. Debe ofrecer visibilidad funcional sobre **pasado, presente y futuro planificado**.
+
+### Histórico y presente
+
+La cronología se organizará de forma temporal clara, con orden de más reciente a más antigua y agrupación comprensible por `Hoy`, `Ayer` y fechas anteriores. Cada entrada mostrará hora exacta y, cuando aporte valor, inicio, fin y duración de procesos largos.
+
+### Calendario futuro
+
+Actividad incorporará una **vista de calendario/planificación funcional** que permita saber qué trabajo automático está previsto lanzar en los próximos días antes de que ocurra.
+
+El usuario debe poder detectar situaciones como:
+
+- mañana están previstas 1.000 actualizaciones;
+- los cinco días siguientes apenas hay trabajo;
+- varios procesos pesados coinciden en la misma franja;
+- existe capacidad ociosa en días posteriores donde podría repartirse carga.
+
+La vista futura debe mostrar el volumen previsto y el tipo de trabajo en lenguaje funcional, no como una lista de cron jobs, workers o identificadores técnicos.
+
+### Planificación y prevención de picos
+
+PikoFilm deberá poder **analizar la carga futura y sugerir una planificación más equilibrada** cuando detecte picos innecesarios, proponiendo repartir trabajo entre días o franjas para mantener una ejecución más constante y evitar colapsos.
+
+La planificación no debe asumir que todo pico es incorrecto. El usuario podrá decidir deliberadamente concentrar mucha carga en un día. En ese caso, el sistema debe respetar esa decisión y preparar la ejecución dentro de los límites operativos disponibles, dejando claro el volumen previsto y cualquier riesgo o restricción relevante.
+
+### Principios funcionales
+
+- visibilidad antes de ejecutar, no sólo después;
+- estimación de carga futura por día/franja y por tipo funcional de proceso;
+- detección de concentraciones anómalas o descompensadas;
+- sugerencias de redistribución para suavizar carga cuando tenga sentido;
+- posibilidad de mantener un pico deliberado cuando el usuario así lo decida;
+- conexión natural entre calendario futuro, actividad en curso y resultado histórico, de modo que una tarea pueda pasar de `Planificada` a `En curso` y finalmente a su resultado;
+- la planificación debe reutilizar la programación y arquitectura canónicas existentes; no se creará un segundo scheduler sólo para Actividad.
+
+La decisión exacta sobre **hasta qué punto PikoFilm puede aplicar automáticamente una redistribución sugerida** frente a requerir aprobación del usuario se fijará en una decisión funcional posterior antes de implementar ese comportamiento.
