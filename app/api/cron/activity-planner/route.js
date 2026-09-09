@@ -1,0 +1,20 @@
+import {NextResponse} from 'next/server';
+import {runActivityPlanner} from '@/lib/process-planning';
+import {executeObservedProcess} from '@/lib/process-runtime';
+
+export const dynamic='force-dynamic';
+
+function authorized(request){const secret=process.env.CRON_SECRET;if(!secret)return false;return request.headers.get('authorization')===`Bearer ${secret}`;}
+function hourKey(){const d=new Date();return d.toISOString().slice(0,13);}
+
+export async function GET(request){
+  if(!authorized(request))return NextResponse.json({ok:false,error:'unauthorized'},{status:401});
+  try{
+    const observed=await executeObservedProcess({processCode:'PROC-PLAN-002',runKind:'system',triggerSource:'activity_planner',executor:'vercel',entityType:'planning',entityId:'automatic',idempotencyKey:`PROC-PLAN-002:${hourKey()}`,context:{surface:'/actividad',operation:'reconcile_plan_dispatch',automatic:true}},async()=>{
+      const result=await runActivityPlanner();
+      const created=result.demand.reduce((n,x)=>n+Number(x.created||0),0);
+      return{functionalResult:created||result.dispatched.length?'updated':'no_change',metrics:{created_plans:created,dispatched:result.dispatched.length,demand:result.demand},message:created||result.dispatched.length?`Planificación actualizada: ${created} bloques nuevos, ${result.dispatched.length} lanzados`:'Planificación revisada sin cambios'};
+    });
+    return NextResponse.json({ok:true,reused:observed.reused,runId:observed.runId,result:observed.result||null});
+  }catch(error){return NextResponse.json({ok:false,error:String(error?.message||error),runId:error?.runId||null},{status:500});}
+}
