@@ -441,3 +441,41 @@ El horizonte debe ser suficiente para detectar y corregir con antelación:
 La vista no debe materializar miles de futuras ejecuciones si pueden representarse mediante planificación agregada, reglas recurrentes o estimaciones derivadas de la programación canónica existente.
 
 La implementación debe calcular y consultar únicamente la ventana necesaria para la pantalla actual y evitar convertir la previsión futura en una fuente significativa de coste de Neon.
+
+## Decisión 19 — Estimación de carga basada en comportamiento real
+
+**Aprobada.**
+
+La autoplanificación y la detección de picos no se basarán únicamente en el **número de tareas previstas**. PikoFilm deberá estimar la carga relativa de cada tipo de trabajo usando el comportamiento real reciente de sus ejecuciones cuando exista información suficiente.
+
+La estimación podrá considerar, según proceda:
+
+- duración habitual de las ejecuciones;
+- volumen procesado;
+- coste relativo observado entre distintos tipos de proceso;
+- efectos derivados frecuentes que aumenten el trabajo total;
+- variación reciente suficiente para evitar usar una estimación claramente obsoleta.
+
+### Presentación en Actividad
+
+Actividad no mostrará métricas técnicas crudas como CPU, workers, lanes o detalles de infraestructura. Traducirá la estimación a una lectura funcional sencilla, por ejemplo:
+
+- carga baja;
+- carga media;
+- carga alta;
+- volumen previsto y tipos principales de trabajo.
+
+La escala exacta y el algoritmo técnico podrán evolucionar sin cambiar el contrato funcional, siempre que mantengan una interpretación estable y útil para el usuario.
+
+### Uso para planificación
+
+La estimación servirá para:
+
+- detectar que pocas tareas pesadas pueden representar más riesgo que muchas comprobaciones ligeras;
+- distribuir trabajo flexible intentando equilibrar carga real, no sólo conteos;
+- identificar franjas o días con capacidad ociosa relativa;
+- advertir de picos deliberados que previsiblemente exigirán mayor preparación operativa.
+
+Cuando no haya suficiente histórico fiable para estimar un proceso, PikoFilm usará una estimación conservadora o una clasificación inicial definida por el propio proceso, antes que asumir carga mínima.
+
+El cálculo debe reutilizar datos canónicos de ejecución y agregados ligeros cuando sea posible, evitando generar telemetría duplicada sólo para alimentar Actividad. El detalle técnico de capacidad y protección frente a saturación seguirá perteneciendo a **Operaciones V4**.
