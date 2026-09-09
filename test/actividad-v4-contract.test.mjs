@@ -48,6 +48,18 @@ test('planificador automático sólo usa procesos seguros y nunca sincroniza Ple
   assert.match(planner,/replanDelayed/);
 });
 
+test('planificador proyecta demanda futura real sin inventar fechas para procesos event-driven',()=>{
+  const planner=read('lib/process-planning.js');
+  assert.match(planner,/futureBuckets/);
+  assert.match(planner,/forecast_key/);
+  assert.match(planner,/forecast_due_at/);
+  assert.match(planner,/PROC-SER-003.*PROC-SER-004.*PROC-DATA-002.*PROC-PER-001/);
+  assert.match(planner,/next_check_at>now\(\)/);
+  assert.match(planner,/filmography_refreshed_at\+\(d\.refresh_days\|\|' days'\)::interval/);
+  assert.match(planner,/fetched_at\+\(fresh_days\|\|' days'\)::interval/);
+  assert.doesNotMatch(planner,/futureBuckets\(sql,'PROC-MOV-001'\)|futureBuckets\(sql,'PROC-SER-002'\)|futureBuckets\(sql,'PROC-PQ-001'\)/);
+});
+
 test('planificador agrupa vencimientos por proceso y no duplica Batch activos',()=>{
   const planner=read('lib/process-planning.js');
   assert.match(planner,/groups=new Map\(\)/);
@@ -71,6 +83,7 @@ test('Actividad permite forzar recálculo inmediato reutilizando el planificador
   assert.match(page,/Recalcular planificación ahora/);
   assert.match(page,/action=\{recalculatePlanningNow\}/);
   assert.match(actions,/runActivityPlanner/);
+  assert.match(actions,/futureDetected/);
   assert.match(actions,/operation:'recalculate_planning_now'/);
   assert.match(actions,/triggerSource:'activity_manual'/);
   assert.doesNotMatch(actions,/PROC-NOV-009|syncPlexFastCore|scanPlexTechnicalLibrary/);
