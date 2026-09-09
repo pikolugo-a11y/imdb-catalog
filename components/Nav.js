@@ -17,10 +17,25 @@ const desktopItems=[
 
 const mobileItems=desktopItems.slice(0,4);
 const secondaryItems=[['/calidad','Calidad','✓'],['/admin','Operaciones','⚙']];
-const qualityItems=[['/calidad/identidad','Identidad'],['/calidad/validacion-identidad','Validación de identidad'],['/calidad/datos','Datos principales'],['/calidad/peliculas','Películas'],['/calidad/series','Series'],['/calidad/personas','Personas'],['/calidad/pikoquality','PikoQuality'],['/calidad/sin-estado','Recuperación Lifecycle']];
+const qualityPrimaryItems=[
+  ['/calidad/centro','Centro de Calidad'],
+  ['/calidad/peliculas','Películas'],
+  ['/calidad/series','Series'],
+];
+const qualitySectionLabels=[
+  ['/calidad/centro','Centro de Calidad'],
+  ['/calidad/identidad','Centro · Identidad'],
+  ['/calidad/validacion-identidad','Centro · Validación'],
+  ['/calidad/datos','Centro · Datos'],
+  ['/calidad/personas','Centro · Personas'],
+  ['/calidad/pikoquality','Centro · PikoQuality'],
+  ['/calidad/sin-estado','Centro · Integridad Lifecycle'],
+  ['/calidad/peliculas','Películas'],
+  ['/calidad/series','Series'],
+];
 
 function sectionLabel(path){
-  const quality=qualityItems.find(([href])=>path.startsWith(href));
+  const quality=qualitySectionLabels.find(([href])=>path.startsWith(href));
   if(quality)return `Calidad · ${quality[1]}`;
   if(path.startsWith('/sagas'))return 'Catálogo · Sagas';
   if(path.startsWith('/plex'))return 'Novedades';
@@ -35,6 +50,10 @@ export default function Nav(){
   const current=sectionLabel(path);
   const inQuality=path.startsWith('/calidad');
   const moreActive=inQuality||path.startsWith('/admin')||path.startsWith('/sagas');
+  const qualityActive=href=>{
+    if(href==='/calidad/centro')return path.startsWith('/calidad/centro')||['/calidad/identidad','/calidad/validacion-identidad','/calidad/datos','/calidad/personas','/calidad/pikoquality','/calidad/sin-estado'].some(p=>path.startsWith(p));
+    return path.startsWith(href);
+  };
 
   useEffect(()=>setMoreOpen(false),[path]);
 
@@ -48,7 +67,7 @@ export default function Nav(){
         {desktopItems.map(([href,label,icon])=><div key={href} className={href==='/calidad'&&inQuality?'v4-nav-group open':'v4-nav-group'}>
           <Link prefetch={false} href={href} className={active(href)?'active':''} aria-current={active(href)?'page':undefined}><span className="v4-nav-icon">{icon}</span><span>{label}</span></Link>
           {href==='/catalogo'&&<Link prefetch={false} href="/sagas" className={path.startsWith('/sagas')?'v4-catalog-subitem active':'v4-catalog-subitem'} aria-current={path.startsWith('/sagas')?'page':undefined}>Sagas</Link>}
-          {href==='/calidad'&&inQuality&&<div className="v4-quality-subnav">{qualityItems.map(([h,l])=><Link prefetch={false} key={h} href={h} className={path.startsWith(h)?'active':''} aria-current={path.startsWith(h)?'page':undefined}>{l}</Link>)}</div>}
+          {href==='/calidad'&&inQuality&&<div className="v4-quality-subnav">{qualityPrimaryItems.map(([h,l])=><Link prefetch={false} key={h} href={h} className={qualityActive(h)?'active':''} aria-current={qualityActive(h)?'page':undefined}>{l}</Link>)}</div>}
         </div>)}
       </nav>
     </aside>
