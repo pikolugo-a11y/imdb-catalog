@@ -138,3 +138,22 @@ Además, la UX podrá ofrecer filtro por fecha y búsqueda textual cuando aporte
 La cronología única debe preservar la visión global de **qué está haciendo PikoFilm**, mientras que los filtros sirven únicamente para reducir el conjunto visible. Filtrar no crea fuentes de actividad paralelas ni duplica registros.
 
 La selección exacta de controles, disposición, densidad visual y comportamiento responsive pertenece al diseño UX/UI de implementación, responsabilidad de ChatGPT, respetando este contrato funcional.
+
+## Decisión 7 — Origen comprensible de cada actividad
+
+**Aprobada.**
+
+Cada entrada de Actividad V4 indicará de forma visible pero discreta **qué originó la acción**, usando lenguaje comprensible para el usuario y sin exponer nombres técnicos de workers, servicios, colas o procesos internos.
+
+El origen debe permitir distinguir, como mínimo, entre acciones iniciadas por el usuario y trabajo iniciado automáticamente por PikoFilm. Cuando aporte contexto funcional real, también podrá expresarse el sistema externo o mecanismo reconocible que originó el hecho, por ejemplo Plex.
+
+Ejemplos de intención de lenguaje:
+
+- `Datos actualizados de Heat` — **Automático**.
+- `Título excluido` — **Tú**.
+- `Sincronización Plex completada` — **Plex**.
+- `Revisión de calidad completada` — **Automático**.
+
+La taxonomía final de etiquetas de origen debe ser pequeña, estable y orientada al usuario. No debe trasladar a Actividad términos como nombres de workers Railway, lanes, leases, jobs, identificadores internos o códigos PROC.
+
+El origen es contexto de presentación y trazabilidad funcional; no sustituye a la información principal obligatoria de cada entrada: **qué hizo PikoFilm y cuál fue el resultado**.
