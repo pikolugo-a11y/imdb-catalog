@@ -5,15 +5,19 @@ import fs from 'node:fs';
 const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
 test('scheduler de Calidad mantiene dominios vencidos sin hacer polling Plex',()=>{
-  const cron=read('app/api/cron/dashboard-snapshot/route.js');
-  assert.match(cron,/startMov001Batch\(\{limit:100,triggerSource:'quality_scheduler'\}\)/);
-  assert.match(cron,/startSeriesBatch\('PROC-SER-002',\{limit:50,triggerSource:'quality_scheduler'\}\)/);
-  assert.match(cron,/startSeriesBatch\('PROC-SER-003',\{limit:50,triggerSource:'quality_scheduler'\}\)/);
-  assert.match(cron,/startSeriesBatch\('PROC-SER-004',\{limit:50,triggerSource:'quality_scheduler'\}\)/);
-  assert.match(cron,/startData002Batch\(\{limit:200,concurrency:2,triggerSource:'quality_scheduler'\}\)/);
-  assert.match(cron,/startPeopleBatch\(\{limit:25,concurrency:2,triggerSource:'quality_scheduler'\}\)/);
-  assert.match(cron,/processC6Batch\(200\)/);
-  assert.doesNotMatch(cron,/syncPlexFastCore|syncPlexFast\(|scanPlexTechnicalLibrary|triggerTechnicalSnapshot/);
+  const planner=read('lib/process-planning.js');
+  const cron=read('app/api/cron/activity-planner/route.js');
+  const snapshot=read('app/api/cron/dashboard-snapshot/route.js');
+  assert.match(planner,/startMov001Batch\(\{limit:n,triggerSource:'quality_scheduler'\}\)/);
+  assert.match(planner,/startSeriesBatch\('PROC-SER-002',\{limit:n,triggerSource:'quality_scheduler'\}\)/);
+  assert.match(planner,/startSeriesBatch\('PROC-SER-003',\{limit:n,triggerSource:'quality_scheduler'\}\)/);
+  assert.match(planner,/startSeriesBatch\('PROC-SER-004',\{limit:n,triggerSource:'quality_scheduler'\}\)/);
+  assert.match(planner,/startData002Batch\(\{limit:n,concurrency:2,triggerSource:'quality_scheduler'\}\)/);
+  assert.match(planner,/startPeopleBatch\(\{limit:n,concurrency:2,triggerSource:'quality_scheduler'\}\)/);
+  assert.match(planner,/processC6Batch\(n\)/);
+  assert.match(cron,/runActivityPlanner/);
+  assert.doesNotMatch(planner,/syncPlexFastCore|syncPlexFast\(|scanPlexTechnicalLibrary|triggerTechnicalSnapshot/);
+  assert.doesNotMatch(snapshot,/startMov001Batch|startSeriesBatch|startData002Batch|startPeopleBatch|processC6Batch/);
 });
 
 test('el sync Plex global manual encadena validación física, Series y captura técnica',()=>{
