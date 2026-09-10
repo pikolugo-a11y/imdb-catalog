@@ -6,6 +6,7 @@ import {refreshSeriesUnitary,refreshSeriesUnitaryCore} from '@/lib/series-unitar
 import {confirmSeriesEsAvailability} from '@/lib/series-es-availability';
 import {syncPlexSeriesFast,syncPlexSeriesDetail} from '@/lib/series-plex-sync-safe';
 import {startSeriesBatch} from '@/lib/series-batch';
+import {rebuildSeriesDiagnostics} from '@/lib/series-diagnostics-core.mjs';
 import {rebuildSeriesQualityReadModel} from '@/lib/series-quality-query';
 import {executeObservedProcess} from '@/lib/process-runtime';
 const revalidate=(ratingKey,imdbId)=>{revalidatePath('/calidad');revalidatePath('/calidad/series');if(ratingKey)revalidatePath(`/calidad/series/${ratingKey}`);if(imdbId)revalidatePath(`/catalogo/${imdbId}`)};
@@ -46,6 +47,31 @@ export async function reviewSeriesExtraAction(formData){
     }
     await recomputeLifecycleForIds([s.imdb_id]);await rebuildSeriesQualityReadModel(sql);
     return{technicalStatus:'succeeded',functionalResult:decision==='reopen'?'reopened':'accepted',before:before?{decision:before.decision}:null,after:{decision:decision==='reopen'?null:decision,evidence_bound:decision!=='reopen'},metrics:{decisions:1},message:decision==='reopen'?'Anomalía reabierta':'Decisión manual guardada',imdbId:s.imdb_id};
+  });
+  revalidate(ratingKey,observed.result?.imdbId);return observed.result;
+}
+export async function reviewSeriesDoubleEpisodeAction(formData){
+  const ratingKey=String(formData.get('ratingKey')||'').trim(),season=Number(formData.get('season')),episode=Number(formData.get('episode')),mode=String(formData.get('mode')||'mark').trim(),sourceEpisode=Number(formData.get('sourceEpisode')||episode-1);
+  if(!ratingKey||!Number.isInteger(season)||!Number.isInteger(episode)||season<1||episode<1)throw new Error('Episodio inválido');if(!['mark','reopen'].includes(mode))throw new Error('Acción inválida');if(mode==='mark'&&(!Number.isInteger(sourceEpisode)||sourceEpisode<1||sourceEpisode===episode))throw new Error('Capítulo origen inválido');
+  const sql=db(),entityId=`${ratingKey}:S${season}E${episode}`,requestKey=`PROC-SER-005:${entityId}:double:${mode}:${Math.floor(Date.now()/3000)}`;
+  const observed=await executeObservedProcess({processCode:'PROC-SER-005',runKind:'individual',triggerSource:'calidad_series_manual',executor:'vercel',entityType:'episode',entityId,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:`/calidad/series/${ratingKey}`,operation:'review_series_double_episode',rating_key:ratingKey,season,episode,source_episode:sourceEpisode,mode}},async trace=>{
+    const[s]=await sql`SELECT imdb_id FROM series_reference WHERE show_rating_key=${ratingKey} LIMIT 1`;if(!s?.imdb_id)throw Object.assign(new Error('Serie no encontrada'),{processStep:'load_series'});
+    const[target]=await sql`SELECT status FROM series_diagnostics WHERE show_rating_key=${ratingKey} AND season_number=${season} AND episode_number=${episode} LIMIT 1`;if(!target)throw Object.assign(new Error('Episodio oficial no encontrado'),{processStep:'load_target'});
+    const[before]=await sql`SELECT decision,note,updated_at FROM series_episode_overrides WHERE show_rating_key=${ratingKey} AND season_number=${season} AND episode_number=${episode} LIMIT 1`;
+    if(mode==='reopen'){
+      if(before?.decision!=='manual_present')throw Object.assign(new Error('No existe una decisión de capítulo doble que deshacer'),{processStep:'load_override'});
+      await trace.event({eventType:'manual_decision',step:'reopen_double_episode',entityType:'episode',entityId,message:'Deshacer capítulo doble manual',data:{season,episode}});
+      await sql`DELETE FROM series_episode_overrides WHERE show_rating_key=${ratingKey} AND season_number=${season} AND episode_number=${episode} AND decision='manual_present'`;
+    }else{
+      if(target.status!=='missing')throw Object.assign(new Error('Este episodio ya no figura como faltante. Actualiza la serie y revisa de nuevo.'),{processStep:'load_target'});
+      const[p]=await sql`SELECT rating_key,plex_title,fingerprint,plex_updated_at,parent_index season_number,item_index episode_number FROM plex_items WHERE active AND item_type='episode' AND grandparent_rating_key=${ratingKey} AND parent_index=${season} AND item_index=${sourceEpisode} ORDER BY rating_key LIMIT 1`;
+      if(!p)throw Object.assign(new Error(`No existe en Plex S${season}E${sourceEpisode} para usarlo como capítulo doble`),{processStep:'load_source'});
+      const evidence=JSON.stringify({manual_double:1,plex_rating_key:String(p.rating_key),plex_fingerprint:String(p.fingerprint||''),plex_title:p.plex_title||null,plex_updated_at:p.plex_updated_at||null,source_season:season,source_episode:sourceEpisode,target_season:season,target_episode:episode});
+      await trace.event({eventType:'manual_decision',step:'mark_double_episode',entityType:'episode',entityId,message:`Marcar capítulo doble: S${season}E${sourceEpisode} cubre S${season}E${episode}`,data:{season,episode,source_episode:sourceEpisode,plex_rating_key:String(p.rating_key)}});
+      await sql`INSERT INTO series_episode_overrides(show_rating_key,season_number,episode_number,decision,note,created_at,updated_at) VALUES(${ratingKey},${season},${episode},'manual_present',${evidence},now(),now()) ON CONFLICT(show_rating_key,season_number,episode_number) DO UPDATE SET decision='manual_present',note=EXCLUDED.note,updated_at=now()`;
+    }
+    await rebuildSeriesDiagnostics(sql,ratingKey);await recomputeLifecycleForIds([s.imdb_id]);await rebuildSeriesQualityReadModel(sql);
+    return{technicalStatus:'succeeded',functionalResult:mode==='reopen'?'reopened':'accepted',before:before?{decision:before.decision}:null,after:{decision:mode==='reopen'?null:'manual_present',source_episode:mode==='reopen'?null:sourceEpisode},metrics:{decisions:1},message:mode==='reopen'?'Capítulo doble deshecho':`S${season}E${episode} marcado como incluido en S${season}E${sourceEpisode}`,imdbId:s.imdb_id};
   });
   revalidate(ratingKey,observed.result?.imdbId);return observed.result;
 }
