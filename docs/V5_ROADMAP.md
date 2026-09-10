@@ -644,3 +644,29 @@ PikoFilm utiliza posters, carátulas y otras imágenes en distintas superficies.
 PikoFilm conservará la misma calidad visual de posters y carátulas, pero descargará únicamente la resolución necesaria para cada contexto. Las páginas con muchas imágenes deberán transferir menos datos y realizar menos trabajo sin empeorar su aspecto.
 
 **Decisión del usuario:** aprobada con prioridad P2.
+
+### Mejora 22 · V5-C022 — Caché corta de búsquedas repetidas en sesión
+
+**Estado:** RECHAZADA  
+**Prioridad definitiva:** No entra en V5.  
+**Categoría:** Búsqueda · Rendimiento · UX
+
+**Propuesta evaluada**
+
+Mantener en el navegador una caché corta de resultados de búsqueda durante la sesión para evitar repetir una consulta idéntica al servidor cuando el usuario busca exactamente el mismo término pocos segundos después.
+
+**Motivo de rechazo del usuario**
+
+El usuario no quiere añadir este comportamiento. Prefiere que cada búsqueda se resuelva normalmente contra la fuente actual, sin una capa adicional de caché en sesión.
+
+**Consecuencia para V5**
+
+- No se añadirá caché de resultados de búsqueda en memoria/session storage como optimización general.
+- Las mejoras de velocidad de búsqueda deberán centrarse en optimizar la consulta real, el acceso a datos y la relevancia, no en reutilizar resultados previos del navegador.
+- Este rechazo no impide usar mecanismos internos de caché del framework o base de datos cuando sean transparentes, seguros y formen parte de otra mejora aprobada.
+
+**Resultado esperado para el usuario**
+
+La búsqueda seguirá consultando el estado actual en cada petición relevante, evitando comportamiento adicional de reutilización de resultados en sesión.
+
+**Decisión del usuario:** rechazada.
