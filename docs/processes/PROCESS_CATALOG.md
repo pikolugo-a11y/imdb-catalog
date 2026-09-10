@@ -1,18 +1,26 @@
 # PikoFilm — Catálogo canónico de procesos
 
-Estado: **documentación canónica viva**. El código vivo manda cuando exista discrepancia. Este catálogo describe los entrypoints que realmente consume la UI, los executors y la frontera canónica; los módulos históricos no se consideran vigentes sólo por seguir presentes en el repositorio.
+Estado: **anexo canónico vivo de procesos V4**. Complementa `docs/V4_FUNCTIONAL_SPEC.md` y `docs/V4_ARCHITECTURE.md`. El código vivo manda ante discrepancias.
 
 ## Regla de arquitectura
 
 Todo proceso funcional debe tener una única operación canónica reutilizable.
 
-`individual -> observabilidad -> operación canónica X`
-
-`Batch -> selección/cola -> child process_run -> operación canónica X`
+```text
+individual -> observabilidad -> operación canónica X
+Batch -> selección/cola -> child process_run -> operación canónica X
+```
 
 Batch puede añadir selección, concurrencia, leases, pausa/reanudación/cancelación, rate limiting y agregación de métricas, pero **no puede mantener una segunda receta funcional**.
 
-Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards/postprocesado distintos; **SIN BATCH** = proceso unitario/global sin Batch; **NO APLICA** = decisión humana que no debe masificarse; **MODELO ESPECIAL** = proceso global/persistente gobernado fuera del Batch Engine común; **RETIRADO** = proceso eliminado del sistema vivo.
+Estados de paridad:
+
+- **EXACTA**: individual y Batch ejecutan el mismo core y la misma semántica funcional;
+- **PARCIAL**: mismo core con guards/postprocesado deliberadamente distintos;
+- **SIN BATCH**: proceso unitario/global sin Batch común;
+- **NO APLICA**: decisión humana que no debe masificarse;
+- **MODELO ESPECIAL**: ejecución persistente especializada fuera del Batch Engine común;
+- **RETIRADO**: proceso fuera del sistema vivo.
 
 ## Inventario maestro
 
@@ -43,7 +51,7 @@ Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards
 | PROC-NOV-002 | Novedades | Alta manual IMDb | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-003 | Novedades | Reintento candidato manual | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-004 | Novedades | Restaurar exclusión + alta manual | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
-| PROC-NOV-005 | Novedades | Excluir candidato | manual | no | `app/novedades/exclude-actions.js` + `process_runs` | Vercel | NO APLICA |
+| PROC-NOV-005 | Novedades | Excluir candidato | manual | no | `app/novedades/exclude-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-006 | Novedades | Retirar origen manual | manual | no | `manual-remove-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-007 | Novedades | Admitir candidato al catálogo | manual | no | `catalog-admission-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-008 | Novedades/Plex | Sembrar candidatos Plex | global encadenado | no | `seedPlexNewsCandidates` | Vercel | SIN BATCH |
@@ -51,109 +59,141 @@ Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards
 | PROC-NOV-010 | Novedades/Plex | Guardar IMDb manual de Plex | manual | no | `plex-identity-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-011 | Sagas/Novedades | Enviar miembro de Saga a Novedades | manual | no | `saga-news-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-016 | Excluidas | Restaurar exclusión | manual | no | `app/catalogo/excluidas/actions.js` | Vercel | NO APLICA |
-| PROC-SAGA-001 | Sagas | Refrescar colecciones/miembros TMDb | global manual | no | `refreshSagas` (`lib/sagas-v2.js`) | Vercel | SIN BATCH |
+| PROC-SAGA-001 | Sagas | Refrescar colección TMDb / refresco global completo | individual + global | sí | `refreshSagaCollectionCanonical` + `lib/saga-batch.js` | Vercel / Railway API | EXACTA por colección |
 | PROC-PER-001 | Personas | Refrescar perfil y filmografía | individual | sí | `refreshPersonFilmographyCanonical` | Vercel / Railway API | EXACTA |
 | PROC-PQ-001 | PikoQuality | Calcular C6 | global por chunks | frontend batch | `processC6Batch` + `scorePikoQualityC6` | Vercel | MODELO ESPECIAL canónico |
 | PROC-PQ-002 | PikoQuality | Captura técnica Plex | global persistente | control especializado | Technical Snapshot worker | Vercel / Railway Technical | MODELO ESPECIAL |
-| PROC-HOME-001 | Home | Snapshot histórico diario del Dashboard | global automático pasivo | no | `/api/cron/dashboard-snapshot` → `captureDashboardSnapshot` | Vercel Cron | SIN BATCH / excepción automática |
+| PROC-HOME-001 | Home | Snapshot histórico diario del Dashboard | global automático pasivo | no | `/api/cron/dashboard-snapshot` → `captureDashboardSnapshot` | Vercel Cron | SIN BATCH |
 | PROC-PLAN-001 | Actividad | Cambiar planificación futura | manual | no | `app/actividad/actions.js` → `process_plans` | Vercel | NO APLICA |
 | PROC-PLAN-002 | Actividad | Reconciliar, equilibrar y despachar planificación segura | global automático | orquesta Batch existentes | `runActivityPlanner` | Vercel Cron | MODELO ESPECIAL |
 | PROC-OPS-001 | Operaciones | Reiniciar título desde Novedades | manual destructivo funcional | no | `resetTitleToNews` | Vercel | NO APLICA |
 | PROC-OPS-002 | Operaciones | Resolver o descartar incidencia operativa | manual | no | `resolveIncidentAction` | Vercel | NO APLICA |
 
-`restartMissingLifecycleAction` (`/calidad/sin-estado`) es una operación de reparación administrativa sin código PROC propio: únicamente recrea Lifecycle cuando falta. Debe permanecer excepcional y no masificarse por defecto.
+`restartMissingLifecycleAction` (`/calidad/sin-estado`) es una reparación administrativa excepcional sin PROC propio: recrea Lifecycle cuando falta. No es una cola de mantenimiento ordinaria ni debe masificarse.
 
 ## Qué significa Batch en PikoFilm
 
-Un proceso es Batch común sólo cuando existe una operación individual canónica que puede repetirse sobre una selección de entidades sin cambiar su semántica. El Batch Engine común persiste el padre en `process_runs`, gobierna la ejecución en `batch_run_control`, materializa unidades en `batch_run_items` y crea un child `process_run` por intento. Los pools vigentes son `api`, `fast` y `plex`; el worker Technical y PQ-001 son modelos especializados y no deben forzarse artificialmente dentro del Batch Engine.
+Un proceso usa Batch común cuando una operación individual canónica puede repetirse sobre una selección de entidades sin cambiar su semántica. El Batch Engine persiste el padre en `process_runs`, gobierna la ejecución en `batch_run_control`, materializa unidades en `batch_run_items` y crea un child `process_run` por intento.
 
-La UI puede iniciar Batch explícitamente y, desde Actividad V4, `PROC-PLAN-002` puede iniciar **únicamente los Batch rutinarios declarados seguros** para mantenimiento automático, siempre llamando a sus starters canónicos y respetando ventanas, prioridades y protecciones. La lista inicial es MOV-001, SER-002 como continuación de invalidaciones ya detectadas, SER-003, SER-004, DATA-002, PER-001 y PQ-001. **PROC-NOV-009 y el sync Plex global permanecen manuales y nunca forman parte del planificador automático.** La selección, concurrencia, leases, reintentos y API governance siguen siendo infraestructura de ejecución, no procesos funcionales nuevos.
+Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
+
+`PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y el sync Plex global permanecen manuales y nunca forman parte del planificador automático.**
 
 ## Procesos con Batch común
 
 ### ID-001
-Trigger individual `/calidad/identidad` -> `obtainIdentityAction` -> `resolveIdentityUnitary` -> `executeId001Canonical`. Batch selecciona `IDENTITY_PENDING`, crea `batch_run_control`/`batch_run_items` y Railway API llama al mismo core. Fuente externa: TMDb. Escritura principal: identidad en `movies`; después Lifecycle. Concurrencia máxima 3 y API gate TMDb. **Paridad EXACTA**.
+
+Individual `/calidad/identidad` -> `obtainIdentityAction` -> `resolveIdentityUnitary` -> `executeId001Canonical`. Batch selecciona `IDENTITY_PENDING`, crea control/items y Railway API llama al mismo core. Fuente TMDb gobernada. **EXACTA**.
 
 ### IV-001 / IV-002
-Individual y Batch comparten respectivamente `refreshIdentityEvidenceCanonical` y `validateIdentityCanonical`. La diferencia es de selección/guard: el individual puede trabajar también sobre `IDENTITY_REVIEW_REQUIRED`, mientras Batch excluye revisión humana y sólo toma `IDENTITY_VALIDATION`. **PARCIAL intencionalmente conservadora**: Batch no automatiza decisiones humanas.
+
+Individual y Batch comparten `refreshIdentityEvidenceCanonical` y `validateIdentityCanonical`. El Batch excluye revisión humana y aplica guards más conservadores. **PARCIAL intencionalmente conservadora**.
 
 ### DATA-001
-Individual `updateDataAction` -> `updateDataQualityTitle` -> `executeData001Canonical(lane=manual)`. Batch -> Railway API -> `executeData001Canonical(lane=batch)`. Fuentes gobernadas por API gate. Concurrencia 2. **EXACTA**.
+
+Individual `updateDataAction` -> `updateDataQualityTitle` -> `executeData001Canonical(lane='manual')`. Batch -> Railway API -> mismo core con lane Batch. Fuentes gobernadas. **EXACTA**.
 
 ### DATA-002
-Individual `refreshRatingsAction` -> `refreshRatingsForTitle` -> `refreshRatingsCanonical`; Batch -> mismo core. El wrapper individual añade auditoría histórica, pero la operación funcional es la misma. Concurrencia 2. **EXACTA funcional**.
+
+Individual `refreshRatingsAction` -> `refreshRatingsForTitle` -> `refreshRatingsCanonical`; Batch -> mismo core. El wrapper individual puede añadir auditoría auxiliar, no receta distinta. **EXACTA funcional**.
 
 ### DATA-003
-El entrypoint vivo de `/calidad/datos` usa `calculatePikoScoreV3Action` y ejecuta `executeData003Canonical`; Railway FAST usa el mismo core. **EXACTA**. Una exportación histórica todavía presente no se considera una segunda vía viva y queda para limpieza documental/código tras barrido de consumidores.
+
+`/calidad/datos` y Railway FAST ejecutan `executeData003Canonical`. **EXACTA**.
 
 ### MOV-001
+
 Individual y Railway FAST usan `executeMov001Canonical`. **EXACTA**.
 
 ### SER-002
-Individual y Railway Plex usan `syncPlexSeriesDetailCore`. **EXACTA**. El planificador automático sólo puede continuar invalidaciones que ya existen; no inicia un escaneo Plex global.
+
+Individual y Railway Plex usan `syncPlexSeriesDetailCore`. **EXACTA**. El planner sólo continúa invalidaciones existentes; no inicia un sync Plex global.
 
 ### SER-003 / SER-004
-Comparten core funcional con Batch. El adapter Railway reconstruye explícitamente el read model de Series después de cada item y el individual lo reconstruye a través de su wrapper. `test/series-read-model-parity-contract.test.mjs` fija esa equivalencia. **PARCIAL controlada** por postprocesado, no por receta principal.
+
+Comparten core con Batch. Railway y wrapper individual reconstruyen el read model al terminar. La diferencia es de guard/postprocesado controlado, no de receta. **PARCIAL controlada**.
+
+### SAGA-001
+
+La unidad canónica es **una colección**:
+
+- refresco exacto desde ficha -> `lib/saga-unitary.js` -> `refreshSagaCollectionCanonical(sql,id,{lane:'manual',apiGate:createApiGate(sql)})`;
+- refresco global -> `lib/saga-batch.js` selecciona el universo completo de colecciones, crea un Batch en pool `api` y Railway ejecuta `refreshSagaCollectionCanonical` por item;
+- cada item tiene child `process_run`, API governance y transacción atómica por colección;
+- el Batch global no tiene el antiguo límite funcional de 120 colecciones;
+- pausa, reanudación y cancelación usan los controles comunes de Batch;
+- `lib/sagas-v2.js::refreshSagas()` queda como camino interno/acotado o de compatibilidad; **no es el entrypoint global de la UI**.
+
+La receta por colección es la misma en individual y Batch. **EXACTA por colección**.
 
 ### PER-001
-`refreshPersonFilmographyCanonical(sql,id,{trace,apiGate,lane})` es la única receta funcional. El individual crea su `process_run` y llama al core; Railway API ejecuta el mismo core dentro del child `process_run` ya creado por Batch. No existe una segunda frontera observacional anidada. **EXACTA**.
+
+`refreshPersonFilmographyCanonical(sql,id,{trace,apiGate,lane})` es la única receta funcional. Individual crea su run y llama al core; Railway API ejecuta el mismo core dentro del child Batch. **EXACTA**.
 
 ## Procesos globales y especializados
 
 ### NOV-001
-Vercel crea la solicitud observada y hace dispatch de `.github/workflows/imdb-discovery.yml`; GitHub Actions ejecuta Discovery con el `run_id` canónico. Es una excepción explícita, manual y no persistente al modelo Railway.
+
+Vercel crea la solicitud observada y despacha `.github/workflows/imdb-discovery.yml`; GitHub Actions ejecuta Discovery con el `run_id` canónico. Es una excepción explícita, manual y no persistente al modelo Railway.
 
 ### NOV-009 -> NOV-008
-La actualización Plex global y la siembra posterior de candidatos son dos procesos observados separados y correlacionados. Es composición global, no Batch de operaciones unitarias. El inicio de NOV-009 sigue siendo manual.
 
-### SAGA-001
-`refreshSagas()` es el refresco canónico observado de colecciones TMDb. Tiene límite 120, concurrencia 6, escribe `saga_collections` y `saga_collection_members`, resuelve IMDb por TMDb y registra errores por colección/fuente. No usa Batch común porque su unidad de trabajo es un refresco global acotado.
+La actualización Plex global y la siembra posterior de candidatos son procesos observados y correlacionados. El inicio de NOV-009 sigue siendo manual. No es un polling ni un Batch por título.
 
 ### PQ-001
-La UI crea **un único `process_runs` canónico** para la ejecución C6 y procesa bloques acotados con `processC6Batch`. Cada chunk actualiza `items_processed`, `items_succeeded`, `items_pending`, heartbeat y métricas del mismo run. `pipeline_runs` deja de ser escrito por PQ-001; su eventual retirada física de Neon es una decisión separada y sólo podrá hacerse tras verificar que no queden otros consumidores. El cálculo, fingerprint y agregados de C6 no cambian. **MODELO ESPECIAL canónico**.
+
+La UI crea un único `process_runs` canónico y procesa chunks con `processC6Batch`. Los chunks actualizan progreso/heartbeat del mismo run. No se fuerza artificialmente al Batch Engine común.
 
 ### PQ-002
-Vercel solicita/controla captura técnica y Railway mantiene el worker persistente. Pausa/reanudación/cancelación usan su control especializado, no `batch_engine_control`.
+
+Vercel solicita/controla captura técnica y Railway Technical mantiene el worker persistente. Pausa/reanudación/cancelación usan su control especializado.
 
 ### HOME-001
-`vercel.json` programa `/api/cron/dashboard-snapshot` a las `02:15 UTC` diariamente. Es una **excepción automática pasiva** dedicada a capturar agregados históricos del Dashboard y almacenamiento. El mantenimiento rutinario de Calidad ya no se concentra en este cron; se gobierna desde `PROC-PLAN-002`.
+
+`/api/cron/dashboard-snapshot` captura agregados históricos del Dashboard/almacenamiento con cron diario. Es una excepción automática pasiva; no concentra mantenimiento funcional.
 
 ### PLAN-001 / PLAN-002
-`process_plans` persiste únicamente intención futura, excepciones, prioridad, ventana segura y vínculo a la ejecución real; no sustituye a `process_runs` ni crea un log de Actividad. PLAN-001 observa cambios manuales con before/after compacto. PLAN-002 corre cada hora, reconcilia demanda conocida, estima carga con ejecuciones recientes, distribuye trabajo flexible, replanifica retrasos seguros y despacha mediante starters Batch existentes. Las ejecuciones resultantes siguen observándose bajo su PROC funcional original.
 
-## Decisiones manuales
+`process_plans` persiste intención futura, prioridad, excepciones, ventana segura y vínculo a ejecución real. PLAN-001 observa cambios manuales. PLAN-002 corre con el cron de Actividad, reconcilia demanda, estima carga, distribuye trabajo flexible, replanifica retrasos seguros y despacha starters autorizados. Las ejecuciones resultantes conservan su PROC funcional original.
+
+### OPS-001 / OPS-002
+
+- `PROC-OPS-001`: reset contextual de un título a Novedades; destructivo a nivel funcional, confirmado y observado.
+- `PROC-OPS-002`: resolución/descarte de incidencia operativa; cambia su estado de atención sin borrar el error histórico.
+
+## Decisiones manuales que Batch no debe absorber
 
 ID-002, IV-003/004/005, DATA-005, MOV-002/003, SER-005/006, NOV-002/003/004/005/006/007/010/011/016, PLAN-001 y OPS-001/002 son decisiones/correcciones humanas. No deben recibir Batch automáticamente.
 
-NOV-005 ya entra por una acción observada propia (`exclude-actions.js`), persiste la exclusión global y registra la decisión en `process_runs`/eventos. No se considera candidato a Batch.
-
 ## Modelos de estado y observabilidad
 
-- `process_runs` + `process_run_events` + `process_run_errors`: **fuente canónica de observabilidad de ejecución** y del histórico/presente de Actividad V4.
-- `process_plans`: **intención funcional futura mínima** para calendario/autoplanificación. No es un log ni duplica resultados de ejecución.
-- `batch_run_control` + `batch_run_items` + `batch_engine_control`: **estado operativo canónico del Batch Engine**; no sustituyen a `process_runs`.
-- `pipeline_runs`: **compatibilidad histórica**. PQ-001 ya no lo escribe. No eliminar físicamente sin un gate específico de consumidores.
-- `series_quality_runs`: **compatibilidad temporal de Series**; el flujo manual vigente todavía lo utiliza y la UI mantiene lectura de último estado. No retirar durante P5.
-- `piko_quality` y `piko_quality_aggregates`: estado/read model funcional de PikoQuality, no logs de ejecución.
-- `person_refresh_state` y `person_filmography`: estado/read model funcional de Personas, no observabilidad alternativa.
+- `process_runs` + `process_run_events` + `process_run_errors`: observabilidad canónica de ejecución e histórico/presente para Actividad/Operaciones.
+- `process_plans`: intención funcional futura; no es log.
+- `batch_run_control` + `batch_run_items` + `batch_engine_control`: estado operativo del Batch Engine; no sustituyen `process_runs`.
+- `batch_api_source_limits` y uso asociado: gobernanza de fuentes; no son estado funcional de dominio.
+- `pipeline_runs`: compatibilidad histórica; PQ-001 ya no lo escribe. No eliminar sin consumer sweep.
+- `series_quality_runs`: compatibilidad temporal con consumidores vivos. No eliminar sin consumer sweep.
+- `piko_quality` y `piko_quality_aggregates`: estado/read model funcional de PikoQuality.
+- `person_refresh_state` y `person_filmography`: estado/read model funcional de Personas.
 
-## P5 — cierre de hallazgos
+## Gobierno de fuentes
 
-- **P5-H01 — PER-001: CERRADO.** Core canónico compartido y una sola frontera `process_run` por ejecución individual/child Batch.
-- **P5-H02 — NOV-005: CERRADO.** Exclusión viva observada bajo `PROC-NOV-005` y nombre humano en Operaciones.
-- **P5-H03 — Series: CERRADO.** Contrato explícito fija la reconstrucción del read model para SER-003/004 en individual y Batch.
-- **P5-H04 — PikoQuality: CERRADO EN CÓDIGO.** PQ-001 converge en `process_runs`; `pipeline_runs` deja de recibir sus chunks. La eliminación física de la tabla queda fuera de este cierre hasta auditoría de consumidores.
-- **P5-H05 — código histórico: NO BLOQUEANTE PARA EL CATÁLOGO.** Las exportaciones/módulos históricos que no son entrypoint vivo no definen procesos; su eliminación física requiere barrido de consumidores y pertenece a limpieza posterior, no a redefinir el catálogo.
-- **P5-H06 — documentación histórica: CERRADO EN P6.** La documentación histórica conflictiva quedó retirada o marcada como histórica y `docs/README.md` define la jerarquía canónica.
+TMDb, OMDb y MDBList son fuentes gobernadas. Los procesos canónicos que las consumen deben recibir el gate común y fallar cerrado antes del fetch si falta. Manual y Batch comparten configuración persistida; cada llamada obtiene su permiso real.
 
-## Corrección P7
+## Reglas para una nueva implementación
 
-La limpieza de issues detectó un proceso automático real omitido por P5: `PROC-HOME-001`. La evidencia viva es el cron declarado en `vercel.json`. Se incorpora aquí antes de cerrar el inventario de issues. La omisión documental no altera la arquitectura Batch ni autoriza nuevos procesos automáticos fuera de los expresamente inventariados. Actividad V4 añade `PROC-PLAN-002` como segunda excepción automática explícita y limitada a la lista segura documentada arriba.
+Antes de añadir o modificar un proceso:
 
-## Gate P5
+1. definir o identificar PROC;
+2. identificar operación canónica;
+3. trigger y executor;
+4. fuentes y gobernanza;
+5. lecturas/escrituras;
+6. transición o efecto Lifecycle;
+7. observabilidad y resultado funcional;
+8. error/retry/idempotencia;
+9. si existe Batch, demostrar mismo core;
+10. actualizar contratos de CI;
+11. actualizar este catálogo y la tríada V4 afectada en el mismo cambio.
 
-P5 queda funcionalmente cerrado: los contratos de CI de observabilidad/paridad pasan y los cambios de convergencia fueron integrados. Esta fase no autoriza por sí sola eliminar `pipeline_runs`, `series_quality_runs`, servicios Railway ni otros modelos de compatibilidad.
-
-## Regla para nuevas implementaciones
-
-Antes de añadir o modificar un proceso: definir PROC, operación canónica, trigger, executor, fuentes, lecturas/escrituras, transición Lifecycle, observabilidad, error/retry/idempotencia y, si existe Batch, demostrar que llama al mismo core. Cualquier excepción debe quedar registrada aquí antes de considerarse vigente.
+La historia de auditorías PRE-V4/P5/P7 permanece en Git. Este documento describe únicamente el sistema vigente.
