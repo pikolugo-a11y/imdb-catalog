@@ -533,3 +533,28 @@ La vista actual de Catálogo mantiene representaciones separadas de los mismos r
 Catálogo seguirá adaptándose correctamente a ordenador y móvil, pero PikoFilm dejará de hacer trabajo duplicado sólo para mantener dos versiones completas de los mismos resultados. La optimización deberá producir una reducción real de HTML/DOM o coste de renderizado sin empeorar la experiencia de ninguno de los dos formatos.
 
 **Decisión del usuario:** aprobada con prioridad P2 e integrada en el bloque de rendimiento/UX.
+
+### Mejora 18 · V5-C018 — Corregir semántica de paginación deshabilitada
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P3.  
+**Categoría:** UX · Accesibilidad · Catálogo
+
+**Problema detectado**
+
+En estados límite de la paginación de Catálogo, controles como “Anterior” o “Siguiente” pueden mantener semántica o comportamiento de enlace aunque visualmente aparezcan deshabilitados. Esto genera una pequeña incoherencia de interacción y accesibilidad.
+
+**Alcance aprobado**
+
+1. Hacer que los controles de paginación sin destino válido sean realmente inactivos y no navegables.
+2. Evitar que reciban foco de teclado o expongan comportamiento de enlace cuando la acción no está disponible.
+3. Mantener el aspecto visual coherente con el sistema de diseño V5 y distinguir claramente estados activo/deshabilitado.
+4. Conservar exactamente el comportamiento actual cuando sí exista una página anterior o siguiente válida.
+5. Aplicar semántica accesible adecuada sin introducir JavaScript innecesario ni complejidad adicional.
+6. Cubrir con prueba de regresión básica los límites de primera/última página.
+
+**Resultado esperado para el usuario**
+
+La paginación se comportará exactamente como aparenta: si una acción no está disponible, no será clicable ni navegable; cuando sí lo esté, funcionará con normalidad. Es una corrección menor de coherencia y accesibilidad, sin impacto funcional adicional.
+
+**Decisión del usuario:** aprobada con prioridad P3.
