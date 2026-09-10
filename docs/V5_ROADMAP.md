@@ -1001,3 +1001,31 @@ La lista maestra de géneros es muy pequeña y cambia con muy poca frecuencia, p
 Catálogo conservará exactamente los mismos filtros por género, pero PikoFilm dejará de preguntar innecesariamente a Neon por una lista prácticamente estática en cada carga, reduciendo round-trips y trabajo repetitivo sin mostrar información engañosamente obsoleta.
 
 **Decisión del usuario:** aprobada con prioridad P2.
+
+### Mejora 35 · V5-C035 — Hacer indexable y más rápida la búsqueda dentro de Catálogo
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Catálogo · Búsqueda · Rendimiento · Neon
+
+**Problema detectado**
+
+La búsqueda interna de Catálogo normaliza texto y utiliza comparaciones de tipo “contiene”. Funcionalmente es correcto, pero ese patrón puede impedir que PostgreSQL aproveche bien índices convencionales y obligar a revisar más filas de las necesarias.
+
+**Alcance aprobado**
+
+1. Medir primero las consultas reales de búsqueda de Catálogo y sus planes de ejecución antes de modificar índices o estrategia.
+2. Identificar exactamente qué campos normalizados y predicados utiliza la búsqueda actual y qué parte del coste procede de filtrado, joins o enriquecimiento.
+3. Optimizar la consulta para reducir trabajo manteniendo exactamente la misma semántica funcional: mismas coincidencias, normalización, filtros, ordenación y paginación.
+4. Aplicar cualquier mejora de índice únicamente cuando sea compatible con el patrón real de búsqueda y exista beneficio medible.
+5. No crear índices “por si acaso” ni mantener estructuras que aumenten escrituras/almacenamiento sin un consumidor y mejora demostrados.
+6. No instalar extensiones de PostgreSQL ni habilitar mecanismos como `pg_trgm` sin una aprobación explícita e independiente del usuario.
+7. Coordinar esta mejora con las Mejoras 23, 31 y 32 para reutilizar estrategia de normalización y evitar que la optimización de búsqueda vuelva a introducir joins pesados antes de paginar.
+8. Comparar tiempos, planes, filas procesadas y coste antes/después sobre búsquedas representativas.
+9. Cubrir con pruebas términos con acentos, mayúsculas/minúsculas, coincidencias parciales, filtros combinados, ordenaciones y resultados distribuidos en varias páginas.
+
+**Resultado esperado para el usuario**
+
+Buscar dentro de Catálogo deberá responder más rápido sin cambiar qué títulos aparecen ni cómo funcionan los filtros, la ordenación o la paginación. Cualquier cambio de índice o estrategia se hará sólo después de medir y demostrar una mejora real.
+
+**Decisión del usuario:** aprobada con prioridad P1 y con la condición de medir antes de tocar índices o estrategia de consulta.
