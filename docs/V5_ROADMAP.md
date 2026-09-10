@@ -479,3 +479,30 @@ El usuario prefiere que un fallo relevante haga fallar la página de forma clara
 Cuando una página de PikoFilm no pueda garantizar que sus datos o lógica son correctos, el problema será evidente. Se prioriza detectar y corregir el fallo real antes que mantener una apariencia de funcionamiento parcial.
 
 **Decisión del usuario:** rechazada porque prefiere un fallo completo y claro de página para detectar y solucionar los errores con mayor facilidad.
+
+### Mejora 16 · V5-C016 — Reducir renderizado dinámico y caché bloqueada innecesarios
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Rendimiento · Arquitectura · Caché · UX
+
+**Problema detectado**
+
+Algunas rutas de PikoFilm fuerzan renderizado dinámico, `no-store` u otros comportamientos que pueden obligar a recalcular y consultar datos en cada entrada aunque parte de esa información no necesite actualizarse en tiempo real. Esto puede aumentar carga de servidor, consultas a Neon y tiempo real de navegación.
+
+**Alcance aprobado**
+
+1. Auditar ruta por ruta el uso de `force-dynamic`, `no-store`, revalidación, `router.refresh`, polling y mecanismos equivalentes.
+2. Mantener dinámicos únicamente los datos cuya frescura inmediata sea una necesidad funcional real.
+3. Permitir caché/revalidación segura en datos estables o de baja frecuencia de cambio, con criterios explícitos de invalidez y frescura.
+4. Evitar que una dependencia dinámica secundaria convierta innecesariamente una página completa en dinámica cuando pueda resolverse de otra forma sin alterar la funcionalidad.
+5. Medir antes y después el impacto en tiempo de respuesta, consultas a Neon y carga del servidor.
+6. No mostrar información obsoleta para ganar velocidad: cuando un dato necesite exactitud inmediata, se conservará el comportamiento dinámico.
+7. Integrar esta revisión dentro del bloque de rendimiento global de la **Mejora 14**, de modo que las decisiones de caché se basen en medición real y no en supuestos.
+8. Cubrir con tests las rutas donde una modificación de caché pueda afectar a consistencia o frescura funcional.
+
+**Resultado esperado para el usuario**
+
+Las páginas que hoy repiten trabajo innecesariamente podrán responder más rápido y con menos coste, mientras las áreas que realmente necesiten datos en tiempo real seguirán comportándose como ahora. La mejora sólo se considerará válida cuando exista una ganancia medible sin pérdida de exactitud.
+
+**Decisión del usuario:** aprobada con prioridad P1 e integrada en el mismo bloque de rendimiento que la Mejora 14.
