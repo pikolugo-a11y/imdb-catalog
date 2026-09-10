@@ -135,3 +135,33 @@ La gestión debe hacerse **desde Operaciones como mantenimiento**, porque es el 
 El acceso privado seguirá funcionando como ahora, pero si alguna vez se necesita cambiar o revocar la credencial podrá gestionarse de forma controlada desde Operaciones, sin convertir una tarea de mantenimiento en un cambio de código.
 
 **Decisión del usuario:** aprobada con gestión obligatoria desde Operaciones → Mantenimiento.
+
+### Mejora 5 · V5-C005 — Evitar que el código nuevo llegue antes que la base de datos
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Arquitectura · Despliegues · Fiabilidad
+
+**Problema detectado**
+
+El historial de producción ha mostrado versiones de PikoFilm que empezaron a utilizar tablas o columnas nuevas antes de que Neon estuviera completamente preparado. Aunque código y migración fueran correctos por separado, durante esa ventana la aplicación podía fallar.
+
+**Alcance aprobado**
+
+1. Establecer un flujo seguro **migración compatible → verificación de esquema → despliegue de código dependiente**.
+2. Aplicar patrón expand/contract cuando una evolución no pueda hacerse de forma atómica, permitiendo que versión anterior y nueva convivan durante la transición.
+3. Añadir un chequeo automatizado que determine si Neon contiene las tablas, columnas, funciones e índices críticos que necesita la versión que va a desplegarse.
+4. Impedir o marcar claramente como no segura una implantación cuando el esquema requerido no esté disponible.
+5. Evitar migraciones destructivas prematuras; cualquier retirada se hará únicamente tras comprobar que ningún consumidor vivo depende ya de la estructura anterior.
+6. Integrar este control con la futura versión explícita de esquema/healthcheck cuando se implanten los candidatos relacionados del roadmap.
+
+**Observabilidad obligatoria**
+
+- **Operaciones:** las comprobaciones de schema readiness y las migraciones relevantes deberán quedar trazadas técnicamente con resultado, versión/fingerprint esperado, estado encontrado y fallo concreto si lo hubiera.
+- **Actividad:** deberá registrarse únicamente cuando la migración o el cambio produzca un efecto funcional relevante para PikoFilm; las comprobaciones puramente técnicas no deben generar ruido innecesario.
+
+**Resultado esperado para el usuario**
+
+Tras un deploy no debería existir un intervalo en el que PikoFilm falle simplemente porque el código llegó unos minutos antes que la estructura de base de datos que necesita.
+
+**Decisión del usuario:** aprobada.
