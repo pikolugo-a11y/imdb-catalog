@@ -1,0 +1,1 @@
+Restore docs/V5_ROADMAP.md to blob dce4f49010dcf758490be9515098681ef1f1dfb3 via Git tree replacement; preserve decision 37 in docs/V5_DECISION_037.md.
