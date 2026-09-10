@@ -242,3 +242,42 @@ Las búsquedas se ejecutarán bajo la misma ventana detallada de **30 días** ac
 Cuando Operaciones se abra desde Actividad con una correlación concreta, esa navegación directa tendrá prioridad sobre el buscador: debe abrir el detalle técnico correcto sin exigir una búsqueda adicional.
 
 Principio UX: **una caja para encontrar casi cualquier cosa; filtros sólo cuando hagan falta**.
+
+## Decisión 13 — Detalle técnico progresivo y comprensible
+
+**Aprobada.**
+
+El detalle de una ejecución en Operaciones V4 debe explicar primero **qué ocurrió y cómo terminó** antes de mostrar datos técnicos de bajo nivel.
+
+La cabecera/resumen deberá responder de forma clara, en lenguaje entendible, al menos a estas preguntas:
+
+- qué se hizo;
+- sobre qué entidad o alcance se actuó;
+- quién/origen disparó la ejecución;
+- si la ejecución se completó o quedó interrumpida;
+- cómo terminó técnicamente;
+- cuál fue su resultado funcional;
+- en qué estado quedó la entidad, Batch o proceso afectado;
+- si existe una incidencia todavía activa o ya está resuelta.
+
+El objetivo es que el usuario pueda comprender el resultado sin interpretar directamente `context`, JSON, métricas internas o una secuencia larga de eventos.
+
+Debajo del resumen se conservará el nivel técnico profundo, similar al disponible actualmente, organizado de forma progresiva y desplegable cuando convenga. Podrá incluir:
+
+- llamadas externas realizadas, fuente y resultado;
+- entradas y salidas relevantes;
+- secuencia de eventos/pasos;
+- errores completos y su contexto;
+- estado `before` / `after`;
+- métricas y contadores;
+- executor, worker, lane, trigger y tiempos;
+- reintentos, leases y heartbeats cuando apliquen;
+- ejecuciones padre/hijas;
+- `batch_run_items` y estado del Batch relacionado;
+- contexto técnico y payloads canónicos útiles para diagnóstico.
+
+La simplificación de la cabecera no elimina detalle: **resume primero y permite investigar después**.
+
+Actividad y Operaciones mantendrán navegación bidireccional cuando exista correlación. Desde Actividad se podrá abrir el detalle técnico del `run_id` correspondiente y desde Operaciones se podrá volver al hecho funcional hermano mediante una acción equivalente a **Ver en Actividad**.
+
+Principio UX: **primero entender qué pasó, después poder demostrar exactamente cómo pasó**.
