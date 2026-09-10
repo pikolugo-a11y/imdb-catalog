@@ -616,3 +616,31 @@ El usuario no quiere convertir el rendimiento en un gate adicional de CI con umb
 PikoFilm seguirá mejorando el rendimiento con datos y pruebas reales sin añadir un sistema general de umbrales de CI que pueda bloquear cambios por métricas sintéticas poco representativas.
 
 **Decisión del usuario:** rechazada.
+
+### Mejora 21 · V5-C021 — Optimizar peso, tamaño y carga de imágenes
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Rendimiento · UX · Imágenes · Frontend
+
+**Problema detectado**
+
+PikoFilm utiliza posters, carátulas y otras imágenes en distintas superficies. Si se solicita una imagen con mucha más resolución de la que realmente ocupa en pantalla, se descargan más bytes de los necesarios y el navegador realiza trabajo adicional sin aportar calidad visible.
+
+**Alcance aprobado**
+
+1. Auditar todas las superficies relevantes para identificar imágenes sobredimensionadas, dimensiones ausentes, formatos ineficientes, cargas anticipadas innecesarias y oportunidades de responsive sizing.
+2. Solicitar o servir tamaños acordes con el espacio real ocupado en cada breakpoint, evitando descargar una imagen grande cuando una variante más pequeña mantiene la misma calidad aparente.
+3. Mantener la calidad visual actual como condición obligatoria; no se aceptará una mejora de peso basada en degradación visible de posters o carátulas.
+4. Aplicar carga diferida a imágenes fuera del viewport cuando sea apropiado y mantener priorización sólo para imágenes realmente críticas de la primera vista.
+5. Revisar el uso de las capacidades de optimización de imágenes del stack actual antes de crear mecanismos propios.
+6. Definir dimensiones o proporciones estables para evitar trabajo de layout y saltos visuales innecesarios durante la carga.
+7. Verificar desktop y móvil, teniendo en cuenta densidades de pantalla para no reducir demasiado la resolución en dispositivos de alta densidad.
+8. Medir antes/después bytes transferidos, tamaños solicitados y comportamiento de carga en las pantallas con mayor presencia de imágenes.
+9. Integrar esta mejora en el bloque global de rendimiento de la Mejora 14 y utilizar las métricas reales de la Mejora 19 cuando ayuden a validar el resultado.
+
+**Resultado esperado para el usuario**
+
+PikoFilm conservará la misma calidad visual de posters y carátulas, pero descargará únicamente la resolución necesaria para cada contexto. Las páginas con muchas imágenes deberán transferir menos datos y realizar menos trabajo sin empeorar su aspecto.
+
+**Decisión del usuario:** aprobada con prioridad P2.
