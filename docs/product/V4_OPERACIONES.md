@@ -300,3 +300,26 @@ Cada bloque priorizará **estado comprensible, anomalías y acciones útiles** f
 La portada de Operaciones no duplicará estos bloques completos: mantendrá el buscador técnico y la salud por excepción, con acceso claro al Centro de control cuando sea necesaria una intervención administrativa.
 
 Principio UX: **pocos lugares claros para actuar; mucho detalle sólo cuando hace falta investigar**.
+
+## Decisión 15 — Mantenimiento seguro, explicativo y observable
+
+**Aprobada.**
+
+El bloque de **Mantenimiento** de Operaciones V4 no será un cajón de sastre ni una colección de botones administrativos genéricos. Sólo expondrá operaciones técnicas reales, con propósito y semántica claros, que existan en el backend o se implementen expresamente de forma segura.
+
+Antes de ejecutar una operación de mantenimiento, la interfaz debe explicar de forma comprensible:
+
+- qué operación se va a realizar;
+- qué datos, estado o subsistema puede modificar;
+- qué elementos no va a tocar;
+- si la operación es sólo de lectura o modifica estado/datos;
+- si es reversible, parcialmente reversible o irreversible;
+- cuál es el resultado esperado y cómo se verificará.
+
+Las comprobaciones puramente diagnósticas y de sólo lectura podrán ejecutarse sin confirmaciones innecesarias. Las operaciones que cambien datos o estado exigirán una confirmación proporcional al riesgo; las de mayor impacto deberán tener una protección explícita y no depender de un clic accidental.
+
+Toda operación de mantenimiento que produzca una intervención real debe quedar registrada en la observabilidad canónica, preferentemente mediante `process_runs` y sus eventos/errores asociados, para poder conocer quién/origen la lanzó, qué hizo, cómo terminó y qué estado dejó.
+
+Operaciones no expondrá acciones destructivas, reconstrucciones o purgas sólo porque técnicamente sea posible ejecutarlas. Cada acción deberá justificar su utilidad operativa, preservar integridad e idempotencia cuando aplique y respetar las protecciones del resto del sistema.
+
+Principio rector: **antes de tocar nada, Operaciones debe explicar qué va a hacer; después, debe poder demostrar qué hizo y cómo quedó**.
