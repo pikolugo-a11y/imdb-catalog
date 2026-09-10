@@ -281,3 +281,22 @@ La simplificación de la cabecera no elimina detalle: **resume primero y permite
 Actividad y Operaciones mantendrán navegación bidireccional cuando exista correlación. Desde Actividad se podrá abrir el detalle técnico del `run_id` correspondiente y desde Operaciones se podrá volver al hecho funcional hermano mediante una acción equivalente a **Ver en Actividad**.
 
 Principio UX: **primero entender qué pasó, después poder demostrar exactamente cómo pasó**.
+
+## Decisión 14 — Centro de control organizado por dominios operativos
+
+**Aprobada.**
+
+El Centro de control de Operaciones V4 se organizará en pocos bloques de primer nivel, claros y estables, evitando una pantalla única saturada de métricas, formularios y parámetros internos.
+
+Los bloques principales serán:
+
+- **Sistema / Batch**: estado global del motor, Batch activos o detenidos, progreso útil, colas, workers, heartbeats, leases, reintentos y acciones seguras de pausa, reanudación o cancelación cuando procedan.
+- **Fuentes y límites**: estado efectivo de proveedores gobernados, cuotas, concurrencia, reparto Batch, circuit breaker, bloqueos y únicamente los parámetros configurables que el backend soporte de forma segura.
+- **Recuperación**: reinicios, reintentos y recuperación contextual de títulos, ejecuciones o Batch, mostrando sólo acciones válidas para el estado real y con las confirmaciones necesarias.
+- **Mantenimiento**: operaciones técnicas explícitas y seguras de mantenimiento, limpieza, reconciliación o diagnóstico que existan realmente en el backend y no pertenezcan mejor a otro bloque.
+
+Cada bloque priorizará **estado comprensible, anomalías y acciones útiles** frente a exponer todos los detalles internos. Los parámetros de bajo nivel seguirán disponibles como información técnica cuando aporten valor al diagnóstico, pero no dominarán la experiencia principal.
+
+La portada de Operaciones no duplicará estos bloques completos: mantendrá el buscador técnico y la salud por excepción, con acceso claro al Centro de control cuando sea necesaria una intervención administrativa.
+
+Principio UX: **pocos lugares claros para actuar; mucho detalle sólo cuando hace falta investigar**.
