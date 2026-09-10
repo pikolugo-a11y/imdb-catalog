@@ -589,3 +589,30 @@ Antes de construir telemetría propia se debe **reutilizar Vercel siempre que su
 PikoFilm podrá identificar con datos qué páginas son realmente más lentas y comprobar si V5 las ha acelerado. Se aprovechará primero la observabilidad de Vercel y sólo se añadirá almacenamiento o instrumentación propia cuando aporte información que realmente falte.
 
 **Decisión del usuario:** aprobada con prioridad P1 y con la condición obligatoria de reutilizar Vercel antes de crear telemetría propia.
+
+### Mejora 20 · V5-C020 — Presupuesto de rendimiento en CI
+
+**Estado:** RECHAZADA  
+**Prioridad definitiva:** No entra en V5.  
+**Categoría:** CI · Rendimiento · Gobernanza
+
+**Propuesta evaluada**
+
+Añadir presupuestos automáticos de rendimiento en CI para bloquear o alertar sobre PRs que aumenten de forma significativa tamaños de bundle/CSS/HTML o empeoren pruebas controladas de rendimiento antes del merge.
+
+**Motivo de rechazo del usuario**
+
+El usuario no quiere convertir el rendimiento en un gate adicional de CI con umbrales específicos. Prefiere que la mejora de velocidad se base en medición real, diagnóstico del cuello de botella y validación dirigida, especialmente apoyándose en las métricas de producción de la Mejora 19.
+
+**Consecuencia para V5**
+
+- No se implantará un presupuesto de rendimiento automático como condición general de merge.
+- Las optimizaciones de las Mejoras 14, 16, 17 y relacionadas seguirán exigiendo medición antes/después y pruebas de regresión adecuadas cuando cambien consultas, caché o arquitectura.
+- El rechazo de este candidato no elimina los tests funcionales ni las comprobaciones técnicas necesarias para evitar regresiones concretas.
+- Si en el futuro aparece una regresión recurrente que justifique un límite automático muy específico, deberá plantearse y aprobarse como una decisión nueva.
+
+**Resultado esperado para el usuario**
+
+PikoFilm seguirá mejorando el rendimiento con datos y pruebas reales sin añadir un sistema general de umbrales de CI que pueda bloquear cambios por métricas sintéticas poco representativas.
+
+**Decisión del usuario:** rechazada.
