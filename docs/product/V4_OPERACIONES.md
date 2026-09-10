@@ -161,3 +161,165 @@ Toda llamada de los procesos canónicos a una fuente externa gobernada por Opera
 - La observabilidad debe permitir distinguir una denegación por gobernanza de un error del proveedor.
 
 Principio permanente: **una fuente declarada como gobernada no puede ser consultada sin gobernanza**. La ausencia de gate es un error de programación, no un permiso implícito para continuar.
+
+## Decisión 9 — Recuperación contextual y segura
+
+**Aprobada.**
+
+Operaciones V4 no tendrá un botón genérico de «reiniciar» ni un «reiniciar todo PikoFilm». La recuperación será contextual: primero se localiza la entidad, ejecución o Batch afectado y después el sistema ofrece únicamente las acciones de recuperación que sean válidas y seguras para su estado real.
+
+- Para un título podrá ofrecerse el reinicio completo a Novedades cuando proceda, mostrando previamente qué estado o datos se invalidarán y exigiendo confirmación explícita.
+- Para un Batch sólo se ofrecerán pausa, reanudación, cancelación, reintento u otras acciones cuando el backend las soporte y el estado actual permita ejecutarlas sin romper invariantes.
+- Para una ejecución individual, Operaciones podrá orientar hacia el reintento o recuperación canónica correspondiente, pero no inventará acciones genéricas que el proceso no tenga implementadas.
+- Ninguna recuperación manual relevante será invisible: debe quedar trazada en la observabilidad canónica y generar su hecho funcional correspondiente en Actividad cuando tenga consecuencia funcional.
+- Toda acción debe preservar idempotencia, integridad y los límites/protecciones de las fuentes externas.
+
+Si en el futuro fuese necesaria una recuperación global, deberá diseñarse como una operación específica para un fallo concreto, con semántica, protecciones y observabilidad propias; nunca como un reset indiscriminado del sistema.
+
+## Decisión 10 — Salud operativa por excepción y ciclo de vida de incidencias
+
+**Aprobada.**
+
+La portada de Operaciones V4 tendrá una franja compacta de **salud operativa por excepción**, no un dashboard voluminoso. Cuando todo esté correcto mostrará un resumen mínimo; cuando exista una anomalía destacará sólo lo que requiere atención y permitirá entrar directamente en su diagnóstico técnico.
+
+La salud operativa podrá señalar, cuando aplique, motor Batch pausado, Batch detenidos, workers o heartbeats ausentes, colas atascadas, leases vencidas, scheduler/planificador sin ejecutar, fuentes bloqueadas, límites agotados y errores técnicos relevantes.
+
+### Los errores tienen estado operativo, pero no se borran
+
+Un error histórico y una incidencia activa no son lo mismo.
+
+- `process_run_errors` y la ejecución original conservan la verdad histórica durante los 30 días acordados.
+- Operaciones distinguirá al menos entre incidencia **activa**, **resuelta automáticamente** y **descartada/resuelta manualmente**.
+- Si el mismo proceso sobre la misma entidad o alcance técnico se ejecuta posteriormente con éxito y demuestra que la condición anterior ya no persiste, la incidencia debe dejar de aparecer como activa automáticamente, conservando el error histórico para diagnóstico.
+- El usuario podrá usar una acción equivalente a **Descartar / Marcar como resuelto** cuando haya verificado que el problema ya no requiere atención. Esta acción no elimina ni altera el error original; sólo cambia su estado operativo de atención.
+- Las incidencias resueltas o descartadas seguirán siendo localizables mediante búsqueda y dentro del detalle de la ejecución original mientras estén dentro de la retención de 30 días.
+- Si vuelve a producirse la misma condición después de haberse resuelto o descartado, debe aparecer como una nueva incidencia activa; descartar no silencia futuros errores del mismo tipo.
+- La resolución manual debe quedar auditada como intervención técnica en la observabilidad canónica y, si tiene consecuencia funcional relevante, reflejarse también en Actividad.
+
+Principio rector: **Operaciones muestra lo que necesita atención ahora sin falsificar ni borrar lo que ocurrió antes**.
+
+## Decisión 11 — Agrupación inteligente de errores repetidos
+
+**Aprobada.**
+
+Operaciones V4 no mostrará cada repetición del mismo fallo como una incidencia independiente cuando todas representen la misma causa operativa. Los errores repetitivos se agruparán de forma conservadora por una huella técnica estable que combine, cuando corresponda, proceso, paso, código/clase de error, fuente y alcance o entidad afectada.
+
+- Cada grupo mostrará al menos número de ocurrencias, primera aparición, última aparición, entidades afectadas y cuántas siguen requiriendo atención.
+- La agrupación es sólo una presentación operativa: cada `process_run_error` y cada ejecución original permanecen intactos y accesibles durante la retención acordada.
+- Desde el grupo se podrá abrir el detalle y navegar a las ejecuciones/entidades concretas que lo componen.
+- No se agruparán errores sólo porque su texto se parezca: si cambian la causa, el proceso, la fuente o el alcance relevante deben mantenerse como incidencias distintas.
+- La resolución automática se evaluará sobre el alcance real afectado. Un éxito posterior para una entidad no resolverá indebidamente los fallos todavía activos de otras entidades del mismo grupo.
+- Si todas las ocurrencias relevantes quedan resueltas o descartadas, el grupo deja de aparecer como incidencia activa, aunque siga siendo localizable históricamente.
+- Una nueva recurrencia posterior a la resolución reactiva la incidencia correspondiente sin perder el historial anterior.
+
+Objetivo: **reducir ruido sin ocultar alcance, recurrencia ni trazabilidad técnica**.
+
+## Decisión 12 — Buscador técnico único con detección automática
+
+**Aprobada.**
+
+La búsqueda será el núcleo de Operaciones V4. La portada tendrá un único campo principal capaz de detectar automáticamente qué tipo de referencia está introduciendo el usuario y dirigir la consulta hacia las fuentes técnicas canónicas adecuadas.
+
+Debe reconocer y resolver, cuando exista información disponible, al menos:
+
+- IMDb ID y otras entidades funcionales que puedan mapearse a ejecuciones;
+- `run_id`;
+- `batch_run_id` u otros identificadores Batch útiles;
+- código o nombre de proceso;
+- persona o título;
+- fuente externa;
+- código/clase de error, paso o texto técnico;
+- identificadores técnicos presentes en contexto, eventos o errores.
+
+La detección automática no debe impedir búsquedas ambiguas: cuando una cadena pueda corresponder a varias categorías, Operaciones devolverá resultados clasificados y permitirá refinar sin obligar al usuario a conocer previamente el tipo de identificador.
+
+Los filtros avanzados estarán disponibles como refinamiento opcional, no ocupando la interfaz principal por defecto. Podrán acotar por estado, proceso, origen/trigger, tipo de ejecución, entidad, Batch, fuente, error, periodo y otras dimensiones canónicas que aporten valor real al diagnóstico.
+
+Los resultados deben priorizar relevancia técnica y contexto antes que volumen, mostrar claramente por qué cada resultado coincide y permitir abrir directamente la ejecución, incidencia, Batch o entidad correspondiente.
+
+Las búsquedas se ejecutarán bajo la misma ventana detallada de **30 días** acordada para Actividad y Operaciones, salvo estado operativo vivo que deba mantenerse accesible aunque su origen sea anterior.
+
+Cuando Operaciones se abra desde Actividad con una correlación concreta, esa navegación directa tendrá prioridad sobre el buscador: debe abrir el detalle técnico correcto sin exigir una búsqueda adicional.
+
+Principio UX: **una caja para encontrar casi cualquier cosa; filtros sólo cuando hagan falta**.
+
+## Decisión 13 — Detalle técnico progresivo y comprensible
+
+**Aprobada.**
+
+El detalle de una ejecución en Operaciones V4 debe explicar primero **qué ocurrió y cómo terminó** antes de mostrar datos técnicos de bajo nivel.
+
+La cabecera/resumen deberá responder de forma clara, en lenguaje entendible, al menos a estas preguntas:
+
+- qué se hizo;
+- sobre qué entidad o alcance se actuó;
+- quién/origen disparó la ejecución;
+- si la ejecución se completó o quedó interrumpida;
+- cómo terminó técnicamente;
+- cuál fue su resultado funcional;
+- en qué estado quedó la entidad, Batch o proceso afectado;
+- si existe una incidencia todavía activa o ya está resuelta.
+
+El objetivo es que el usuario pueda comprender el resultado sin interpretar directamente `context`, JSON, métricas internas o una secuencia larga de eventos.
+
+Debajo del resumen se conservará el nivel técnico profundo, similar al disponible actualmente, organizado de forma progresiva y desplegable cuando convenga. Podrá incluir:
+
+- llamadas externas realizadas, fuente y resultado;
+- entradas y salidas relevantes;
+- secuencia de eventos/pasos;
+- errores completos y su contexto;
+- estado `before` / `after`;
+- métricas y contadores;
+- executor, worker, lane, trigger y tiempos;
+- reintentos, leases y heartbeats cuando apliquen;
+- ejecuciones padre/hijas;
+- `batch_run_items` y estado del Batch relacionado;
+- contexto técnico y payloads canónicos útiles para diagnóstico.
+
+La simplificación de la cabecera no elimina detalle: **resume primero y permite investigar después**.
+
+Actividad y Operaciones mantendrán navegación bidireccional cuando exista correlación. Desde Actividad se podrá abrir el detalle técnico del `run_id` correspondiente y desde Operaciones se podrá volver al hecho funcional hermano mediante una acción equivalente a **Ver en Actividad**.
+
+Principio UX: **primero entender qué pasó, después poder demostrar exactamente cómo pasó**.
+
+## Decisión 14 — Centro de control organizado por dominios operativos
+
+**Aprobada.**
+
+El Centro de control de Operaciones V4 se organizará en pocos bloques de primer nivel, claros y estables, evitando una pantalla única saturada de métricas, formularios y parámetros internos.
+
+Los bloques principales serán:
+
+- **Sistema / Batch**: estado global del motor, Batch activos o detenidos, progreso útil, colas, workers, heartbeats, leases, reintentos y acciones seguras de pausa, reanudación o cancelación cuando procedan.
+- **Fuentes y límites**: estado efectivo de proveedores gobernados, cuotas, concurrencia, reparto Batch, circuit breaker, bloqueos y únicamente los parámetros configurables que el backend soporte de forma segura.
+- **Recuperación**: reinicios, reintentos y recuperación contextual de títulos, ejecuciones o Batch, mostrando sólo acciones válidas para el estado real y con las confirmaciones necesarias.
+- **Mantenimiento**: operaciones técnicas explícitas y seguras de mantenimiento, limpieza, reconciliación o diagnóstico que existan realmente en el backend y no pertenezcan mejor a otro bloque.
+
+Cada bloque priorizará **estado comprensible, anomalías y acciones útiles** frente a exponer todos los detalles internos. Los parámetros de bajo nivel seguirán disponibles como información técnica cuando aporten valor al diagnóstico, pero no dominarán la experiencia principal.
+
+La portada de Operaciones no duplicará estos bloques completos: mantendrá el buscador técnico y la salud por excepción, con acceso claro al Centro de control cuando sea necesaria una intervención administrativa.
+
+Principio UX: **pocos lugares claros para actuar; mucho detalle sólo cuando hace falta investigar**.
+
+## Decisión 15 — Mantenimiento seguro, explicativo y observable
+
+**Aprobada.**
+
+El bloque de **Mantenimiento** de Operaciones V4 no será un cajón de sastre ni una colección de botones administrativos genéricos. Sólo expondrá operaciones técnicas reales, con propósito y semántica claros, que existan en el backend o se implementen expresamente de forma segura.
+
+Antes de ejecutar una operación de mantenimiento, la interfaz debe explicar de forma comprensible:
+
+- qué operación se va a realizar;
+- qué datos, estado o subsistema puede modificar;
+- qué elementos no va a tocar;
+- si la operación es sólo de lectura o modifica estado/datos;
+- si es reversible, parcialmente reversible o irreversible;
+- cuál es el resultado esperado y cómo se verificará.
+
+Las comprobaciones puramente diagnósticas y de sólo lectura podrán ejecutarse sin confirmaciones innecesarias. Las operaciones que cambien datos o estado exigirán una confirmación proporcional al riesgo; las de mayor impacto deberán tener una protección explícita y no depender de un clic accidental.
+
+Toda operación de mantenimiento que produzca una intervención real debe quedar registrada en la observabilidad canónica, preferentemente mediante `process_runs` y sus eventos/errores asociados, para poder conocer quién/origen la lanzó, qué hizo, cómo terminó y qué estado dejó.
+
+Operaciones no expondrá acciones destructivas, reconstrucciones o purgas sólo porque técnicamente sea posible ejecutarlas. Cada acción deberá justificar su utilidad operativa, preservar integridad e idempotencia cuando aplique y respetar las protecciones del resto del sistema.
+
+Principio rector: **antes de tocar nada, Operaciones debe explicar qué va a hacer; después, debe poder demostrar qué hizo y cómo quedó**.

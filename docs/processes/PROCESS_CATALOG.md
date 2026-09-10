@@ -59,6 +59,7 @@ Estados de paridad: **EXACTA** = mismo core; **PARCIAL** = mismo core con guards
 | PROC-PLAN-001 | Actividad | Cambiar planificación futura | manual | no | `app/actividad/actions.js` → `process_plans` | Vercel | NO APLICA |
 | PROC-PLAN-002 | Actividad | Reconciliar, equilibrar y despachar planificación segura | global automático | orquesta Batch existentes | `runActivityPlanner` | Vercel Cron | MODELO ESPECIAL |
 | PROC-OPS-001 | Operaciones | Reiniciar título desde Novedades | manual destructivo funcional | no | `resetTitleToNews` | Vercel | NO APLICA |
+| PROC-OPS-002 | Operaciones | Resolver o descartar incidencia operativa | manual | no | `resolveIncidentAction` | Vercel | NO APLICA |
 
 `restartMissingLifecycleAction` (`/calidad/sin-estado`) es una operación de reparación administrativa sin código PROC propio: únicamente recrea Lifecycle cuando falta. Debe permanecer excepcional y no masificarse por defecto.
 
@@ -122,7 +123,7 @@ Vercel solicita/controla captura técnica y Railway mantiene el worker persisten
 
 ## Decisiones manuales
 
-ID-002, IV-003/004/005, DATA-005, MOV-002/003, SER-005/006, NOV-002/003/004/005/006/007/010/011/016, PLAN-001 y OPS-001 son decisiones/correcciones humanas. No deben recibir Batch automáticamente.
+ID-002, IV-003/004/005, DATA-005, MOV-002/003, SER-005/006, NOV-002/003/004/005/006/007/010/011/016, PLAN-001 y OPS-001/002 son decisiones/correcciones humanas. No deben recibir Batch automáticamente.
 
 NOV-005 ya entra por una acción observada propia (`exclude-actions.js`), persiste la exclusión global y registra la decisión en `process_runs`/eventos. No se considera candidato a Batch.
 
