@@ -79,7 +79,7 @@ test('Actividad ofrece cronología, calendario, planificación manual y refresco
 });
 
 test('Calendario V4 muestra 30 días como agenda semanal y conserva días vacíos',()=>{
-  const page=read('app/actividad/page.js'),css=read('app/actividad/actividad-v4.css'),docs=read('docs/product/V4_ACTIVIDAD_UX_REFINEMENTS.md');
+  const page=read('app/actividad/page.js'),css=read('app/actividad/actividad-v4.css'),docs=read('docs/V4_UX_SPEC.md');
   assert.match(page,/addDaysKey\(startKey,29\)/);
   assert.match(page,/\['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'\]/);
   assert.match(page,/buildCalendarDays/);
@@ -88,7 +88,8 @@ test('Calendario V4 muestra 30 días como agenda semanal y conserva días vacío
   assert.match(page,/selected\.plans/);
   assert.match(css,/grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
   assert.match(css,/av4-calendar-cell\.empty/);
-  assert.match(docs,/rejilla semanal de 7 columnas/);
+  assert.match(docs,/Horizonte 30 días/);
+  assert.match(docs,/días vacíos/i);
   assert.doesNotMatch(page,/Días 8–30/);
 });
 
