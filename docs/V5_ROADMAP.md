@@ -1029,3 +1029,30 @@ La búsqueda interna de Catálogo normaliza texto y utiliza comparaciones de tip
 Buscar dentro de Catálogo deberá responder más rápido sin cambiar qué títulos aparecen ni cómo funcionan los filtros, la ordenación o la paginación. Cualquier cambio de índice o estrategia se hará sólo después de medir y demostrar una mejora real.
 
 **Decisión del usuario:** aprobada con prioridad P1 y con la condición de medir antes de tocar índices o estrategia de consulta.
+
+### Mejora 36 · V5-C036 — Cambiar la paginación de Catálogo a cursor pagination
+
+**Estado:** RECHAZADA  
+**Prioridad definitiva:** No entra en V5.  
+**Categoría:** Catálogo · Rendimiento · Navegación
+
+**Propuesta evaluada**
+
+Sustituir la paginación clásica por páginas por un sistema basado en cursor para reducir potencialmente el coste de páginas profundas cuando el volumen de registros sea muy alto.
+
+**Motivo de rechazo del usuario**
+
+El usuario no quiere cambiar el modelo de paginación actual. Prefiere conservar la navegación clásica por páginas y no dedicar alcance de V5 a una optimización cuya utilidad no está demostrada para el tamaño y uso actuales de PikoFilm.
+
+**Consecuencia para V5**
+
+- Catálogo mantendrá la paginación clásica por páginas.
+- No se introducirá cursor pagination ni se cambiará la UX de navegación entre páginas.
+- Las mejoras de rendimiento de Catálogo deberán resolverse mediante las optimizaciones ya aprobadas de consultas, filtrado, ordenación, paginación previa al enriquecimiento y búsqueda.
+- Sólo podrá reabrirse esta decisión si en el futuro existe evidencia objetiva de que las páginas profundas se han convertido en un cuello de botella real.
+
+**Resultado esperado para el usuario**
+
+La navegación de Catálogo seguirá funcionando como hasta ahora, con números de página previsibles y sin añadir complejidad innecesaria. V5 se centrará en acelerar el sistema actual en lugar de sustituirlo.
+
+**Decisión del usuario:** rechazada.
