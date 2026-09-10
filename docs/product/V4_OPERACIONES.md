@@ -197,3 +197,19 @@ Un error histórico y una incidencia activa no son lo mismo.
 - La resolución manual debe quedar auditada como intervención técnica en la observabilidad canónica y, si tiene consecuencia funcional relevante, reflejarse también en Actividad.
 
 Principio rector: **Operaciones muestra lo que necesita atención ahora sin falsificar ni borrar lo que ocurrió antes**.
+
+## Decisión 11 — Agrupación inteligente de errores repetidos
+
+**Aprobada.**
+
+Operaciones V4 no mostrará cada repetición del mismo fallo como una incidencia independiente cuando todas representen la misma causa operativa. Los errores repetitivos se agruparán de forma conservadora por una huella técnica estable que combine, cuando corresponda, proceso, paso, código/clase de error, fuente y alcance o entidad afectada.
+
+- Cada grupo mostrará al menos número de ocurrencias, primera aparición, última aparición, entidades afectadas y cuántas siguen requiriendo atención.
+- La agrupación es sólo una presentación operativa: cada `process_run_error` y cada ejecución original permanecen intactos y accesibles durante la retención acordada.
+- Desde el grupo se podrá abrir el detalle y navegar a las ejecuciones/entidades concretas que lo componen.
+- No se agruparán errores sólo porque su texto se parezca: si cambian la causa, el proceso, la fuente o el alcance relevante deben mantenerse como incidencias distintas.
+- La resolución automática se evaluará sobre el alcance real afectado. Un éxito posterior para una entidad no resolverá indebidamente los fallos todavía activos de otras entidades del mismo grupo.
+- Si todas las ocurrencias relevantes quedan resueltas o descartadas, el grupo deja de aparecer como incidencia activa, aunque siga siendo localizable históricamente.
+- Una nueva recurrencia posterior a la resolución reactiva la incidencia correspondiente sin perder el historial anterior.
+
+Objetivo: **reducir ruido sin ocultar alcance, recurrencia ni trazabilidad técnica**.
