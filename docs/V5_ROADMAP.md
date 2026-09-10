@@ -165,3 +165,39 @@ El historial de producción ha mostrado versiones de PikoFilm que empezaron a ut
 Tras un deploy no debería existir un intervalo en el que PikoFilm falle simplemente porque el código llegó unos minutos antes que la estructura de base de datos que necesita.
 
 **Decisión del usuario:** aprobada.
+
+### Mejora 6 · V5-C006 — Impedir lanzamientos duplicados de un mismo Batch
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** UX · Batch · Fiabilidad · Idempotencia
+
+**Problema detectado**
+
+El historial de producción contiene al menos una colisión al intentar crear un Batch cuando ya existía otro activo del mismo proceso. La base de datos hizo bien en bloquear el duplicado, pero el usuario no debería llegar a provocar ese caso desde la interfaz ni recibir un error técnico por ello.
+
+**Diseño aprobado por el usuario**
+
+La defensa principal debe ser visual y preventiva: **si ya existe un Batch equivalente en curso, todos los botones o acciones capaces de lanzar otro deben quedar deshabilitados**. La interfaz debe indicar de forma clara que el proceso ya está en ejecución y ofrecer acceso al Batch activo.
+
+**Alcance aprobado**
+
+1. Detectar el Batch activo equivalente antes de mostrar una acción de lanzamiento.
+2. Deshabilitar el botón mientras exista un Batch incompatible/equivalente activo, con estado comprensible como “En curso” o “Ya hay un proceso activo”.
+3. Permitir abrir directamente el Batch activo desde ese estado cuando sea útil.
+4. Actualizar el estado del control cuando el Batch termine, falle, se cancele o deje de bloquear un nuevo lanzamiento.
+5. Aplicar el mismo criterio en todas las superficies desde las que pueda lanzarse el mismo trabajo; no sólo en una pantalla concreta.
+6. Mantener también la protección de backend como segunda barrera: si dos peticiones llegan por carrera, pestañas distintas, automatización o cliente obsoleto, el servidor debe tratar la colisión de forma idempotente, reutilizando/devolviendo el Batch activo en vez de responder con un 500 o crear duplicados.
+7. Mantener la restricción/índice de base de datos como última garantía de integridad; la mejora no elimina esa protección.
+
+**Observabilidad obligatoria**
+
+- Si se intenta lanzar una operación que ya está en curso y el backend reutiliza el Batch existente, **no debe registrarse falsamente como un Batch nuevo**.
+- **Actividad:** debe reflejar el trabajo funcional real una sola vez; una mera visualización de botón deshabilitado no genera ruido.
+- **Operaciones:** debe permitir diagnosticar la reutilización/denegación idempotente cuando haya existido una solicitud real al backend, correlacionándola con el Batch activo.
+
+**Resultado esperado para el usuario**
+
+Mientras un proceso ya esté ejecutándose, PikoFilm no permitirá iniciarlo otra vez desde la interfaz. Incluso en casos que la interfaz no pueda prevenir —dos pestañas, dos solicitudes simultáneas o automatismos— el backend seguirá protegido y no convertirá una duplicidad en un error técnico.
+
+**Decisión del usuario:** aprobada con deshabilitación preventiva obligatoria de botones durante la ejecución, manteniendo la idempotencia de backend como red de seguridad.
