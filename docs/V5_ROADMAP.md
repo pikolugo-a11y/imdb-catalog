@@ -292,3 +292,35 @@ Los cambios de configuración de seguridad deberán quedar trazados técnicament
 PikoFilm seguirá utilizándose exactamente igual, pero el navegador tendrá reglas más estrictas sobre qué puede ejecutar o cargar la aplicación, reduciendo superficie de ataque sin sacrificar recursos legítimos.
 
 **Decisión del usuario:** aprobada.
+
+### Mejora 10 · V5-C010 — Auditar mejor las acciones administrativas sensibles
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Operaciones · Seguridad · Observabilidad · Auditoría
+
+**Problema detectado**
+
+PikoFilm ya conserva trazabilidad técnica de muchas ejecuciones, pero las acciones administrativas sensibles pueden quedar poco diferenciadas de otros eventos técnicos. A futuro necesitamos poder distinguir con claridad qué cambio fue automático, cuál fue manual y desde qué superficie se lanzó.
+
+**Alcance aprobado**
+
+1. Definir un registro canónico para las acciones administrativas sensibles realizadas desde Operaciones u otras superficies autorizadas.
+2. Registrar de forma durable la acción ejecutada, fecha/hora, origen o superficie, actor/sesión técnica disponible, entidad o proceso afectado, confirmación requerida y resultado final.
+3. Distinguir explícitamente entre acción manual, automatismo, cron, reparación, mantenimiento y otras procedencias relevantes.
+4. Correlacionar la acción administrativa con el `run_id`, Batch, proceso o entidad funcional correspondiente cuando exista, evitando eventos aislados sin contexto.
+5. No almacenar contraseñas, tokens, claves, secrets ni payloads sensibles en claro. La auditoría debe registrar que se produjo una rotación o cambio, nunca el secreto rotado.
+6. Aplicar el sistema a operaciones sensibles actuales y a las nuevas acciones de mantenimiento que se incorporen en V5, incluida la rotación/revocación de acceso aprobada en la Mejora 4.
+7. Presentar la información desde Operaciones en lenguaje suficientemente claro para reconstruir qué ocurrió sin tener que interpretar logs crudos.
+
+**Observabilidad y Actividad**
+
+- **Operaciones** será la superficie canónica para esta auditoría administrativa y conservará el detalle técnico/correlación.
+- **Actividad** sólo mostrará la acción cuando tenga una consecuencia funcional relevante para la filmoteca o para el uso visible de PikoFilm; no se duplicará cada mantenimiento puramente técnico.
+- La misma acción no deberá generar dos fuentes de verdad paralelas: Actividad y Operaciones serán dos vistas del mismo hecho canónico cuando ambas apliquen.
+
+**Resultado esperado para el usuario**
+
+Semanas o meses después será posible saber si un cambio concreto lo produjo un automatismo o una intervención manual, desde qué parte de PikoFilm se inició, qué afectó y si terminó correctamente, sin exponer información sensible.
+
+**Decisión del usuario:** aprobada.
