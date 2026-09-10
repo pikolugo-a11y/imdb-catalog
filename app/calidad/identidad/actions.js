@@ -29,24 +29,24 @@ export async function obtainIdentityAction(_prev,formData){
 export async function saveIdentityPageAction(_prev,formData){
   let old='';
   try{
-    old=imdb(formData);const newId=imdb(formData,'newImdbId'),tmdbId=tmdb(formData);
+    old=imdb(formData);const tmdbOnly=String(formData.get('tmdbOnly')||'')==='1';const newId=tmdbOnly?old:imdb(formData,'newImdbId'),tmdbId=tmdb(formData);
     const requestKey=`PROC-ID-002:manual:${old}:${Math.floor(Date.now()/5000)}`;
-    const observed=await executeObservedProcess({processCode:'PROC-ID-002',runKind:'individual',triggerSource:'calidad_identidad_manual',executor:'vercel',entityType:'title',entityId:old,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:'/calidad/identidad',operation:'correct_identity_ids'}},async trace=>{
-      const r=await correctIdentityIds({oldImdbId:old,newImdbId:newId,tmdbId,trace});
+    const observed=await executeObservedProcess({processCode:'PROC-ID-002',runKind:'individual',triggerSource:'calidad_identidad_manual',executor:'vercel',entityType:'title',entityId:old,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:'/calidad/identidad',operation:tmdbOnly?'set_tmdb_only':'correct_identity_ids'}},async trace=>{
+      const r=await correctIdentityIds({oldImdbId:old,newImdbId:newId,tmdbId,trace,tmdbOnly});
       if(r.blocked)return{...r,technicalStatus:'succeeded',functionalResult:'blocked',before:r.before,after:r.before,metrics:{reason:r.reason,actual_imdb_id:r.verification?.actualImdbId||null},message:r.reason==='mismatch'?'TMDb corresponde a otro IMDb':'TMDb no permitió verificar el IMDb'};
       if(!r.changed)return{...r,technicalStatus:'succeeded',functionalResult:'no_change',before:r.before,after:r.after,metrics:{changed:false},message:'No había cambios de identidad'};
       await trace.event({eventType:'step_started',step:'identity_refresh_pending',message:'Marcando refresco de identidad pendiente'});
-      await markIdentityRefreshPending(r.savedImdbId,'manual_identity_edit');
+      await markIdentityRefreshPending(r.savedImdbId,tmdbOnly?'manual_tmdb_only':'manual_identity_edit');
       const lifecycle=await recomputeLifecycleForIds([r.savedImdbId]);
       const next=lifecycle.get(r.savedImdbId)?.label||r.lifecycle;
-      await trace.event({eventType:'step_completed',step:'identity_refresh_pending',message:'Corrección integrada en la fase de Identidad',data:{next}});
-      return{...r,lifecycle:next,technicalStatus:'succeeded',functionalResult:'updated',before:r.before,after:{...r.after,lifecycle:next},metrics:{tmdb_verified:Boolean(tmdbId),imdb_changed:old!==r.savedImdbId},message:'Identidad corregida'};
+      await trace.event({eventType:'step_completed',step:'identity_refresh_pending',message:'Corrección integrada en la fase de Identidad',data:{next,identity_mode:tmdbOnly?'tmdb_only':'normal'}});
+      return{...r,lifecycle:next,technicalStatus:'succeeded',functionalResult:'updated',before:r.before,after:{...r.after,lifecycle:next},metrics:{tmdb_verified:Boolean(tmdbId),imdb_changed:old!==r.savedImdbId,tmdb_only:tmdbOnly},message:tmdbOnly?'Serie configurada como TMDb solo':'Identidad corregida'};
     });
     if(observed.reused){refresh(old);return{ok:true,status:'duplicate',runId:observed.runId,message:'Esta solicitud ya se está procesando o acaba de procesarse. No se ha lanzado una segunda ejecución.'}}
     const r=observed.result;refresh(old);refresh(r.savedImdbId||old);
     if(r.blocked){const check=r.verification||{};return{ok:false,status:r.reason,runId:observed.runId,message:r.reason==='mismatch'?`El TMDb ${tmdbId} corresponde a ${check.actualImdbId||'otro IMDb'}${check.title?` · ${check.title}${check.year?` (${check.year})`:''}`:''}. No se ha guardado.`:'TMDb no devolvió un IMDb verificable. No se ha guardado ningún cambio.'}}
     if(!r.changed)return{ok:true,status:'no_change',runId:observed.runId,message:'No hay cambios que guardar.'};
-    return{ok:true,status:'saved',imdbId:r.savedImdbId,runId:observed.runId,message:`Identidad guardada${tmdbId?` · TMDb ${tmdbId}`:''}.`};
+    return{ok:true,status:'saved',imdbId:r.savedImdbId,runId:observed.runId,message:tmdbOnly?`Serie guardada como TMDb solo · TMDb ${tmdbId}.`:`Identidad guardada${tmdbId?` · TMDb ${tmdbId}`:''}.`};
   }catch(e){return{ok:false,status:'error',runId:e?.runId||null,message:e?.message||'No se pudo guardar la identidad'}}
 }
 
