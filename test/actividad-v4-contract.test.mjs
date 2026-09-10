@@ -71,11 +71,25 @@ test('planificador agrupa vencimientos por proceso y no duplica Batch activos',(
 
 test('Actividad ofrece cronología, calendario, planificación manual y refresco moderado',()=>{
   const page=read('app/actividad/page.js'),actions=read('app/actividad/actions.js'),refresh=read('app/actividad/ActivityRefresh.js');
-  assert.match(page,/Cronología/);assert.match(page,/Calendario/);assert.match(page,/Pendiente de planificar/);
+  assert.match(page,/Cronología/);assert.match(page,/Calendario/);assert.match(page,/Pendiente de ubicar/);
   assert.match(page,/Mantener como pico/);assert.match(page,/Cambiar prioridad/);assert.match(page,/Ver detalle técnico en Operaciones/);
   assert.match(actions,/PROC-PLAN-001/);assert.match(actions,/before:/);assert.match(actions,/after:/);
   assert.match(actions,/Europe\/Madrid/);assert.match(page,/Europe\/Madrid/);
   assert.match(refresh,/30000/);assert.match(refresh,/visibilityState/);
+});
+
+test('Calendario V4 muestra 30 días como agenda semanal y conserva días vacíos',()=>{
+  const page=read('app/actividad/page.js'),css=read('app/actividad/actividad-v4.css'),docs=read('docs/product/V4_ACTIVIDAD_UX_REFINEMENTS.md');
+  assert.match(page,/addDaysKey\(startKey,29\)/);
+  assert.match(page,/\['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'\]/);
+  assert.match(page,/buildCalendarDays/);
+  assert.match(page,/Sin trabajo planificado/);
+  assert.match(page,/dia:day\.key/);
+  assert.match(page,/selected\.plans/);
+  assert.match(css,/grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+  assert.match(css,/av4-calendar-cell\.empty/);
+  assert.match(docs,/rejilla semanal de 7 columnas/);
+  assert.doesNotMatch(page,/Días 8–30/);
 });
 
 test('Actividad permite forzar recálculo inmediato reutilizando el planificador canónico',()=>{
