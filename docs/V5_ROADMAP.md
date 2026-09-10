@@ -79,3 +79,25 @@ La eliminación de ruido legacy no debe crear nueva actividad artificial. Las ta
 PikoFilm conservará la misma funcionalidad V4, pero dejará de ejecutar miles de comprobaciones innecesarias. Esto reduce tráfico, consumo de Vercel/Neon y ruido operativo, además de retirar una pieza antigua que podría confundir futuras evoluciones.
 
 **Decisión del usuario:** aprobada.
+
+### Mejora 3 · V5-C003 — Sustituir el acceso privado actual por un mecanismo más robusto
+
+**Estado:** RECHAZADA  
+**Prioridad definitiva:** No entra en V5.  
+**Categoría:** Seguridad
+
+**Propuesta evaluada**
+
+Sustituir el acceso actual basado en enlace/token y cookie privada de larga duración por una sesión más robusta, con credencial fuera del código, caducidad más corta y revocación más sencilla.
+
+**Motivo de rechazo del usuario**
+
+El acceso actual no está causando problemas, resulta cómodo en el uso real y, tras los cambios realizados, ha conseguido detener los ataques que motivaron su endurecimiento. El usuario no quiere introducir ahora complejidad adicional en una parte que considera resuelta y estable.
+
+**Consecuencia para V5**
+
+- Se mantiene el mecanismo de acceso privado actual.
+- No se añade un sistema de usuarios, sesiones nuevas ni cambio de autenticación como parte de V5.
+- Sólo se reabrirá esta decisión si aparece evidencia nueva de vulnerabilidad, ataques, filtración o inconveniente real de uso.
+
+**Decisión del usuario:** rechazada de momento por estabilidad y buen funcionamiento del acceso vigente.
