@@ -201,3 +201,35 @@ La defensa principal debe ser visual y preventiva: **si ya existe un Batch equiv
 Mientras un proceso ya esté ejecutándose, PikoFilm no permitirá iniciarlo otra vez desde la interfaz. Incluso en casos que la interfaz no pueda prevenir —dos pestañas, dos solicitudes simultáneas o automatismos— el backend seguirá protegido y no convertirá una duplicidad en un error técnico.
 
 **Decisión del usuario:** aprobada con deshabilitación preventiva obligatoria de botones durante la ejecución, manteniendo la idempotencia de backend como red de seguridad.
+
+### Mejora 7 · V5-C007 — Chequeo integral de salud de PikoFilm desde Operaciones
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Operaciones · Salud · Fiabilidad · Diagnóstico
+
+**Problema detectado**
+
+Hoy para saber si PikoFilm está correctamente montado hay que comprobar piezas distintas por separado: esquema de Neon, funciones SQL, workers de Railway, automatismos de Vercel, Batch, fuentes externas y otros componentes críticos. La información existe, pero está dispersa y obliga a investigar manualmente.
+
+**Alcance aprobado**
+
+1. Incorporar en **Operaciones** una comprobación integral y de sólo lectura que responda de forma comprensible si la plataforma está correctamente montada y operativa.
+2. Verificar como mínimo el esquema y versión/fingerprint esperado de Neon, tablas/columnas/funciones críticas, estado y frescura de workers, ejecución reciente de crons esperados, estado básico de Batch y disponibilidad/configuración esencial de componentes de infraestructura que puedan comprobarse de forma segura.
+3. Presentar un resultado resumido por excepción: si todo está correcto, mostrarlo de forma compacta; si existe una anomalía, destacar exactamente qué componente necesita atención y por qué.
+4. Distinguir claramente entre **fallo confirmado**, **estado degradado**, **sin evidencia reciente** y **correcto**, evitando declarar sano aquello que no se ha podido comprobar.
+5. Cada chequeo individual debe tener criterio explícito de éxito y mensaje entendible; no convertir el panel en una lista de métricas técnicas sin interpretación.
+6. Integrarlo con la futura comprobación de compatibilidad código↔esquema aprobada en la Mejora 5 y reutilizar fuentes canónicas existentes en vez de crear estados paralelos.
+7. La comprobación no debe modificar configuración, reiniciar workers, ejecutar migraciones ni reparar automáticamente nada. Cualquier acción correctiva debe ser otra operación explícita y segura de Operaciones.
+
+**Observabilidad y ruido**
+
+- La consulta manual de salud es una operación de diagnóstico **de sólo lectura** y no debe llenar Actividad con entradas sin utilidad funcional.
+- **Operaciones** debe mostrar cuándo se hizo la comprobación, qué se pudo verificar y qué resultado obtuvo.
+- Si se detecta una anomalía con consecuencia funcional real, ésta podrá alimentar el estado de salud/incidencias de Operaciones y reflejarse en Actividad únicamente cuando corresponda por su impacto funcional.
+
+**Resultado esperado para el usuario**
+
+Desde una sola pantalla se podrá responder “PikoFilm está bien” o, si no lo está, obtener una explicación concreta como “Activity Planner no se ejecuta desde hace 3 horas”, “worker API sin heartbeat” o “el esquema de Neon no coincide con la versión esperada”, sin tener que abrir Neon, Railway y Vercel uno por uno.
+
+**Decisión del usuario:** aprobada.
