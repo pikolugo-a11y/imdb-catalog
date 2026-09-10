@@ -101,3 +101,37 @@ El acceso actual no está causando problemas, resulta cómodo en el uso real y, 
 - Sólo se reabrirá esta decisión si aparece evidencia nueva de vulnerabilidad, ataques, filtración o inconveniente real de uso.
 
 **Decisión del usuario:** rechazada de momento por estabilidad y buen funcionamiento del acceso vigente.
+
+### Mejora 4 · V5-C004 — Permitir rotar o revocar el acceso privado desde Operaciones
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Operaciones · Mantenimiento · Seguridad
+
+**Problema detectado**
+
+El mecanismo de acceso privado actual funciona bien y se mantiene, pero la credencial válida está ligada al código del `middleware`. Si algún día se necesita cambiarla o invalidarla, hoy la vía natural implica modificar código y desplegar.
+
+**Alcance aprobado**
+
+1. Mantener el mismo modelo de acceso privado y la misma experiencia diaria que ya funciona; esta mejora no sustituye la autenticación actual ni introduce usuarios.
+2. Desacoplar la credencial o versión de acceso del código para que pueda rotarse o revocarse de forma segura sin modificar la aplicación.
+3. Exponer la operación desde **Operaciones → Mantenimiento**, siguiendo el contrato V4 de mantenimiento seguro: explicar antes qué va a cambiar, qué no cambia y qué efecto tendrá sobre accesos existentes.
+4. La acción deberá exigir confirmación proporcional al impacto y no deberá mostrar ni registrar secretos en claro.
+5. Cuando técnicamente sea posible, ofrecer revocación global de accesos previos/rotación controlada sin necesidad de redeploy de código.
+6. Si la plataforma de hosting impide una rotación totalmente desde UI sin intervención externa, Operaciones deberá mostrar el flujo exacto y seguro disponible, sin fingir una capacidad que el backend no tenga.
+
+**Condición añadida por el usuario**
+
+La gestión debe hacerse **desde Operaciones como mantenimiento**, porque es el lugar canónico de PikoFilm para este tipo de intervención técnica.
+
+**Observabilidad obligatoria**
+
+- **Operaciones:** cada rotación/revocación debe quedar auditada como intervención técnica, con resultado, actor/origen, momento y estado final, pero nunca con la clave o secreto en claro.
+- **Actividad:** sólo debe reflejarse si la operación tiene una consecuencia funcional relevante para el uso de PikoFilm; no se generará ruido por simples consultas de estado.
+
+**Resultado esperado para el usuario**
+
+El acceso privado seguirá funcionando como ahora, pero si alguna vez se necesita cambiar o revocar la credencial podrá gestionarse de forma controlada desde Operaciones, sin convertir una tarea de mantenimiento en un cambio de código.
+
+**Decisión del usuario:** aprobada con gestión obligatoria desde Operaciones → Mantenimiento.
