@@ -506,3 +506,30 @@ Algunas rutas de PikoFilm fuerzan renderizado dinámico, `no-store` u otros comp
 Las páginas que hoy repiten trabajo innecesariamente podrán responder más rápido y con menos coste, mientras las áreas que realmente necesiten datos en tiempo real seguirán comportándose como ahora. La mejora sólo se considerará válida cuando exista una ganancia medible sin pérdida de exactitud.
 
 **Decisión del usuario:** aprobada con prioridad P1 e integrada en el mismo bloque de rendimiento que la Mejora 14.
+
+### Mejora 17 · V5-C017 — Evitar HTML duplicado en Catálogo para desktop y móvil
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Rendimiento · UX · Catálogo · Frontend
+
+**Problema detectado**
+
+La vista actual de Catálogo mantiene representaciones separadas de los mismos resultados para escritorio y móvil. Aunque CSS o media queries hagan visible una sola variante, el servidor/navegador puede terminar construyendo y recibiendo dos árboles de contenido equivalentes para una misma página de resultados.
+
+**Alcance aprobado**
+
+1. Medir primero el coste real de DOM/HTML duplicado en la página de Catálogo para confirmar y cuantificar el impacto.
+2. Reestructurar la presentación para que cada resultado tenga una única representación de datos y evitar duplicar innecesariamente el contenido completo entre desktop y móvil.
+3. Mantener la experiencia visual adecuada a cada dispositivo: tabla o presentación compacta en escritorio y disposición cómoda en móvil, sin obligar a que ambas interfaces tengan exactamente el mismo layout.
+4. Reutilizar componentes, datos y semántica común siempre que permita eliminar duplicación sin introducir una arquitectura más costosa que el problema original.
+5. Mantener accesibilidad, navegación, enlaces, acciones, filtros y datos visibles actuales.
+6. Verificar el resultado en desktop y móvil y medir antes/después tamaño de HTML, número de nodos DOM y coste de renderizado cuando sea posible.
+7. Integrar esta mejora con el bloque de rendimiento global de la Mejora 14 y con el sistema visual común de la Mejora 13.
+8. No considerar completada la mejora si sólo se oculta una de las dos representaciones mediante CSS pero ambas continúan renderizándose.
+
+**Resultado esperado para el usuario**
+
+Catálogo seguirá adaptándose correctamente a ordenador y móvil, pero PikoFilm dejará de hacer trabajo duplicado sólo para mantener dos versiones completas de los mismos resultados. La optimización deberá producir una reducción real de HTML/DOM o coste de renderizado sin empeorar la experiencia de ninguno de los dos formatos.
+
+**Decisión del usuario:** aprobada con prioridad P2 e integrada en el bloque de rendimiento/UX.
