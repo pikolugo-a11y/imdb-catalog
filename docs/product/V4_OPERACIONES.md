@@ -175,3 +175,25 @@ Operaciones V4 no tendrá un botón genérico de «reiniciar» ni un «reiniciar
 - Toda acción debe preservar idempotencia, integridad y los límites/protecciones de las fuentes externas.
 
 Si en el futuro fuese necesaria una recuperación global, deberá diseñarse como una operación específica para un fallo concreto, con semántica, protecciones y observabilidad propias; nunca como un reset indiscriminado del sistema.
+
+## Decisión 10 — Salud operativa por excepción y ciclo de vida de incidencias
+
+**Aprobada.**
+
+La portada de Operaciones V4 tendrá una franja compacta de **salud operativa por excepción**, no un dashboard voluminoso. Cuando todo esté correcto mostrará un resumen mínimo; cuando exista una anomalía destacará sólo lo que requiere atención y permitirá entrar directamente en su diagnóstico técnico.
+
+La salud operativa podrá señalar, cuando aplique, motor Batch pausado, Batch detenidos, workers o heartbeats ausentes, colas atascadas, leases vencidas, scheduler/planificador sin ejecutar, fuentes bloqueadas, límites agotados y errores técnicos relevantes.
+
+### Los errores tienen estado operativo, pero no se borran
+
+Un error histórico y una incidencia activa no son lo mismo.
+
+- `process_run_errors` y la ejecución original conservan la verdad histórica durante los 30 días acordados.
+- Operaciones distinguirá al menos entre incidencia **activa**, **resuelta automáticamente** y **descartada/resuelta manualmente**.
+- Si el mismo proceso sobre la misma entidad o alcance técnico se ejecuta posteriormente con éxito y demuestra que la condición anterior ya no persiste, la incidencia debe dejar de aparecer como activa automáticamente, conservando el error histórico para diagnóstico.
+- El usuario podrá usar una acción equivalente a **Descartar / Marcar como resuelto** cuando haya verificado que el problema ya no requiere atención. Esta acción no elimina ni altera el error original; sólo cambia su estado operativo de atención.
+- Las incidencias resueltas o descartadas seguirán siendo localizables mediante búsqueda y dentro del detalle de la ejecución original mientras estén dentro de la retención de 30 días.
+- Si vuelve a producirse la misma condición después de haberse resuelto o descartado, debe aparecer como una nueva incidencia activa; descartar no silencia futuros errores del mismo tipo.
+- La resolución manual debe quedar auditada como intervención técnica en la observabilidad canónica y, si tiene consecuencia funcional relevante, reflejarse también en Actividad.
+
+Principio rector: **Operaciones muestra lo que necesita atención ahora sin falsificar ni borrar lo que ocurrió antes**.
