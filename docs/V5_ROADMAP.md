@@ -946,3 +946,31 @@ Catálogo puede realizar una consulta pesada para recuperar las filas visibles y
 Catálogo deberá responder más rápido y con menos trabajo de Neon porque calcular cuántos resultados existen ya no obligará a repetir innecesariamente la misma carga pesada utilizada para mostrar las filas. Para el usuario no cambiarán los datos ni el funcionamiento de filtros, ordenación o paginación.
 
 **Decisión del usuario:** aprobada con prioridad P1.
+
+### Mejora 33 · V5-C033 — Optimizar la agregación de géneros en Catálogo
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Catálogo · Rendimiento · Neon · Datos
+
+**Problema detectado**
+
+Catálogo puede reconstruir o agregar los géneros mediante una subconsulta que participa en una consulta ya pesada. Aunque el conjunto de géneros sea pequeño, repetir agregaciones o recorrer relaciones para registros que no necesitan mostrarse puede añadir trabajo innecesario.
+
+**Alcance aprobado**
+
+1. Medir primero el coste real de la agregación actual de géneros y confirmar si forma parte de los cuellos de botella de Catálogo.
+2. Obtener los géneros de los registros visibles con el menor trabajo razonable, coordinando la solución con la paginación previa al enriquecimiento de la Mejora 31.
+3. Mantener exactamente los mismos géneros visibles por título y el mismo comportamiento funcional de los filtros por género.
+4. No limitar el filtro por género a la página visible: cualquier filtro debe seguir aplicándose sobre todo el conjunto antes de paginar.
+5. Optimizar primero la consulta/agregación existente y reutilizar datos ya disponibles cuando sea suficiente.
+6. Crear una representación preparada, columna agregada, vista u otra estructura adicional sólo si las mediciones demuestran un beneficio claro y su mantenimiento no añade más coste o complejidad que el ahorro conseguido.
+7. Evitar duplicar fuentes de verdad: cualquier representación derivada de géneros deberá mantenerse coherente con la relación canónica existente.
+8. Medir planes, tiempos y filas procesadas antes/después y coordinar el cambio con las Mejoras 31, 32 y 14.
+9. Cubrir con pruebas títulos con uno/múltiples/sin géneros y filtros por género para garantizar equivalencia funcional.
+
+**Resultado esperado para el usuario**
+
+Catálogo deberá dedicar menos trabajo a reconstruir los géneros de los títulos que muestra, contribuyendo a una carga más rápida sin cambiar ni los géneros visibles ni el funcionamiento de los filtros.
+
+**Decisión del usuario:** aprobada con prioridad P2.
