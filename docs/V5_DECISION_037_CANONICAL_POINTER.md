@@ -1,0 +1,1 @@
+Decision V5-C037 is RECHAZADA. Canonical roadmap content through V5-C036 is blob dce4f49010dcf758490be9515098681ef1f1dfb3. This sidecar exists only to preserve the decision durably while the canonical roadmap file is restored unchanged.
