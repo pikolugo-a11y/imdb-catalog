@@ -1,0 +1,1 @@
+Temporal recovery note: the canonical roadmap blob before decision 37 is `dce4f49010dcf758490be9515098681ef1f1dfb3`. Decision 37 is persisted separately in `docs/V5_DECISION_037.md` and must be consolidated into `docs/V5_ROADMAP.md` at the next safe full-file rewrite. No functional/project decision was lost.
