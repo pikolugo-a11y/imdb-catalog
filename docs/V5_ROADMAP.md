@@ -724,3 +724,31 @@ La búsqueda global de sagas puede realizar comprobaciones muy parecidas más de
 Buscar sagas deberá requerir menos trabajo interno de Neon y responder más rápido, manteniendo exactamente la misma experiencia y los mismos resultados visibles.
 
 **Decisión del usuario:** aprobada con prioridad P2.
+
+### Mejora 25 · V5-C025 — Optimizar la búsqueda de personas y su relevancia
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Búsqueda · Personas · Rendimiento · Relevancia · Neon
+
+**Problema detectado**
+
+La búsqueda de personas puede necesitar recorrer o correlacionar bastante información de filmografía para decidir qué resultados son relevantes. Eso puede aumentar el coste de la consulta y hacer que la ordenación de resultados no siempre sea tan directa como debería.
+
+**Alcance aprobado**
+
+1. Medir primero la consulta actual de búsqueda de personas, su plan de ejecución, tiempos y coste real antes de cambiar arquitectura.
+2. Optimizar primero la consulta y los accesos existentes, reduciendo joins, subconsultas o trabajo redundante cuando sea posible.
+3. Mantener o mejorar la relevancia funcional: una coincidencia directa por nombre debe seguir siendo prioritaria y las relaciones por filmografía deben aportar contexto útil sin desplazar resultados más evidentes.
+4. Crear un read model o estructura específica sólo si la consulta optimizada sigue siendo costosa y las mediciones demuestran que esa estructura aporta una mejora clara de rendimiento y relevancia.
+5. No crear tablas, vistas materializadas o índices adicionales “por si acaso”; cualquier nueva estructura deberá tener consumidor, criterio de refresco y beneficio medible.
+6. Mantener la frescura suficiente para que una persona o crédito recién incorporado aparezca en búsqueda sin retrasos funcionalmente engañosos.
+7. Comparar antes/después tiempos, planes y calidad de resultados sobre búsquedas representativas.
+8. Integrar esta mejora con las Mejoras 23 y 14 para reutilizar normalización, índices y medición existentes sin duplicar mecanismos.
+9. Si finalmente se adopta un read model, su mantenimiento deberá ser observable técnicamente y no convertirse en una fuente de verdad paralela respecto a los datos canónicos de personas/filmografía.
+
+**Resultado esperado para el usuario**
+
+Buscar actores, directores u otras personas en PikoFilm deberá responder más rápido y ordenar mejor los resultados relevantes, sin introducir estructuras nuevas salvo que exista una ganancia demostrada y manteniendo los datos suficientemente actuales.
+
+**Decisión del usuario:** aprobada con prioridad P2 y con la condición de optimizar y medir primero antes de crear un read model específico.
