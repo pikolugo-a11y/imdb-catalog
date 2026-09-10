@@ -146,3 +146,18 @@ La auditoría debe seguir el recorrido completo:
 Si un proceso llama directamente a una fuente gobernada sin pasar por el mecanismo canónico, usa límites hardcodeados ignorando la configuración persistida, o lee una fuente/configuración distinta de la que Operaciones modifica, se considerará una incidencia arquitectónica a corregir antes de dar esta parte por cerrada.
 
 Operaciones debe diferenciar claramente entre **valor configurado**, **límite duro** y **valor efectivo aplicado**, para que sea verificable que un cambio tiene efecto real.
+
+## Decisión 8 — Gobernanza obligatoria y fail-closed para fuentes gobernadas
+
+**Aprobada.**
+
+Toda llamada de los procesos canónicos a una fuente externa gobernada por Operaciones debe pasar obligatoriamente por el mecanismo canónico de gobernanza. Para TMDb, OMDb y MDBList no se admite que `apiGate` sea una protección opcional que pueda omitirse silenciosamente.
+
+- Batch y ejecuciones manuales usan la misma configuración persistida y las mismas protecciones; sólo cambia su `lane` cuando corresponda.
+- Si un proceso canónico intenta consultar una fuente gobernada sin disponer de `apiGate`, la operación debe fallar de forma segura **antes de realizar el `fetch`**.
+- Los wrappers y rutas manuales deben crear e inyectar `createApiGate(...)` igual que los workers Batch.
+- Los caminos legacy que sigan realizando llamadas directas a TMDb/OMDb/MDBList deben migrarse al mecanismo gobernado o quedar fuera de uso antes de considerar cerrada esta parte de Operaciones V4.
+- La concurrencia interna de un proceso no puede convertirse en un bypass del límite efectivo de la fuente: cada llamada externa debe adquirir su permiso individual.
+- La observabilidad debe permitir distinguir una denegación por gobernanza de un error del proveedor.
+
+Principio permanente: **una fuente declarada como gobernada no puede ser consultada sin gobernanza**. La ausencia de gate es un error de programación, no un permiso implícito para continuar.
