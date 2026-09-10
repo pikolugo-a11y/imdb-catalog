@@ -90,3 +90,28 @@ Las acciones disponibles se limitarán a intervenciones **explícitamente soport
 Parámetros delicados como concurrencia máxima, duración de leases o política de reintentos se mostrarán como **límites/protecciones del sistema** y no se ofrecerán como sliders o campos editables por defecto. Sólo se expondrán cambios configurables si existe una necesidad operativa real, una semántica clara y una implementación segura y auditable.
 
 Principio rector: **Operaciones debe permitir entender mucho y romper poco**. Toda intervención manual relevante debe quedar trazada en la observabilidad canónica.
+
+## Decisión 6 — Retención técnica coordinada de 30 días
+
+**Aprobada.**
+
+Operaciones V4 tendrá la misma ventana de retención detallada que Actividad V4: **30 días** para la información técnica consultable desde la aplicación.
+
+Esta regla se aplica de forma coordinada a la observabilidad y al estado técnico histórico asociado, incluyendo al menos:
+
+- `process_runs`;
+- `process_run_events`;
+- `process_run_errors`;
+- datos históricos de Batch vinculados a ejecuciones ya terminales cuando su conservación deje de ser necesaria para el estado operativo actual;
+- cualquier otro detalle técnico que sólo exista para diagnosticar ejecuciones pasadas.
+
+La purga debe preservar siempre:
+
+- ejecuciones todavía activas, pausadas, reintentables o pendientes de reconciliación;
+- integridad referencial;
+- estado técnico vigente necesario para que workers, Batch Engine, planificador u otros mecanismos sigan funcionando;
+- cualquier resumen agregado o estado actual que no sea mero detalle histórico.
+
+La correspondencia temporal con Actividad es intencionada: mientras un hecho funcional sea consultable en Actividad, su detalle técnico correlacionado debe seguir disponible en Operaciones; cuando expire la ventana detallada, ambas superficies deben dejar de ofrecer ese nivel de detalle de forma coherente.
+
+La implementación deberá auditar las relaciones y claves foráneas antes de introducir la purga para evitar borrar ejecuciones padre, items Batch o errores que todavía sean necesarios para procesos vivos.
