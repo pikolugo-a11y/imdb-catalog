@@ -46,3 +46,25 @@ Operaciones V4 no se limita a consultar logs. Debe analizar e integrar las capac
 - cualquier mecanismo de intervención técnica ya existente en PikoFilm.
 
 La implementación deberá auditar primero el sistema vivo y el código actual para decidir qué controles existen realmente, cuáles deben exponerse y qué acciones necesitan protección adicional. Operaciones no inventará controles que el backend no pueda ejecutar de forma segura.
+
+## Decisión 4 — Portada orientada a búsqueda y acceso directo
+
+**Aprobada.**
+
+La portada de Operaciones V4 estará diseñada alrededor de un **buscador técnico principal**, no alrededor de un listado de ejecuciones recientes.
+
+El buscador debe poder localizar, según la información canónica disponible, por elementos como:
+
+- IMDb ID o entidad afectada;
+- título o persona cuando pueda resolverse desde datos canónicos;
+- `run_id`;
+- proceso o código de proceso;
+- error, paso o texto técnico;
+- Batch relacionado;
+- identificadores técnicos útiles para diagnóstico.
+
+Cuando el usuario llegue desde Actividad mediante `Ver detalle técnico en Operaciones`, Operaciones abrirá directamente la ejecución correlacionada y su contexto técnico, sin obligar a realizar una búsqueda intermedia.
+
+La portada podrá mostrar únicamente un **resumen operativo compacto** del estado actual y un acceso claro al **Centro de control** para acciones administrativas como reinicios, Batch Engine, límites, capacidad y mantenimiento. No mostrará por defecto un feed largo de ejecuciones.
+
+Los resultados de búsqueda se cargarán sólo cuando exista una consulta o navegación concreta, manteniendo Operaciones como herramienta de investigación y diagnóstico y no como segunda cronología de Actividad.
