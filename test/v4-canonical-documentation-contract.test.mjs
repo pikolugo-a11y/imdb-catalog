@@ -63,3 +63,14 @@ test('specialized process and operations annexes remain available',()=>{
     'docs/PROJECT_RULES.md'
   ])assert.equal(existsSync(path),true,`${path} must remain canonical/specialized documentation`);
 });
+
+test('SAGA-001 documentation matches the live global Batch and exact per-collection core',()=>{
+  const catalog=read('docs/processes/PROCESS_CATALOG.md');
+  const batch=read('docs/processes/BATCH_ARCHITECTURE.md');
+  assert.match(catalog,/PROC-SAGA-001[^\n]+individual \+ global[^\n]+\| sí \|[^\n]+refreshSagaCollectionCanonical[^\n]+Railway API[^\n]+EXACTA por colección/);
+  assert.match(catalog,/lib\/saga-batch\.js/);
+  assert.match(catalog,/antiguo límite funcional de 120/);
+  assert.match(batch,/SAGA-001[^\n]+refreshSagaCollectionCanonical[^\n]+EXACTA por colección/);
+  assert.match(batch,/pool `api`/);
+  assert.doesNotMatch(catalog,/No usa Batch común porque su unidad de trabajo es un refresco global acotado/);
+});
