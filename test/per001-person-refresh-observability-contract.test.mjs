@@ -17,7 +17,7 @@ test('PER-001 manual wrapper owns the individual process_run boundary',()=>{
   assert.match(people,/triggerSource:'personas_manual'/);
   assert.match(people,/entityType:'person'/);
   assert.match(people,/operation:'refresh_person_profile_filmography'/);
-  assert.match(people,/refreshPersonFilmographyCanonical\(db\(\),personId,\{trace\}\)/);
+  assert.match(people,/refreshPersonFilmographyCanonical\(sql,personId,\{trace,lane:'manual',apiGate:createApiGate\(sql\)\}\)/);
   assert.match(display,/'PROC-PER-001':\{name:'Actualizar perfil y filmografía'\}/);
 });
 
@@ -47,6 +47,7 @@ test('PER-001 keeps explicit manual action and removes people-lite legacy path',
 
 test('PER-001 canonical core observes TMDb and persists profile plus filmography atomically',()=>{
   assert.match(core,/trace\?\.externalCall\?\.\(1\)/);
+  assert.match(core,/requireApiGate\(apiGate,'tmdb'\)/);
   assert.match(core,/step:'fetch_person'/);
   assert.match(core,/step:'resolve_movies'/);
   assert.match(core,/const ops=\[\]/);
