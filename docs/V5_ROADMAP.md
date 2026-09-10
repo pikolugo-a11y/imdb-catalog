@@ -358,3 +358,37 @@ La limpieza de estilos no debe generar entradas de Actividad. Los cambios releva
 PikoFilm conservará su aspecto funcional actual, pero con una base de estilos más pequeña, coherente y predecible, reduciendo tiempos de carga y el riesgo de regresiones visuales futuras.
 
 **Decisión del usuario:** aprobada.
+
+### Mejora 12 · V5-C012 — Retirar físicamente CSS legacy sin consumidores
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** UX · Rendimiento · Mantenibilidad · Limpieza legacy
+
+**Problema detectado**
+
+Aunque una hoja de estilos antigua deje de importarse, conservarla indefinidamente dentro del repositorio mantiene deuda técnica y hace ambiguo si todavía forma parte del sistema. Esa ambigüedad facilita que estilos obsoletos vuelvan a reutilizarse por accidente o que futuras revisiones pierdan tiempo comprobando piezas ya muertas.
+
+**Alcance aprobado**
+
+1. Realizar un consumer sweep completo de cada hoja CSS histórica antes de eliminarla físicamente.
+2. Eliminar del repositorio únicamente archivos y reglas sin consumidores vivos demostrados o cuya funcionalidad haya sido migrada de forma explícita.
+3. No borrar hojas por su nombre de versión ni por antigüedad; la retirada debe basarse en evidencia de uso real.
+4. Añadir protección de CI o tests que impidan reintroducir imports o dependencias hacia CSS retirado.
+5. Mantener cualquier hoja legacy que siga siendo necesaria hasta completar su migración segura.
+6. Coordinar esta mejora con la Mejora 11 para que consolidación y retirada se ejecuten como un único bloque de limpieza visual/técnica, evitando trabajo duplicado y dobles regresiones.
+7. Comprobar antes y después que las superficies canónicas mantienen su aspecto y comportamiento esperados en desktop y móvil.
+
+**Condición de implantación**
+
+Esta mejora no es un rediseño. El objetivo es que **ningún CSS legacy permanezca sin un consumidor demostrado**, pero nunca a costa de romper una pantalla vigente. La retirada física sólo ocurre después de migración o prueba concluyente de no uso.
+
+**Observabilidad**
+
+No debe generar entradas funcionales en Actividad. Cualquier regresión o fallo técnico detectado durante la limpieza debe ser diagnosticable en Operaciones o CI según corresponda, sin crear ruido por cada archivo retirado.
+
+**Resultado esperado para el usuario**
+
+PikoFilm conservará el aspecto aprobado, pero el repositorio dejará de acumular hojas de estilo muertas o ambiguas. La base visual será más pequeña, comprensible y difícil de degradar con deuda histórica.
+
+**Decisión del usuario:** aprobada y vinculada al mismo bloque de implantación que la Mejora 11.
