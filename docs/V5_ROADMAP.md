@@ -50,3 +50,32 @@ Para aprovechar las superficies V4 ya construidas, **cada ejecución del planifi
 Cuando PikoFilm diga que revisa automáticamente la planificación cada hora, existirá una garantía verificable de que realmente ocurre y será posible comprobar qué hizo desde Actividad y diagnosticar cómo se ejecutó desde Operaciones.
 
 **Decisión del usuario:** aprobada con la condición obligatoria de observabilidad en Actividad + Operaciones.
+
+### Mejora 2 · V5-C001 — Retirar por completo el polling legado de Lifecycle
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Defecto · Eficiencia · Limpieza legacy
+
+**Problema detectado**
+
+Producción ha registrado miles de solicitudes diarias a `/api/lifecycle-activity` y el componente legado `LifecycleActivity` mantiene un polling cada 4 segundos, aunque V4 sustituyó esa experiencia por la superficie canónica de Actividad.
+
+**Alcance aprobado**
+
+1. Identificar de forma concluyente todos los consumidores actuales de `LifecycleActivity` y `/api/lifecycle-activity` antes de eliminar nada.
+2. Confirmar que ninguna capacidad vigente de V4 depende de ese polling.
+3. Retirar el componente legado, su polling y el endpoint cuando el consumer sweep demuestre que son innecesarios.
+4. Añadir protección automatizada para impedir que el endpoint o un polling equivalente reaparezcan por accidente.
+5. Verificar tras implantación, con métricas/logs de producción, que las llamadas residuales desaparecen o quedan reducidas únicamente a algún consumidor explícitamente justificado.
+6. No sustituir el polling antiguo por otro mecanismo periódico equivalente si no existe una necesidad funcional real.
+
+**Observabilidad y regla transversal**
+
+La eliminación de ruido legacy no debe crear nueva actividad artificial. Las tareas técnicas de migración, verificación o cualquier incidencia relevante durante la retirada deben quedar trazadas en **Operaciones**; si provocan un efecto funcional visible para el usuario, también deben quedar reflejadas en **Actividad**, compartiendo la correlación canónica correspondiente.
+
+**Resultado esperado para el usuario**
+
+PikoFilm conservará la misma funcionalidad V4, pero dejará de ejecutar miles de comprobaciones innecesarias. Esto reduce tráfico, consumo de Vercel/Neon y ruido operativo, además de retirar una pieza antigua que podría confundir futuras evoluciones.
+
+**Decisión del usuario:** aprobada.
