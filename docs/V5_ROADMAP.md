@@ -778,3 +778,29 @@ El usuario indica expresamente que esta capacidad no le interesa y no quiere ded
 V5 no añadirá complejidad ni trabajo específico para una forma de interacción que el usuario no necesita.
 
 **Decisión del usuario:** rechazada por falta de interés funcional.
+
+### Mejora 27 · V5-C027 — Semántica accesible correcta en la búsqueda global
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** UX · Búsqueda · Accesibilidad · Frontend
+
+**Problema detectado**
+
+El buscador global puede mejorar su semántica técnica para que navegador y tecnologías de asistencia entiendan con precisión qué elemento es el campo de búsqueda, qué bloque contiene los resultados, cuándo ese bloque está abierto y cómo se relacionan ambos.
+
+**Alcance aprobado**
+
+1. Revisar la estructura semántica actual del buscador global y aplicar roles, relaciones y atributos accesibles adecuados al patrón real utilizado.
+2. Asegurar que el campo de búsqueda tenga nombre accesible claro y que los resultados asociados puedan identificarse correctamente.
+3. Reflejar de forma semántica los estados abierto/cerrado, carga, ausencia de resultados y demás estados relevantes sin depender únicamente de señales visuales.
+4. Mantener la UX visual y funcional actual; esta mejora no introduce la navegación avanzada por teclado rechazada en la Mejora 26.
+5. Evitar implementar un patrón ARIA más complejo que el comportamiento real: la semántica debe describir fielmente lo que el buscador hace, no fingir capacidades inexistentes.
+6. Cubrir con comprobaciones de accesibilidad/regresión suficientes los estados principales del buscador.
+7. Integrar estilos o estados visuales con el sistema canónico de la Mejora 13 cuando corresponda, sin crear excepciones visuales propias.
+
+**Resultado esperado para el usuario**
+
+El buscador seguirá viéndose y utilizándose como ahora, pero quedará correctamente descrito a nivel de navegador y accesibilidad, evitando ambigüedades técnicas y mejorando la calidad general del frontend sin añadir interacción que el usuario no necesita.
+
+**Decisión del usuario:** aprobada con prioridad P2, manteniendo expresamente fuera la navegación avanzada por teclado rechazada en la Mejora 26.
