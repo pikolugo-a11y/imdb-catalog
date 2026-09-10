@@ -263,3 +263,32 @@ Los tests de CI no deben generar entradas funcionales en Actividad. Las ejecucio
 Cuando PikoFilm declare que una tarea se ejecuta automáticamente cada hora, día o con cualquier otra frecuencia, habrá una protección automática que impida desplegar una configuración en la que esa tarea esté declarada pero sea inaccesible o insegura.
 
 **Decisión del usuario:** aprobada.
+
+### Mejora 9 · V5-C009 — Añadir cabeceras de seguridad modernas
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Seguridad · Navegador · Hardening
+
+**Problema detectado**
+
+La configuración actual no define de forma explícita una política completa de cabeceras de seguridad del navegador. Esto deja margen para endurecer cómo PikoFilm permite cargar scripts, imágenes, conexiones y otras capacidades web sin cambiar el modelo de acceso privado vigente.
+
+**Alcance aprobado**
+
+1. Añadir una política de seguridad explícita y compatible con el funcionamiento real de PikoFilm, incluyendo al menos Content Security Policy cuando sea viable, Referrer-Policy y Permissions-Policy, además de otras cabeceras recomendables que tengan sentido en el entorno actual.
+2. Construir la política a partir de los recursos y orígenes realmente utilizados por PikoFilm; no aplicar una configuración genérica que pueda romper imágenes, APIs, fuentes o flujos válidos.
+3. Implantar primero en modo de observación/report-only o con pruebas equivalentes cuando el riesgo de bloqueo accidental lo justifique, endureciendo después de validar compatibilidad.
+4. Mantener intacto el mecanismo de acceso privado aprobado; esta mejora es complementaria y no reabre la Mejora 3 rechazada.
+5. Añadir pruebas de CI que detecten regresiones básicas de cabeceras y permitan evolucionar la política de forma controlada.
+6. No habilitar permisos o excepciones más amplios de lo necesario para resolver incompatibilidades puntuales.
+
+**Observabilidad**
+
+Los cambios de configuración de seguridad deberán quedar trazados técnicamente en Operaciones cuando formen parte de una intervención o despliegue relevante. Los bloqueos detectados que afecten funcionalmente a PikoFilm deberán ser diagnosticables desde Operaciones. Actividad sólo reflejará consecuencias funcionales reales, no cada cabecera servida por el navegador.
+
+**Resultado esperado para el usuario**
+
+PikoFilm seguirá utilizándose exactamente igual, pero el navegador tendrá reglas más estrictas sobre qué puede ejecutar o cargar la aplicación, reduciendo superficie de ataque sin sacrificar recursos legítimos.
+
+**Decisión del usuario:** aprobada.
