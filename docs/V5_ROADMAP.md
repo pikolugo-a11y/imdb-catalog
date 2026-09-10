@@ -918,3 +918,31 @@ La optimización **no puede convertir la ordenación ni los filtros en operacion
 Catálogo deberá cargar más rápido porque Neon dejará de enriquecer registros que no van a mostrarse, pero seguirá comportándose exactamente como hasta ahora: si se ordena por IMDb, año, Calidad o cualquier otro campo soportado, la página mostrará los registros que correspondan según el orden de **todo el catálogo filtrado**, no sólo los mejores de los 50 que ya estaban visibles.
 
 **Decisión del usuario:** aprobada con prioridad P1 y con la condición obligatoria de conservar filtros y ordenación globales antes de paginar.
+
+### Mejora 32 · V5-C032 — Evitar repetir en Catálogo casi la misma consulta para contar y mostrar
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Catálogo · Rendimiento · Neon · Arquitectura de consultas
+
+**Problema detectado**
+
+Catálogo puede realizar una consulta pesada para recuperar las filas visibles y otra muy parecida para calcular el total o resumen del conjunto filtrado. Eso puede repetir filtros, joins y trabajo de base de datos que no es necesario ejecutar dos veces de la misma forma.
+
+**Alcance aprobado**
+
+1. Medir primero el coste real de la consulta de filas y de la consulta de total/resumen para identificar qué partes se repiten.
+2. Separar el cálculo del total de cualquier enriquecimiento que sólo sea necesario para pintar las filas visibles.
+3. Reutilizar o compartir la parte común de filtros y conjunto base cuando permita reducir trabajo sin introducir una arquitectura más compleja que el ahorro obtenido.
+4. Mantener exactamente los mismos totales, filtros, ordenación, paginación y resultados funcionales actuales.
+5. Evitar que el cálculo de recuento ejecute joins pesados de Plex, Calidad u otras relaciones cuando esos joins no sean necesarios para determinar si un registro pertenece al conjunto filtrado.
+6. Cuando un filtro sí dependa de una relación enriquecida, conservar esa relación en el cálculo global para no alterar el resultado.
+7. Coordinar esta optimización con la Mejora 31 para que selección de página, total y enriquecimiento formen una estrategia de consulta coherente y no tres caminos divergentes.
+8. Medir planes, tiempos, filas procesadas y número de operaciones antes/después y cerrar la mejora sólo si existe reducción objetiva del trabajo de Neon.
+9. Cubrir con pruebas filtros, ordenaciones, varias páginas y recuentos para garantizar que el total mostrado coincide siempre con el conjunto que realmente puede recorrerse.
+
+**Resultado esperado para el usuario**
+
+Catálogo deberá responder más rápido y con menos trabajo de Neon porque calcular cuántos resultados existen ya no obligará a repetir innecesariamente la misma carga pesada utilizada para mostrar las filas. Para el usuario no cambiarán los datos ni el funcionamiento de filtros, ordenación o paginación.
+
+**Decisión del usuario:** aprobada con prioridad P1.
