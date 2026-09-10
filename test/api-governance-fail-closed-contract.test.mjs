@@ -44,12 +44,20 @@ test('manual source-consuming wrappers inject the canonical API gate',async()=>{
   }
 });
 
-test('legacy enrichment governs every TMDb request and saga UI no longer uses legacy refresher',async()=>{
+test('legacy enrichment governs every TMDb request and never turns throttling into media-type fallback',async()=>{
   const enrich=await read('lib/enrich-title.js');
   assert.match(enrich,/createApiGate\(sql\)/);
   assert.match(enrich,/governedTmdbJson\(apiGate,/);
+  assert.match(enrich,/if\(Number\(error\?\.status\)!==404\)throw error/);
   assert.doesNotMatch(enrich,/await fetchJson\(`https:\/\/api\.themoviedb\.org/);
+});
 
+test('people detail lookup never swallows governance or rate-limit failures',async()=>{
+  const people=await read('lib/people-refresh-core.mjs');
+  assert.match(people,/if\(error\?\.apiGateReason\|\|error\?\.processStep==='api_governance'\|\|Number\(error\?\.status\)===429\)throw error/);
+});
+
+test('saga UI no longer uses the legacy ungoverned unit refresher',async()=>{
   const sagaAction=await read('app/sagas/refresh-actions.js');
   assert.match(sagaAction,/refreshSagaCollectionUnitary/);
   assert.doesNotMatch(sagaAction,/sagas-v2/);
