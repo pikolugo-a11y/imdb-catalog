@@ -423,3 +423,32 @@ PikoFilm debe verse y sentirse **como una sola aplicación**. Ninguna página de
 PikoFilm tendrá una identidad visual coherente en todas sus pantallas. Cuando se cambie una decisión global —por ejemplo un borde, un espaciado o un color semántico— podrá hacerse de forma centralizada y consistente, reduciendo diferencias accidentales y haciendo que la aplicación evolucione como un único producto.
 
 **Decisión del usuario:** aprobada y elevada de P2 a **P1** por considerarse una regla de oro de PikoFilm.
+
+### Mejora 14 · V5-C014 — Auditar y optimizar la carga real de todas las páginas
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Rendimiento · UX · Datos · Arquitectura
+
+**Reformulación solicitada por el usuario**
+
+La propuesta inicial de mejorar la percepción de carga con skeletons o mensajes queda descartada como objetivo principal. El usuario exige **mejorar el tiempo real de carga de las páginas**, no ocultarlo con estados visuales. Señala expresamente que la entrada inicial de **Calidad** tarda demasiado y pide revisar todas las cargas de la aplicación.
+
+**Alcance aprobado**
+
+1. Medir de forma comparable la carga inicial y las navegaciones principales de **todas las superficies canónicas** de PikoFilm, en desktop y móvil cuando proceda.
+2. Priorizar las páginas con peor tiempo real, empezando por **Calidad** y cualquier otra que las mediciones identifiquen como lenta.
+3. Descomponer cada carga en sus costes reales: consultas SQL, joins, agregaciones, round-trips, renderizado servidor/cliente, JavaScript, CSS, imágenes, peticiones redundantes, datos solicitados pero no visibles y caché desaprovechada.
+4. Optimizar la causa, no el síntoma: reducir o reestructurar consultas, paginar/enriquecer después cuando corresponda, evitar cálculos repetidos, reutilizar read models/snapshots seguros, paralelizar sólo cuando aporte mejora real y eliminar trabajo innecesario.
+5. Revisar el uso de `force-dynamic`, `no-store`, `router.refresh`, polling y otros mecanismos que puedan forzar recargas completas o impedir caché útil sin necesidad funcional.
+6. Comprobar expresamente Calidad, Inicio, Catálogo, Actividad, Operaciones, Personas, Sagas y las demás rutas relevantes; ninguna página queda fuera por asumir que “ya va suficientemente rápido”.
+7. Establecer una línea base antes de optimizar y medir después. Una mejora sólo se considerará cerrada si existe reducción objetiva del tiempo/coste o una justificación documentada cuando un límite sea inevitable.
+8. No sustituir una página lenta por un spinner, skeleton o mensaje como solución. Los estados de carga sólo podrán usarse como complemento UX cuando exista espera inevitable, nunca como criterio de éxito de esta mejora.
+9. Mantener la exactitud de los datos y las reglas funcionales V4/V5; no ganar velocidad a costa de mostrar datos incompletos, obsoletos o inconsistentes.
+10. Cuando una optimización cambie arquitectura de consultas o almacenamiento, deberá cubrirse con tests de regresión funcional y de rendimiento apropiados.
+
+**Resultado esperado para el usuario**
+
+Entrar en Calidad y en el resto de PikoFilm debe ser objetivamente más rápido. El roadmap no dará por resuelto un problema de rendimiento porque la página “parezca” cargar mejor: se buscará y corregirá el cuello de botella real y se comprobará con medidas antes/después.
+
+**Decisión del usuario:** aprobada con prioridad P1 y con la condición explícita de optimizar la carga real de todas las páginas, no maquillar la espera con mensajes o skeletons.
