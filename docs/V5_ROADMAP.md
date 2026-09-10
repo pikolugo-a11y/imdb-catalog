@@ -804,3 +804,32 @@ El buscador global puede mejorar su semántica técnica para que navegador y tec
 El buscador seguirá viéndose y utilizándose como ahora, pero quedará correctamente descrito a nivel de navegador y accesibilidad, evitando ambigüedades técnicas y mejorando la calidad general del frontend sin añadir interacción que el usuario no necesita.
 
 **Decisión del usuario:** aprobada con prioridad P2, manteniendo expresamente fuera la navegación avanzada por teclado rechazada en la Mejora 26.
+
+### Mejora 28 · V5-C028 — Página completa de resultados para la búsqueda global
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Búsqueda · UX · Navegación · Funcionalidad
+
+**Problema detectado**
+
+El buscador global actual está pensado principalmente para resolver búsquedas rápidas y mostrar un conjunto limitado de coincidencias. Cuando una búsqueda devuelve muchas películas, personas, sagas u otras entidades, no existe una superficie dedicada para explorar el conjunto completo de resultados.
+
+**Alcance aprobado**
+
+1. Mantener el buscador global actual como vía rápida para encontrar y abrir resultados frecuentes sin añadir pasos innecesarios.
+2. Añadir una acción clara tipo **“Ver todos los resultados”** cuando exista información adicional útil más allá del conjunto rápido mostrado.
+3. Crear una vista completa de resultados de búsqueda que permita explorar las coincidencias relevantes por los tipos de entidad soportados por PikoFilm.
+4. Mantener el término de búsqueda al pasar del desplegable rápido a la página completa, sin obligar al usuario a escribirlo de nuevo.
+5. Diseñar la nueva superficie siguiendo la regla de oro visual V5 y reutilizando componentes/patrones comunes; no debe parecer una página independiente con otro lenguaje visual.
+6. Evitar duplicar lógica de búsqueda: el buscador rápido y la vista completa deberán compartir reglas canónicas de normalización, coincidencia y relevancia siempre que sea posible.
+7. Integrar las optimizaciones aprobadas en las Mejoras 23, 24 y 25 para que ampliar resultados no multiplique innecesariamente el coste de Neon.
+8. La página completa podrá paginar o cargar resultados progresivamente si el volumen lo requiere, priorizando una experiencia simple y rápida.
+9. Mantener resultados suficientemente actuales; no introducir la caché de sesión rechazada en la Mejora 22 como requisito de esta funcionalidad.
+10. Cubrir con pruebas los enlaces desde búsqueda rápida, conservación de término, categorías principales y ausencia de resultados.
+
+**Resultado esperado para el usuario**
+
+PikoFilm conservará un buscador global rápido para el uso cotidiano, pero cuando una consulta tenga muchas coincidencias será posible abrir una vista completa y explorar todos los resultados relevantes sin perder el término buscado ni cambiar de lógica de búsqueda.
+
+**Decisión del usuario:** aprobada con prioridad P2.
