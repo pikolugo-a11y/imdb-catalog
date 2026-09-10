@@ -558,3 +558,34 @@ En estados límite de la paginación de Catálogo, controles como “Anterior”
 La paginación se comportará exactamente como aparenta: si una acción no está disponible, no será clicable ni navegable; cuando sí lo esté, funcionará con normalidad. Es una corrección menor de coherencia y accesibilidad, sin impacto funcional adicional.
 
 **Decisión del usuario:** aprobada con prioridad P3.
+
+### Mejora 19 · V5-C019 — Medir el rendimiento real de PikoFilm en producción
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Rendimiento · Observabilidad · Vercel · UX
+
+**Problema detectado**
+
+Para optimizar correctamente las cargas de V5 necesitamos distinguir percepción puntual de degradación real y disponer de una línea base objetiva por ruta. Vercel ofrece Speed Insights/Web Vitals, pero el acceso disponible desde las herramientas operativas actuales no expone directamente todo ese histórico para PikoFilm.
+
+**Condición aprobada por el usuario**
+
+Antes de construir telemetría propia se debe **reutilizar Vercel siempre que sus métricas sean suficientes**. Sólo se añadirá instrumentación propia para cubrir huecos reales que Vercel no resuelva.
+
+**Alcance aprobado**
+
+1. Comprobar primero si Speed Insights/Web Vitals está habilitado en el proyecto de producción de PikoFilm y qué cobertura efectiva ofrece por ruta.
+2. Reutilizar como fuente prioritaria las métricas disponibles de Vercel cuando permitan medir de forma fiable la experiencia real de carga y navegación.
+3. Medir como mínimo las rutas canónicas y los indicadores útiles para el objetivo de V5, evitando recopilar métricas sin utilidad práctica.
+4. Si Vercel no cubre alguna necesidad importante, añadir únicamente la instrumentación mínima complementaria necesaria, con bajo volumen, bajo coste y retención limitada.
+5. Evitar duplicar en Neon series completas de métricas que ya estén disponibles de forma suficiente en Vercel.
+6. Integrar el resultado de manera resumida en **Operaciones**, orientado a detectar páginas lentas, degradaciones y evolución antes/después de las optimizaciones.
+7. Usar estas métricas como línea base y validación de las Mejoras 14 y 16: medir antes, optimizar y volver a medir.
+8. No convertir la aplicación en un panel de analítica generalista ni introducir telemetría pesada sólo por disponer de más datos.
+
+**Resultado esperado para el usuario**
+
+PikoFilm podrá identificar con datos qué páginas son realmente más lentas y comprobar si V5 las ha acelerado. Se aprovechará primero la observabilidad de Vercel y sólo se añadirá almacenamiento o instrumentación propia cuando aporte información que realmente falte.
+
+**Decisión del usuario:** aprobada con prioridad P1 y con la condición obligatoria de reutilizar Vercel antes de crear telemetría propia.
