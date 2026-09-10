@@ -68,3 +68,25 @@ Cuando el usuario llegue desde Actividad mediante `Ver detalle técnico en Opera
 La portada podrá mostrar únicamente un **resumen operativo compacto** del estado actual y un acceso claro al **Centro de control** para acciones administrativas como reinicios, Batch Engine, límites, capacidad y mantenimiento. No mostrará por defecto un feed largo de ejecuciones.
 
 Los resultados de búsqueda se cargarán sólo cuando exista una consulta o navegación concreta, manteniendo Operaciones como herramienta de investigación y diagnóstico y no como segunda cronología de Actividad.
+
+## Decisión 5 — Control seguro: observar mucho, intervenir sólo donde el sistema lo soporta
+
+**Aprobada.**
+
+El Centro de control de Operaciones V4 mostrará con claridad el **estado efectivo** y las protecciones operativas del sistema, pero no convertirá todos los parámetros internos en controles editables.
+
+Debe permitir observar, cuando aplique:
+
+- estado global del Batch Engine;
+- Batch activos y su estado;
+- concurrencia solicitada y límites efectivos;
+- items pendientes, ejecutándose, reintentándose o fallidos;
+- leases, heartbeats y reconciliación de trabajo interrumpido;
+- política de reintentos y límites relevantes;
+- estado del scheduler/planificador y otras protecciones del sistema.
+
+Las acciones disponibles se limitarán a intervenciones **explícitamente soportadas y seguras por el backend**, como las ya existentes de pausar, reanudar o cancelar Batch y reiniciar un título cuando corresponda.
+
+Parámetros delicados como concurrencia máxima, duración de leases o política de reintentos se mostrarán como **límites/protecciones del sistema** y no se ofrecerán como sliders o campos editables por defecto. Sólo se expondrán cambios configurables si existe una necesidad operativa real, una semántica clara y una implementación segura y auditable.
+
+Principio rector: **Operaciones debe permitir entender mucho y romper poco**. Toda intervención manual relevante debe quedar trazada en la observabilidad canónica.
