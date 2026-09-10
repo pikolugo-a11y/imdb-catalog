@@ -324,3 +324,37 @@ PikoFilm ya conserva trazabilidad técnica de muchas ejecuciones, pero las accio
 Semanas o meses después será posible saber si un cambio concreto lo produjo un automatismo o una intervención manual, desde qué parte de PikoFilm se inició, qué afectó y si terminó correctamente, sin exponer información sensible.
 
 **Decisión del usuario:** aprobada.
+
+### Mejora 11 · V5-C011 — Consolidar el CSS global histórico
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** UX · Rendimiento · Mantenibilidad · Limpieza legacy
+
+**Problema detectado**
+
+PikoFilm carga globalmente varias generaciones de estilos acumuladas a lo largo del proyecto. Esa convivencia aumenta el CSS descargado/evaluado, complica la cascada y eleva el riesgo de que una regla antigua afecte a una pantalla nueva o que un ajuste visual tenga efectos laterales inesperados.
+
+**Alcance aprobado**
+
+1. Auditar todas las hojas globales y sus consumidores reales antes de eliminar o fusionar nada.
+2. Identificar reglas duplicadas, solapadas, obsoletas y estilos que ya no tengan consumidores vivos.
+3. Consolidar la base global en el mínimo necesario y mover estilos específicos a sus superficies/componentes cuando sea seguro.
+4. Retirar únicamente CSS cuya falta de uso o redundancia quede demostrada; no borrar por nombre de versión ni por intuición.
+5. Mantener el aspecto actual de las superficies que ya funcionan. Esta mejora es una limpieza/consolidación técnica y no un rediseño visual.
+6. Añadir pruebas de regresión suficientes para detectar cambios inesperados en las superficies canónicas durante la limpieza.
+7. Medir el impacto en tamaño de CSS y comportamiento de carga antes/después para comprobar que la consolidación produce una mejora real.
+
+**Condición de implantación**
+
+La consolidación debe ser **segura y progresiva**. Si una hoja histórica sigue teniendo consumidores legítimos, se conserva hasta migrarlos explícitamente. El objetivo es reducir deuda y riesgo, no forzar una reescritura visual completa.
+
+**Observabilidad**
+
+La limpieza de estilos no debe generar entradas de Actividad. Los cambios relevantes de despliegue/pruebas y cualquier regresión detectada deberán ser diagnosticables técnicamente; no se creará ruido operativo innecesario por cada archivo CSS retirado.
+
+**Resultado esperado para el usuario**
+
+PikoFilm conservará su aspecto funcional actual, pero con una base de estilos más pequeña, coherente y predecible, reduciendo tiempos de carga y el riesgo de regresiones visuales futuras.
+
+**Decisión del usuario:** aprobada.
