@@ -886,3 +886,35 @@ El usuario no considera útil añadir historial o favoritos de búsqueda y prefi
 El buscador global seguirá siendo limpio y directo, sin listas de consultas anteriores ni términos guardados que añadan elementos que el usuario no necesita.
 
 **Decisión del usuario:** rechazada.
+
+### Mejora 31 · V5-C031 — Paginar Catálogo antes del enriquecimiento pesado
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Catálogo · Rendimiento · Neon · Arquitectura de consultas
+
+**Problema detectado**
+
+La consulta actual de Catálogo puede combinar datos de catálogo, Plex, estado técnico, Calidad y otras fuentes antes de reducir el resultado a la página visible. Eso obliga a Neon a hacer joins y cálculos sobre muchas filas que finalmente no se muestran.
+
+**Condición funcional obligatoria aclarada por el usuario**
+
+La optimización **no puede convertir la ordenación ni los filtros en operaciones limitadas a la página visible**. Cuando el usuario ordene por cualquier campo, el orden debe seguir calculándose sobre todo el conjunto filtrado antes de decidir qué registros pertenecen a la página actual.
+
+**Alcance aprobado**
+
+1. Separar conceptualmente la consulta en dos fases cuando las mediciones confirmen beneficio: seleccionar primero las identidades de los registros que forman la página y enriquecer después sólo esos registros con los datos pesados necesarios para mostrarlos.
+2. Aplicar filtros sobre el conjunto completo antes de paginar.
+3. Aplicar la ordenación seleccionada sobre todo el conjunto filtrado antes de paginar; nunca ordenar sólo los 50 registros ya visibles.
+4. Mantener los mismos resultados, orden, filtros, recuentos, columnas y semántica funcional que la vista actual.
+5. Si un campo utilizado para filtrar u ordenar depende de una relación enriquecida, resolver esa condición de forma global antes de paginar, aunque esa parte concreta de la consulta no pueda beneficiarse del mismo recorte.
+6. Enriquecer después de la paginación únicamente la información que no sea necesaria para determinar pertenencia, filtro u orden global.
+7. Medir planes, tiempos, filas procesadas y consultas antes/después para demostrar una reducción real del trabajo de Neon.
+8. Integrar esta mejora con la Mejora 14 de rendimiento general y con las siguientes optimizaciones específicas de Catálogo sin duplicar lógica.
+9. Cubrir con pruebas expresas ordenaciones y filtros representativos en varias páginas para garantizar que la optimización no cambia el orden global ni desplaza registros incorrectamente.
+
+**Resultado esperado para el usuario**
+
+Catálogo deberá cargar más rápido porque Neon dejará de enriquecer registros que no van a mostrarse, pero seguirá comportándose exactamente como hasta ahora: si se ordena por IMDb, año, Calidad o cualquier otro campo soportado, la página mostrará los registros que correspondan según el orden de **todo el catálogo filtrado**, no sólo los mejores de los 50 que ya estaban visibles.
+
+**Decisión del usuario:** aprobada con prioridad P1 y con la condición obligatoria de conservar filtros y ordenación globales antes de paginar.
