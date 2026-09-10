@@ -213,3 +213,32 @@ Operaciones V4 no mostrará cada repetición del mismo fallo como una incidencia
 - Una nueva recurrencia posterior a la resolución reactiva la incidencia correspondiente sin perder el historial anterior.
 
 Objetivo: **reducir ruido sin ocultar alcance, recurrencia ni trazabilidad técnica**.
+
+## Decisión 12 — Buscador técnico único con detección automática
+
+**Aprobada.**
+
+La búsqueda será el núcleo de Operaciones V4. La portada tendrá un único campo principal capaz de detectar automáticamente qué tipo de referencia está introduciendo el usuario y dirigir la consulta hacia las fuentes técnicas canónicas adecuadas.
+
+Debe reconocer y resolver, cuando exista información disponible, al menos:
+
+- IMDb ID y otras entidades funcionales que puedan mapearse a ejecuciones;
+- `run_id`;
+- `batch_run_id` u otros identificadores Batch útiles;
+- código o nombre de proceso;
+- persona o título;
+- fuente externa;
+- código/clase de error, paso o texto técnico;
+- identificadores técnicos presentes en contexto, eventos o errores.
+
+La detección automática no debe impedir búsquedas ambiguas: cuando una cadena pueda corresponder a varias categorías, Operaciones devolverá resultados clasificados y permitirá refinar sin obligar al usuario a conocer previamente el tipo de identificador.
+
+Los filtros avanzados estarán disponibles como refinamiento opcional, no ocupando la interfaz principal por defecto. Podrán acotar por estado, proceso, origen/trigger, tipo de ejecución, entidad, Batch, fuente, error, periodo y otras dimensiones canónicas que aporten valor real al diagnóstico.
+
+Los resultados deben priorizar relevancia técnica y contexto antes que volumen, mostrar claramente por qué cada resultado coincide y permitir abrir directamente la ejecución, incidencia, Batch o entidad correspondiente.
+
+Las búsquedas se ejecutarán bajo la misma ventana detallada de **30 días** acordada para Actividad y Operaciones, salvo estado operativo vivo que deba mantenerse accesible aunque su origen sea anterior.
+
+Cuando Operaciones se abra desde Actividad con una correlación concreta, esa navegación directa tendrá prioridad sobre el buscador: debe abrir el detalle técnico correcto sin exigir una búsqueda adicional.
+
+Principio UX: **una caja para encontrar casi cualquier cosa; filtros sólo cuando hagan falta**.
