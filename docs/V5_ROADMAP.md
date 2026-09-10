@@ -233,3 +233,33 @@ Hoy para saber si PikoFilm está correctamente montado hay que comprobar piezas 
 Desde una sola pantalla se podrá responder “PikoFilm está bien” o, si no lo está, obtener una explicación concreta como “Activity Planner no se ejecuta desde hace 3 horas”, “worker API sin heartbeat” o “el esquema de Neon no coincide con la versión esperada”, sin tener que abrir Neon, Railway y Vercel uno por uno.
 
 **Decisión del usuario:** aprobada.
+
+### Mejora 8 · V5-C008 — Validar automáticamente que todos los crons son alcanzables y seguros
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** CI · Automatización · Fiabilidad · Seguridad
+
+**Problema detectado**
+
+Un cron puede estar correctamente declarado en `vercel.json` y, aun así, quedar bloqueado por el middleware o aceptar una autenticación incorrecta. Esto permitiría que un automatismo pareciera configurado aunque en la práctica no pudiera ejecutarse de forma segura.
+
+**Alcance aprobado**
+
+1. Crear un contrato automático que descubra todos los crons declarados y verifique su correspondencia con una ruta real.
+2. Comprobar que cada cron puede atravesar correctamente las capas de routing/middleware necesarias sin abrir superficies privadas al tráfico normal.
+3. Comprobar que cada ruta cron exige la autenticación prevista y rechaza solicitudes no autorizadas.
+4. Hacer que la protección cubra los crons actuales y cualquier cron futuro añadido a PikoFilm, evitando listas manuales fáciles de olvidar.
+5. Integrar estas verificaciones en CI como gate de cambios que afecten a crons, middleware o autenticación.
+6. Complementar el contrato estático con evidencia operativa de ejecución/frescura cuando exista, especialmente en el chequeo de salud de Operaciones aprobado en la Mejora 7.
+7. Reutilizar la misma arquitectura de seguridad para evitar excepciones ad hoc divergentes entre cron y cron.
+
+**Observabilidad**
+
+Los tests de CI no deben generar entradas funcionales en Actividad. Las ejecuciones reales de los crons seguirán la regla transversal: **Actividad** para el resultado funcional relevante y **Operaciones** para la trazabilidad técnica. Los fallos de alcanzabilidad o autenticación detectados en producción deberán aparecer como anomalías operativas.
+
+**Resultado esperado para el usuario**
+
+Cuando PikoFilm declare que una tarea se ejecuta automáticamente cada hora, día o con cualquier otra frecuencia, habrá una protección automática que impida desplegar una configuración en la que esa tarea esté declarada pero sea inaccesible o insegura.
+
+**Decisión del usuario:** aprobada.
