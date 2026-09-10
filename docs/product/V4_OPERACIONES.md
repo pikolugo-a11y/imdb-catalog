@@ -161,3 +161,17 @@ Toda llamada de los procesos canónicos a una fuente externa gobernada por Opera
 - La observabilidad debe permitir distinguir una denegación por gobernanza de un error del proveedor.
 
 Principio permanente: **una fuente declarada como gobernada no puede ser consultada sin gobernanza**. La ausencia de gate es un error de programación, no un permiso implícito para continuar.
+
+## Decisión 9 — Recuperación contextual y segura
+
+**Aprobada.**
+
+Operaciones V4 no tendrá un botón genérico de «reiniciar» ni un «reiniciar todo PikoFilm». La recuperación será contextual: primero se localiza la entidad, ejecución o Batch afectado y después el sistema ofrece únicamente las acciones de recuperación que sean válidas y seguras para su estado real.
+
+- Para un título podrá ofrecerse el reinicio completo a Novedades cuando proceda, mostrando previamente qué estado o datos se invalidarán y exigiendo confirmación explícita.
+- Para un Batch sólo se ofrecerán pausa, reanudación, cancelación, reintento u otras acciones cuando el backend las soporte y el estado actual permita ejecutarlas sin romper invariantes.
+- Para una ejecución individual, Operaciones podrá orientar hacia el reintento o recuperación canónica correspondiente, pero no inventará acciones genéricas que el proceso no tenga implementadas.
+- Ninguna recuperación manual relevante será invisible: debe quedar trazada en la observabilidad canónica y generar su hecho funcional correspondiente en Actividad cuando tenga consecuencia funcional.
+- Toda acción debe preservar idempotencia, integridad y los límites/protecciones de las fuentes externas.
+
+Si en el futuro fuese necesaria una recuperación global, deberá diseñarse como una operación específica para un fallo concreto, con semántica, protecciones y observabilidad propias; nunca como un reset indiscriminado del sistema.
