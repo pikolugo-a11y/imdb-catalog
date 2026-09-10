@@ -13,6 +13,7 @@ Este documento es la fuente canónica de decisiones para PikoFilm V5. El inventa
 - Las condiciones o matices del usuario forman parte obligatoria de la decisión.
 - Al terminar la revisión, las aprobadas se reordenarán por dependencias, riesgo y prioridad para formar el plan de implantación; el orden de decisión no obliga al orden de desarrollo.
 - Regla transversal V5: todo automatismo o proceso relevante aprobado deberá dejar **resultado funcional en Actividad** y **trazabilidad técnica en Operaciones**, salvo excepción expresamente aprobada.
+- Regla de oro visual V5: **PikoFilm debe percibirse como una sola aplicación coherente, no como páginas independientes con criterios visuales propios**. Los patrones globales de color, tipografía, espaciado, radios, bordes, sombras, estados y componentes deben centralizarse y reutilizarse.
 - La sincronización Plex global continúa siendo manual salvo decisión explícita posterior.
 
 ---
@@ -392,3 +393,33 @@ No debe generar entradas funcionales en Actividad. Cualquier regresión o fallo 
 PikoFilm conservará el aspecto aprobado, pero el repositorio dejará de acumular hojas de estilo muertas o ambiguas. La base visual será más pequeña, comprensible y difícil de degradar con deuda histórica.
 
 **Decisión del usuario:** aprobada y vinculada al mismo bloque de implantación que la Mejora 11.
+
+### Mejora 13 · V5-C013 — Sistema visual canónico mediante design tokens
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** UX · Diseño · Coherencia · Mantenibilidad
+
+**Problema detectado**
+
+La evolución histórica de PikoFilm ha repartido decisiones visuales entre múltiples hojas y superficies. Eso facilita que páginas distintas terminen usando pequeñas variaciones de color, tipografía, espaciado, radios, bordes, sombras o estados aunque conceptualmente representen lo mismo.
+
+**Regla de oro fijada por el usuario**
+
+PikoFilm debe verse y sentirse **como una sola aplicación**. Ninguna página debe definir por su cuenta criterios visuales globales ni evolucionar como si fuera un producto independiente.
+
+**Alcance aprobado**
+
+1. Crear un sistema canónico de design tokens para colores, tipografía, escalas de espacio, radios, bordes, sombras, tamaños y estados visuales compartidos.
+2. Hacer que los componentes y superficies nuevas reutilicen esos tokens en vez de introducir valores arbitrarios duplicados.
+3. Migrar progresivamente las superficies actuales, priorizando patrones repetidos y evitando un rediseño masivo de una sola vez.
+4. Definir semánticamente los tokens —por función, no sólo por valor— para que un cambio global pueda hacerse desde un único punto sin perseguir decenas de archivos.
+5. Integrar los tokens con la consolidación CSS de las Mejoras 11 y 12 para que limpieza y coherencia visual formen una misma base arquitectónica.
+6. Mantener excepciones sólo cuando exista una razón funcional real y documentada; las excepciones visuales no deben convertirse en otra capa de estilos paralelos.
+7. Añadir protección mediante revisión/tests visuales o contratos adecuados para evitar que futuras páginas vuelvan a fragmentar el lenguaje visual.
+
+**Resultado esperado para el usuario**
+
+PikoFilm tendrá una identidad visual coherente en todas sus pantallas. Cuando se cambie una decisión global —por ejemplo un borde, un espaciado o un color semántico— podrá hacerse de forma centralizada y consistente, reduciendo diferencias accidentales y haciendo que la aplicación evolucione como un único producto.
+
+**Decisión del usuario:** aprobada y elevada de P2 a **P1** por considerarse una regla de oro de PikoFilm.
