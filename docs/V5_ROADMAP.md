@@ -452,3 +452,30 @@ La propuesta inicial de mejorar la percepción de carga con skeletons o mensajes
 Entrar en Calidad y en el resto de PikoFilm debe ser objetivamente más rápido. El roadmap no dará por resuelto un problema de rendimiento porque la página “parezca” cargar mejor: se buscará y corregirá el cuello de botella real y se comprobará con medidas antes/después.
 
 **Decisión del usuario:** aprobada con prioridad P1 y con la condición explícita de optimizar la carga real de todas las páginas, no maquillar la espera con mensajes o skeletons.
+
+### Mejora 15 · V5-C015 — Error boundaries locales por secciones
+
+**Estado:** RECHAZADA  
+**Prioridad definitiva:** No entra en V5.  
+**Categoría:** UX · Fiabilidad · Gestión de errores
+
+**Propuesta evaluada**
+
+Permitir que una sección secundaria de una página falle de forma aislada mientras el resto de la pantalla continúa funcionando, mediante límites de error locales y estados degradados parciales.
+
+**Motivo de rechazo del usuario**
+
+El usuario prefiere que un fallo relevante haga fallar la página de forma clara y visible, porque así resulta inequívoco que existe un problema y se puede investigar y solventar. No quiere que PikoFilm continúe mostrando una pantalla aparentemente correcta cuando una parte de sus datos o lógica ha fallado.
+
+**Consecuencia para V5**
+
+- No se introducirán error boundaries locales como estrategia general para ocultar o aislar errores de secciones.
+- Cuando una dependencia necesaria de una página falle, se priorizará un error claro y diagnosticable de la superficie completa.
+- El fallo deberá conservar suficiente contexto técnico en **Operaciones** para localizar la causa con rapidez.
+- Sólo podrán existir degradaciones parciales si una futura funcionalidad las exige de forma explícita y se aprueba como excepción concreta.
+
+**Resultado esperado para el usuario**
+
+Cuando una página de PikoFilm no pueda garantizar que sus datos o lógica son correctos, el problema será evidente. Se prioriza detectar y corregir el fallo real antes que mantener una apariencia de funcionamiento parcial.
+
+**Decisión del usuario:** rechazada porque prefiere un fallo completo y claro de página para detectar y solucionar los errores con mayor facilidad.
