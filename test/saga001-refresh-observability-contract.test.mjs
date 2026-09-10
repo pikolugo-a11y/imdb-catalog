@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const saga=fs.readFileSync('lib/sagas-v2.js','utf8');
+const sagaUnitary=fs.readFileSync('lib/saga-unitary.js','utf8');
 const sagaBatch=fs.readFileSync('lib/saga-batch.js','utf8');
 const sagaCore=fs.readFileSync('lib/saga-refresh-core.mjs','utf8');
 const worker=fs.readFileSync('worker/batch-api-worker.mjs','utf8');
@@ -87,11 +88,12 @@ test('SAGA-001 validates IMDb identity against TMDb instead of trusting stale sa
   assert.match(sagaCore,/repair_member_identity/);
 });
 
-test('SAGA-001 supports an exact collection refresh from saga detail',()=>{
-  assert.match(saga,/collectionId/);
-  assert.match(saga,/targetCollectionId/);
-  assert.match(saga,/SELECT tmdb_collection_id FROM saga_collections WHERE tmdb_collection_id::text=\$\{targetCollectionId\} LIMIT 1/);
-  assert.match(refreshActions,/refreshSagas\(\{collectionId/);
+test('SAGA-001 supports an exact governed collection refresh from saga detail',()=>{
+  assert.match(sagaUnitary,/processCode:'PROC-SAGA-001'/);
+  assert.match(sagaUnitary,/runKind:'individual'/);
+  assert.match(sagaUnitary,/triggerSource:'sagas_manual'/);
+  assert.match(sagaUnitary,/refreshSagaCollectionCanonical\(sql,id,\{trace,lane:'manual',apiGate:createApiGate\(sql\)\}\)/);
+  assert.match(refreshActions,/refreshSagaCollectionUnitary\(collectionId/);
   assert.match(refreshActions,/revalidatePath\(`\/sagas\/\$\{collectionId\}`\)/);
   assert.match(detail,/refreshSagaCollectionAction/);
   assert.match(detail,/fields=\{\{collectionId:name\}\}/);
