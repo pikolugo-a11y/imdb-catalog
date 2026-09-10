@@ -752,3 +752,29 @@ La búsqueda de personas puede necesitar recorrer o correlacionar bastante infor
 Buscar actores, directores u otras personas en PikoFilm deberá responder más rápido y ordenar mejor los resultados relevantes, sin introducir estructuras nuevas salvo que exista una ganancia demostrada y manteniendo los datos suficientemente actuales.
 
 **Decisión del usuario:** aprobada con prioridad P2 y con la condición de optimizar y medir primero antes de crear un read model específico.
+
+### Mejora 26 · V5-C026 — Navegación completa por teclado en la búsqueda global
+
+**Estado:** RECHAZADA  
+**Prioridad definitiva:** No entra en V5.  
+**Categoría:** UX · Búsqueda · Accesibilidad
+
+**Propuesta evaluada**
+
+Permitir manejar el buscador global íntegramente con teclado mediante flechas arriba/abajo para recorrer resultados, Enter para abrir el seleccionado y Escape para cerrar, manteniendo el foco de forma correcta.
+
+**Motivo de rechazo del usuario**
+
+El usuario indica expresamente que esta capacidad no le interesa y no quiere dedicar alcance de V5 a la navegación avanzada por teclado del buscador.
+
+**Consecuencia para V5**
+
+- No se añadirá el modelo completo de navegación ↑/↓/Enter/Escape como mejora funcional independiente.
+- El buscador conservará la interacción actual por ratón/táctil y cualquier comportamiento de teclado básico que ya exista.
+- Este rechazo no impide corregir defectos de accesibilidad imprescindibles o regresiones reales si se detectan dentro de otra mejora aprobada.
+
+**Resultado esperado para el usuario**
+
+V5 no añadirá complejidad ni trabajo específico para una forma de interacción que el usuario no necesita.
+
+**Decisión del usuario:** rechazada por falta de interés funcional.
