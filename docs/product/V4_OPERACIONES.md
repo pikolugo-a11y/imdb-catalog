@@ -115,3 +115,34 @@ La purga debe preservar siempre:
 La correspondencia temporal con Actividad es intencionada: mientras un hecho funcional sea consultable en Actividad, su detalle técnico correlacionado debe seguir disponible en Operaciones; cuando expire la ventana detallada, ambas superficies deben dejar de ofrecer ese nivel de detalle de forma coherente.
 
 La implementación deberá auditar las relaciones y claves foráneas antes de introducir la purga para evitar borrar ejecuciones padre, items Batch o errores que todavía sean necesarios para procesos vivos.
+
+## Decisión 7 — Fuentes y límites con verificación de cumplimiento real
+
+**Aprobada.**
+
+Operaciones V4 tendrá una sección de primer nivel **Fuentes y límites** dentro del Centro de control.
+
+Para cada proveedor externo gestionado por la arquitectura canónica debe mostrar, cuando aplique:
+
+- disponibilidad actual;
+- cuota usada y restante;
+- concurrencia configurada y límite duro;
+- reparto reservado para Batch;
+- estado del circuit breaker;
+- `blocked_until` o equivalente;
+- errores/rate limits recientes;
+- Batch pausados automáticamente por una restricción de la fuente.
+
+La edición sólo se permitirá para parámetros que el backend ya soporte y valide, siempre dentro de los hard caps y protecciones del sistema. Operaciones nunca permitirá superar un límite duro ni inventará una configuración que los procesos no puedan aplicar de forma segura.
+
+### Garantía de cumplimiento
+
+No basta con que la configuración pueda editarse o verse en la UI. La implementación de Operaciones V4 debe **auditar y demostrar que los procesos reales consumen y respetan la configuración efectiva**.
+
+La auditoría debe seguir el recorrido completo:
+
+`UI/acción -> persistencia de configuración -> funciones de gobernanza -> worker/proceso -> llamada externa`
+
+Si un proceso llama directamente a una fuente gobernada sin pasar por el mecanismo canónico, usa límites hardcodeados ignorando la configuración persistida, o lee una fuente/configuración distinta de la que Operaciones modifica, se considerará una incidencia arquitectónica a corregir antes de dar esta parte por cerrada.
+
+Operaciones debe diferenciar claramente entre **valor configurado**, **límite duro** y **valor efectivo aplicado**, para que sea verificable que un cambio tiene efecto real.
