@@ -859,3 +859,30 @@ El usuario no quiere añadir este nivel de explicación visual en los resultados
 El buscador permanecerá más limpio y directo, sin añadir texto explicativo adicional a cada resultado.
 
 **Decisión del usuario:** rechazada.
+
+### Mejora 30 · V5-C030 — Búsquedas recientes o favoritas
+
+**Estado:** RECHAZADA  
+**Prioridad definitiva:** No entra en V5.  
+**Categoría:** Búsqueda · UX · Conveniencia
+
+**Propuesta evaluada**
+
+Mostrar búsquedas recientes al abrir el buscador global o permitir guardar términos favoritos para reutilizarlos sin volver a escribirlos.
+
+**Motivo de rechazo del usuario**
+
+El usuario no considera útil añadir historial o favoritos de búsqueda y prefiere mantener el buscador más directo, sin estado adicional de este tipo.
+
+**Consecuencia para V5**
+
+- No se guardarán búsquedas recientes en navegador ni servidor como funcionalidad de producto.
+- No se añadirá un sistema de búsquedas favoritas o fijadas.
+- El buscador seguirá centrado en encontrar contenido en el momento, con las mejoras de velocidad, relevancia y resultados completos ya aprobadas.
+- Esta decisión no afecta a mecanismos técnicos internos de caché o métricas que formen parte de otras mejoras aprobadas y no se presenten como historial de usuario.
+
+**Resultado esperado para el usuario**
+
+El buscador global seguirá siendo limpio y directo, sin listas de consultas anteriores ni términos guardados que añadan elementos que el usuario no necesita.
+
+**Decisión del usuario:** rechazada.
