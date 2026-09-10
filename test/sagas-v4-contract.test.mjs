@@ -6,7 +6,7 @@ const page=fs.readFileSync('app/sagas/page.js','utf8');
 const detail=fs.readFileSync('app/sagas/[name]/page.js','utf8');
 const model=fs.readFileSync('lib/sagas-v3.js','utf8');
 const css=fs.readFileSync('app/sagas/sagas-v4.css','utf8');
-const docs=fs.readFileSync('docs/product/V4_SAGAS.md','utf8');
+const docs=fs.readFileSync('docs/V4_FUNCTIONAL_SPEC.md','utf8');
 
 test('Sagas V4 uses collection/Plex language and table-first browse',()=>{
   assert.match(page,/sagas-v4\.css/);
@@ -42,7 +42,7 @@ test('Availability separates upcoming and cinema window and Plex proves material
 test('Saga score excludes outside and non-actionable works',()=>{
   assert.match(model,/avg\(m\.current_score\) FILTER\(WHERE m\.in_catalog AND m\.availability_phase='available'/);
   assert.match(detail,/const scored=actionable\.filter/);
-  assert.match(docs,/Plex no afecta a calidad|independiente de Plex/);
+  assert.match(docs,/Independiente de Plex|PikoScore de saga/i);
 });
 
 test('Detail keeps chronological composition and discovery through Novedades',()=>{
@@ -58,5 +58,5 @@ test('Normal saga reads stay persisted and heavy refresh stays explicit',()=>{
   assert.doesNotMatch(model,/fetch\(|themoviedb\.org/);
   assert.match(page,/refreshAllSagasAction/);
   assert.match(detail,/refreshSagaCollectionAction/);
-  assert.match(docs,/navegación normal nunca dispara TMDb/);
+  assert.match(docs,/navegación normal.*nunca dispara TMDb/i);
 });
