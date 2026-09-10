@@ -670,3 +670,31 @@ El usuario no quiere añadir este comportamiento. Prefiere que cada búsqueda se
 La búsqueda seguirá consultando el estado actual en cada petición relevante, evitando comportamiento adicional de reutilización de resultados en sesión.
 
 **Decisión del usuario:** rechazada.
+
+### Mejora 23 · V5-C023 — Hacer indexables y más rápidas las búsquedas normalizadas
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P1.  
+**Categoría:** Búsqueda · Neon · Rendimiento · Datos
+
+**Problema detectado**
+
+Varias búsquedas de PikoFilm normalizan texto y utilizan comparaciones de tipo “contiene”. Ese patrón funciona funcionalmente, pero puede dificultar que PostgreSQL aproveche índices convencionales y obligar a revisar más filas de las necesarias, especialmente conforme crezca la filmoteca.
+
+**Alcance aprobado**
+
+1. Medir primero las consultas reales de búsqueda y sus planes de ejecución antes de crear, modificar o retirar índices.
+2. Identificar los campos normalizados de títulos, personas, sagas y otras entidades realmente utilizados por los buscadores de PikoFilm.
+3. Diseñar únicamente índices o estructuras compatibles con los patrones de búsqueda demostrados, priorizando las consultas con impacto real.
+4. Comparar tiempos y planes antes/después para demostrar que cada cambio aporta beneficio y no sólo añade coste de almacenamiento/escritura.
+5. Mantener exactamente la semántica funcional de búsqueda aprobada: normalización, coincidencias y resultados no deben cambiar para obtener velocidad salvo decisión funcional posterior.
+6. No instalar extensiones de PostgreSQL, como trigramas u otras, sin una aprobación explícita independiente del usuario.
+7. No crear índices “por si acaso”; cada índice nuevo deberá tener consumidor y beneficio medible.
+8. Integrar la revisión con la Mejora 14 de rendimiento general y con futuras optimizaciones específicas de búsqueda, evitando soluciones duplicadas.
+9. Si un cambio de índice tiene riesgo operativo apreciable por tamaño o bloqueo, deberá planificarse de forma segura y quedar diagnosticable desde Operaciones.
+
+**Resultado esperado para el usuario**
+
+Las búsquedas relevantes de PikoFilm deberán responder más rápido gracias a un acceso a datos mejor adaptado a su patrón real, reduciendo trabajo innecesario de Neon sin cambiar la forma de buscar ni los resultados esperados.
+
+**Decisión del usuario:** aprobada con prioridad P1 y con la condición de medir primero y no instalar extensiones ni modificar índices a ciegas.
