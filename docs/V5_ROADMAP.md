@@ -833,3 +833,29 @@ El buscador global actual está pensado principalmente para resolver búsquedas 
 PikoFilm conservará un buscador global rápido para el uso cotidiano, pero cuando una consulta tenga muchas coincidencias será posible abrir una vista completa y explorar todos los resultados relevantes sin perder el término buscado ni cambiar de lógica de búsqueda.
 
 **Decisión del usuario:** aprobada con prioridad P2.
+
+### Mejora 29 · V5-C029 — Explicar el motivo de cada coincidencia en búsqueda
+
+**Estado:** RECHAZADA  
+**Prioridad definitiva:** No entra en V5.  
+**Categoría:** Búsqueda · UX · Claridad
+
+**Propuesta evaluada**
+
+Mostrar junto a determinados resultados una explicación breve del motivo por el que aparecen, por ejemplo “Coincide en el título”, “Aparece en la filmografía” o “Pertenece a esta saga”.
+
+**Motivo de rechazo del usuario**
+
+El usuario no quiere añadir este nivel de explicación visual en los resultados de búsqueda y no considera que aporte suficiente valor para V5.
+
+**Consecuencia para V5**
+
+- No se añadirán etiquetas de “motivo de coincidencia” como parte del buscador global ni de la futura página completa de resultados.
+- La mejora de búsqueda seguirá centrada en velocidad, relevancia y acceso completo a resultados, no en explicar cada coincidencia individual.
+- Si en el futuro aparece un problema real de resultados confusos, podrá replantearse con evidencia concreta.
+
+**Resultado esperado para el usuario**
+
+El buscador permanecerá más limpio y directo, sin añadir texto explicativo adicional a cada resultado.
+
+**Decisión del usuario:** rechazada.
