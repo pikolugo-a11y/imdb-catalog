@@ -698,3 +698,29 @@ Varias búsquedas de PikoFilm normalizan texto y utilizan comparaciones de tipo 
 Las búsquedas relevantes de PikoFilm deberán responder más rápido gracias a un acceso a datos mejor adaptado a su patrón real, reduciendo trabajo innecesario de Neon sin cambiar la forma de buscar ni los resultados esperados.
 
 **Decisión del usuario:** aprobada con prioridad P1 y con la condición de medir primero y no instalar extensiones ni modificar índices a ciegas.
+
+### Mejora 24 · V5-C024 — Evitar trabajo duplicado en la búsqueda de sagas
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Búsqueda · Sagas · Rendimiento · Neon
+
+**Problema detectado**
+
+La búsqueda global de sagas puede realizar comprobaciones muy parecidas más de una vez para determinar coincidencias y devolver resultados. Esa duplicidad aumenta trabajo de Neon sin aportar valor funcional adicional.
+
+**Alcance aprobado**
+
+1. Medir primero la consulta actual de sagas y confirmar dónde se repite trabajo o existen subconsultas redundantes.
+2. Simplificar la consulta para resolver coincidencia y recuperación de resultados con el menor número razonable de operaciones.
+3. Mantener exactamente los mismos criterios funcionales de coincidencia, orden y resultados salvo que una futura mejora funcional aprobada establezca otra cosa.
+4. Evitar sustituir una duplicidad evidente por una arquitectura más compleja o costosa que el problema original.
+5. Comparar tiempos y planes de ejecución antes/después para demostrar que la simplificación reduce coste real.
+6. Integrar esta mejora con la Mejora 23 y el bloque general de rendimiento, evitando índices o estructuras específicas si no son necesarias.
+7. No instalar extensiones ni modificar el modelo de datos de forma invasiva para resolver este punto sin evidencia y aprobación correspondiente.
+
+**Resultado esperado para el usuario**
+
+Buscar sagas deberá requerir menos trabajo interno de Neon y responder más rápido, manteniendo exactamente la misma experiencia y los mismos resultados visibles.
+
+**Decisión del usuario:** aprobada con prioridad P2.
