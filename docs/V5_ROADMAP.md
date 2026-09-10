@@ -974,3 +974,30 @@ Catálogo puede reconstruir o agregar los géneros mediante una subconsulta que 
 Catálogo deberá dedicar menos trabajo a reconstruir los géneros de los títulos que muestra, contribuyendo a una carga más rápida sin cambiar ni los géneros visibles ni el funcionamiento de los filtros.
 
 **Decisión del usuario:** aprobada con prioridad P2.
+
+### Mejora 34 · V5-C034 — Reutilizar de forma segura la lista global de géneros
+
+**Estado:** APROBADA  
+**Prioridad definitiva:** P2.  
+**Categoría:** Catálogo · Rendimiento · Caché · Neon
+
+**Problema detectado**
+
+La lista maestra de géneros es muy pequeña y cambia con muy poca frecuencia, pero puede consultarse repetidamente a Neon en cargas de Catálogo aunque su contenido sea idéntico. El coste unitario es bajo, pero es trabajo repetitivo que no aporta frescura útil en cada navegación.
+
+**Alcance aprobado**
+
+1. Medir cuántas veces y desde qué superficies se consulta actualmente la lista global de géneros antes de cambiar el comportamiento.
+2. Reutilizar esa lista mediante el mecanismo de caché/revalidación más simple y seguro que ofrezca el stack actual, evitando una solución propia innecesaria.
+3. Definir una revalidación o invalidación controlada para que un cambio real en la lista maestra termine reflejándose sin depender de reinicios manuales.
+4. Mantener completamente separado este caché de la relación título↔género: la mejora sólo afecta a la pequeña lista maestra usada para opciones/filtros.
+5. No almacenar la lista en una segunda fuente de verdad persistente ni introducir sincronizaciones adicionales.
+6. Mantener exactamente los mismos géneros disponibles, orden y comportamiento de los filtros.
+7. Coordinar esta mejora con las Mejoras 14, 16 y 33 para reutilizar la estrategia general de caché y rendimiento en vez de crear una excepción aislada.
+8. Comprobar antes/después la reducción de consultas y confirmar que una modificación real de géneros puede llegar al usuario dentro del criterio de frescura definido.
+
+**Resultado esperado para el usuario**
+
+Catálogo conservará exactamente los mismos filtros por género, pero PikoFilm dejará de preguntar innecesariamente a Neon por una lista prácticamente estática en cada carga, reduciendo round-trips y trabajo repetitivo sin mostrar información engañosamente obsoleta.
+
+**Decisión del usuario:** aprobada con prioridad P2.
