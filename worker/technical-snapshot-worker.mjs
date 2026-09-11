@@ -5,7 +5,7 @@ import {claimTechnicalBatch} from '../lib/plex-technical-queue.mjs';
 import {captureTechnicalRatingKey} from '../lib/plex-technical-capture.mjs';
 import {scorePikoQualityRatingKeys} from '../lib/pikoquality-c6-runtime.mjs';
 import {getTechnicalControl,heartbeatTechnicalWorker} from '../lib/plex-technical-control.mjs';
-import {getActiveTechnicalProcessRun,addTechnicalProcessEvent,mergeTechnicalProcessContext,addTechnicalCaptureCounters,recordTechnicalProcessError,finishTechnicalProcessRun,reconcileStoppedTechnicalProcessRun} from '../lib/pikoquality-technical-observability.mjs';
+import {getActiveTechnicalProcessRun,addTechnicalProcessEvent,mergeTechnicalProcessContext,addTechnicalCaptureCounters,recordTechnicalProcessError,finishTechnicalProcessRun} from '../lib/pikoquality-technical-observability.mjs';
 
 const connectionString=process.env.DATABASE_URL||process.env.NEON_DATABASE_URL;
 if(!connectionString)throw new Error('Falta DATABASE_URL/NEON_DATABASE_URL');
@@ -21,7 +21,7 @@ const scanEveryMs=Math.max(60000,Number(process.env.TECHNICAL_SNAPSHOT_SCAN_MS)|
 const workerId=`technical-${process.pid}-${randomUUID().slice(0,8)}`;
 
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-let lastScanAt=0;
+let lastScanAt=0,lastScannedRunId=null;
 let totalClaimed=0,totalOk=0,totalFailed=0,totalScored=0;
 
 async function processChunk(rows,runId){
@@ -58,8 +58,9 @@ async function maybeScan(runId,force=false){
   await addTechnicalProcessEvent(sql,runId,{eventType:'step_started',step:'technical_scan',message:'Comprobación de biblioteca iniciada'});
   const result=await scanPlexTechnicalLibrary({sql,token,baseUrl});
   lastScanAt=Date.now();
-  await mergeTechnicalProcessContext(sql,runId,{scan_total:result.total,scan_movies:result.movies,scan_episodes:result.episodes,scan_created:result.created,scan_changed:result.changed,scan_migrated:result.migrated,scan_elapsed_ms:result.elapsed_ms});
-  await addTechnicalProcessEvent(sql,runId,{eventType:'step_finished',step:'technical_scan',message:'Comprobación de biblioteca completada',durationMs:result.elapsed_ms,data:{total:result.total,movies:result.movies,episodes:result.episodes,created:result.created,changed:result.changed,migrated:result.migrated,items_per_second:result.items_per_second}});
+  lastScannedRunId=runId;
+  await mergeTechnicalProcessContext(sql,runId,{scan_total:result.total,scan_movies:result.movies,scan_episodes:result.episodes,scan_created:result.created,scan_changed:result.changed,scan_migrated:result.migrated,scan_retried_errors:result.retried,scan_elapsed_ms:result.elapsed_ms});
+  await addTechnicalProcessEvent(sql,runId,{eventType:'step_finished',step:'technical_scan',message:'Comprobación de biblioteca completada',durationMs:result.elapsed_ms,data:{total:result.total,movies:result.movies,episodes:result.episodes,created:result.created,changed:result.changed,migrated:result.migrated,retried_errors:result.retried,items_per_second:result.items_per_second}});
   return result;
 }
 
@@ -68,34 +69,28 @@ async function finishIfEmpty(runId,scan){
   const context=summary?.context||{};
   const created=Number(context.scan_created??scan?.created??0)||0;
   const changed=Number(context.scan_changed??scan?.changed??0)||0;
+  const retriedErrors=Number(context.scan_retried_errors??scan?.retried??0)||0;
   const captureOk=Number(context.capture_ok||0)||0;
   const captureFailed=Number(context.capture_failed||0)||0;
   const errors=Number(summary?.error_count||0)||0;
   const technicalStatus=errors>0?'partial':'succeeded';
-  const functionalResult=errors>0?'pending':(created+changed>0?'updated':'no_change');
-  await finishTechnicalProcessRun(sql,runId,{technicalStatus,functionalResult,message:errors>0?'Captura técnica completada con incidencias':'Captura técnica completada',metrics:{scan_total:Number(context.scan_total||0)||0,created,changed,capture_ok:captureOk,capture_failed:captureFailed,pikoquality_scored:totalScored}});
-}
-
-async function reconcileIdleRun(){
-  const run=await reconcileStoppedTechnicalProcessRun(sql).catch(error=>{
-    console.error('[technical-snapshot-worker] reconcile failed',error);
-    return null;
-  });
-  return Boolean(run);
+  const functionalResult=errors>0?'pending':(created+changed+retriedErrors>0?'updated':'no_change');
+  await finishTechnicalProcessRun(sql,runId,{technicalStatus,functionalResult,message:errors>0?'Captura técnica completada con incidencias':'Captura técnica completada',metrics:{scan_total:Number(context.scan_total||0)||0,created,changed,retried_errors:retriedErrors,capture_ok:captureOk,capture_failed:captureFailed,pikoquality_scored:totalScored}});
 }
 
 async function cycle(){
   const control=await getTechnicalControl(sql);
   if(!control.armed){
-    const reconciled=await reconcileIdleRun();
     await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});
-    return{control:'disarmed',claimed:0,ok:0,failed:0,scored:0,reconciled};
+    return{control:'disarmed',claimed:0,ok:0,failed:0,scored:0};
   }
-  if(control.requested_state==='paused'){await heartbeatTechnicalWorker(sql,{workerId,actualState:'paused'});return{control:'paused',claimed:0,ok:0,failed:0,scored:0}}
+  if(control.requested_state==='paused'){
+    await heartbeatTechnicalWorker(sql,{workerId,actualState:'paused'});
+    return{control:'paused',claimed:0,ok:0,failed:0,scored:0};
+  }
   if(control.requested_state==='stopped'){
-    const reconciled=await reconcileIdleRun();
     await heartbeatTechnicalWorker(sql,{workerId,actualState:'stopped'});
-    return{control:'stopped',claimed:0,ok:0,failed:0,scored:0,reconciled};
+    return{control:'stopped',claimed:0,ok:0,failed:0,scored:0};
   }
 
   const active=await getActiveTechnicalProcessRun(sql);
@@ -105,7 +100,7 @@ async function cycle(){
   }
   const runId=String(active.run_id);
   await heartbeatTechnicalWorker(sql,{workerId,actualState:'running'});
-  const scan=await maybeScan(runId,lastScanAt===0);
+  const scan=await maybeScan(runId,runId!==lastScannedRunId);
   const rows=await claimTechnicalBatch(sql,{limit:batchSize,itemType:null});
 
   if(!rows.length){
