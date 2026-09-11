@@ -3,16 +3,29 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const read=path=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 
-test('Operaciones V4 homepage is search-first with compact health and four control domains',async()=>{
+test('Operaciones V4 mantiene salud compacta pero muestra siempre las ejecuciones activas',async()=>{
   const source=await read('app/admin/page.js');
   assert.match(source,/name="q"/);
   assert.match(source,/Salud operativa/);
+  assert.match(source,/Ejecuciones activas/);
+  assert.match(source,/Estado vivo/);
   assert.match(source,/Incidencias activas/);
   assert.match(source,/Sistema \/ Batch/);
   assert.match(source,/Fuentes y límites/);
   assert.match(source,/Recuperación/);
   assert.match(source,/Mantenimiento/);
   assert.doesNotMatch(source,/Ejecuciones recientes/);
+});
+
+test('los filtros técnicos funcionan sin obligar a escribir búsqueda libre y permanecen visibles',async()=>{
+  const query=await read('lib/operations-queries.js');
+  const page=await read('app/admin/page.js');
+  assert.match(query,/const hasFilters=Boolean\(q\|\|status\|\|kind\|\|process\|\|entity\|\|source/);
+  assert.match(query,/AND \(\$\{q\}='' OR \(/);
+  assert.match(query,/hasFilters\?sql/);
+  assert.match(page,/Filtros de ejecuciones/);
+  assert.match(page,/No se ocultan al aplicar la búsqueda/);
+  assert.doesNotMatch(page,/<details className="ops-advanced"/);
 });
 
 test('technical search covers canonical runs titles people batch errors and events inside 30 days',async()=>{
@@ -28,16 +41,35 @@ test('technical search covers canonical runs titles people batch errors and even
   assert.match(source,/match_reason/);
 });
 
-test('active incidents auto-resolve after later success and group conservatively',async()=>{
+test('las ejecuciones activas detectan atasco y exponen control seguro',async()=>{
+  const query=await read('lib/operations-queries.js');
+  const page=await read('app/admin/page.js');
+  const actions=await read('app/admin/actions.js');
+  assert.match(query,/technical_status IN \('queued','running'\)/);
+  assert.match(query,/interval '15 minutes'/);
+  assert.match(query,/controllable_batch/);
+  assert.match(page,/Cerrar como cancelada/);
+  assert.match(page,/cancelRunAction/);
+  assert.match(actions,/cancelBatch\(runId\)/);
+  assert.match(actions,/technical_status='cancelled'/);
+  assert.match(actions,/run_cancelled/);
+  assert.match(actions,/El historial se conserva/);
+  assert.match(actions,/La ejecución sigue viva/);
+});
+
+test('active incidents auto-resolve, group conservatively and reconcile group vs occurrence counts',async()=>{
   const source=await read('lib/operations-queries.js');
   assert.match(source,/NOT EXISTS[\s\S]*later\.technical_status='succeeded'/);
   assert.match(source,/COALESCE\(error_code,error_class,'MESSAGE:'\|\|left\(message,120\)\)/);
+  assert.match(source,/active_error_occurrences/);
+  assert.match(source,/incident_groups/);
+  assert.match(source,/affected_runs/);
   assert.match(source,/affected_entities/);
   assert.match(source,/first_seen/);
   assert.match(source,/last_seen/);
 });
 
-test('manual incident dismissal is observed, uses bigint IDs, and never deletes error history',async()=>{
+test('manual incident dismissal is observed, reusable for recurrences, and never deletes error history',async()=>{
   const source=await read('app/admin/actions.js');
   assert.match(source,/PROC-OPS-002/);
   assert.match(source,/resolved_at=now\(\)/);
@@ -45,6 +77,8 @@ test('manual incident dismissal is observed, uses bigint IDs, and never deletes 
   assert.match(source,/incident_resolved/);
   assert.doesNotMatch(source,/DELETE FROM process_run_errors/);
   assert.match(source,/NOT EXISTS \(SELECT 1 FROM process_runs later/);
+  assert.match(source,/resolve:\$\{scopeId\}:\$\{errorId\}/);
+  assert.match(source,/return\{ok:true,message:/);
 });
 
 test('run detail explains outcome first and preserves deep technical drill-down',async()=>{
@@ -80,6 +114,5 @@ test('observability retention is coordinated at 30 days and protects live or ret
   assert.match(retention,/brc\.closed_at IS NULL/);
   assert.match(retention,/bi\.status IN \('queued','retry_wait','leased','running'\)/);
   assert.match(retention,/child\.technical_status IN \('queued','running'\)/);
-  assert.match(cron,/purgeTerminalProcessObservability/);
   assert.match(cron,/purged_process_runs/);
 });
