@@ -24,16 +24,30 @@ test('las estadísticas de validación no cargan las 50 fichas detalladas',()=>{
   assert.match(stats,/SELECT count\(\*\)::int total/);
 });
 
-test('la portada reutiliza Lifecycle para identidad, validación, datos y PikoQuality',()=>{
+test('la portada reutiliza Lifecycle para identidad, validación, datos, PikoQuality y Películas',()=>{
   const source=read('lib/quality-home.js');
   assert.doesNotMatch(source,/getIdentityWorkflowStats/);
   assert.doesNotMatch(source,/getIdentityValidationStats/);
   assert.doesNotMatch(source,/getDataQualityOverview/);
   assert.doesNotMatch(source,/getPikoQualityState/);
+  assert.doesNotMatch(source,/getMovieQualitySummary/);
+  assert.doesNotMatch(source,/movie_quality_findings/);
   assert.match(source,/SELECT lifecycle_state,count\(\*\)::int count FROM catalog_lifecycle GROUP BY lifecycle_state/);
-  assert.match(source,/getPeopleQualitySummary\(\)/);
-  assert.match(source,/getMovieQualitySummary\(sql\)/);
+  assert.match(source,/movies:Number\(counts\.MOVIE_FILE_REVIEW\|\|0\)/);
+  assert.match(source,/movies:Number\(counts\.MOVIE_FILE_PENDING\|\|0\)/);
+  assert.match(source,/getPeopleQualityHomeSummary\(\)/);
   assert.match(source,/getSeriesQualityCounts\(sql\)/);
+});
+
+test('Personas usa fast-path conservador y conserva fallback exacto',()=>{
+  const source=read('lib/people-quality-home.js');
+  assert.match(source,/interval '30 days'/);
+  assert.match(source,/newer_failure/);
+  assert.match(source,/relevant_without_state/);
+  assert.match(source,/getPeopleQualitySummary\(\)/);
+  assert.doesNotMatch(source,/ensurePeopleSchema/);
+  assert.match(source,/fastPath:true/);
+  assert.match(source,/fastPath:false/);
 });
 
 test('el dominio de portada conserva el fallback Lifecycle de las cuatro áreas',()=>{
