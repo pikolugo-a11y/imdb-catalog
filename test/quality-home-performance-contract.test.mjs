@@ -24,7 +24,7 @@ test('las estadísticas de validación no cargan las 50 fichas detalladas',()=>{
   assert.match(stats,/SELECT count\(\*\)::int total/);
 });
 
-test('la portada reutiliza Lifecycle para identidad, validación, datos, PikoQuality y Películas',()=>{
+test('la portada reutiliza Lifecycle y corrige únicamente TECH_PENDING contra PikoQuality vigente',()=>{
   const source=read('lib/quality-home.js');
   assert.doesNotMatch(source,/getIdentityWorkflowStats/);
   assert.doesNotMatch(source,/getIdentityValidationStats/);
@@ -33,6 +33,10 @@ test('la portada reutiliza Lifecycle para identidad, validación, datos, PikoQua
   assert.doesNotMatch(source,/getMovieQualitySummary/);
   assert.doesNotMatch(source,/movie_quality_findings/);
   assert.match(source,/SELECT lifecycle_state,count\(\*\)::int count FROM catalog_lifecycle GROUP BY lifecycle_state/);
+  assert.match(source,/PIKOQUALITY_ACTIVE_VERSION/);
+  assert.match(source,/WHERE cl\.lifecycle_state='TECH_PENDING'/);
+  assert.match(source,/effectiveTechPending/);
+  assert.match(source,/resolvedTech/);
   assert.match(source,/movies:Number\(counts\.MOVIE_FILE_REVIEW\|\|0\)/);
   assert.match(source,/movies:Number\(counts\.MOVIE_FILE_PENDING\|\|0\)/);
   assert.match(source,/getPeopleQualityHomeSummary\(\)/);
@@ -56,4 +60,13 @@ test('el dominio de portada conserva el fallback Lifecycle de las cuatro áreas'
   assert.match(source,/validation:sum\(counts,\['IDENTITY_VALIDATION','IDENTITY_REVIEW_REQUIRED'\]\)/);
   assert.match(source,/data:sum\(counts,\['DATA_INCOMPLETE','PIKOSCORE_PENDING'\]\)/);
   assert.match(source,/pikoquality:sum\(counts,\['TECH_PENDING'\]\)/);
+});
+
+test('Lifecycle usa la versión activa y la huella técnica canónica de PikoQuality',()=>{
+  const source=read('lib/lifecycle-recompute-core.mjs');
+  assert.match(source,/PIKOQUALITY_ACTIVE_VERSION/);
+  assert.doesNotMatch(source,/const QUALITY_VERSION='1\.0\.0'/);
+  assert.match(source,/plex_technical_state technical/);
+  assert.match(source,/technical\.technical_fingerprint/);
+  assert.match(source,/q\.formula_version=\$\{PIKOQUALITY_ACTIVE_VERSION\}/);
 });
