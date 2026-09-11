@@ -24,8 +24,22 @@ test('las estadísticas de validación no cargan las 50 fichas detalladas',()=>{
   assert.match(stats,/SELECT count\(\*\)::int total/);
 });
 
-test('la portada conserva los helpers stats-only para Personas y Validación',()=>{
+test('la portada reutiliza Lifecycle para identidad, validación, datos y PikoQuality',()=>{
   const source=read('lib/quality-home.js');
-  assert.match(source,/getIdentityValidationStats\(\)/);
+  assert.doesNotMatch(source,/getIdentityWorkflowStats/);
+  assert.doesNotMatch(source,/getIdentityValidationStats/);
+  assert.doesNotMatch(source,/getDataQualityOverview/);
+  assert.doesNotMatch(source,/getPikoQualityState/);
+  assert.match(source,/SELECT lifecycle_state,count\(\*\)::int count FROM catalog_lifecycle GROUP BY lifecycle_state/);
   assert.match(source,/getPeopleQualitySummary\(\)/);
+  assert.match(source,/getMovieQualitySummary\(sql\)/);
+  assert.match(source,/getSeriesQualityCounts\(sql\)/);
+});
+
+test('el dominio de portada conserva el fallback Lifecycle de las cuatro áreas',()=>{
+  const source=read('lib/quality-home-domain.mjs');
+  assert.match(source,/identity:sum\(counts,\['IDENTITY_PENDING'\]\)/);
+  assert.match(source,/validation:sum\(counts,\['IDENTITY_VALIDATION','IDENTITY_REVIEW_REQUIRED'\]\)/);
+  assert.match(source,/data:sum\(counts,\['DATA_INCOMPLETE','PIKOSCORE_PENDING'\]\)/);
+  assert.match(source,/pikoquality:sum\(counts,\['TECH_PENDING'\]\)/);
 });
