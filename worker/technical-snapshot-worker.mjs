@@ -72,10 +72,11 @@ async function finishIfEmpty(runId,scan){
   const retriedErrors=Number(context.scan_retried_errors??scan?.retried??0)||0;
   const captureOk=Number(context.capture_ok||0)||0;
   const captureFailed=Number(context.capture_failed||0)||0;
+  const pikoqualityScored=Number(context.pikoquality_scored||0)||0;
   const errors=Number(summary?.error_count||0)||0;
   const technicalStatus=errors>0?'partial':'succeeded';
   const functionalResult=errors>0?'pending':(created+changed+retriedErrors>0?'updated':'no_change');
-  await finishTechnicalProcessRun(sql,runId,{technicalStatus,functionalResult,message:errors>0?'Captura técnica completada con incidencias':'Captura técnica completada',metrics:{scan_total:Number(context.scan_total||0)||0,created,changed,retried_errors:retriedErrors,capture_ok:captureOk,capture_failed:captureFailed,pikoquality_scored:totalScored}});
+  await finishTechnicalProcessRun(sql,runId,{technicalStatus,functionalResult,message:errors>0?'Captura técnica completada con incidencias':'Captura técnica completada',metrics:{scan_total:Number(context.scan_total||0)||0,created,changed,retried_errors:retriedErrors,capture_ok:captureOk,capture_failed:captureFailed,pikoquality_scored:pikoqualityScored}});
 }
 
 async function cycle(){
@@ -113,7 +114,7 @@ async function cycle(){
   const result=await processChunk(rows,runId);
   const elapsed=Date.now()-started;
   totalClaimed+=result.attempted;totalOk+=result.ok;totalFailed+=result.failed;totalScored+=result.scored;
-  await addTechnicalCaptureCounters(sql,runId,{claimed:result.attempted,ok:result.ok,failed:result.failed});
+  await addTechnicalCaptureCounters(sql,runId,{claimed:result.attempted,ok:result.ok,failed:result.failed,scored:result.scored});
   await addTechnicalProcessEvent(sql,runId,{eventType:'batch_progress',step:'technical_capture',message:'Bloque técnico completado',durationMs:elapsed,data:{claimed:result.attempted,ok:result.ok,failed:result.failed,scored:result.scored,batch_size:batchSize}});
   await heartbeatTechnicalWorker(sql,{workerId,actualState:'running',lastBatchOk:result.ok,lastBatchFailed:result.failed,lastBatchMs:elapsed});
   return{scan,claimed:result.attempted,ok:result.ok,failed:result.failed,scored:result.scored};
