@@ -34,6 +34,27 @@ No clasificar un servicio como legacy por nombre, sufijo o posición visual en e
 
 Servicios auditados vigentes en P4: API, FAST, Plex y Technical. Cambiar variables/configuración puede redeplegar; no hacerlo incidentalmente.
 
+### Mantenimiento PikoQuality / Railway Technical
+
+`/admin/pikoquality` es una **superficie de estado actual y control**, no un segundo historial de ejecuciones. Su cadena de verdad visible es:
+
+```text
+archivos físicos activos de Plex -> captura técnica vigente -> C6 vigente
+```
+
+Reglas:
+
+- el universo físico se cuenta desde `plex_items` activos (`movie` + `episode`), aunque todavía no exista fila en `plex_technical_state`;
+- `process_runs` es la única verdad de ejecución para `PROC-PQ-001` y `PROC-PQ-002`;
+- historial, errores, runs terminados y diagnóstico detallado viven en `/admin` y `/admin/runs/[id]`;
+- `plex_technical_runs` no es fuente de verdad de UI ni de observabilidad canónica;
+- el estado/heartbeat del worker se presenta separado del estado de una ejecución;
+- no se inicia `PROC-PQ-002` si Railway Technical no tiene heartbeat reciente;
+- cada ejecución manual nueva de `PROC-PQ-002` fuerza una comprobación completa de biblioteca antes de capturar;
+- un `snapshot_status='error'` se rearma una sola vez durante esa nueva comprobación; la cola ordinaria no consume `error`, evitando bucles infinitos dentro de la misma ejecución;
+- C6 sólo usa capturas técnicas válidas y su denominador debe identificarse como **calculable**, mostrando aparte los archivos todavía pendientes de captura;
+- la deuda técnica física actual puede aparecer en la salud de Operaciones aunque sea anterior a `process_run_errors`; no se convierte artificialmente en una incidencia histórica.
+
 ## Neon
 
 - cambios destructivos sólo mediante migración revisable/verificable;

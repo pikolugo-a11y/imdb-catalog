@@ -2,6 +2,7 @@ import Link from '@/components/NoPrefetchLink';
 import ActionButton from '@/components/ActionButton';
 import {getOperationsOverview} from '@/lib/operations-queries';
 import {getBatchApiSources} from '@/lib/batch-api-admin';
+import {getPikoQualityOperationsHealth} from '@/lib/pikoquality-operations-health';
 import {processDisplay,entityDisplay,triggerDisplay,executorDisplay} from '@/lib/process-display';
 import OperationsResetTitle from '@/components/OperationsResetTitle';
 import OperationsApiSources from '@/components/OperationsApiSources';
@@ -16,11 +17,12 @@ const statusLabel={queued:'En cola',running:'En curso',succeeded:'Correcto',fail
 const resultLabel={updated:'Actualizado',no_change:'Sin cambios',pending:'Pendiente',blocked:'Bloqueado',not_found:'No encontrado',invalid:'Inválido'};
 const tone=s=>s==='succeeded'?'ok':s==='failed'?'bad':s==='partial'||s==='queued'?'warn':s==='running'?'live':'muted';
 
-function healthItems(d,sources){
+function healthItems(d,sources,pq){
   const h=d.health||{},items=[];
   if(h.engine_state!=='running')items.push({tone:'bad',title:'Batch Engine detenido',text:`Estado efectivo: ${h.engine_state}`});
   if(Number(h.expired_leases)>0)items.push({tone:'bad',title:'Leases vencidas',text:`${h.expired_leases} item(s) necesitan reconciliación`});
   if(Number(h.stale_runs)>0)items.push({tone:'warn',title:'Ejecuciones atascadas',text:`${h.stale_runs} de ${h.active_runs||0} activas llevan más de 15 min sin actividad`});
+  if(Number(pq?.capturePending)>0)items.push({tone:'warn',title:'Captura técnica PikoQuality pendiente',text:`${pq.capturePending} archivo(s) sin captura vigente · ${pq.captureErrors||0} con error`});
   for(const x of sources||[]){if(x.breaker_state&&x.breaker_state!=='closed')items.push({tone:'bad',title:`${String(x.source).toUpperCase()} bloqueada`,text:x.blocked_until?`Hasta ${dt(x.blocked_until)}`:'Circuit breaker abierto'});}
   if(Number(d.summary?.active_incidents)>0)items.push({tone:'warn',title:'Incidencias activas',text:`${d.summary.active_incidents} grupo(s) · ${d.summary.active_error_occurrences||0} error(es) agrupados`});
   return items;
@@ -42,9 +44,9 @@ function RunRow({r,active=false}){
 
 export default async function Operations({searchParams}){
   const p=await searchParams;
-  const[d,apiSources]=await Promise.all([getOperationsOverview(p),getBatchApiSources()]);
-  const health=healthItems(d,apiSources),healthy=health.length===0;
-  const attentionTarget=Number(d.health?.stale_runs)>0?'#active-runs':Number(d.summary?.active_incidents)>0?'#incidents':'#control';
+  const[d,apiSources,pqHealth]=await Promise.all([getOperationsOverview(p),getBatchApiSources(),getPikoQualityOperationsHealth()]);
+  const health=healthItems(d,apiSources,pqHealth),healthy=health.length===0;
+  const attentionTarget=Number(d.health?.stale_runs)>0?'#active-runs':Number(d.summary?.active_incidents)>0?'#incidents':Number(pqHealth.capturePending)>0?'#mantenimiento':'#control';
   return <div className="ops-shell">
     <header className="ops-hero"><div><div className="ops-kicker">Operaciones V4</div><h1>Busca, entiende y actúa</h1><p>El estado vivo está siempre visible. Usa la búsqueda para historial y diagnóstico; actúa sólo sobre ejecuciones o incidencias que realmente lo necesiten.</p></div><Link className="ops-live" href={attentionTarget}><span className={healthy?'dot live':'dot'}></span>{healthy?'Sistema operativo':`${health.length} punto(s) de atención`}</Link></header>
 
@@ -62,7 +64,7 @@ export default async function Operations({searchParams}){
       <div id="sistema"><OperationsBatchControl/></div>
       <div id="fuentes" className="ops-domain"><OperationsApiSources sources={apiSources}/></div>
       <div id="recuperacion" className="ops-domain"><OperationsResetTitle/></div>
-      <section id="mantenimiento" className="ops-panel ops-domain"><div className="ops-panel-head"><div><span className="ops-label">Mantenimiento</span><h2>Operaciones seguras y explícitas</h2></div></div><div className="ops-maintenance"><Link href="/admin/sistema"><strong>Diagnóstico de sistema y almacenamiento</strong><span>Consulta estado técnico sin modificar datos.</span></Link><article><strong>Reconciliación automática de leases</strong><span>El worker Batch recupera leases vencidas mediante el mecanismo canónico; aquí se muestra como protección, no como botón indiscriminado.</span></article></div></section>
+      <section id="mantenimiento" className="ops-panel ops-domain"><div className="ops-panel-head"><div><span className="ops-label">Mantenimiento</span><h2>Operaciones seguras y explícitas</h2></div></div><div className="ops-maintenance"><Link href="/admin/pikoquality"><strong>Mantenimiento PikoQuality</strong><span>{pqHealth.capturePending>0?`${pqHealth.capturePending} archivo(s) necesitan captura técnica${pqHealth.captureErrors>0?` · ${pqHealth.captureErrors} con error`:''}`:'Captura técnica y C6 sin deuda física pendiente.'}</span></Link><Link href="/admin/sistema"><strong>Diagnóstico de sistema y almacenamiento</strong><span>Consulta estado técnico sin modificar datos.</span></Link><article><strong>Reconciliación automática de leases</strong><span>El worker Batch recupera leases vencidas mediante el mecanismo canónico; aquí se muestra como protección, no como botón indiscriminado.</span></article></div></section>
     </section>
-  </div>
+  </div>;
 }
