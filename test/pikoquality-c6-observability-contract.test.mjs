@@ -50,6 +50,16 @@ test('PikoQuality conserva Recalcular ahora por entidad usando el core C6 vigent
   assert.match(page,/name="seasonIndex" value=\{r\.season_index\}/);
 });
 
+test('la cobertura incluye archivos activos sin captura técnica y no puede declarar un falso 100%',()=>{
+  assert.match(page,/plex_technical_state pts/);
+  assert.match(page,/technicalPending/);
+  assert.match(page,/coverageTotal/);
+  assert.match(page,/coveragePct/);
+  assert.match(page,/archivos sin captura técnica/);
+  assert.match(page,/s\.pending_a===0&&s\.errors===0&&technicalPending===0/);
+  assert.match(page,/de \{nf\(coverageTotal\)\} archivos físicos activos/);
+});
+
 test('Calidad no expone barridos técnicos masivos y los deriva a Operaciones',()=>{
   assert.doesNotMatch(page,/TechnicalRunFlow/);
   assert.doesNotMatch(page,/C6BatchRunner/);
