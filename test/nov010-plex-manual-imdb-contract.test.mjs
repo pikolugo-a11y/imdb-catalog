@@ -17,7 +17,7 @@ test('NOV-010 keeps IMDb manual mode and adds explicit TMDb-only series mode',()
   assert.match(action,/setPlexIdentity\(ratingKey,\{imdbId\}\)/);
   assert.match(action,/setPlexIdentity\(ratingKey,\{tmdbId\}\)/);
   assert.match(action,/technicalIdentityKeyForPlex/);
-  assert.match(action,/technicalIdentityKey:true/);
+  assert.match(action,/technicalIdentityKey:identityMode==='tmdb_only'/);
   assert.match(action,/plexRatingKey:ratingKey/);
   assert.match(action,/eligibility_status[^\n]*'eligible'/);
   assert.doesNotMatch(action,/setPlexIdentity\(ratingKey,\{imdbId:internalId\}\)/);
@@ -30,6 +30,8 @@ test('Novedades offers TMDb-only only on Plex series and never exposes the techn
   assert.match(page,/series\?<form action=\{savePlexIdentityFromNewsAction\}/);
   assert.match(page,/TMDb #\$\{r\.source_snapshot\?\.tmdbId/);
   assert.match(page,/r\.imdb_id&&!tmdbOnly\(r\)/);
+  assert.match(page,/\{!tmdbOnly\(r\)\?<form action=\{excludeNewsCandidateAction\}/);
+  assert.match(page,/title="Bloquea este IMDb globalmente"/);
   assert.doesNotMatch(page,/savePlexIdentityAction from '@\/app\/actions'/);
 });
 
