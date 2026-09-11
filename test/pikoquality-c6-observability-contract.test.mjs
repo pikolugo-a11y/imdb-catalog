@@ -100,7 +100,7 @@ test('mantenimiento PikoQuality muestra estado vivo y no duplica historial legac
   assert.match(runner,/Ver ejecuciones C6 en Operaciones/);
 });
 
-test('cada nueva captura fuerza comprobación completa y rearma errores una sola vez',()=>{
+test('cada nueva captura fuerza comprobación completa, rearma errores una vez y cuenta métricas por run',()=>{
   assert.match(technicalWorker,/lastScannedRunId/);
   assert.match(technicalWorker,/maybeScan\(runId,runId!==lastScannedRunId\)/);
   assert.doesNotMatch(technicalWorker,/reconcileStoppedTechnicalProcessRun/);
@@ -108,6 +108,9 @@ test('cada nueva captura fuerza comprobación completa y rearma errores una sola
   assert.match(technicalScan,/retryErrorKeys/);
   assert.match(technicalScan,/last_error=NULL/);
   assert.match(technicalScan,/retried/);
+  assert.match(technicalObservability,/'pikoquality_scored'/);
+  assert.match(technicalWorker,/scored:result\.scored/);
+  assert.match(technicalWorker,/context\.pikoquality_scored/);
 });
 
 test('Operaciones hace visible la deuda física PikoQuality sin inventar incidencias históricas',()=>{
