@@ -43,7 +43,7 @@ test('C6 uses bounded chunks without changing its scoring core',()=>{
   assert.match(batch,/C6_BATCH_SIZE=1000/);
   assert.match(batch,/scorePikoQualityC6/);
   assert.match(batch,/source_fingerprint/);
-  assert.match(runner,/bloques de hasta/);
+  assert.match(runner,/bloques de hasta/i);
 });
 
 test('PikoQuality conserva Recalcular ahora por entidad usando el core C6 vigente',()=>{
