@@ -1,7 +1,8 @@
 'use client';
 import {useState,useTransition} from 'react';
 import {useRouter} from 'next/navigation';
-import {startTechnicalSnapshotAction,pauseTechnicalSnapshotAction,stopTechnicalSnapshotAction} from '@/app/calidad/pikoquality/actions';
+import {pauseTechnicalSnapshotAction,stopTechnicalSnapshotAction} from '@/app/calidad/pikoquality/actions';
+import {startTechnicalSnapshotFromOperationsAction} from './actions';
 import styles from './pikoquality-ops.module.css';
 
 export default function TechnicalControlActions({requestedState='stopped',workerOnline=false,hasActiveRun=false}){
@@ -22,7 +23,7 @@ export default function TechnicalControlActions({requestedState='stopped',worker
   const paused=requestedState==='paused';
   return <>
     <div className={styles.actions}>
-      {!running&&<button className={styles.actionButton} disabled={pending||!workerOnline} onClick={()=>run(startTechnicalSnapshotAction,paused?'Captura reanudada':'Nueva comprobación solicitada')}>{pending?'Procesando…':paused?'Reanudar captura':'Iniciar nueva comprobación'}</button>}
+      {!running&&<button className={styles.actionButton} disabled={pending||!workerOnline} onClick={()=>run(startTechnicalSnapshotFromOperationsAction,paused?'Captura reanudada':'Nueva comprobación solicitada')}>{pending?'Procesando…':paused?'Reanudar captura':'Iniciar nueva comprobación'}</button>}
       {running&&<button className={styles.secondaryButton} disabled={pending} onClick={()=>run(pauseTechnicalSnapshotAction,'Captura pausada')}>{pending?'Procesando…':'Pausar'}</button>}
       {(running||paused||hasActiveRun)&&<button className={styles.secondaryButton} disabled={pending} onClick={()=>run(stopTechnicalSnapshotAction,'Ejecución detenida y conservada en Operaciones')}>{pending?'Procesando…':'Detener'}</button>}
     </div>
