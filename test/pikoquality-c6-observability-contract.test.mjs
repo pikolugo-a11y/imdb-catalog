@@ -10,6 +10,7 @@ const operations=read('app/admin/pikoquality/page.js');
 const runner=read('app/calidad/pikoquality/C6BatchRunner.js');
 const batch=read('lib/pikoquality-c6-batch.js');
 const runtime=read('lib/pikoquality-c6-runtime.mjs');
+const lifecycle=read('lib/pikoquality-lifecycle.js');
 const display=read('lib/process-display.js');
 
 test('PQ-001 is one canonical observed Batch across chunks',()=>{
@@ -48,6 +49,23 @@ test('PikoQuality conserva Recalcular ahora por entidad usando el core C6 vigent
   assert.match(page,/Recalcular ahora/);
   assert.match(page,/name="ratingKey" value=\{r\.href_key\}/);
   assert.match(page,/name="seasonIndex" value=\{r\.season_index\}/);
+});
+
+test('C6 reconcilia Lifecycle tanto en recálculo individual como en Batch',()=>{
+  assert.match(lifecycle,/recomputeLifecycleForPikoQualityRatingKeys/);
+  assert.match(lifecycle,/recomputeLifecycleWithSql/);
+  assert.match(runtime,/recomputeLifecycleForPikoQualityRatingKeys\(sql,scoredKeys\)/);
+  assert.match(batch,/recomputeLifecycleForPikoQualityRatingKeys\(sql,scoredKeys\)/);
+});
+
+test('la cobertura incluye archivos activos sin captura técnica y no puede declarar un falso 100%',()=>{
+  assert.match(page,/plex_technical_state pts/);
+  assert.match(page,/technicalPending/);
+  assert.match(page,/coverageTotal/);
+  assert.match(page,/coveragePct/);
+  assert.match(page,/archivos sin captura técnica/);
+  assert.match(page,/s\.pending_a===0&&s\.errors===0&&technicalPending===0/);
+  assert.match(page,/de \{nf\(coverageTotal\)\} archivos físicos activos/);
 });
 
 test('Calidad no expone barridos técnicos masivos y los deriva a Operaciones',()=>{
