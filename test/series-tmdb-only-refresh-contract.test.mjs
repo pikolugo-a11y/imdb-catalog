@@ -19,3 +19,10 @@ test('la reconciliación Plex no puede sustituir el TMDb manual de una serie TMD
   assert.match(reconcile,/COALESCE\(m\.source_status->>'identity_mode','normal'\)<>'tmdb_only'/);
   assert.match(reconcile,/tmdb_only_manual/);
 });
+
+test('una alta Plex TMDb-only sin IMDb se enlaza por TMDb y puede crear series_reference',()=>{
+  assert.match(reconcile,/m\.tmdb_id=p\.tmdb_id/);
+  assert.match(reconcile,/m\.source_status->>'identity_mode'='tmdb_only'/);
+  assert.match(reconcile,/m\.imdb_id=p\.imdb_id/);
+  assert.match(reconcile,/INSERT INTO series_reference/);
+});
