@@ -3,14 +3,14 @@ import {runActivityPlanner} from '@/lib/process-planning';
 import {purgeTerminalProcessPlans} from '@/lib/process-planning-retention';
 import {purgeTerminalProcessObservability} from '@/lib/process-observability-retention';
 import {executeObservedProcess} from '@/lib/process-runtime';
+import {isCronAuthorized} from '@/lib/cron-auth';
 
 export const dynamic='force-dynamic';
 
-function authorized(request){const secret=process.env.CRON_SECRET;if(!secret)return false;return request.headers.get('authorization')===`Bearer ${secret}`;}
 function hourKey(){const d=new Date();return d.toISOString().slice(0,13);}
 
 export async function GET(request){
-  if(!authorized(request))return NextResponse.json({ok:false,error:'unauthorized'},{status:401});
+  if(!isCronAuthorized(request))return NextResponse.json({ok:false,error:'unauthorized'},{status:401});
   try{
     const observed=await executeObservedProcess({processCode:'PROC-PLAN-002',runKind:'system',triggerSource:'activity_planner',executor:'vercel',entityType:'planning',entityId:'automatic',idempotencyKey:`PROC-PLAN-002:${hourKey()}`,context:{surface:'/actividad',operation:'reconcile_plan_dispatch',automatic:true}},async()=>{
       const purgedProcessRuns=await purgeTerminalProcessObservability();
