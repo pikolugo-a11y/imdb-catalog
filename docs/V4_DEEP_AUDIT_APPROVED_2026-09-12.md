@@ -63,8 +63,37 @@ La ronda no se dará por cerrada sólo porque compile. Debe cumplir:
 
 - tests contractuales existentes verdes;
 - tests nuevos para cada regresión corregida;
-- pruebas de navegador/UX para flujos principales;
+- cobertura UX automatizada de navegación, responsive, acciones, estados y paginación;
 - build verde;
 - PR único revisado y mergeado;
 - sin deploy de producción por parte del asistente;
 - informe final con qué se cambió, resultado, CI, PR y SHA de merge.
+
+La **validación visual/funcional real en navegador contra producción** se mantiene como paso del propietario después de desplegar `main` en Vercel, de acuerdo con el reparto operativo del proyecto. El CI del repositorio compila deliberadamente con una `DATABASE_URL` placeholder y no dispone de una base funcional aislada equivalente a producción; por tanto no se considera honesto presentar un Playwright contra fixtures o contra una base paralela como sustituto de esa validación real. La parte automatizable queda protegida mediante contratos UX/regresión y build completo.
+
+## Resultado de la remediación
+
+La remediación se implementó íntegramente en una sola rama, `fix/v4-deep-audit-remediation`, y se entrega mediante el PR #529.
+
+- **Actividad**: `Requiere atención` se deriva de la necesidad funcional vigente y deja de convertir fallos históricos ya superados en trabajo humano actual. Se elimina el offset fijo `+02:00`, se respeta `Europe/Madrid`, el auto-refresh sólo permanece activo mientras existe actividad viva y los límites de detalle dejan de ser silenciosos.
+- **PikoQuality**: la UX separa captura pendiente, error de captura, C6 pendiente/error y mantenimiento realmente activo. La cobertura usa como denominador el universo físico activo y un error técnico no se presenta como “actualizando” si no hay ejecución viva.
+- **Series**: los episodios se sirven paginados en bloques de 100, conservando los contadores del ámbito completo. Las series de miles de episodios dejan de renderizarse de una sola vez.
+- **Operaciones**: incidencias, eventos, errores, ejecuciones hijas e items Batch están paginados. `trigger_source` y executor/fuente se filtran de forma separada. Los runs Batch de miles de items mantienen diagnóstico sin cargar el universo completo.
+- **Navegación y accesibilidad**: Sagas vuelve a estar disponible en móvil; la búsqueda global incorpora teclado y semántica combobox/listbox; los destinos inexistentes dejan de ser falsos enlaces `#`; los controles de paginación desactivados dejan de ser navegables/focables.
+- **Acciones humanas**: se generaliza feedback pending y se añade confirmación reutilizable para acciones delicadas; la cancelación global de Sagas y la exclusión de una obra quedan explícitamente confirmadas.
+- **Personas**: la ficha sólo muestra PikoQuality C6 vigente para el fingerprint técnico actual y la versión móvil conserva PikoQuality y el motivo específico de créditos secundarios.
+- **Superficies legacy**: `Calidad · Integridad Lifecycle` y `Novedades · Criterios IMDb` quedan integradas en el lenguaje visual/funcional V4; Criterios pasa a tener acceso visible desde Novedades y feedback de guardado.
+- **Regresión automatizada**: se añade `test/v4-deep-audit-remediation-contract.test.mjs` al conjunto `test:quality` y se actualizan los contratos afectados para comprobar la arquitectura final en vez de literales o ubicaciones legacy.
+
+### Validación técnica previa al cierre
+
+En el PR #529, el CI #607 (`34692492914`) pasó correctamente:
+
+- validación de workers canónicos;
+- self-check PikoScore 3;
+- suite contractual global, incluida la nueva cobertura de auditoría;
+- navegación sin prefetch masivo;
+- lectura acotada de Personas;
+- build completo de Next.js.
+
+El cierre definitivo requiere que el último commit documental conserve CI verde y que el PR #529 sea mergeado. No se ha realizado deploy de producción ni escrituras funcionales en Neon durante esta remediación.
