@@ -2,9 +2,10 @@ import Link from '@/components/NoPrefetchLink';
 import {notFound} from 'next/navigation';
 import {getRunDetail} from '@/lib/operations-queries';
 import {processDisplay,kindDisplay,entityDisplay,triggerDisplay,executorDisplay} from '@/lib/process-display';
+import {formatMadridDateTime} from '@/lib/format-madrid';
 export const dynamic='force-dynamic';
 
-const dt=v=>v?new Date(v).toLocaleString('es-ES',{dateStyle:'medium',timeStyle:'medium'}):'—';
+const dt=v=>formatMadridDateTime(v,{fallback:'—',second:'2-digit'});
 const duration=ms=>ms===null||ms===undefined?'—':ms<1000?`${ms} ms`:ms<60000?`${(ms/1000).toFixed(1)} s`:`${(ms/60000).toFixed(1)} min`;
 const labels={queued:'En cola',running:'En curso',succeeded:'Correcto',failed:'Fallido',partial:'Parcial',cancelled:'Cancelado'};
 const results={updated:'Actualizado',no_change:'Sin cambios',pending:'Pendiente',blocked:'Bloqueado',not_found:'No encontrado',invalid:'Inválido'};

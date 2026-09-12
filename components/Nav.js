@@ -2,7 +2,7 @@
 
 import Link from '@/components/NoPrefetchLink';
 import {usePathname} from 'next/navigation';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import GlobalSearch from './GlobalSearch';
 
 const desktopItems=[
@@ -46,6 +46,7 @@ function sectionLabel(path){
 export default function Nav(){
   const path=usePathname();
   const [moreOpen,setMoreOpen]=useState(false);
+  const moreButtonRef=useRef(null);
   const active=href=>href==='/'?path==='/':path.startsWith(href);
   const current=sectionLabel(path);
   const inQuality=path.startsWith('/calidad');
@@ -56,6 +57,17 @@ export default function Nav(){
   };
 
   useEffect(()=>setMoreOpen(false),[path]);
+  useEffect(()=>{
+    if(!moreOpen)return undefined;
+    const onKeyDown=event=>{
+      if(event.key!=='Escape')return;
+      event.preventDefault();
+      setMoreOpen(false);
+      requestAnimationFrame(()=>moreButtonRef.current?.focus());
+    };
+    document.addEventListener('keydown',onKeyDown);
+    return()=>document.removeEventListener('keydown',onKeyDown);
+  },[moreOpen]);
 
   return <>
     <aside className="v4-sidebar" aria-label="Navegación principal">
@@ -79,10 +91,10 @@ export default function Nav(){
 
     <nav className="v4-mobile-nav" aria-label="Navegación principal móvil">
       {mobileItems.map(([href,label,icon])=><Link prefetch={false} key={href} href={href} className={active(href)?'active':''} aria-current={active(href)?'page':undefined}><span>{icon}</span><small>{label}</small></Link>)}
-      <button type="button" className={moreActive||moreOpen?'active':''} aria-expanded={moreOpen} aria-controls="v4-more-menu" onClick={()=>setMoreOpen(v=>!v)}><span>•••</span><small>Más</small></button>
+      <button ref={moreButtonRef} type="button" className={moreActive||moreOpen?'active':''} aria-expanded={moreOpen} aria-controls="v4-more-menu" onClick={()=>setMoreOpen(v=>!v)}><span>•••</span><small>Más</small></button>
     </nav>
 
-    {moreOpen&&<div className="v4-more-backdrop" onClick={()=>setMoreOpen(false)}><div id="v4-more-menu" className="v4-more-menu" role="menu" onClick={event=>event.stopPropagation()}>
+    {moreOpen&&<div className="v4-more-backdrop" onClick={()=>setMoreOpen(false)}><div id="v4-more-menu" className="v4-more-menu" role="menu" aria-label="Más secciones" onClick={event=>event.stopPropagation()}>
       <strong>Más</strong>
       {secondaryItems.map(([href,label,icon])=><Link prefetch={false} role="menuitem" key={href} href={href} className={active(href)?'active':''}><span>{icon}</span>{label}</Link>)}
     </div></div>}

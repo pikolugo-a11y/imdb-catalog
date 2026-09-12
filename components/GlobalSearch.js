@@ -1,7 +1,7 @@
 'use client';
 
 import Link from '@/components/NoPrefetchLink';
-import {isGlobalSearchableTerm} from '@/lib/global-search-rules';
+import {GLOBAL_SEARCH_MIN_TEXT,isGlobalSearchableTerm} from '@/lib/global-search-rules';
 import {useRouter} from 'next/navigation';
 import {useEffect,useMemo,useRef,useState} from 'react';
 
@@ -52,7 +52,7 @@ export default function GlobalSearch(){
   },[q]);
 
   const hasResults=options.length>0;
-  const searchable=isGlobalSearchableTerm(q);
+  const term=q.trim(),searchable=isGlobalSearchableTerm(term),needsMore=Boolean(term&&!searchable);
   const close=()=>{setOpen(false);setMobileOpen(false);setActiveIndex(-1)};
   const openMobile=()=>{setMobileOpen(true);setOpen(searchable);requestAnimationFrame(()=>inputRef.current?.focus())};
   const onInputKeyDown=e=>{
@@ -69,10 +69,11 @@ export default function GlobalSearch(){
     <button type="button" className="v4-search-mobile-trigger" aria-label="Buscar en PikoFilm" onClick={openMobile}>⌕</button>
     <div className="v4-search-box">
       <span aria-hidden="true">⌕</span>
-      <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)} onFocus={()=>searchable&&setOpen(true)} onKeyDown={onInputKeyDown} placeholder="Buscar en PikoFilm…" aria-label="Buscar títulos, personas y sagas" role="combobox" aria-autocomplete="list" aria-expanded={open&&searchable} aria-controls="v4-search-listbox" aria-activedescendant={activeIndex>=0?`v4-search-option-${activeIndex}`:undefined} autoComplete="off" maxLength={100}/>
+      <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)} onFocus={()=>searchable&&setOpen(true)} onKeyDown={onInputKeyDown} placeholder="Buscar en PikoFilm…" aria-label="Buscar títulos, personas y sagas" aria-describedby={needsMore?'v4-search-hint':undefined} role="combobox" aria-autocomplete="list" aria-expanded={open&&searchable} aria-controls="v4-search-listbox" aria-activedescendant={activeIndex>=0?`v4-search-option-${activeIndex}`:undefined} autoComplete="off" maxLength={100}/>
       {loading&&<span className="v4-search-loading" aria-label="Buscando">…</span>}
       {mobileOpen&&<button type="button" className="v4-search-close" aria-label="Cerrar búsqueda" onClick={close}>×</button>}
     </div>
+    {needsMore&&<div id="v4-search-hint" className="v4-search-hint" role="status">Escribe al menos {GLOBAL_SEARCH_MIN_TEXT} caracteres, salvo un IMDb o ID numérico exacto.</div>}
     {open&&searchable&&<div id="v4-search-listbox" className="v4-search-results" role="listbox" aria-label="Resultados de búsqueda">
       {error?<div className="v4-search-state error" role="status">{error}</div>:hasResults?<>
         {['Títulos','Personas','Sagas'].map(group=>{const rows=options.filter(x=>x.group===group);if(!rows.length)return null;const start=cursor;cursor+=rows.length;return <SearchGroup title={group} key={group}>{rows.map((x,i)=>{const index=start+i;return <Result key={x.key} id={`v4-search-option-${index}`} href={x.href} onClick={close} onMouseEnter={()=>setActiveIndex(index)} title={x.title} meta={x.meta} active={activeIndex===index}/>} )}</SearchGroup>})}

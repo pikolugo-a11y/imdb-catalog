@@ -4,13 +4,14 @@ import {getOperationsOverview} from '@/lib/operations-queries';
 import {getBatchApiSources} from '@/lib/batch-api-admin';
 import {getPikoQualityOperationsHealth} from '@/lib/pikoquality-operations-health';
 import {processDisplay,entityDisplay,triggerDisplay,executorDisplay} from '@/lib/process-display';
+import {formatMadridDateTime} from '@/lib/format-madrid';
 import OperationsResetTitle from '@/components/OperationsResetTitle';
 import OperationsApiSources from '@/components/OperationsApiSources';
 import OperationsBatchControl from '@/components/OperationsBatchControl';
 import {cancelRunAction,resolveIncidentAction} from './actions';
 export const dynamic='force-dynamic';
 
-const dt=v=>v?new Date(v).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}):'—';
+const dt=v=>formatMadridDateTime(v,{fallback:'—'});
 const duration=ms=>ms===null||ms===undefined?'—':ms<1000?`${ms} ms`:ms<60000?`${(ms/1000).toFixed(1)} s`:`${(ms/60000).toFixed(1)} min`;
 const age=v=>{if(!v)return'—';const ms=Math.max(0,Date.now()-new Date(v).getTime()),m=Math.floor(ms/60000);return m<1?'menos de 1 min':m<60?`${m} min`:m<1440?`${Math.floor(m/60)} h ${m%60} min`:`${Math.floor(m/1440)} d ${Math.floor((m%1440)/60)} h`};
 const statusLabel={queued:'En cola',running:'En curso',succeeded:'Correcto',failed:'Fallido',partial:'Parcial',cancelled:'Cancelado'};
