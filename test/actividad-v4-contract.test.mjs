@@ -104,6 +104,17 @@ test('Actividad permite forzar recálculo inmediato reutilizando el planificador
   assert.doesNotMatch(actions,/PROC-NOV-009|syncPlexFastCore|scanPlexTechnicalLibrary/);
 });
 
+test('Actividad sólo declara la planificación automática activa con un PLAN-002 reciente y sano',()=>{
+  const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
+  assert.match(source,/ACTIVITY_PLANNER_HEALTH_MINUTES=90/);
+  assert.match(source,/process_code='PROC-PLAN-002'/);
+  assert.match(source,/plannerHealthy/);
+  assert.match(source,/\['succeeded','running'\]\.includes\(latestPlanner\.technical_status\)/);
+  assert.match(page,/calendar\.planner\?\.healthy/);
+  assert.match(page,/Planificación automática sin ciclo reciente/);
+  assert.match(page,/revisa Operaciones/);
+});
+
 test('calendario detecta picos agregados usando carga histórica real',()=>{
   const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
   assert.match(source,/percentile_cont\(0\.75\)/);

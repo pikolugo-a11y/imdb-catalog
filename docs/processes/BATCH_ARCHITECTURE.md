@@ -22,6 +22,8 @@ Batch UI/planner
 
 El contexto puede cambiar `lane`, API governance, trazabilidad, cancelación cooperativa o concurrencia. No puede cambiar la receta funcional.
 
+Una intención individual que pueda superar la ventana HTTP de Vercel puede materializarse como **Batch durable de una sola entidad**. En ese caso Vercel sólo valida/encola y Railway ejecuta el mismo core canónico; no se considera una segunda receta ni obliga a mantener el request abierto.
+
 ## Persistencia vigente
 
 ### Observabilidad
@@ -73,6 +75,18 @@ Los adapters de worker no deben reimplementar estas responsabilidades ni contene
 
 Los nombres o sufijos no determinan si un servicio es legacy. Se clasifica por consumidores, comando y responsabilidad viva.
 
+### Configuración viva de Railway
+
+La configuración productiva de un worker forma parte de la arquitectura y no puede introducir una receta oculta fuera de Git:
+
+- el `startCommand` debe arrancar el worker canónico; no puede ejecutar SQL de reparación/requeue previo al proceso;
+- el servicio debe seguir la rama `main` y no permanecer deliberadamente fijado a un commit antiguo;
+- los workers conectados a GitHub deben mantener auto-deploy habilitado cuando la operación del entorno lo permita;
+- antes de habilitar un productor automático como `PROC-PLAN-002`, los consumidores Railway implicados deben ejecutar el mismo `main` validado;
+- CI también corre en cada `push` integrado en `main`, permitiendo usar `Wait for CI` en Railway cuando esté habilitado.
+
+Una divergencia de commit/configuración entre Git y Railway se trata como incidencia operativa, aunque el proceso siga levantado y `healthy` a nivel de contenedor.
+
 ## Paridad viva
 
 | PROC | Operación canónica por item | Estado |
@@ -107,6 +121,18 @@ El refresco global de Sagas es un Batch común real:
 ### PER-001
 
 El Batch ejecuta directamente `refreshPersonFilmographyCanonical` dentro del child `process_run`; no llama al wrapper observado individual y por tanto no crea observabilidad anidada.
+
+### SER-002
+
+`syncPlexSeriesDetailCore` sigue siendo la única receta funcional. La diferencia está únicamente en cómo se hospeda la ejecución:
+
+- el mantenimiento automático selecciona series invalidadas/no refrescadas y las materializa en el pool `plex`;
+- el botón manual de una serie **fuerza esa entidad concreta** mediante `startSeriesBatch(..., entityIds:[ratingKey])`, incluso aunque el selector automático la considere fresca;
+- Vercel responde al usuario tras encolar/reutilizar la unidad; no mantiene abierta una Server Action durante la lectura completa de episodios/media de Plex;
+- Railway Plex crea el child `process_run` real y ejecuta `syncPlexSeriesDetailCore`;
+- si ya existe un Batch SER-002 activo, la entidad manual se añade de forma idempotente o se informa de que ya estaba incluida.
+
+Esto elimina el riesgo de timeout HTTP sin alterar inventario, diagnóstico, Lifecycle ni semántica del core. **Paridad EXACTA**.
 
 ### SER-003 / SER-004
 
@@ -194,6 +220,8 @@ Reglas:
 
 El sync Plex global (`PROC-NOV-009`) permanece manual y **no** entra en el planner.
 
+El endpoint horario de PLAN-002 debe atravesar el middleware privado, autenticar con `CRON_SECRET` de forma fail-closed y sólo entonces reconciliar/planificar/despachar. Si no existe un PLAN-002 `succeeded|running` reciente, Actividad debe mostrar el planificador como no saludable en vez de afirmar que está activo.
+
 ## Observabilidad Batch
 
 El modelo esperado es:
@@ -218,12 +246,14 @@ La retención técnica detallada V4 es de 30 días, pero la purga nunca elimina 
 - child necesario para una relación activa;
 - estado global/configuración actual.
 
-Sólo el histórico terminal y seguro puede purgarse conforme al mecanismo canónico de retención.
+Sólo el histórico terminal y seguro puede purgarse conforme al mecanismo canónico de retención. La purga forma parte del ciclo horario PLAN-002; si el cron no es saludable, esa degradación debe ser visible y no asumirse que la retención sigue operativa.
 
 ## Compatibilidad conocida
 
 - `pipeline_runs`: histórica; PQ-001 ya no escribe. No eliminar hasta demostrar ausencia de consumidores.
 - `series_quality_runs`: compatibilidad temporal con consumidores vivos.
+
+Las antiguas lambdas Python `api/fa-search.py` y `api/fa-evidence.py` quedaron retiradas tras consumer sweep: dependían de `batch_jobs`, relación V1 ya eliminada, y no tenían consumidores V4. También se retiraron sus dependencias Python de Vercel.
 
 Estas estructuras no definen la arquitectura Batch actual.
 
@@ -250,9 +280,10 @@ CI debe detectar, según aplique:
 - lógica funcional sustancial duplicada en worker;
 - divergencia no documentada de postprocesado;
 - doble frontera `process_run`;
-- reaparición de tablas Batch V1 retiradas;
+- reaparición de tablas Batch V1 retiradas o de las lambdas FilmAffinity que dependían de ellas;
 - fuente gobernada consumida sin gate;
-- pérdida de `NoPrefetchLink` que genere fanout de navegación;
+- SER-002 manual que vuelva a ejecutar el core pesado dentro del request de Vercel;
+- pérdida de `NoPrefetchLink` que genere fanout de navegación o paginadores `disabled` todavía interactivos;
 - regresiones específicas de cada proceso, incluida la paridad SAGA-001 individual/global.
 
 La matriz completa de procesos, incluidos manuales y sin Batch, vive en `PROCESS_CATALOG.md`. La arquitectura global vive en `docs/V4_ARCHITECTURE.md`.

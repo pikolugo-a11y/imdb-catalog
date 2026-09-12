@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
+const url=path=>new URL(`../${path}`,import.meta.url);
+const read=path=>fs.readFileSync(url(path),'utf8');
 
 test('Actividad representa atención funcional actual y no fallos históricos',()=>{
   const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js'),refresh=read('app/actividad/ActivityRefresh.js');
@@ -16,6 +17,17 @@ test('Actividad representa atención funcional actual y no fallos históricos',(
   assert.match(page,/T12:00:00Z/);
   assert.match(page,/Vista detallada acotada/);
   assert.match(page,/PendingSubmitButton/);
+});
+
+test('los dos crons canónicos atraviesan middleware pero autentican fail-closed',()=>{
+  const middleware=read('middleware.js'),planner=read('app/api/cron/activity-planner/route.js'),snapshot=read('app/api/cron/dashboard-snapshot/route.js'),auth=read('lib/cron-auth.js');
+  assert.match(middleware,/\/api\/cron\/activity-planner/);
+  assert.match(middleware,/\/api\/cron\/dashboard-snapshot/);
+  assert.match(middleware,/PUBLIC_CONTROL_PATHS\.has\(pathname\)/);
+  assert.match(planner,/isCronAuthorized\(request\)/);
+  assert.match(snapshot,/isCronAuthorized\(request\)/);
+  assert.match(auth,/if\(!secret\)return false/);
+  assert.match(auth,/authorization/);
 });
 
 test('PikoQuality separa captura técnica pendiente, error y C6',()=>{
@@ -51,8 +63,8 @@ test('Operaciones pagina superficies grandes y separa origen de executor',()=>{
   assert.match(detail,/param="eventPage"/);
 });
 
-test('navegación y búsqueda global cubren móvil y teclado',()=>{
-  const nav=read('components/Nav.js'),search=read('components/GlobalSearch.js'),css=read('app/v4-search.css');
+test('navegación y búsqueda global cubren móvil teclado y umbral eficiente',()=>{
+  const nav=read('components/Nav.js'),search=read('components/GlobalSearch.js'),route=read('app/api/global-search/route.js'),backend=read('lib/global-search.js'),rules=read('lib/global-search-rules.js'),css=read('app/v4-search.css');
   assert.match(nav,/secondaryItems=.*\/sagas/);
   assert.match(search,/ArrowDown/);
   assert.match(search,/ArrowUp/);
@@ -61,16 +73,27 @@ test('navegación y búsqueda global cubren móvil y teclado',()=>{
   assert.match(search,/role="combobox"/);
   assert.match(search,/role="listbox"/);
   assert.match(search,/role="option"/);
+  assert.match(search,/isGlobalSearchableTerm/);
+  assert.match(route,/isGlobalSearchableTerm/);
+  assert.match(backend,/PEOPLE_CANDIDATE_LIMIT=60/);
+  assert.match(backend,/WITH candidates AS/);
+  assert.match(rules,/GLOBAL_SEARCH_MIN_TEXT=3/);
+  assert.match(rules,/\^tt\\d\+\$/);
   assert.match(css,/aria-selected/);
 });
 
-test('links sin destino y paginadores desactivados no siguen siendo enlaces',()=>{
-  const link=read('components/NoPrefetchLink.js'),catalog=read('app/catalogo/page.js'),excluded=read('app/catalogo/excluidas/page.js'),sagas=read('app/sagas/page.js'),validation=read('app/calidad/validacion-identidad/page.js');
-  assert.match(link,/if\(!href\|\|href==='#'\)/);
+test('links sin destino y todos los paginadores disabled dejan de ser enlaces',()=>{
+  const link=read('components/NoPrefetchLink.js');
+  assert.match(link,/disabledToken/);
+  assert.match(link,/explicitlyDisabled/);
+  assert.match(link,/return <span/);
   assert.match(link,/aria-disabled="true"/);
-  for(const source of [catalog,excluded,sagas,validation])assert.match(source,/aria-disabled="true"/);
-  assert.doesNotMatch(excluded,/Link className=\{s\.page<=1\?'disabled'/);
-  assert.doesNotMatch(sagas,/Link className=\{page<=1\?'disabled'/);
+  for(const path of ['app/calidad/identidad/page.js','app/calidad/datos/page.js','app/calidad/series/page.js','app/personas/page.js']){
+    const source=read(path);
+    assert.match(source,/className=\{[^\n]*'disabled'/);
+    assert.match(source,/NoPrefetchLink/);
+  }
+  for(const path of ['app/catalogo/page.js','app/catalogo/excluidas/page.js','app/sagas/page.js','app/calidad/validacion-identidad/page.js'])assert.match(read(path),/aria-disabled="true"/);
 });
 
 test('acciones humanas muestran pending y las delicadas admiten confirmación',()=>{
@@ -99,4 +122,13 @@ test('superficies legacy auditadas quedan integradas en V4',()=>{
   assert.match(criteria,/criteria-v4\.css/);
   assert.match(criteria,/PendingSubmitButton/);
   assert.match(news,/\/novedades\/criterios/);
+});
+
+test('FilmAffinity Python legacy no vuelve a entrar en el runtime Vercel',()=>{
+  assert.equal(fs.existsSync(url('api/fa-search.py')),false);
+  assert.equal(fs.existsSync(url('api/fa-evidence.py')),false);
+  assert.equal(fs.existsSync(url('requirements.txt')),false);
+  const batchDoc=read('docs/processes/BATCH_ARCHITECTURE.md');
+  assert.match(batchDoc,/batch_jobs/);
+  assert.match(batchDoc,/retiradas y prohibidas/);
 });

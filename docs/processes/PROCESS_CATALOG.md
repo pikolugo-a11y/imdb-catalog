@@ -13,6 +13,8 @@ Batch -> selección/cola -> child process_run -> operación canónica X
 
 Batch puede añadir selección, concurrencia, leases, pausa/reanudación/cancelación, rate limiting y agregación de métricas, pero **no puede mantener una segunda receta funcional**.
 
+Una intención manual individual puede encolarse como Batch durable de una sola entidad cuando el core pueda superar la ventana HTTP; en ese caso la semántica sigue siendo individual desde UX, pero el executor persistente ejecuta el mismo core.
+
 Estados de paridad:
 
 - **EXACTA**: individual y Batch ejecutan el mismo core y la misma semántica funcional;
@@ -42,7 +44,7 @@ Estados de paridad:
 | PROC-MOV-002 | Películas | Aceptar finding como excepción | manual | no | `setMovieQualityFindingAction` | Vercel | NO APLICA |
 | PROC-MOV-003 | Películas | Reset tras corrección física | manual | no | `resetTitleForFullReprocessing` | Vercel | NO APLICA |
 | PROC-SER-001 | Series | Sync Plex rápido global | global | no | `syncPlexSeriesFastCore` | Vercel | SIN BATCH |
-| PROC-SER-002 | Series | Detalle Plex de serie | individual | sí | `syncPlexSeriesDetailCore` | Vercel / Railway Plex | EXACTA |
+| PROC-SER-002 | Series | Detalle Plex de serie | individual durable + batch | sí | `syncPlexSeriesDetailCore` | Railway Plex; Vercel sólo encola | EXACTA |
 | PROC-SER-003 | Series | Referencia TMDb | individual | sí | `refreshSeriesUnitaryCanonical` | Vercel / Railway API | PARCIAL controlada |
 | PROC-SER-004 | Series | Disponibilidad España | individual | sí | `confirmSeriesEsAvailabilityCanonical` | Vercel / Railway API | PARCIAL controlada |
 | PROC-SER-005 | Series | Resolver anomalía de episodio | manual | no | acción observada + override | Vercel | NO APLICA |
@@ -107,7 +109,9 @@ Individual y Railway FAST usan `executeMov001Canonical`. **EXACTA**.
 
 ### SER-002
 
-Individual y Railway Plex usan `syncPlexSeriesDetailCore`. **EXACTA**. El planner sólo continúa invalidaciones existentes; no inicia un sync Plex global.
+La acción manual y el mantenimiento automático comparten `syncPlexSeriesDetailCore`. **EXACTA**.
+
+La acción manual de `/calidad/series` no ejecuta ya el core pesado dentro del request de Vercel: valida la serie y crea/reutiliza un Batch SER-002 dirigido a ese `ratingKey`. Railway Plex ejecuta la unidad y crea el child `process_run` real. Esto mantiene el control individual bajo demanda sin exponerlo al límite HTTP de Vercel. El selector automático sigue limitado a detalle nunca refrescado o invalidado; el selector explícito manual puede forzar una serie concreta aunque esté fresca. El planner sólo continúa invalidaciones existentes; no inicia un sync Plex global.
 
 ### SER-003 / SER-004
 
@@ -150,11 +154,13 @@ Vercel solicita/controla captura técnica y Railway Technical mantiene el worker
 
 ### HOME-001
 
-`/api/cron/dashboard-snapshot` captura agregados históricos del Dashboard/almacenamiento con cron diario. Es una excepción automática pasiva; no concentra mantenimiento funcional.
+`/api/cron/dashboard-snapshot` captura agregados históricos del Dashboard/almacenamiento con cron diario. Es una excepción automática pasiva; no concentra mantenimiento funcional. Los endpoints cron canónicos autentican con `CRON_SECRET` de forma fail-closed.
 
 ### PLAN-001 / PLAN-002
 
 `process_plans` persiste intención futura, prioridad, excepciones, ventana segura y vínculo a ejecución real. PLAN-001 observa cambios manuales. PLAN-002 corre con el cron de Actividad, reconcilia demanda, estima carga, distribuye trabajo flexible, replanifica retrasos seguros y despacha starters autorizados. Las ejecuciones resultantes conservan su PROC funcional original.
+
+El middleware privado deja pasar explícitamente la ruta cron de PLAN-002 para que alcance su autenticación propia; si no existe una ejecución `succeeded|running` reciente, Actividad no declara el planificador saludable. El mismo ciclo ejecuta la retención terminal segura de 30 días.
 
 ### OPS-001 / OPS-002
 
@@ -175,6 +181,8 @@ ID-002, IV-003/004/005, DATA-005, MOV-002/003, SER-005/006, NOV-002/003/004/005/
 - `series_quality_runs`: compatibilidad temporal con consumidores vivos. No eliminar sin consumer sweep.
 - `piko_quality` y `piko_quality_aggregates`: estado/read model funcional de PikoQuality.
 - `person_refresh_state` y `person_filmography`: estado/read model funcional de Personas.
+
+Las lambdas Python históricas de FilmAffinity (`api/fa-search.py`, `api/fa-evidence.py`) están retiradas: dependían de `batch_jobs`, relación V1 eliminada, y el consumer sweep no encontró callers V4. Sus dependencias Python dejaron igualmente de formar parte del runtime Vercel.
 
 ## Gobierno de fuentes
 

@@ -2,6 +2,11 @@ import {NextResponse} from 'next/server';
 
 const ACCESS_COOKIE='pikofilm_private';
 const ACCESS_HASH='426b0675f22600ef525f3f4af7df3f2c984e5b1b3ccbda92408f38dcbc0f703b';
+const PUBLIC_CONTROL_PATHS=new Set([
+  '/api/cron/activity-planner',
+  '/api/cron/dashboard-snapshot',
+  '/robots.txt',
+]);
 
 async function sha256(value){
   const bytes=new TextEncoder().encode(String(value||''));
@@ -26,9 +31,9 @@ export async function middleware(request){
   // Never execute malformed dynamic routes that can be emitted by legacy data.
   if(pathname.endsWith('/null')||pathname.endsWith('/undefined'))return notFound();
 
-  // Keep the daily Vercel cron and crawler directives reachable without opening
-  // any database-backed application surface.
-  if(pathname==='/api/cron/dashboard-snapshot'||pathname==='/robots.txt')return NextResponse.next();
+  // Cron endpoints keep their own fail-closed CRON_SECRET authentication. They
+  // must reach the route without opening any other database-backed surface.
+  if(PUBLIC_CONTROL_PATHS.has(pathname))return NextResponse.next();
 
   const supplied=searchParams.get('access');
   if(supplied&&await sha256(supplied)===ACCESS_HASH){
