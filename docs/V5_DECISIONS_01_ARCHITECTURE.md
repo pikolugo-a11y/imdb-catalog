@@ -128,3 +128,45 @@ La auditoría encontró un caso real en producción: ejecuciones `PROC-SER-002` 
 ### Alcance V5
 
 La implementación deberá corregir la identidad de futuras ejecuciones sin reescribir de forma artificial el histórico existente. Actividad, Operaciones y diagnóstico técnico deberán poder confiar en que `executor` y `worker_pool` describen el lugar real de ejecución.
+
+## ARQ-05 — Registro canónico ejecutable de todos los procesos
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 tendrá un único registro canónico en código para todos los procesos `PROC-*`. Ese registro será la fuente de verdad ejecutable de metadatos y contratos de proceso y servirá para validar la arquitectura, no para concentrar la lógica funcional.
+
+### Contenido mínimo del registro
+
+- `process_code` y nombre humano.
+- Tipo de ejecución y duración esperada.
+- `worker_pool` y `executor` permitidos.
+- Capacidades requeridas.
+- Si admite Batch, ejecución manual, automática o ambas.
+- Política de idempotencia y correlación.
+- Timeout/deadline aplicable cuando corresponda.
+- Superficies u orquestadores autorizados para iniciarlo.
+- Relación con continuaciones o procesos hijos cuando exista.
+
+### Uso del registro
+
+- El gateway de ARQ-02 resolverá y validará el destino a partir de este registro.
+- ARQ-04 usará el registro para impedir combinaciones `process_code / worker_pool / executor` inválidas.
+- CI deberá detectar procesos ejecutables no registrados, registros sin implementación o adapters que apunten a procesos desconocidos.
+- `PROCESS_CATALOG.md` se generará o validará automáticamente contra el registro para evitar deriva documental.
+
+### Límites
+
+- El registro no contendrá la lógica de negocio de cada proceso.
+- Los cores funcionales seguirán separados por dominio.
+- Excepciones como GitHub Actions deberán quedar declaradas explícitamente en lugar de existir como rutas implícitas.
+
+### Motivo
+
+La auditoría encontró que la verdad sobre los procesos está repartida entre documentación, starters, adapters y workers. También detectó `PROC-LC-001` como proceso realmente ejecutado pero no representado correctamente en el catálogo canónico. Un registro ejecutable único evita procesos ocultos y convierte la documentación en algo verificable.
+
+### Alcance V5
+
+La introducción del registro deberá hacerse sin cambiar por sí sola la semántica funcional de los procesos existentes. Primero se modelará la realidad actual y después se aplicarán las evoluciones aprobadas del roadmap.
