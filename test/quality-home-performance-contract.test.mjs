@@ -24,7 +24,7 @@ test('las estadísticas de validación no cargan las 50 fichas detalladas',()=>{
   assert.match(stats,/SELECT count\(\*\)::int total/);
 });
 
-test('la portada reutiliza Lifecycle y corrige únicamente TECH_PENDING contra PikoQuality vigente',()=>{
+test('la portada reutiliza Lifecycle pero deriva PikoQuality de la deuda física vigente',()=>{
   const source=read('lib/quality-home.js');
   assert.doesNotMatch(source,/getIdentityWorkflowStats/);
   assert.doesNotMatch(source,/getIdentityValidationStats/);
@@ -34,9 +34,11 @@ test('la portada reutiliza Lifecycle y corrige únicamente TECH_PENDING contra P
   assert.doesNotMatch(source,/movie_quality_findings/);
   assert.match(source,/SELECT lifecycle_state,count\(\*\)::int count FROM catalog_lifecycle GROUP BY lifecycle_state/);
   assert.match(source,/PIKOQUALITY_ACTIVE_VERSION/);
-  assert.match(source,/WHERE cl\.lifecycle_state='TECH_PENDING'/);
+  assert.match(source,/WITH current_pending AS/);
+  assert.match(source,/pending_from_complete/);
+  assert.match(source,/stored_tech_pending/);
+  assert.match(source,/staleStoredTech/);
   assert.match(source,/effectiveTechPending/);
-  assert.match(source,/resolvedTech/);
   assert.match(source,/movies:Number\(counts\.MOVIE_FILE_REVIEW\|\|0\)/);
   assert.match(source,/movies:Number\(counts\.MOVIE_FILE_PENDING\|\|0\)/);
   assert.match(source,/getPeopleQualityHomeSummary\(\)/);
