@@ -181,6 +181,14 @@ La V5 se definirá bloque a bloque. Para cada uno de los 20 bloques:
 - Punto 19 — Calidad de datos: **PENDIENTE**
 - Punto 20 — Gobierno del producto: **PENDIENTE**
 
+## Road Map Innovador
+
+Existe además `docs/ROADMAP_INNOVADOR.md` como banco separado de apuestas futuras para V6+ y experimentos. Sus ideas son deliberadamente más ambiciosas que el roadmap comprometido de V5 y **no generan alcance automático**.
+
+El documento incluye inicialmente diez apuestas: PikoFilm Autopilot, gemelo digital, Shadow Mode universal, grafo temporal de procedencia/confianza, Time Machine de catálogo, Control Center conversacional, predicción de degradación, broker virtual de fuentes, decisiones explicables y aprendizaje seguro a partir de correcciones humanas.
+
+Una innovación sólo pasará a una versión concreta mediante una decisión posterior explícita y su propia evaluación de viabilidad, coste, seguridad e impacto.
+
 ## Regla de decisiones
 
 Las propuestas de V5 se numerarán desde cero para esta nueva revisión y no heredarán decisiones borradas de la preparación anterior. Cada decisión debe quedar persistida en Git antes de pasar a la siguiente.
