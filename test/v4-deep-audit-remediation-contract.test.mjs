@@ -10,7 +10,8 @@ test('Actividad representa atención funcional actual y no fallos históricos',(
   assert.match(source,/catalog_lifecycle/);
   assert.doesNotMatch(source,/latest_root[\s\S]*technical_status IN\('failed','partial'\)/);
   assert.match(page,/ActivityRefresh active=\{summary\.active>0\}/);
-  assert.match(refresh,/if\(!active\)return/);
+  assert.match(refresh,/if\(active&&document\.visibilityState==='visible'\)timer=setInterval\(refresh,30000\)/);
+  assert.match(refresh,/\[router,active\]/);
   assert.doesNotMatch(page,/T12:00:00\+02:00/);
   assert.match(page,/T12:00:00Z/);
   assert.match(page,/Vista detallada acotada/);
