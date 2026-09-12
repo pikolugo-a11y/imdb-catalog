@@ -67,3 +67,38 @@ ARQ-02 también será la vía natural para ARQ-01: Vercel solicitará `PROC-NOV-
 ### Alcance V5
 
 La implementación deberá preservar idempotencia y semántica funcional de cada proceso. El gateway será una frontera arquitectónica común, no un lugar donde duplicar lógica de negocio propia de los procesos.
+
+## ARQ-03 — Unificar el runtime de `process_runs`
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 tendrá un núcleo común y neutral para gestionar el ciclo de vida observado de todas las ejecuciones, independientemente de si el proceso se ejecuta desde Vercel, Railway API, Railway FAST, Railway Plex o el worker técnico.
+
+Ese núcleo sustituirá la duplicación actual entre `lib/process-runtime.js`, `lib/batch-worker-runtime.mjs` y `lib/process-worker-runtime.mjs` en todo lo que pertenezca al envelope común de ejecución.
+
+### Responsabilidades comunes
+
+- Crear/iniciar `process_runs` con la misma semántica.
+- Registrar eventos y errores de forma uniforme.
+- Gestionar heartbeats y timestamps.
+- Persistir métricas y snapshots `before/after`.
+- Mantener relaciones parent/child, correlación e idempotencia.
+- Cerrar ejecuciones con reglas canónicas para `succeeded`, `failed`, `partial`, `cancelled` y demás estados admitidos.
+- Garantizar que `executor`, `worker_pool`, origen y contexto queden registrados de forma coherente.
+
+### Límites
+
+- No fusiona los workers ni elimina la especialización de pools.
+- Cada executor conservará adapters propios para reclamar trabajo y ejecutar el core funcional correspondiente.
+- El runtime común no contendrá lógica de negocio específica de Películas, Series, Plex, Personas u otros dominios.
+
+### Motivo
+
+La auditoría detectó al menos tres implementaciones paralelas del mismo ciclo de vida observado. Esta duplicación facilita deriva semántica y errores como el caso real en que ejecuciones del pool Plex quedaron persistidas con `executor='railway_batch_fast'`.
+
+### Alcance V5
+
+La migración deberá preservar la compatibilidad con el histórico existente de `process_runs` y con las superficies Actividad/Operaciones. La consolidación se realizará sobre un contrato común explícito, con adapters por executor cuando sean necesarios.
