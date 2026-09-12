@@ -25,7 +25,8 @@ const sourceLabel=s=>({imdb:'IMDb',tmdb:'TMDb',trakt:'Trakt',letterboxd:'Letterb
 const familyLabel=f=>({audience:'Audiencia',cinephile:'Cinéfilos',critics:'Crítica'}[f]||f);
 const attentionLabel=t=>({duration:'Duración sospechosa',filename:'Nombre de archivo sospechoso',duplicate:'Varias versiones asociadas'}[t]||'Revisión de la copia física');
 const crewRelevant=xs=>(xs||[]).filter(c=>{const j=String(c.job||'').toLowerCase();return /director|creator|created by|creador|showrunner/.test(j)}).slice(0,6);
-const safeBack=v=>{const s=String(v||'');return s.startsWith('/catalogo')&&!s.startsWith('//')?s:'/catalogo'};
+const SAFE_BACK_PREFIXES=['/catalogo','/sagas','/personas','/calidad/personas'];
+const safeBack=v=>{const s=String(v||'');return s.startsWith('/')&&!s.startsWith('//')&&SAFE_BACK_PREFIXES.some(prefix=>s===prefix||s.startsWith(`${prefix}/`)||s.startsWith(`${prefix}?`))?s:'/catalogo'};
 
 function PlexBadge({inPlex}){return <span className={`fv4-plex ${inPlex?'in':'out'}`}><i aria-hidden="true"/>{inPlex?'En Plex':'Sin Plex'}</span>}
 
