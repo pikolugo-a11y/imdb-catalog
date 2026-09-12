@@ -1,6 +1,7 @@
 'use client';
 
 import {excludeTitle} from '@/app/actions';
+import PendingSubmitButton from '@/components/PendingSubmitButton';
 
 export default function ExcludeTitleForm({imdbId,returnTo,label='Excluir de PikoFilm'}){
   function confirmExclude(event){
@@ -9,6 +10,6 @@ export default function ExcludeTitleForm({imdbId,returnTo,label='Excluir de Piko
   return <form action={excludeTitle} onSubmit={confirmExclude}>
     <input type="hidden" name="imdbId" value={imdbId}/>
     <input type="hidden" name="returnTo" value={returnTo}/>
-    <button className="fv4-exclude" type="submit">{label}</button>
+    <PendingSubmitButton className="fv4-exclude" pendingLabel="Excluyendo…">{label}</PendingSubmitButton>
   </form>;
 }
