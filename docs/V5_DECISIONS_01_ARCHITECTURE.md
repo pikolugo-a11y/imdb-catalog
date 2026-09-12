@@ -1,9 +1,9 @@
 # PikoFilm V5 — Decisiones 01: Arquitectura general
 
-Estado: **EN REVISIÓN**  
+Estado: **DECISIONES COMPLETADAS — ARQ-01 A ARQ-09 APROBADAS**  
 Rama de trabajo: `roadmap/v5-01-architecture-decisions`
 
-Este documento registra las decisiones del Punto 1 — Arquitectura general. Cada decisión se persiste antes de pasar a la siguiente propuesta.
+Este documento registra las decisiones ARQ-01 a ARQ-09 del Punto 1 — Arquitectura general. La continuación ARQ-10 a ARQ-15 se registra en `docs/V5_DECISIONS_01_ARCHITECTURE_10_15.md`. Cada decisión se persistió antes de pasar a la siguiente propuesta.
 
 ## ARQ-01 — Sacar `PROC-NOV-009` de la ejecución larga de Vercel
 
