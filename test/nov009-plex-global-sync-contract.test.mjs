@@ -6,6 +6,7 @@ const action=fs.readFileSync('app/novedades/plex-actions.js','utf8');
 const button=fs.readFileSync('components/PlexSyncButton.js','utf8');
 const page=fs.readFileSync('app/novedades/page.js','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
+const plexSync=fs.readFileSync('lib/plex-sync.js','utf8');
 
 test('NOV-009 is the canonical observed global incremental Plex sync',()=>{
   assert.match(action,/processCode:'PROC-NOV-009'/);
@@ -21,4 +22,9 @@ test('Novedades keeps one visible Plex button and the component reads last globa
   assert.match(button,/process_code IN\('PROC-NOV-009','PROC-NOV-008'\)/);
   assert.match(page,/<PlexSyncButton\/>/);
   assert.doesNotMatch(page,/process_code='PROC-NOV-009'/);
+});
+
+test('NOV-009 allows Plex up to 2 minutes per request before timeout',()=>{
+  assert.match(plexSync,/const PLEX_REQUEST_TIMEOUT_MS=120000;/);
+  assert.match(plexSync,/AbortSignal\.timeout\(PLEX_REQUEST_TIMEOUT_MS\)/);
 });
