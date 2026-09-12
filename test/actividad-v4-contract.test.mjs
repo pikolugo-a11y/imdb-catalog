@@ -93,6 +93,13 @@ test('Calendario V4 muestra 30 días como agenda semanal y conserva días vacío
   assert.doesNotMatch(page,/Días 8–30/);
 });
 
+test('Calendario usa un alias SQL no reservado para el día de Madrid',()=>{
+  const source=read('lib/activity-v4.js');
+  assert.match(source,/::text AS day_key/);
+  assert.match(source,/row\.day_key/);
+  assert.doesNotMatch(source,/::text day,/);
+});
+
 test('Actividad permite forzar el mismo ciclo PLAN-002 desde el frontal',()=>{
   const page=read('app/actividad/page.js'),actions=read('app/actividad/actions.js'),cycle=read('lib/activity-planner-cycle.js');
   assert.match(page,/Ejecutar ciclo automático ahora/);
