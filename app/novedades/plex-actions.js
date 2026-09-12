@@ -3,22 +3,36 @@ import {revalidatePath} from 'next/cache';
 import {syncPlexFast} from '@/lib/plex-sync';
 import {seedPlexNewsCandidates} from '@/lib/plex-news-seed';
 import {captureDashboardSnapshot} from '@/lib/dashboard-v2';
-import {executeObservedProcess,recordProcessError} from '@/lib/process-runtime';
+import {executeObservedProcess,finishProcessRun,recordProcessError} from '@/lib/process-runtime';
 import {db} from '@/lib/db';
 
-function refresh(){revalidatePath('/');revalidatePath('/novedades');revalidatePath('/catalogo');revalidatePath('/plex');revalidatePath('/calidad');revalidatePath('/admin')}
+const PLEX_EXECUTION_TIMEOUT_MS=280000;
+const PLEX_STALE_RUN_MINUTES=5;
+
+function refresh(){revalidatePath('/');revalidatePath('/novedades');revalidatePath('/catalogo');revalidatePath('/plex');revalidatePath('/calidad');revalidatePath('/admin');revalidatePath('/actividad')}
+function plexDeadline(){const error=Object.assign(new Error('La sincronización de Plex superó el límite de 280 segundos y se detuvo antes del límite de Vercel'),{name:'PlexExecutionTimeoutError',source:'plex',retryable:false,code:'PLEX_EXECUTION_TIMEOUT'});return new Promise((_,reject)=>setTimeout(()=>reject(error),PLEX_EXECUTION_TIMEOUT_MS));}
+async function closeStalePlexRuns(sql){
+  const rows=await sql`SELECT run_id FROM process_runs WHERE process_code='PROC-NOV-009' AND technical_status IN('queued','running') AND finished_at IS NULL AND COALESCE(started_at,requested_at)<now()-(${PLEX_STALE_RUN_MINUTES}::int*interval '1 minute') ORDER BY requested_at ASC LIMIT 20`;
+  for(const row of rows){
+    const error=Object.assign(new Error('La ejecución anterior de Plex quedó interrumpida por el límite externo de ejecución'),{name:'PlexStaleRunError',code:'PLEX_STALE_RUN',source:'vercel',retryable:false});
+    await recordProcessError(row.run_id,{error,step:'process',source:'vercel',retryable:false,detail:{reason:'stale_running_run',stale_after_minutes:PLEX_STALE_RUN_MINUTES}}).catch(()=>{});
+    await finishProcessRun(row.run_id,{technicalStatus:'failed',functionalResult:null,message:'Ejecución interrumpida por timeout externo'}).catch(()=>{});
+  }
+  return rows.length;
+}
 
 export async function syncPlexFromNews(_prevState,formData){
   const raw=String(formData?.get('reviewFrom')||'').trim();
   const reviewFrom=raw?`${raw}T00:00:00.000Z`:undefined;
   const sql=db();
-  const [active]=await sql`SELECT run_id FROM process_runs WHERE process_code IN('PROC-NOV-009','PROC-NOV-008') AND technical_status IN('queued','running') AND finished_at IS NULL ORDER BY requested_at DESC LIMIT 1`;
+  await closeStalePlexRuns(sql);
+  const [active]=await sql`SELECT run_id FROM process_runs WHERE process_code IN('PROC-NOV-009','PROC-NOV-008') AND technical_status IN('queued','running') AND finished_at IS NULL AND COALESCE(started_at,requested_at)>=now()-(${PLEX_STALE_RUN_MINUTES}::int*interval '1 minute') ORDER BY requested_at DESC LIMIT 1`;
   if(active)return{ok:false,message:'Ya hay una actualización de Plex en curso. Espera a que termine.'};
   const requestKey=`plex-sync:${reviewFrom||'last-success'}:${Math.floor(Date.now()/3000)}`;
   try{
-    const sync=await executeObservedProcess({processCode:'PROC-NOV-009',runKind:'system',triggerSource:'novedades_manual',executor:'vercel',entityType:'series_library',entityId:'plex',correlationKey:requestKey,idempotencyKey:`PROC-NOV-009:${requestKey}`,context:{surface:'/novedades',operation:'sync_plex_global',review_from:reviewFrom||'last_success'}},async trace=>{
+    const sync=await executeObservedProcess({processCode:'PROC-NOV-009',runKind:'system',triggerSource:'novedades_manual',executor:'vercel',entityType:'series_library',entityId:'plex',correlationKey:requestKey,idempotencyKey:`PROC-NOV-009:${requestKey}`,context:{surface:'/novedades',operation:'sync_plex_global',review_from:reviewFrom||'last_success',execution_timeout_ms:PLEX_EXECUTION_TIMEOUT_MS,retries:0}},async trace=>{
       await trace.event({eventType:'step_started',step:'plex_sync',message:'Sincronizando biblioteca Plex incrementalmente'});
-      const r=await syncPlexFast({reviewFrom});
+      const r=await Promise.race([syncPlexFast({reviewFrom}),plexDeadline()]);
       await trace.event({eventType:'step_completed',step:'plex_sync',message:'Biblioteca Plex sincronizada',data:{total:r.total,new:r.new,changed:r.changed,missing:r.missing,identity_review:r.identityReview||null}});
       await captureDashboardSnapshot().catch(()=>{});
       return{technicalStatus:'succeeded',functionalResult:(r.new||r.changed||r.missing)?'updated':'no_change',metrics:{plex_total:r.total,plex_new:r.new,plex_changed:r.changed,plex_missing:r.missing,identity_reviewed:r.identityReview?.reviewed||0,imdb_changes:r.identityReview?.imdb_changed||0},after:{review_from:r.identityReview?.review_from||reviewFrom||null,identity_review_complete:true,plex:{total:r.total,new:r.new,changed:r.changed,missing:r.missing}},message:'Sincronización Plex global completada'};
