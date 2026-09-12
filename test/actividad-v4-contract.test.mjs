@@ -138,7 +138,8 @@ test('despacho frecuente reutiliza PLAN-002 sin recalcular demanda pesada cada c
   assert.match(cycle,/mode==='dispatch'/);
   assert.match(cycle,/runActivityDispatchTick/);
   assert.match(planner,/export async function runActivityDispatchTick/);
-  assert.match(planner,/dispatchDue\(sql,\{includeDelayed:false\}\)/);
+  assert.match(planner,/dispatchDue\(sql,settings,\{includeDelayed:false\}\)/);
+  assert.match(planner,/loadAutomationSettings\(sql\)/);
 });
 
 test('calendario detecta picos agregados usando carga histórica real',()=>{
