@@ -114,31 +114,28 @@ test('Actividad permite forzar el mismo ciclo PLAN-002 desde el frontal sin conv
   assert.doesNotMatch(cycle,/PROC-NOV-009|syncPlexFastCore|scanPlexTechnicalLibrary/);
 });
 
-test('Actividad sólo declara automatización sana con secreto, despacho frecuente y recálculo horario automáticos',()=>{
+test('Actividad sólo declara automatización sana con secreto y ciclo horario automático',()=>{
   const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
   assert.match(source,/ACTIVITY_PLANNER_HEALTH_MINUTES=75/);
-  assert.match(source,/ACTIVITY_DISPATCH_HEALTH_MINUTES=15/);
+  assert.match(source,/ACTIVITY_DISPATCH_HEALTH_MINUTES=75/);
   assert.match(source,/process_code='PROC-PLAN-002'/);
   assert.match(source,/trigger_source='activity_planner'/);
   assert.match(source,/row\.context\?\.mode==='full'/);
   assert.match(source,/Boolean\(process\.env\.CRON_SECRET\)/);
   assert.match(source,/plannerHealthy=cronSecretConfigured&&dispatchHealthy&&fullHealthy/);
   assert.match(page,/Automatización activa/);
-  assert.match(page,/cada 5 minutos/);
-  assert.match(page,/El botón manual no cuenta/);
+  assert.match(page,/no cuenta como automatización/);
 });
 
-test('despacho frecuente reutiliza PLAN-002 sin recalcular demanda pesada cada cinco minutos',()=>{
+test('organizador automático se ejecuta una vez por hora y conserva el mismo ciclo PLAN-002',()=>{
   const vercel=read('vercel.json'),plannerCron=read('app/api/cron/activity-planner/route.js'),cycle=read('lib/activity-planner-cycle.js'),planner=read('lib/process-planning.js');
-  assert.match(vercel,/\*\/5 \* \* \* \*/);
+  assert.match(vercel,/0 \* \* \* \*/);
+  assert.doesNotMatch(vercel,/\*\/5 \* \* \* \*/);
   assert.match(plannerCron,/cycleMode\(date\)/);
   assert.match(plannerCron,/getUTCMinutes\(\)===0\?'full':'dispatch'/);
   assert.match(plannerCron,/slotKey/);
   assert.match(plannerCron,/PROC-PLAN-002:\$\{mode\}:/);
-  assert.match(cycle,/mode==='dispatch'/);
-  assert.match(cycle,/runActivityDispatchTick/);
-  assert.match(planner,/export async function runActivityDispatchTick/);
-  assert.match(planner,/dispatchDue\(sql,settings,\{includeDelayed:false\}\)/);
+  assert.match(cycle,/runActivityPlanner/);
   assert.match(planner,/loadAutomationSettings\(sql\)/);
 });
 
@@ -158,13 +155,12 @@ test('navegación reemplaza el popover lifecycle por Actividad global',()=>{
   assert.doesNotMatch(nav,/LifecycleActivity/);
 });
 
-test('cron de Actividad mantiene recálculo completo horario y snapshot diario separado',()=>{
+test('cron de Actividad mantiene un ciclo horario y snapshot diario separado',()=>{
   const vercel=read('vercel.json'),plannerCron=read('app/api/cron/activity-planner/route.js'),cycle=read('lib/activity-planner-cycle.js'),snapshot=read('app/api/cron/dashboard-snapshot/route.js');
-  assert.match(vercel,/\/api\/cron\/activity-planner/);assert.match(vercel,/\*\/5 \* \* \* \*/);
+  assert.match(vercel,/\/api\/cron\/activity-planner/);assert.match(vercel,/0 \* \* \* \*/);
   assert.match(plannerCron,/executeAutomaticPlanningCycle/);assert.match(plannerCron,/PROC-PLAN-002/);
   assert.match(plannerCron,/getUTCMinutes\(\)===0\?'full':'dispatch'/);
   assert.match(cycle,/runActivityPlanner/);
-  assert.match(cycle,/runActivityDispatchTick/);
   assert.doesNotMatch(snapshot,/qualityMaintenance|startMov001Batch|startSeriesBatch|startData002Batch|startPeopleBatch|processC6Batch/);
 });
 

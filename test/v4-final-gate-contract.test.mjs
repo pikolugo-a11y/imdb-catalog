@@ -29,7 +29,7 @@ test('Actividad puede forzar manualmente el mismo ciclo canónico PLAN-002 sin a
   assert.match(page,/Ejecutar ciclo automático ahora/);
   assert.match(page,/Ejecutará ahora el ciclo completo de planificación y retención como control manual/);
   assert.match(page,/No sustituye al cron automático/);
-  assert.match(page,/El botón manual no cuenta/);
+  assert.match(page,/no cuenta como automatización/);
 });
 
 test('navegación y carga dan feedback accesible',()=>{

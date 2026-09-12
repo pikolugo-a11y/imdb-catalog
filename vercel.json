@@ -7,7 +7,7 @@
     "deploymentEnabled": false
   },
   "crons": [
-    {"path": "/api/cron/activity-planner", "schedule": "*/5 * * * *"},
+    {"path": "/api/cron/activity-planner", "schedule": "0 * * * *"},
     {"path": "/api/cron/dashboard-snapshot", "schedule": "15 2 * * *"}
   ]
 }

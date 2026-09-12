@@ -10,7 +10,7 @@ La vista Automatizaciones responde a dos preguntas humanas: **qué hará PikoFil
 
 Los procesos automáticos de negocio configurables son los declarados seguros por el planificador V4: MOV-001, SER-002, SER-003, SER-004, DATA-002, PER-001 y PQ-001. La pantalla muestra para cada uno estado activo/pausado, regla que determina cuándo existe trabajo vencido, franja preferida, próxima ejecución realmente planificada, volumen pendiente y última ejecución con su resultado.
 
-Los automatismos de infraestructura se muestran aparte como **Sistema**. PLAN-002 despierta el planificador cada 5 minutos y hace reconciliación completa cada hora. HOME-001 toma el snapshot diario del Dashboard. Son visibles pero no se editan desde esta pantalla.
+Los automatismos de infraestructura se muestran aparte como **Sistema**. PLAN-002 despierta el planificador **una vez por hora**; en ese mismo ciclo revisa vencimientos, reconcilia la planificación y despacha el trabajo que toca. HOME-001 toma el snapshot diario del Dashboard. Son visibles pero no se editan desde esta pantalla.
 
 ## Configuración
 
