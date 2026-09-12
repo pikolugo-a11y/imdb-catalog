@@ -18,7 +18,7 @@ function statusOf(r){
   if(Number(r.owned)>0)return{label:'Parcial en Plex',tone:'partial'};
   return{label:'Sin Plex',tone:'empty'};
 }
-function Pager({p,page,pages}){if(pages<=1)return null;return <div className="sv4-pager"><Link className={page<=1?'disabled':''} href={'/sagas?'+qs(p,{page:Math.max(1,page-1)})}>← Anterior</Link><span>Página <b>{page}</b> de <b>{pages}</b></span><Link className={page>=pages?'disabled':''} href={'/sagas?'+qs(p,{page:Math.min(pages,page+1)})}>Siguiente →</Link></div>}
+function Pager({p,page,pages}){if(pages<=1)return null;return <nav className="sv4-pager" aria-label="Paginación">{page>1?<Link href={'/sagas?'+qs(p,{page:page-1})}>← Anterior</Link>:<span className="disabled" aria-disabled="true">← Anterior</span>}<span>Página <b>{page}</b> de <b>{pages}</b></span>{page<pages?<Link href={'/sagas?'+qs(p,{page:page+1})}>Siguiente →</Link>:<span className="disabled" aria-disabled="true">Siguiente →</span>}</nav>}
 
 export default async function Sagas({searchParams}){
   const p=await searchParams,state=p.state||'all',sort=p.sort||'priority',q=p.q||'',page=Math.max(1,Number(p.page)||1);
@@ -31,7 +31,7 @@ export default async function Sagas({searchParams}){
       {!run&&<ActionButton action={refreshAllSagasAction} label="↻ Actualizar todas las sagas" pendingLabel="Preparando actualización…"/>}
     </header>
 
-    {run&&<section className="sv4-batch"><div><span>ACTUALIZACIÓN GLOBAL</span><strong>{batchPct}% · {processed}/{Number(c?.total||0)}</strong><small>{effectivePaused?(enginePaused?'Motor global pausado':'Pausada manualmente'):`${Number(c?.active||0)} activas · ${Number(c?.queued||0)} en cola`} · {Number(c?.failed||0)} fallidas</small></div><div className="sv4-batch-actions">{!enginePaused&&(locallyPaused?<ActionButton action={resumeSagaFullRefreshAction} fields={{runId:run.run_id}} label="Reanudar" pendingLabel="Reanudando…"/>:<ActionButton action={pauseSagaFullRefreshAction} fields={{runId:run.run_id}} label="Pausar" pendingLabel="Pausando…"/>)}<ActionButton action={cancelSagaFullRefreshAction} fields={{runId:run.run_id}} label="Cancelar actualización" pendingLabel="Cancelando…"/>{enginePaused&&<Link href="/admin">Abrir Operaciones →</Link>}</div></section>}
+    {run&&<section className="sv4-batch"><div><span>ACTUALIZACIÓN GLOBAL</span><strong>{batchPct}% · {processed}/{Number(c?.total||0)}</strong><small>{effectivePaused?(enginePaused?'Motor global pausado':'Pausada manualmente'):`${Number(c?.active||0)} activas · ${Number(c?.queued||0)} en cola`} · {Number(c?.failed||0)} fallidas</small></div><div className="sv4-batch-actions">{!enginePaused&&(locallyPaused?<ActionButton action={resumeSagaFullRefreshAction} fields={{runId:run.run_id}} label="Reanudar" pendingLabel="Reanudando…"/>:<ActionButton action={pauseSagaFullRefreshAction} fields={{runId:run.run_id}} label="Pausar" pendingLabel="Pausando…"/>)}<ActionButton action={cancelSagaFullRefreshAction} fields={{runId:run.run_id}} label="Cancelar actualización" pendingLabel="Cancelando…" confirmMessage="¿Cancelar la actualización global de sagas? Los items ya iniciados pueden terminar antes de detenerse."/>{enginePaused&&<Link href="/admin">Abrir Operaciones →</Link>}</div></section>}
 
     <section className="sv4-kpis">
       <Link href="/sagas?state=one"><span>A una película</span><strong>{nf(s.one)}</strong><small>máxima prioridad</small></Link>
