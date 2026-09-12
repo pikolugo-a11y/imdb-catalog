@@ -14,7 +14,7 @@ test('cron V4 permanece fail-closed y deja diagnóstico seguro de configuración
   for(const source of [planner,snapshot]){assert.match(source,/getCronAuthState/);assert.match(source,/logCronAuthFailure/);assert.match(source,/status:401/);}
 });
 
-test('Actividad puede forzar manualmente el mismo ciclo canónico PLAN-002 sin abrir el cron',()=>{
+test('Actividad puede forzar manualmente el mismo ciclo canónico PLAN-002 sin abrir el cron ni fingir salud automática',()=>{
   const cycle=read('lib/activity-planner-cycle.js'),route=read('app/api/cron/activity-planner/route.js'),actions=read('app/actividad/actions.js'),page=read('app/actividad/page.js');
   assert.match(cycle,/processCode:'PROC-PLAN-002'/);
   assert.match(cycle,/purgeTerminalProcessObservability/);
@@ -27,7 +27,9 @@ test('Actividad puede forzar manualmente el mismo ciclo canónico PLAN-002 sin a
   assert.match(actions,/manual:true/);
   assert.match(page,/ConfirmSubmitButton/);
   assert.match(page,/Ejecutar ciclo automático ahora/);
-  assert.match(page,/Ejecutará ahora el ciclo automático completo de planificación y retención/);
+  assert.match(page,/Ejecutará ahora el ciclo completo de planificación y retención como control manual/);
+  assert.match(page,/No sustituye al cron automático/);
+  assert.match(page,/El botón manual no cuenta/);
 });
 
 test('navegación y carga dan feedback accesible',()=>{
