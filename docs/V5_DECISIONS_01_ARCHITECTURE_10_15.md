@@ -125,3 +125,39 @@ La auditoría confirmó que la separación conceptual Vercel=control/Railway=eje
 ### Alcance V5
 
 La implementación concreta de los presupuestos se coordinará con Rendimiento, Tests y CI/CD. Esta decisión fija la regla arquitectónica: el lugar de ejecución de un proceso debe justificarse por una clase y un presupuesto verificables.
+
+## ARQ-14 — Registro explícito de capacidades de cada worker pool
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 tendrá un registro canónico de capacidades por `worker_pool` para que el routing de procesos se base en compatibilidad declarada y verificable, no en convenciones implícitas repartidas entre adapters, starters y configuración.
+
+### Contenido mínimo por pool
+
+- Identidad del pool y executor asociado.
+- Procesos o familias de proceso que puede ejecutar.
+- Dependencias externas requeridas, incluido acceso a Plex cuando corresponda.
+- Capacidades funcionales/técnicas disponibles.
+- Límites de concurrencia y tipos de carga admitidos cuando sean relevantes.
+- Versiones de protocolo soportadas según ARQ-11.
+- Operaciones o capacidades explícitamente prohibidas.
+
+### Reglas
+
+- ARQ-05 declarará qué necesita cada proceso; ARQ-14 declarará qué puede ofrecer cada pool.
+- El gateway de ARQ-02 sólo podrá enrutar un proceso cuando requisitos y capacidades sean compatibles.
+- El worker volverá a validar su propia capacidad al reclamar el trabajo.
+- ARQ-04 usará esta información para verificar la coherencia entre `process_code`, `worker_pool` y `executor`.
+- Añadir un nuevo pool o executor requerirá registrar primero sus capacidades; no se repartirán condiciones ad hoc por múltiples módulos.
+- ARQ-12 protegerá estas relaciones mediante tests arquitectónicos.
+
+### Motivo
+
+La auditoría encontró que la especialización de los pools actuales es útil, pero parte de sus capacidades está implícita. Hacerlas explícitas reduce errores de routing, facilita evolución y permite que las decisiones de destino sean comprobables antes de ejecutar trabajo.
+
+### Alcance V5
+
+El registro deberá modelar primero las capacidades reales de API, FAST, Plex y Technical sin alterar su comportamiento. Su implementación se coordinará con ARQ-02, ARQ-04, ARQ-05 y ARQ-11.
