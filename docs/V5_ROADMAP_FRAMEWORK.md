@@ -160,7 +160,7 @@ La V5 se definirá bloque a bloque. Para cada uno de los 20 bloques:
 
 ## Estado de revisión
 
-- Punto 1 — Arquitectura general: **PENDIENTE DE AUDITORÍA**
+- Punto 1 — Arquitectura general: **AUDITORÍA COMPLETADA — 15 PROPUESTAS PENDIENTES DE DECISIÓN** (`V5_AUDIT_01_ARCHITECTURE.md`)
 - Punto 2 — Rendimiento: **PENDIENTE**
 - Punto 3 — Base de datos y modelo de datos: **PENDIENTE**
 - Punto 4 — Procesos automáticos y Batch: **PENDIENTE**
