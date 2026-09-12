@@ -102,3 +102,29 @@ La auditoría detectó al menos tres implementaciones paralelas del mismo ciclo 
 ### Alcance V5
 
 La migración deberá preservar la compatibilidad con el histórico existente de `process_runs` y con las superficies Actividad/Operaciones. La consolidación se realizará sobre un contrato común explícito, con adapters por executor cuando sean necesarios.
+
+## ARQ-04 — Hacer `executor` y `worker_pool` invariantes verificables
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 hará que la relación entre `process_code`, `worker_pool` y `executor` sea una invariante explícita y verificable. Las combinaciones válidas quedarán declaradas en el registro canónico del proceso y cualquier combinación no autorizada deberá fallar antes de ejecutar trabajo funcional.
+
+### Reglas
+
+- Se eliminan defaults silenciosos de `executor` que puedan ocultar la identidad real del worker.
+- El executor deberá proporcionarse explícitamente o derivarse de una identidad de worker fiable.
+- El gateway de ARQ-02 validará la combinación antes de encolar.
+- El worker volverá a validar su capacidad y la identidad esperada al reclamar el trabajo.
+- La creación del child run usará la identidad real del executor y del pool.
+- Tests y CI verificarán las combinaciones permitidas y detectarán deriva.
+
+### Motivo
+
+La auditoría encontró un caso real en producción: ejecuciones `PROC-SER-002` procesadas por el pool Plex quedaron registradas con `executor='railway_batch_fast'` debido a un valor por defecto del runtime Batch. Aunque el trabajo funcional terminase correctamente, la observabilidad dejó de representar la realidad.
+
+### Alcance V5
+
+La implementación deberá corregir la identidad de futuras ejecuciones sin reescribir de forma artificial el histórico existente. Actividad, Operaciones y diagnóstico técnico deberán poder confiar en que `executor` y `worker_pool` describen el lugar real de ejecución.
