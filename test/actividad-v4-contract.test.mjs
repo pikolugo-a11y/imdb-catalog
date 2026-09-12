@@ -93,15 +93,17 @@ test('Calendario V4 muestra 30 días como agenda semanal y conserva días vacío
   assert.doesNotMatch(page,/Días 8–30/);
 });
 
-test('Actividad permite forzar recálculo inmediato reutilizando el planificador canónico',()=>{
-  const page=read('app/actividad/page.js'),actions=read('app/actividad/actions.js');
-  assert.match(page,/Recalcular planificación ahora/);
-  assert.match(page,/action=\{recalculatePlanningNow\}/);
-  assert.match(actions,/runActivityPlanner/);
-  assert.match(actions,/futureDetected/);
-  assert.match(actions,/operation:'recalculate_planning_now'/);
+test('Actividad permite forzar el mismo ciclo PLAN-002 desde el frontal',()=>{
+  const page=read('app/actividad/page.js'),actions=read('app/actividad/actions.js'),cycle=read('lib/activity-planner-cycle.js');
+  assert.match(page,/Ejecutar ciclo automático ahora/);
+  assert.match(page,/action=\{runAutomaticPlanningNow\}/);
+  assert.match(page,/ConfirmSubmitButton/);
+  assert.match(actions,/executeAutomaticPlanningCycle/);
   assert.match(actions,/triggerSource:'activity_manual'/);
-  assert.doesNotMatch(actions,/PROC-NOV-009|syncPlexFastCore|scanPlexTechnicalLibrary/);
+  assert.match(actions,/manual:true/);
+  assert.match(cycle,/runActivityPlanner/);
+  assert.match(cycle,/processCode:'PROC-PLAN-002'/);
+  assert.doesNotMatch(cycle,/PROC-NOV-009|syncPlexFastCore|scanPlexTechnicalLibrary/);
 });
 
 test('Actividad sólo declara la planificación automática activa con un PLAN-002 reciente y sano',()=>{
@@ -131,18 +133,20 @@ test('navegación reemplaza el popover lifecycle por Actividad global',()=>{
   assert.doesNotMatch(nav,/LifecycleActivity/);
 });
 
-test('cron horario planifica y snapshot diario ya no concentra mantenimiento',()=>{
-  const vercel=read('vercel.json'),plannerCron=read('app/api/cron/activity-planner/route.js'),snapshot=read('app/api/cron/dashboard-snapshot/route.js');
+test('cron horario delega en el ciclo canónico y snapshot diario ya no concentra mantenimiento',()=>{
+  const vercel=read('vercel.json'),plannerCron=read('app/api/cron/activity-planner/route.js'),cycle=read('lib/activity-planner-cycle.js'),snapshot=read('app/api/cron/dashboard-snapshot/route.js');
   assert.match(vercel,/\/api\/cron\/activity-planner/);assert.match(vercel,/0 \* \* \* \*/);
-  assert.match(plannerCron,/PROC-PLAN-002/);assert.match(plannerCron,/runActivityPlanner/);
+  assert.match(plannerCron,/executeAutomaticPlanningCycle/);assert.match(plannerCron,/PROC-PLAN-002/);
+  assert.match(cycle,/runActivityPlanner/);
   assert.doesNotMatch(snapshot,/qualityMaintenance|startMov001Batch|startSeriesBatch|startData002Batch|startPeopleBatch|processC6Batch/);
 });
 
 test('planes terminales se purgan tras la ventana funcional de 30 días',()=>{
-  const retention=read('lib/process-planning-retention.js'),plannerCron=read('app/api/cron/activity-planner/route.js');
+  const retention=read('lib/process-planning-retention.js'),plannerCron=read('app/api/cron/activity-planner/route.js'),cycle=read('lib/activity-planner-cycle.js');
   assert.match(retention,/PROCESS_PLAN_RETENTION_DAYS=30/);
   assert.match(retention,/status IN \('completed','cancelled','expired'\)/);
   assert.match(retention,/DELETE FROM process_plans/);
-  assert.match(plannerCron,/purgeTerminalProcessPlans/);
-  assert.match(plannerCron,/purged_plans/);
+  assert.match(cycle,/purgeTerminalProcessPlans/);
+  assert.match(cycle,/purged_plans/);
+  assert.match(plannerCron,/executeAutomaticPlanningCycle/);
 });

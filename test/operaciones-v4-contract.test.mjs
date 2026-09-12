@@ -114,11 +114,14 @@ test('source control distinguishes configured hard and effective limits',async()
 
 test('observability retention is coordinated at 30 days and protects live or retryable batch state',async()=>{
   const retention=await read('lib/process-observability-retention.js');
+  const cycle=await read('lib/activity-planner-cycle.js');
   const cron=await read('app/api/cron/activity-planner/route.js');
   assert.match(retention,/PROCESS_OBSERVABILITY_RETENTION_DAYS=30/);
   assert.match(retention,/technical_status IN \('succeeded','failed','partial','cancelled'\)/);
   assert.match(retention,/brc\.closed_at IS NULL/);
   assert.match(retention,/bi\.status IN \('queued','retry_wait','leased','running'\)/);
   assert.match(retention,/child\.technical_status IN \('queued','running'\)/);
-  assert.match(cron,/purged_process_runs/);
+  assert.match(cycle,/purgeTerminalProcessObservability/);
+  assert.match(cycle,/purged_process_runs/);
+  assert.match(cron,/executeAutomaticPlanningCycle/);
 });

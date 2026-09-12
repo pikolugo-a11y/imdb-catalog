@@ -14,6 +14,22 @@ test('cron V4 permanece fail-closed y deja diagnóstico seguro de configuración
   for(const source of [planner,snapshot]){assert.match(source,/getCronAuthState/);assert.match(source,/logCronAuthFailure/);assert.match(source,/status:401/);}
 });
 
+test('Actividad puede forzar manualmente el mismo ciclo canónico PLAN-002 sin abrir el cron',()=>{
+  const cycle=read('lib/activity-planner-cycle.js'),route=read('app/api/cron/activity-planner/route.js'),actions=read('app/actividad/actions.js'),page=read('app/actividad/page.js');
+  assert.match(cycle,/processCode:'PROC-PLAN-002'/);
+  assert.match(cycle,/purgeTerminalProcessObservability/);
+  assert.match(cycle,/purgeTerminalProcessPlans/);
+  assert.match(cycle,/runActivityPlanner/);
+  assert.match(route,/executeAutomaticPlanningCycle/);
+  assert.doesNotMatch(route,/runActivityPlanner/);
+  assert.match(actions,/runAutomaticPlanningNow/);
+  assert.match(actions,/triggerSource:'activity_manual'/);
+  assert.match(actions,/manual:true/);
+  assert.match(page,/ConfirmSubmitButton/);
+  assert.match(page,/Ejecutar ciclo automático ahora/);
+  assert.match(page,/Ejecutará ahora el ciclo automático completo de planificación y retención/);
+});
+
 test('navegación y carga dan feedback accesible',()=>{
   const loading=read('app/loading.js'),home=read('app/page.js'),nav=read('components/Nav.js'),search=read('components/GlobalSearch.js');
   assert.match(loading,/role="status"/);assert.match(loading,/aria-live="polite"/);assert.match(loading,/Cargando PikoFilm/);
