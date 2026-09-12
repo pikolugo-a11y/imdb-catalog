@@ -5,6 +5,8 @@ Objetivo: conservar únicamente innovaciones futuras que hayan sido revisadas y 
 
 ## Método obligatorio
 
+Después de completar la auditoría y las propuestas V5 de **cada uno de los 20 bloques**, se presentarán **como mínimo 5 innovaciones rompedoras y atrevidas** inspiradas por ese bloque.
+
 Las innovaciones se revisarán **una a una**.
 
 Para cada propuesta:
@@ -13,8 +15,9 @@ Para cada propuesta:
 2. El usuario decide **APROBAR** o **RECHAZAR**.
 3. Sólo las innovaciones aprobadas se incorporan a este Road Map Innovador.
 4. Las rechazadas no se conservarán como backlog implícito.
-5. La aprobación para este documento no implica que la innovación entre en V5, V6 ni ninguna versión concreta.
-6. Para entrar en una versión futura deberá existir una decisión posterior explícita y una evaluación de viabilidad, coste, seguridad e impacto.
+5. No se pasa a la siguiente innovación hasta registrar la decisión de la actual cuando corresponda.
+6. La aprobación para este documento no implica que la innovación entre en V5, V6 ni ninguna versión concreta.
+7. Para entrar en una versión futura deberá existir una decisión posterior explícita y una evaluación de viabilidad, coste, seguridad e impacto.
 
 ## Frontera de producto obligatoria
 
