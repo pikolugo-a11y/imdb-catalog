@@ -201,3 +201,35 @@ La auditoría detectó que el worker API contiene actualmente lógica de orquest
 ### Alcance V5
 
 La implementación deberá extraer primero la receta actual sin alterar su comportamiento observable. Cualquier cambio funcional posterior sobre Lifecycle requerirá una decisión específica del roadmap correspondiente.
+
+## ARQ-07 — Hacer durables las continuaciones posteriores a un proceso
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 hará durables las intenciones de continuación entre procesos mediante un patrón de outbox o mecanismo equivalente persistido en Neon. Cuando un proceso deba disparar continuaciones, primero se registrará de forma durable qué trabajos deben ejecutarse y después esas intenciones se materializarán a través del gateway canónico de ARQ-02.
+
+### Reglas
+
+- Una continuación no dependerá de que el executor productor sobreviva hasta el último paso.
+- Las intenciones pendientes deberán ser recuperables tras caída, timeout o reinicio del worker.
+- La materialización de continuaciones será idempotente para evitar duplicados ante reintentos.
+- Se podrá distinguir entre continuación pendiente, materializada, completada y fallida cuando sea necesario.
+- La relación entre proceso productor y continuaciones quedará trazable en `process_runs`/eventos o en el modelo durable equivalente.
+- No se introducirá Kafka, Redis, SQS ni otro broker sólo para esta capacidad; Neon seguirá siendo el backbone de coordinación.
+
+### Casos prioritarios
+
+- Fan-out posterior a sincronización Plex hacia MOV-001, SER-002 y snapshot técnico.
+- Continuaciones de Lifecycle hacia procesos posteriores.
+- Cualquier nueva cadena V5 en la que una mutación funcional necesite trabajo posterior garantizado.
+
+### Motivo
+
+La auditoría detectó que varias continuaciones se lanzan secuencialmente desde el mismo executor que acaba de modificar estado. Si ese executor muere entre dos pasos, puede quedar estado principal actualizado pero fan-out incompleto, sin una intención durable que permita reconstruir automáticamente lo que faltó.
+
+### Alcance V5
+
+La implementación deberá conservar la semántica funcional actual y añadir durabilidad alrededor de las transiciones entre procesos. El diseño concreto del outbox se definirá después de cerrar el roadmap y deberá integrarse con ARQ-02, ARQ-03 y ARQ-05.
