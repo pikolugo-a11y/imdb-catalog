@@ -1,18 +1,18 @@
 # PikoFilm V4 — Final Gate antes de V5
 
 Fecha: 2026-09-12  
-Estado: **implementación técnica en cierre; producción pendiente de despliegue/aceptación**.
+Estado: **implementación técnica en cierre; producción pendiente de aceptación automática**.
 
 ## Objetivo
 
-Última revisión transversal de V4 antes de reabrir decisiones V5. No añade funcionalidad nueva: corrige incoherencias de UX, observabilidad, accesibilidad, zona horaria y diagnóstico operativo encontradas tras desplegar las remediaciones anteriores.
+Última revisión transversal de V4 antes de reabrir decisiones V5. No añade una vertical nueva: corrige incoherencias de UX, observabilidad, accesibilidad, zona horaria, diagnóstico operativo y automatización real encontradas tras desplegar las remediaciones anteriores.
 
 ## Fuente de verdad revisada
 
 - GitHub `main` y CI.
 - Deployment productivo de Vercel y logs de runtime/build.
 - Los cuatro servicios Railway (API, FAST, Plex, Technical) y su commit efectivo.
-- Neon vivo mediante consultas de sólo lectura.
+- Neon vivo mediante consultas de sólo lectura salvo cambios operativos concretos autorizados por el usuario para la prueba de planificación.
 - Rutas V4 y contratos de regresión.
 
 ## Correcciones de este gate
@@ -23,8 +23,20 @@ Estado: **implementación técnica en cierre; producción pendiente de despliegu
 - Los rechazos `401` escriben únicamente diagnóstico booleano seguro: si `CRON_SECRET` está configurado y si llegó cabecera Authorization. Nunca se registra el secreto ni la cabecera.
 - `.env.example` declara `CRON_SECRET` como requisito de Production.
 - El runbook documenta el procedimiento exacto de diagnóstico.
+- El control manual `Ejecutar ciclo automático ahora` reutiliza el mismo núcleo `PROC-PLAN-002`, pero queda explícitamente como diagnóstico/control: una ejecución `activity_manual` **no demuestra ni declara salud automática**.
 
-La aplicación **no** incorpora fallback inseguro. El `401` productivo observado antes de esta rama debe cerrarse configurando/corrigiendo `CRON_SECRET` en Vercel Production y demostrando después una ejecución real `PROC-PLAN-002` `succeeded|running`.
+Tras comprobar en producción que existían planes futuros pero ningún `PROC-PLAN-002` originado por cron, se endurece el contrato de autonomía:
+
+- Vercel Cron llama `/api/cron/activity-planner` cada **5 minutos**;
+- en minuto `00` ejecuta `mode=full`: reconciliación, demanda, previsión, planificación, despacho y retención;
+- en los demás slots ejecuta `mode=dispatch`: reconciliación ligera y despacho de planes `planned` ya vencidos;
+- los ticks intermedios no recalculan selectores pesados ni reintentan `delayed`, evitando coste innecesario y bucles de retry;
+- la idempotencia se calcula por slot de cinco minutos, no por hora;
+- `process_runs.context.mode` distingue `dispatch` de `full`.
+
+El contrato detallado vive en `docs/operations/ACTIVITY_AUTOMATION.md`.
+
+Actividad sólo puede mostrar `Automatización activa` si el deployment ve `CRON_SECRET`, existe un ciclo automático reciente de despacho y existe un `full` automático reciente. Los ciclos manuales no cuentan.
 
 ### Observabilidad de Series
 
@@ -41,7 +53,8 @@ La aplicación **no** incorpora fallback inseguro. El `401` productivo observado
 - búsqueda global explica el umbral de tres caracteres;
 - acciones pendientes/confirmaciones completadas en Identidad, Películas, Series y Sagas;
 - empty state de Calidad · Personas distingue una búsqueda sin resultados;
-- paginación y textos alternativos mejorados en Personas/Sagas.
+- paginación y textos alternativos mejorados en Personas/Sagas;
+- Actividad diferencia visualmente automatización real, despacho automático parcial, secreto ausente y control manual.
 
 ### Hora civil
 
@@ -51,12 +64,11 @@ Las fechas biográficas puras (nacimiento/fallecimiento) permanecen como fecha d
 
 ## Comprobaciones de datos al abrir el gate
 
-Sólo lectura; no se modificó Neon.
-
 - Lifecycle sin filas ausentes ni huérfanas.
 - `TECH_PENDING` actual correspondía a evidencia física nueva, no a la antigua regresión masiva.
 - PikoQuality mantenía C6 vigente sobre todas las capturas técnicamente calculables; deuda de captura física y errores seguían separados.
 - La divergencia entre `series_quality_runs` y `process_runs` quedó demostrada y motivó la corrección de UI.
+- Existían planes `planned` con `dispatch_run_id=NULL`; el único `PROC-PLAN-002` observado inicialmente era manual. Eso confirmó que “ver tareas en calendario” no equivalía a “despacharlas autónomamente”.
 
 ## CSS / build
 
@@ -74,12 +86,14 @@ La disciplina obligatoria sigue siendo rama → PR → CI → merge. La cuenta/c
 
 ## Gates pendientes antes de declarar V4 congelada
 
-1. CI completo de esta rama en verde y merge a `main`.
+1. CI completo de la rama de automatización en verde y merge a `main`.
 2. Deployment de producción de Vercel realizado por el usuario desde el `main` mergeado.
-3. Confirmar que Production tiene `CRON_SECRET` válido.
-4. Verificar en logs que `/api/cron/activity-planner` deja de responder `401`.
-5. Verificar en Neon una ejecución real y reciente de `PROC-PLAN-002` `succeeded|running`, junto con la reconciliación de planes vencidos y la retención.
-6. Confirmar paridad del commit efectivo en los cuatro servicios Railway después del merge si se redepliegan.
-7. Pasada visual/funcional final del usuario por el alias estable de producción, escritorio y móvil.
+3. Confirmar desde la propia UI/runtime que Production ve `CRON_SECRET` válido.
+4. Verificar en logs un `GET /api/cron/activity-planner` 2xx automático en un slot de cinco minutos.
+5. Verificar en Neon un `PROC-PLAN-002` con `trigger_source=activity_planner`, `context.mode=dispatch` y estado sano sin pulsar el botón manual.
+6. Mover un plan seguro a unos minutos en el futuro y demostrar que cambia a `dispatched|completed` automáticamente, con `dispatch_run_id` cuando corresponda y ejecución funcional hija real.
+7. En el siguiente minuto `00`, verificar también un `PROC-PLAN-002` automático `context.mode=full` sano; sólo entonces Actividad puede declarar automatización plenamente activa.
+8. Confirmar paridad del commit efectivo en los cuatro servicios Railway después del merge si se redepliegan.
+9. Pasada visual/funcional final del usuario por el alias estable de producción, escritorio y móvil.
 
 **V5 permanece pospuesta hasta cerrar esos gates.**

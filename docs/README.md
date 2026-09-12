@@ -24,6 +24,7 @@ Si el sistema vivo contradice un documento, se verifica la implementación real 
 7. `processes/PROCESS_CATALOG.md` si se toca un proceso
 8. `processes/BATCH_ARCHITECTURE.md` si se toca Batch/workers/leases/retry/concurrencia
 9. `operations/RUNBOOK.md` si se toca operación/infraestructura
+10. `operations/ACTIVITY_AUTOMATION.md` si se toca `PROC-PLAN-002`, su cron, despacho o salud automática
 
 ## Tríada canónica V4
 
@@ -90,6 +91,7 @@ Estos documentos **complementan** la tríada y contienen más detalle de impleme
 ### Operaciones
 
 - `operations/RUNBOOK.md` — procedimientos de operación y recuperación.
+- `operations/ACTIVITY_AUTOMATION.md` — cadencia, seguridad, modos `dispatch/full`, salud y aceptación productiva de `PROC-PLAN-002`.
 
 ### Desarrollo AI-first
 
@@ -131,6 +133,7 @@ Un cambio futuro debe actualizar:
 - `V4_UX_SPEC.md` si cambia navegación, jerarquía o comportamiento de interfaz;
 - `PROCESS_CATALOG.md` si cambia un proceso concreto;
 - `BATCH_ARCHITECTURE.md` si cambia la mecánica Batch;
-- runbook si cambia un procedimiento operativo.
+- runbook si cambia un procedimiento operativo;
+- `operations/ACTIVITY_AUTOMATION.md` si cambia la cadencia, autenticación, idempotencia, modo o criterio de salud de `PROC-PLAN-002`.
 
 La documentación se modifica **en el mismo bloque que el código**. No existe una fase posterior de “ya lo documentaremos”.
