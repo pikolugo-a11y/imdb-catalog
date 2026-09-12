@@ -24,7 +24,7 @@ test('Novedades keeps one visible Plex button and the component reads last globa
   assert.doesNotMatch(page,/process_code='PROC-NOV-009'/);
 });
 
-test('NOV-009 allows Plex up to 45 seconds per request before timeout',()=>{
-  assert.match(plexSync,/const PLEX_REQUEST_TIMEOUT_MS=45000;/);
+test('NOV-009 allows Plex up to 2 minutes per request before timeout',()=>{
+  assert.match(plexSync,/const PLEX_REQUEST_TIMEOUT_MS=120000;/);
   assert.match(plexSync,/AbortSignal\.timeout\(PLEX_REQUEST_TIMEOUT_MS\)/);
 });
