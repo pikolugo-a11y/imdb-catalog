@@ -108,7 +108,7 @@ La tríada documenta el estado de `main` posterior al merge del PR #511, commit:
 
 Ese commit cierra las verticales funcionales V4 y sirve como baseline documental de esta consolidación. Los antiguos `BASELINE_V4_START.md` y `CURRENT_V4_HANDOFF.md` eran documentos de transición y ya no forman parte del presente del sistema.
 
-La última ronda de aceptación previa a V5 queda persistida en `V4_FINAL_GATE_2026-09-12.md`. Ese documento no sustituye la tríada: registra las verificaciones transversales, remediaciones de cierre y gates productivos que deben demostrarse antes de declarar V4 congelada y reabrir C074+.
+La última ronda de aceptación de V4 queda persistida en `V4_FINAL_GATE_2026-09-12.md`. Ese documento no sustituye la tríada: registra verificaciones transversales y remediaciones de cierre de V4.
 
 ## Documentos sustituidos
 
