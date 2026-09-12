@@ -103,7 +103,9 @@ Ante un `401` de un cron:
 
 `PROC-PLAN-002` corre cada hora. Su ausencia o falta de una ejecución `succeeded|running` reciente es una degradación visible de Actividad; no debe mostrarse “planificación automática activa” por configuración estática. El mismo ciclo ejecuta la purga segura del histórico terminal de 30 días, por lo que un cron roto también afecta la retención.
 
-El gate operativo de PLAN-002 sólo se considera cerrado después de observar **una ejecución real** `succeeded|running` creada por Vercel Cron en `process_runs`; un `200` aislado o una configuración visual de Vercel no bastan.
+El calendario de **Actividad** ofrece además `Ejecutar ciclo automático ahora`. Ese control manual está protegido por la sesión privada de PikoFilm y ejecuta el mismo núcleo canónico `PROC-PLAN-002` que el cron —incluidas planificación y purgas—, pero con `trigger_source='activity_manual'`. Sirve para diagnóstico/operación inmediata cuando se necesita forzar el ciclo; **no sustituye** la obligación de que Vercel Cron funcione con `CRON_SECRET`.
+
+El gate operativo de PLAN-002 sólo se considera cerrado después de observar **una ejecución real** `succeeded|running` creada por Vercel Cron en `process_runs`; un `200` aislado, una ejecución manual o una configuración visual de Vercel no bastan.
 
 ## Observabilidad de Series
 
