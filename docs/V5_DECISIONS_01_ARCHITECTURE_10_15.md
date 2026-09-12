@@ -93,3 +93,35 @@ La auditoría concluyó que la arquitectura conceptual de PikoFilm es razonable,
 ### Alcance V5
 
 La implementación deberá introducir estos tests de forma incremental junto a ARQ-01 a ARQ-11, de modo que cada nueva frontera quede protegida en CI desde el momento en que se materialice.
+
+## ARQ-13 — Presupuesto formal para trabajo síncrono
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 clasificará explícitamente cada proceso por clase de ejecución y presupuesto técnico para convertir la frontera Vercel/Railway en una regla medible y verificable, no en una convención informal.
+
+### Clases mínimas
+
+- **Interactivo corto:** trabajo ligado a una petición de usuario que debe responder rápidamente y puede ejecutarse en Vercel dentro de límites estrictos.
+- **Coordinador corto:** trabajo que consulta, decide, planifica o encola, pero no realiza procesamiento pesado ni bucles prolongados.
+- **Durable:** trabajo con red prolongada, fan-out, volumen significativo, bucles largos o posibilidad razonable de exceder el presupuesto síncrono; debe ejecutarse mediante un executor durable.
+
+### Reglas
+
+- Cada proceso del registro canónico de ARQ-05 declarará su clase de ejecución.
+- Cada clase tendrá límites explícitos de duración esperada, volumen de trabajo y tipo/cantidad de I/O externo cuando corresponda.
+- Vercel sólo podrá ejecutar trabajo que pertenezca a una clase permitida para el plano síncrono.
+- ARQ-12 deberá detectar procesos durables ejecutados directamente en Vercel o cambios que hagan que una implementación deje de cumplir su presupuesto declarado.
+- La clasificación podrá revisarse cuando cambie la carga real del proceso, pero no se ignorará un exceso recurrente ampliando timeouts sin reevaluar la arquitectura.
+- Coordinadores ligeros como `PROC-PLAN-002` permanecerán en Vercel mientras sigan cumpliendo objetivamente su presupuesto.
+
+### Motivo
+
+La auditoría confirmó que la separación conceptual Vercel=control/Railway=ejecución es correcta, pero también mostró que sin un presupuesto explícito puede aparecer trabajo pesado dentro del plano síncrono, como ocurrió con `PROC-NOV-009`. Definir clases y límites permite conservar procesos cortos donde están bien ubicados y mover sólo aquellos que realmente necesitan ejecución durable.
+
+### Alcance V5
+
+La implementación concreta de los presupuestos se coordinará con Rendimiento, Tests y CI/CD. Esta decisión fija la regla arquitectónica: el lugar de ejecución de un proceso debe justificarse por una clase y un presupuesto verificables.
