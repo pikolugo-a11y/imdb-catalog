@@ -30,3 +30,30 @@ La auditoría encontró que Railway sigue `main` y puede iniciar despliegues sin
 ### Alcance V5
 
 La implementación deberá coordinarse con el bloque específico de CI/CD. Esta decisión fija la invariante arquitectónica: código no validado no se promueve a executors Railway de producción.
+
+## ARQ-11 — Matriz explícita de compatibilidad entre Vercel y los workers
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 versionará de forma explícita los contratos que cruzan fronteras de ejecución entre Vercel, Neon y los workers Railway. Cada trabajo durable declarará la versión de protocolo con la que fue creado y cada executor declarará qué versiones sabe consumir.
+
+### Reglas
+
+- Los payloads y comandos que crucen planos tendrán una versión de contrato/protocolo explícita.
+- El gateway de ARQ-02 persistirá la versión de protocolo al crear trabajo durable.
+- Cada worker declarará el rango o conjunto de versiones compatibles que puede ejecutar.
+- Un worker no ejecutará silenciosamente trabajo con un protocolo incompatible; lo dejará bloqueado o pendiente con diagnóstico observable y recuperable.
+- Los despliegues graduales podrán admitir temporalmente más de una versión para permitir compatibilidad hacia atrás durante la transición.
+- La versión se aplicará sólo a contratos inter-plano relevantes, no a cada función interna del producto.
+- Tests y CI comprobarán compatibilidad mínima entre el productor y los executors antes de promover cambios.
+
+### Motivo
+
+Vercel y Railway tienen ciclos de despliegue separados y pueden existir ventanas normales de version skew. Mientras los contratos sean compatibles esto es correcto, pero sin una versión explícita una incompatibilidad podría manifestarse como un fallo funcional tardío o, peor, como una ejecución incorrecta silenciosa.
+
+### Alcance V5
+
+El primer protocolo V5 deberá modelar los contratos reales de Batch, gateway y continuaciones durables aprobados en ARQ-02 y ARQ-07. La implementación no pretende introducir una plataforma compleja de versionado, sino hacer verificables las fronteras críticas del sistema.
