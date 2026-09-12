@@ -15,12 +15,16 @@ test('Catálogo V4 no expone estados funcionales o técnicos del pipeline',()=>{
 test('Ficha de Catálogo conserva la capacidad de exclusión reubicada',()=>{
   const detail=read('app/catalogo/[imdbId]/page.js');
   const exclude=read('app/catalogo/[imdbId]/ExcludeTitleForm.js');
+  const confirmation=read('components/ConfirmSubmitButton.js');
   assert.doesNotMatch(detail,/EnrichTitleButton/);
   assert.doesNotMatch(detail,/saveIdentityAction/);
   assert.doesNotMatch(detail,/markAcquiring|clearAcquiring/);
   assert.doesNotMatch(detail,/Editar IDs|Editar identidad|Actualizar datos|EN PROCESO|En proceso/);
   assert.match(detail,/ExcludeTitleForm/);
   assert.match(exclude,/excludeTitle/);
-  assert.match(exclude,/window\.confirm/);
+  assert.match(exclude,/ConfirmSubmitButton/);
+  assert.match(exclude,/Pasará a Excluidas/);
+  assert.match(confirmation,/window\.confirm/);
+  assert.match(confirmation,/useFormStatus/);
   assert.match(detail,/Requiere tu atención|fv4-actions/);
 });
