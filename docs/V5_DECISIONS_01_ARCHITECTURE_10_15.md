@@ -1,9 +1,9 @@
 # PikoFilm V5 — Decisiones 01: Arquitectura general (ARQ-10 a ARQ-15)
 
-Estado: **EN REVISIÓN**  
+Estado: **DECISIONES COMPLETADAS — 6/6 APROBADAS**  
 Rama de trabajo: `roadmap/v5-01-architecture-decisions`
 
-Continuación de `docs/V5_DECISIONS_01_ARCHITECTURE.md`. Este documento registra las decisiones ARQ-10 a ARQ-15 del Punto 1 — Arquitectura general. Cada decisión se persiste antes de pasar a la siguiente propuesta.
+Continuación de `docs/V5_DECISIONS_01_ARCHITECTURE.md`. Este documento registra las decisiones ARQ-10 a ARQ-15 del Punto 1 — Arquitectura general.
 
 ## ARQ-10 — Gate de CI antes de desplegar cambios en Railway
 
@@ -161,3 +161,32 @@ La auditoría encontró que la especialización de los pools actuales es útil, 
 ### Alcance V5
 
 El registro deberá modelar primero las capacidades reales de API, FAST, Plex y Technical sin alterar su comportamiento. Su implementación se coordinará con ARQ-02, ARQ-04, ARQ-05 y ARQ-11.
+
+## ARQ-15 — Mantener Neon como backbone asíncrono único en V5
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 mantendrá Neon como único backbone asíncrono y de coordinación durable por defecto. No se introducirá Redis, Kafka, RabbitMQ, SQS ni otro broker adicional salvo que exista evidencia operativa cuantificable de que el modelo actual ya no cubre requisitos reales del sistema.
+
+### Reglas
+
+- El gateway de ARQ-02, las continuaciones durables/outbox de ARQ-07, jobs, leases, reclaim y dispatch seguirán apoyándose en Neon.
+- No se añadirá un segundo broker por anticipación, moda tecnológica o pureza arquitectónica.
+- Antes de considerar otro broker se deberán agotar mejoras razonables sobre el modelo actual: índices, partición lógica, control de concurrencia, backpressure y optimización de consultas/claims.
+- Una tecnología adicional requerirá evidencia concreta de límites reales —por ejemplo contención, latencia de cola, throughput, aislamiento o fan-out— y una nueva decisión arquitectónica explícita.
+- La coordinación asíncrona mantendrá una única fuente durable y observable para evitar estados divergentes entre sistemas.
+
+### Motivo
+
+La arquitectura actual ya dispone en Neon de estado durable, leases, reclaim y coordinación de Batch. Añadir un segundo sistema de colas sin una necesidad demostrada aumentaría coste, complejidad operativa, puntos de fallo y problemas de sincronización sin resolver un bloqueo actual.
+
+### Alcance V5
+
+Esta decisión no prohíbe para siempre otro broker. Establece que V5 consolidará primero la coordinación durable existente y sólo ampliará infraestructura si aparecen métricas que justifiquen claramente el cambio.
+
+## Cierre del bloque
+
+Las propuestas ARQ-01 a ARQ-15 han sido revisadas individualmente y las 15 han quedado **APROBADAS**. El Punto 1 — Arquitectura general queda listo para cierre documental y merge; no se ha implementado funcionalidad V5 durante esta fase de definición.
