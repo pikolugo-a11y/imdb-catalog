@@ -16,6 +16,17 @@ Para cada propuesta:
 5. La aprobación para este documento no implica que la innovación entre en V5, V6 ni ninguna versión concreta.
 6. Para entrar en una versión futura deberá existir una decisión posterior explícita y una evaluación de viabilidad, coste, seguridad e impacto.
 
+## Frontera de producto obligatoria
+
+PikoFilm gestiona **la base de datos, el catálogo, su calidad, sus procesos, integraciones y operaciones**, pero **no gestiona el historial personal de visionado ni los gustos del usuario**.
+
+En concreto:
+
+- PikoFilm no debe intentar sustituir a Plex como fuente y gestor de qué películas o episodios ha visto el usuario.
+- PikoFilm no debe construir perfiles de gustos, recomendaciones personales o modelos de afinidad basados en lo visto o valorado.
+- Si una función futura necesita saber si algo está visto, esa información pertenece a Plex y sólo puede utilizarse como dato externo cuando sea estrictamente necesario para una función de gestión del catálogo.
+- Las futuras propuestas del Road Map Innovador deben respetar esta frontera desde su planteamiento inicial.
+
 ## Innovaciones aprobadas
 
 ### INNO-01 — PikoFilm Autopilot
