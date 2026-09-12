@@ -259,3 +259,28 @@ La auditoría encontró configuración repartida entre archivos del repo y estad
 ### Alcance V5
 
 Esta decisión no cambia de proveedor ni rediseña los workers. Formaliza cómo se configura Railway para que la infraestructura productiva sea reproducible y verificable desde Git.
+
+## ARQ-09 — Evitar despliegues de Railway por cambios que no afectan a sus workers
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 configurará filtros de despliegue o watch paths específicos por servicio Railway para que cada worker sólo se reconstruya y redespliegue cuando cambien archivos capaces de afectar realmente a su runtime.
+
+### Reglas
+
+- Cambios exclusivamente en `docs/` no desplegarán workers Railway.
+- Cambios exclusivamente de frontend que no formen parte de dependencias de un worker no desplegarán Railway.
+- Cada servicio tendrá su propio conjunto explícito de rutas relevantes: worker/adapters propios, librerías compartidas usadas, package/lockfiles, Dockerfile y configuración Railway correspondiente.
+- Los cambios compartidos sólo desplegarán los servicios que realmente dependan de esos módulos.
+- Los filtros quedarán versionados en Git como parte de ARQ-08 y deberán validarse para evitar omitir una dependencia real.
+
+### Motivo
+
+La auditoría comprobó que merges puramente documentales provocaron nuevos deployments de API, FAST, Plex y Technical aun sin cambios de runtime. Esto aumenta builds, reinicios, coste y superficie de riesgo sin aportar valor funcional.
+
+### Alcance V5
+
+La implementación deberá priorizar seguridad frente a microoptimización: ante una dependencia compartida dudosa se desplegará el servicio afectado. El objetivo es eliminar despliegues claramente innecesarios, no crear filtros frágiles que puedan dejar código productivo desactualizado.
