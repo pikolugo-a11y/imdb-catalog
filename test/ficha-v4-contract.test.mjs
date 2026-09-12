@@ -75,11 +75,8 @@ test('Exclusion remains visible, secondary and explicitly confirmed',()=>{
 });
 
 test('Ficha V4 preserves safe return context across Catalog, Sagas and Personas',()=>{
-  assert.match(page,/SAFE_BACK_PREFIXES/);
-  assert.match(page,/['"]\/catalogo['"]/);
-  assert.match(page,/['"]\/sagas\/['"]/);
-  assert.match(page,/['"]\/personas['"]/);
-  assert.match(page,/['"]\/calidad\/personas['"]/);
+  assert.match(page,/SAFE_BACK_PREFIXES=\['\/catalogo','\/sagas','\/personas','\/calidad\/personas'\]/);
+  assert.match(page,/s===prefix\|\|s\.startsWith\(`\$\{prefix\}\/`\)\|\|s\.startsWith\(`\$\{prefix\}\?`\)/);
   assert.match(page,/!s\.startsWith\('\/\/'\)/);
   assert.match(page,/p\?\.from/);
   assert.match(page,/href=\{back\}/);
