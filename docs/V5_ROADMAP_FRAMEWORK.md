@@ -15,6 +15,17 @@ La V5 se definirá bloque a bloque. Para cada uno de los 20 bloques:
 7. No implementar funcionalidad V5 durante esta fase de definición salvo petición expresa posterior.
 8. Mantener este documento y los documentos de decisión actualizados para que el roadmap V5 sea recuperable desde Git sin depender del historial del chat.
 
+## Frontera de producto fija
+
+PikoFilm gestiona **la base de datos, el catálogo, su calidad, sus procesos, integraciones y operaciones**. **Plex es el sistema responsable del historial personal de visionado y de las señales de gusto del usuario.**
+
+Por tanto, esta revisión V5 y cualquier roadmap futuro deben respetar estas reglas:
+
+- PikoFilm no sustituirá a Plex como gestor de qué películas o episodios ha visto el usuario.
+- PikoFilm no construirá perfiles de gustos ni motores de recomendación personal basados en historial de visionado o valoraciones.
+- Si una función de gestión del catálogo necesita consultar si algo está visto, se tratará como un dato externo procedente de Plex, no como un dominio propio de PikoFilm.
+- Las propuestas de auditoría e innovación que invadan esta frontera deberán descartarse o reformularse.
+
 ## 20 bloques de revisión
 
 1. **Arquitectura general**
