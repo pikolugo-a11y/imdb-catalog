@@ -17,14 +17,28 @@ test('NOV-009 is the canonical observed global incremental Plex sync',()=>{
   assert.match(display,/'PROC-NOV-009':\{name:'Sincronizar Plex global'\}/);
 });
 
-test('Novedades keeps one visible Plex button and the component reads last global sync from NOV-009',()=>{
+test('Novedades keeps one visible Plex button and ignores stale Plex runs',()=>{
   assert.match(button,/process_code='PROC-NOV-009'/);
   assert.match(button,/process_code IN\('PROC-NOV-009','PROC-NOV-008'\)/);
+  assert.match(button,/PLEX_STALE_RUN_MINUTES=5/);
+  assert.match(button,/COALESCE\(started_at,requested_at\)>=now\(\)-/);
   assert.match(page,/<PlexSyncButton\/>/);
   assert.doesNotMatch(page,/process_code='PROC-NOV-009'/);
 });
 
-test('NOV-009 allows Plex up to 2 minutes per request before timeout',()=>{
-  assert.match(plexSync,/const PLEX_REQUEST_TIMEOUT_MS=120000;/);
+test('NOV-009 allows up to 280 seconds and does not retry Plex requests',()=>{
+  assert.match(plexSync,/const PLEX_REQUEST_TIMEOUT_MS=280000;/);
   assert.match(plexSync,/AbortSignal\.timeout\(PLEX_REQUEST_TIMEOUT_MS\)/);
+  assert.doesNotMatch(plexSync,/attempt<2/);
+  assert.doesNotMatch(plexSync,/return get\(base,token,path,\{attempt:/);
+  assert.match(action,/const PLEX_EXECUTION_TIMEOUT_MS=280000;/);
+  assert.match(action,/retries:0/);
+  assert.match(action,/Promise\.race\(\[syncPlexFast\(\{reviewFrom\}\),plexDeadline\(\)\]\)/);
+});
+
+test('NOV-009 closes stale runs canonically before accepting another launch',()=>{
+  assert.match(action,/closeStalePlexRuns\(sql\)/);
+  assert.match(action,/recordProcessError\(row\.run_id/);
+  assert.match(action,/finishProcessRun\(row\.run_id,\{technicalStatus:'failed'/);
+  assert.match(action,/code:'PLEX_STALE_RUN'/);
 });
