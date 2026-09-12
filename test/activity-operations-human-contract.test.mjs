@@ -15,6 +15,15 @@ test('Actividad prioriza nombres humanos, decisiones manuales y agrupa automatiz
   assert.match(source,/activity_summary/);
 });
 
+test('los KPIs de Actividad no mezclan deuda estructural de Calidad con lo que está pasando',()=>{
+  const page=read('app/actividad/page.js');
+  assert.match(page,/En curso ahora/);
+  assert.match(page,/Próximos 7 días/);
+  assert.match(page,/Pendiente de planificar/);
+  assert.doesNotMatch(page,/Requiere atención/);
+  assert.doesNotMatch(page,/summary\.attention|attentionBreakdown|breakdown\.lifecycle/);
+});
+
 test('SER-002 emite cambios funcionales demostrables antes/después para Actividad',()=>{
   const worker=read('worker/batch-plex-worker.mjs');
   assert.match(worker,/diagnosticSnapshot/);
