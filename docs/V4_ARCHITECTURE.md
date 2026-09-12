@@ -24,7 +24,7 @@ individual -> process_run -> operación canónica X
 Batch      -> cola/lease -> child process_run -> operación canónica X
 ```
 
-Batch, Railway, cron y las acciones manuales pueden cambiar el **modo de orquestación**, nunca la receta funcional.
+Batch, Railway, cron y las acciones manuales pueden cambiar el **modo de orquestación**, nunca la receta funcional. Una intención individual que pueda superar la ventana HTTP puede materializarse como Batch durable de una sola entidad: Vercel valida/encola y Railway ejecuta el mismo core canónico.
 
 ---
 
@@ -78,7 +78,7 @@ Responsabilidades:
 - dispatch a Railway o GitHub Actions cuando el trabajo no debe vivir dentro del request;
 - crons ligeros de coordinación (`activity-planner`, snapshot del dashboard).
 
-Vercel **no es un worker de larga duración**. No debe alojar loops persistentes, barridos extensos ni polling Plex.
+Vercel **no es un worker de larga duración**. No debe alojar loops persistentes, barridos extensos ni polling Plex. Una acción manual pesada puede conservar UX individual y responder tras encolar una unidad durable en Railway.
 
 ### 2.2 Neon PostgreSQL — plano de datos y estado
 
@@ -118,6 +118,10 @@ Un worker Railway:
 - ejecuta el core canónico correspondiente;
 - actualiza observabilidad y estado Batch;
 - libera o reintenta el item según la política vigente.
+
+La configuración viva del servicio también forma parte de la arquitectura: el `startCommand` debe arrancar el worker canónico sin SQL de reparación oculto; el servicio debe seguir `main` y evitar drift de commits. Cuando la integración lo permita, auto-deploy y `Wait for CI` deben mantener el runtime alineado con el código validado.
+
+Antes de desbloquear un productor automático que despache a Railway —especialmente `PROC-PLAN-002`— se verifica que los pools consumidores implicados ejecutan el `main` esperado.
 
 ### 2.4 GitHub Actions — excepción controlada
 
@@ -365,6 +369,8 @@ starter
 
 Technical Snapshot y `PROC-PQ-001` conservan modelos especializados.
 
+SER-002 usa además el Batch común como frontera durable para el control manual individual: la UI puede materializar un único `ratingKey` explícito en el pool `plex`, sin ejecutar el core pesado dentro del request de Vercel.
+
 ### 8.4 Reglas de seguridad
 
 - un solo Batch activo por proceso cuando así lo define su starter;
@@ -484,7 +490,7 @@ La purga coordinada puede eliminar detalle histórico sólo si preserva:
 - estado operativo vigente;
 - agregados/snapshots necesarios.
 
-La retención no autoriza borrar datos funcionales por tener más de 30 días.
+La retención no autoriza borrar datos funcionales por tener más de 30 días. La purga terminal canónica forma parte del ciclo horario de PLAN-002; por tanto la salud del cron también es salud de retención.
 
 ---
 
@@ -517,6 +523,8 @@ Puede almacenar/derivar:
 5. respeta prioridad, locks y picos deliberados;
 6. lanza sólo starters canónicos autorizados.
 
+El middleware privado permite explícitamente que la ruta cron alcance su autenticación propia. La ruta exige `CRON_SECRET` de forma fail-closed. Actividad considera sano el planificador sólo si existe un PLAN-002 `succeeded|running` reciente; una configuración estática no basta para afirmar “activo”.
+
 ### 12.3 Lista inicial de trabajo autoplanificable
 
 El planificador puede orquestar únicamente procesos declarados seguros, entre ellos:
@@ -537,11 +545,11 @@ El planificador puede orquestar únicamente procesos declarados seguros, entre e
 
 ### 13.1 Cron de planificación
 
-`/api/cron/activity-planner` ejecuta coordinación horaria y mantenimiento asociado (incluida retención cuando corresponda). No debe convertirse en un worker pesado.
+`/api/cron/activity-planner` ejecuta coordinación horaria y mantenimiento asociado (incluida retención cuando corresponda). No debe convertirse en un worker pesado. El middleware sólo abre el paso a la ruta; la autorización real sigue siendo `CRON_SECRET` fail-closed dentro del endpoint.
 
 ### 13.2 Snapshot de dashboard
 
-`PROC-HOME-001`, mediante `/api/cron/dashboard-snapshot`, captura agregados históricos de dashboard/almacenamiento. Es una excepción automática pasiva.
+`PROC-HOME-001`, mediante `/api/cron/dashboard-snapshot`, captura agregados históricos de dashboard/almacenamiento. Es una excepción automática pasiva y comparte el mismo helper de autenticación fail-closed.
 
 ### 13.3 Plex
 
@@ -599,12 +607,15 @@ planner/manual
 ### 14.4 Series
 
 ```text
-Plex cambia -> SER-002
+Plex cambia -> SER-002 automático en Railway Plex
+usuario fuerza detalle -> Vercel encola SER-002 dirigido -> Railway Plex
 TMDb vence -> SER-003
 Disponibilidad UNKNOWN vencida -> SER-004
 anomalía ambigua -> SER-005 / decisión humana
 volver a automático -> SER-006
 ```
+
+SER-002 manual no mantiene abierto el request durante la lectura completa de Plex; la intención es individual, la ejecución es durable y comparte `syncPlexSeriesDetailCore` con el camino Batch.
 
 ### 14.5 Persona
 
@@ -658,6 +669,9 @@ error histórico
 10. **Batch no decide editorialmente**.
 11. **No borrar historia para “resolver” una incidencia**; se cambia su estado operativo, no el hecho original.
 12. **Read models no son fuente de verdad**.
+13. **Cron fail-closed**: una ruta cron puede atravesar el middleware, pero sin `CRON_SECRET` válido no ejecuta trabajo.
+14. **Config Railway versionable**: no se incrusta lógica de reparación/mutación en `startCommand` fuera de Git.
+15. **Paridad de commit antes de automatizar**: un productor automático no se habilita si su worker consumidor está conocido como desactualizado.
 
 ---
 
@@ -670,6 +684,8 @@ Principios permanentes:
 - evitar `SELECT *` en caminos críticos;
 - hidratar detalle sólo para la página visible;
 - navegación interna sin prefetch masivo (`NoPrefetchLink`);
+- búsquedas globales textuales esperan al menos 3 caracteres, manteniendo accesos exactos por identificador;
+- acotar candidatos antes de joins/`EXISTS` caros en búsquedas interactivas;
 - no llamar APIs externas durante render normal de Catálogo, Personas o Sagas;
 - usar read models persistidos cuando el coste de recomputación por request sea alto;
 - retener observabilidad detallada sólo 30 días;
@@ -679,13 +695,15 @@ Principios permanentes:
 
 CI protege específicamente navegación sin prefetch masivo y lectura acotada de Personas.
 
+Las lambdas Python históricas `api/fa-search.py` y `api/fa-evidence.py` se retiraron tras consumer sweep: dependían de `batch_jobs`, relación V1 ya eliminada, y no tenían consumidores V4. Sus dependencias Python dejaron de formar parte del runtime Vercel.
+
 ---
 
 ## 18. Deployment y CI
 
 ### 18.1 CI principal
 
-El workflow de PR valida, como mínimo:
+El workflow valida, como mínimo:
 
 - sintaxis de workers canónicos;
 - self-check de PikoScore 3;
@@ -694,17 +712,19 @@ El workflow de PR valida, como mínimo:
 - rendimiento/lectura acotada de Personas;
 - `next build` con `DATABASE_URL` placeholder.
 
-Una PR no debe mergearse si falla cualquiera de estas barreras.
+CI corre en PR y también sobre cada `push` integrado en `main`. Una PR no debe mergearse si falla cualquiera de estas barreras. El run posterior a merge permite además que Railway use `Wait for CI` cuando esa opción esté habilitada.
 
 ### 18.2 Producción
 
 Flujo operativo:
 
 ```text
-branch -> PR -> CI verde -> merge main -> usuario despliega Vercel -> validación funcional/visual
+branch -> PR -> CI verde -> merge main -> alinear/verificar Railway -> usuario despliega Vercel -> validación funcional/visual
 ```
 
-Railway/Neon sólo se modifican cuando el cambio realmente lo requiere y deben conservarse las fronteras físicas descritas aquí.
+Railway/Neon sólo se modifican cuando el cambio realmente lo requiere y deben conservarse las fronteras físicas descritas aquí. Antes del deploy de Vercel que desbloquee PLAN-002 se confirma especialmente que el worker API no arrastra un commit anterior.
+
+La protección de `main` y required checks debe mantenerse activa cuando GitHub/plan/permisos lo permitan. Si no está disponible, la regla operativa rama -> PR -> CI -> merge sigue siendo obligatoria y no se sustituye por push directo.
 
 ---
 
