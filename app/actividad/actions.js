@@ -3,7 +3,7 @@ import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
 import {executeObservedProcess} from '@/lib/process-runtime';
 import {executeAutomaticPlanningCycle} from '@/lib/activity-planner-cycle';
-import {loadAutomationSettings,saveAutomationSetting,isConfigurableAutomation,AUTOMATION_PROFILES,automationProfile} from '@/lib/activity-automation-settings';
+import {loadAutomationSettings,saveAutomationSetting,isConfigurableAutomation,AUTOMATION_PROFILES,automationProfile,CONFIGURABLE_AUTOMATIONS} from '@/lib/activity-automation-settings';
 
 const MADRID_TZ='Europe/Madrid';
 function madridLocalToUtc(value){
@@ -34,15 +34,15 @@ export async function togglePlanProtection(formData){const id=String(formData.ge
 export async function toggleDeliberatePeak(formData){const id=String(formData.get('planId')||''),value=String(formData.get('value'))==='true';return mutatePlan(id,value?'mark_deliberate_peak':'clear_deliberate_peak',(sql)=>sql.query(`UPDATE process_plans SET deliberate_peak=$2,protected=CASE WHEN $2 THEN true ELSE protected END,origin='user',updated_at=now() WHERE plan_id=$1::uuid`,[id,value]));}
 
 export async function updateAutomationSchedule(formData){
-  const code=String(formData.get('processCode')||''),profile=String(formData.get('profile')||'balanced'),enabled=String(formData.get('enabled')||'')==='true';
+  const code=String(formData.get('processCode')||''),profile=String(formData.get('profile')||'balanced'),requestedEnabled=String(formData.get('enabled')||'')==='true';
   if(!isConfigurableAutomation(code))throw new Error('Automatización no configurable');if(!AUTOMATION_PROFILES[profile])throw new Error('Franja no válida');
-  const sql=db(),beforeSettings=await loadAutomationSettings(sql),before=beforeSettings.processes[code],afterProfile=automationProfile(profile);
+  const sql=db(),beforeSettings=await loadAutomationSettings(sql),before=beforeSettings.processes[code],definition=CONFIGURABLE_AUTOMATIONS.find(x=>x.code===code),afterProfile=automationProfile(profile),beforeProfile=automationProfile(before?.profile),profileOnlyWhilePaused=before?.enabled===false&&requestedEnabled&&before?.profile!==profile,effectiveEnabled=profileOnlyWhilePaused?false:requestedEnabled,title=definition?.title||code;
   const observed=await executeObservedProcess({processCode:'PROC-PLAN-001',runKind:'individual',triggerSource:'activity_manual',executor:'vercel',entityType:'planning',entityId:`automation:${code}`,context:{surface:'/actividad',operation:'automation_schedule_change',target_process:code}},async()=>{
-    await saveAutomationSetting(sql,code,{enabled,profile});
-    if(!enabled){await sql.query(`UPDATE process_plans SET status='cancelled',updated_at=now(),metadata=metadata||jsonb_build_object('cancelled_by_automation_pause',true,'cancelled_at',now()) WHERE process_code=$1 AND status IN('pending_planning','planned','delayed') AND dispatch_run_id IS NULL`,[code]);}
+    await saveAutomationSetting(sql,code,{enabled:effectiveEnabled,profile});
+    if(!effectiveEnabled){if(!profileOnlyWhilePaused)await sql.query(`UPDATE process_plans SET status='cancelled',updated_at=now(),metadata=metadata||jsonb_build_object('cancelled_by_automation_pause',true,'cancelled_at',now()) WHERE process_code=$1 AND status IN('pending_planning','planned','delayed') AND dispatch_run_id IS NULL`,[code]);}
     else if(before?.profile!==profile||before?.enabled===false){await sql.query(`UPDATE process_plans SET status='pending_planning',planned_at=NULL,updated_at=now(),metadata=metadata||jsonb_build_object('replan_after_schedule_change',true,'replan_requested_at',now()) WHERE process_code=$1 AND status IN('planned','delayed') AND origin='automatic' AND NOT protected AND dispatch_run_id IS NULL`,[code]);}
-    const beforeProfile=automationProfile(before?.profile).label,verb=enabled?'Activaste':'Pausaste',summary=before?.enabled===enabled&&before?.profile!==profile?`Cambiaste ${code} de ${beforeProfile} a ${afterProfile.label}.`:`${verb} ${code}${enabled?` en franja ${afterProfile.label}`:''}.`;
-    return{functionalResult:'updated',before:{enabled:before?.enabled!==false,profile:before?.profile||'balanced'},after:{enabled,profile,activity_summary:summary},message:summary};
+    const summary=before?.profile!==profile&&before?.enabled===effectiveEnabled?`Cambiaste ${title} de ${beforeProfile.label} a ${afterProfile.label}.`:effectiveEnabled?`Activaste ${title} en franja ${afterProfile.label}.`:`Pausaste ${title}.`;
+    return{functionalResult:'updated',before:{enabled:before?.enabled!==false,profile:before?.profile||'balanced'},after:{enabled:effectiveEnabled,profile,entity_label:title,activity_summary:summary},message:summary};
   });
   revalidatePath('/actividad');return observed.runId;
 }
