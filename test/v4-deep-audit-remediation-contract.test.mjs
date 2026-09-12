@@ -19,10 +19,11 @@ test('Actividad representa atención funcional actual y no fallos históricos',(
 
 test('PikoQuality separa captura técnica pendiente, error y C6',()=>{
   const page=read('app/calidad/pikoquality/page.js'),state=read('lib/pikoquality-state.js');
-  assert.match(page,/captureError/);
+  assert.match(page,/technicalErrors/);
   assert.match(page,/capturePending/);
-  assert.match(page,/technicalActive/);
-  assert.match(page,/Error técnico/);
+  assert.match(page,/maintenanceActive/);
+  assert.match(page,/error\(es\) de captura técnica/);
+  assert.match(page,/PendingSubmitButton/);
   assert.match(state,/PIKOQUALITY_ACTIVE_VERSION/);
   assert.match(state,/source_fingerprint IS NOT DISTINCT FROM pts\.technical_fingerprint/);
 });
@@ -30,23 +31,23 @@ test('PikoQuality separa captura técnica pendiente, error y C6',()=>{
 test('Series pagina episodios y conserva contadores del ámbito completo',()=>{
   const query=read('lib/series-detail-query.js'),page=read('app/calidad/series/[ratingKey]/page.js');
   assert.match(query,/SERIES_EPISODE_PAGE_SIZE=100/);
-  assert.match(query,/LIMIT \$\{pageSize\} OFFSET \$\{offset\}/);
-  assert.match(query,/pageCount/);
+  assert.match(query,/LIMIT \$\{size\} OFFSET \$\{offset\}/);
+  assert.match(query,/return\{rows,total,page:effectivePage,pages,pageSize:size,first:/);
   assert.match(page,/episodePage/);
+  assert.match(page,/episodeData\.pages/);
   assert.match(page,/Página/);
-  assert.doesNotMatch(query,/ORDER BY e\.season_number,e\.episode_number`;$/m);
 });
 
 test('Operaciones pagina superficies grandes y separa origen de executor',()=>{
   const query=read('lib/operations-queries.js'),page=read('app/admin/page.js'),detail=read('app/admin/runs/[id]/page.js');
-  assert.match(query,/RUN_DETAIL_ITEM_PAGE_SIZE/);
-  assert.match(query,/RUN_DETAIL_EVENT_PAGE_SIZE/);
-  assert.match(query,/RUN_DETAIL_ERROR_PAGE_SIZE/);
+  assert.match(query,/eventSize=100,errorSize=50,childSize=50,itemSize=100/);
   assert.match(query,/incidentPage/);
+  assert.match(query,/LIMIT \$\{itemSize\} OFFSET \$\{itemOffset\}/);
+  assert.match(query,/pagination:\{events:pageMeta/);
   assert.match(page,/Origen \/ trigger/);
   assert.match(page,/Executor \/ fuente/);
-  assert.match(detail,/batchItemsPage/);
-  assert.match(detail,/eventPage/);
+  assert.match(detail,/param="itemPage"/);
+  assert.match(detail,/param="eventPage"/);
 });
 
 test('navegación y búsqueda global cubren móvil y teclado',()=>{
@@ -66,9 +67,7 @@ test('links sin destino y paginadores desactivados no siguen siendo enlaces',()=
   const link=read('components/NoPrefetchLink.js'),catalog=read('app/catalogo/page.js'),excluded=read('app/catalogo/excluidas/page.js'),sagas=read('app/sagas/page.js'),validation=read('app/calidad/validacion-identidad/page.js');
   assert.match(link,/if\(!href\|\|href==='#'\)/);
   assert.match(link,/aria-disabled="true"/);
-  for(const source of [catalog,excluded,sagas,validation]){
-    assert.match(source,/aria-disabled="true"/);
-  }
+  for(const source of [catalog,excluded,sagas,validation])assert.match(source,/aria-disabled="true"/);
   assert.doesNotMatch(excluded,/Link className=\{s\.page<=1\?'disabled'/);
   assert.doesNotMatch(sagas,/Link className=\{page<=1\?'disabled'/);
 });
