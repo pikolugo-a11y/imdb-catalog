@@ -20,10 +20,16 @@ test('Operaciones V4 mantiene salud compacta pero muestra siempre las ejecucione
 test('los filtros técnicos funcionan sin obligar a escribir búsqueda libre y permanecen visibles',async()=>{
   const query=await read('lib/operations-queries.js');
   const page=await read('app/admin/page.js');
-  assert.match(query,/const hasFilters=Boolean\(q\|\|status\|\|kind\|\|process\|\|entity\|\|source/);
+  assert.match(query,/const hasFilters=Boolean\(q\|\|status\|\|kind\|\|process\|\|entity\|\|trigger\|\|source/);
+  assert.match(query,/trigger_source/);
+  assert.match(query,/executor/);
   assert.match(query,/AND \(\$\{q\}='' OR \(/);
   assert.match(query,/hasFilters\?sql/);
   assert.match(page,/Filtros de ejecuciones/);
+  assert.match(page,/Origen \/ trigger/);
+  assert.match(page,/Executor \/ fuente/);
+  assert.match(page,/name="trigger"/);
+  assert.match(page,/name="source"/);
   assert.match(page,/No se ocultan al aplicar la búsqueda/);
   assert.doesNotMatch(page,/<details className="ops-advanced"/);
 });

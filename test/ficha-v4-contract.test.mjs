@@ -6,6 +6,7 @@ const page=fs.readFileSync('app/catalogo/[imdbId]/page.js','utf8');
 const extras=fs.readFileSync('lib/movie-detail-extras.js','utf8');
 const layout=fs.readFileSync('app/catalogo/[imdbId]/layout.js','utf8');
 const confirm=fs.readFileSync('app/catalogo/[imdbId]/ExcludeTitleForm.js','utf8');
+const confirmButton=fs.readFileSync('components/ConfirmSubmitButton.js','utf8');
 const css=fs.readFileSync('app/catalogo/[imdbId]/ficha-v4.css','utf8');
 const error=fs.readFileSync('app/catalogo/[imdbId]/error.js','utf8');
 
@@ -69,8 +70,10 @@ test('Source identifiers link out in a new tab when an origin URL exists',()=>{
 
 test('Exclusion remains visible, secondary and explicitly confirmed',()=>{
   assert.match(page,/Excluir de PikoFilm/);
-  assert.match(confirm,/window\.confirm/);
+  assert.match(confirm,/ConfirmSubmitButton/);
   assert.match(confirm,/Pasará a Excluidas/);
+  assert.match(confirmButton,/window\.confirm/);
+  assert.match(confirmButton,/useFormStatus/);
   assert.match(css,/\.fv4-actions/);
 });
 
