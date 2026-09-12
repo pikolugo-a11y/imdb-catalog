@@ -74,8 +74,13 @@ test('Exclusion remains visible, secondary and explicitly confirmed',()=>{
   assert.match(css,/\.fv4-actions/);
 });
 
-test('Ficha V4 preserves exact Catalog or Excluidas return state',()=>{
-  assert.match(page,/startsWith\('\/catalogo'\)/);
+test('Ficha V4 preserves safe return context across Catalog, Sagas and Personas',()=>{
+  assert.match(page,/SAFE_BACK_PREFIXES/);
+  assert.match(page,/['"]\/catalogo['"]/);
+  assert.match(page,/['"]\/sagas\/['"]/);
+  assert.match(page,/['"]\/personas['"]/);
+  assert.match(page,/['"]\/calidad\/personas['"]/);
+  assert.match(page,/!s\.startsWith\('\/\/'\)/);
   assert.match(page,/p\?\.from/);
   assert.match(page,/href=\{back\}/);
 });
