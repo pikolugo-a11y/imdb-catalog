@@ -66,13 +66,17 @@ test('C6 reconcilia Lifecycle tanto en recálculo individual como en Batch',()=>
   assert.match(batch,/recomputeLifecycleForPikoQualityRatingKeys\(sql,scoredKeys\)/);
 });
 
-test('la cobertura de Calidad incluye archivos activos sin captura técnica y no puede declarar un falso 100%',()=>{
+test('la cobertura de Calidad incluye toda la biblioteca física y separa captura pendiente de error técnico',()=>{
   assert.match(page,/plex_technical_state pts/);
-  assert.match(page,/technicalPending/);
-  assert.match(page,/coverageTotal/);
+  assert.match(page,/capturePending/);
+  assert.match(page,/technicalErrors/);
+  assert.match(page,/captureWaiting/);
+  assert.match(page,/physical/);
+  assert.match(page,/coverageTotal=physical/);
   assert.match(page,/coveragePct/);
-  assert.match(page,/archivos sin captura técnica/);
-  assert.match(page,/s\.pending_a===0&&s\.errors===0&&technicalPending===0/);
+  assert.match(page,/sin captura técnica/);
+  assert.match(page,/error\(es\) de captura técnica/);
+  assert.match(page,/s\.pending_a===0&&s\.errors===0&&capturePending===0/);
   assert.match(page,/de \{nf\(coverageTotal\)\} archivos físicos activos/);
 });
 
@@ -80,7 +84,8 @@ test('Calidad no expone barridos técnicos masivos y los deriva a Operaciones',(
   assert.doesNotMatch(page,/TechnicalRunFlow/);
   assert.doesNotMatch(page,/C6BatchRunner/);
   assert.match(page,/href="\/admin\/pikoquality"/);
-  assert.match(page,/SEGUIMIENTO AUTOMÁTICO/);
+  assert.match(page,/SEGUIMIENTO TÉCNICO/);
+  assert.match(page,/MANTENIMIENTO EN CURSO/);
   assert.match(operations,/TechnicalControlActions/);
   assert.match(operations,/C6ControlPanel/);
   assert.match(actions,/triggerSource:'operations_pikoquality_manual'/);
