@@ -57,3 +57,39 @@ Vercel y Railway tienen ciclos de despliegue separados y pueden existir ventanas
 ### Alcance V5
 
 El primer protocolo V5 deberá modelar los contratos reales de Batch, gateway y continuaciones durables aprobados en ARQ-02 y ARQ-07. La implementación no pretende introducir una plataforma compleja de versionado, sino hacer verificables las fronteras críticas del sistema.
+
+## ARQ-12 — Tests arquitectónicos automáticos
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 incorporará una capa explícita de tests arquitectónicos en CI para convertir las fronteras y contratos aprobados del sistema en invariantes ejecutables que no puedan romperse silenciosamente mediante cambios futuros.
+
+### Reglas mínimas a validar
+
+- Ningún proceso clasificado como durable/largo podrá ejecutarse directamente dentro de Vercel.
+- Todo `PROC-*` ejecutable deberá existir en el registro canónico aprobado en ARQ-05.
+- Cada proceso sólo podrá usar `worker_pool` y `executor` permitidos por su contrato.
+- No se permitirán defaults silenciosos de `executor` capaces de falsear la identidad real del worker.
+- Los adapters de infraestructura no deberán contener recetas funcionales u orquestación que deban vivir en cores canónicos.
+- Las continuaciones que requieran garantía deberán pasar por el mecanismo durable aprobado en ARQ-07.
+- Los workers no podrán consumir payloads con una versión de protocolo incompatible con ARQ-11.
+- La configuración Railway declarada deberá ser coherente con los servicios y contratos versionados.
+- GitHub Actions seguirá limitado a excepciones explícitamente registradas y no podrá convertirse en executor general de forma implícita.
+
+### Alcance
+
+- Estos tests complementan, no sustituyen, los tests unitarios, integración, contratos y E2E.
+- Las reglas deberán basarse en fuentes canónicas de código/configuración y evitar comprobaciones frágiles de texto cuando exista una representación estructurada.
+- Las excepciones arquitectónicas deberán ser explícitas, justificadas y revisables; no se resolverán desactivando el test de forma genérica.
+- El bloque específico de Tests y CI/CD podrá ampliar cobertura, pero no rebajar estas invariantes sin una nueva decisión de roadmap.
+
+### Motivo
+
+La auditoría concluyó que la arquitectura conceptual de PikoFilm es razonable, pero parte de sus fronteras dependen hoy de convenciones humanas. El bug real de identidad `worker_pool='plex'` con `executor='railway_batch_fast'`, la presencia de un proceso ejecutable fuera del catálogo canónico y la ejecución larga de Plex en Vercel demuestran que las convenciones sin enforcement pueden derivar con el tiempo.
+
+### Alcance V5
+
+La implementación deberá introducir estos tests de forma incremental junto a ARQ-01 a ARQ-11, de modo que cada nueva frontera quede protegida en CI desde el momento en que se materialice.
