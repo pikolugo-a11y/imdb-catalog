@@ -117,13 +117,14 @@ test('Actividad permite forzar el mismo ciclo PLAN-002 desde el frontal sin conv
 test('Actividad sólo declara automatización sana con secreto y ciclo horario automático',()=>{
   const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
   assert.match(source,/ACTIVITY_PLANNER_HEALTH_MINUTES=75/);
+  assert.match(source,/ACTIVITY_DISPATCH_HEALTH_MINUTES=75/);
   assert.match(source,/process_code='PROC-PLAN-002'/);
   assert.match(source,/trigger_source='activity_planner'/);
   assert.match(source,/row\.context\?\.mode==='full'/);
   assert.match(source,/Boolean\(process\.env\.CRON_SECRET\)/);
   assert.match(source,/plannerHealthy=cronSecretConfigured&&dispatchHealthy&&fullHealthy/);
   assert.match(page,/Automatización activa/);
-  assert.match(page,/El botón manual no cuenta/);
+  assert.match(page,/no cuenta como automatización/);
 });
 
 test('organizador automático se ejecuta una vez por hora y conserva el mismo ciclo PLAN-002',()=>{
