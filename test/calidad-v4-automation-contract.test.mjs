@@ -7,6 +7,7 @@ const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 test('scheduler de Calidad mantiene dominios vencidos sin hacer polling Plex',()=>{
   const planner=read('lib/process-planning.js');
   const cron=read('app/api/cron/activity-planner/route.js');
+  const cycle=read('lib/activity-planner-cycle.js');
   const snapshot=read('app/api/cron/dashboard-snapshot/route.js');
   assert.match(planner,/startMov001Batch\(\{limit:n,triggerSource:'quality_scheduler'\}\)/);
   assert.match(planner,/startSeriesBatch\('PROC-SER-002',\{limit:n,triggerSource:'quality_scheduler'\}\)/);
@@ -15,7 +16,8 @@ test('scheduler de Calidad mantiene dominios vencidos sin hacer polling Plex',()
   assert.match(planner,/startData002Batch\(\{limit:n,concurrency:2,triggerSource:'quality_scheduler'\}\)/);
   assert.match(planner,/startPeopleBatch\(\{limit:n,concurrency:2,triggerSource:'quality_scheduler'\}\)/);
   assert.match(planner,/processC6Batch\(n\)/);
-  assert.match(cron,/runActivityPlanner/);
+  assert.match(cron,/executeAutomaticPlanningCycle/);
+  assert.match(cycle,/runActivityPlanner/);
   assert.doesNotMatch(planner,/syncPlexFastCore|syncPlexFast\(|scanPlexTechnicalLibrary|triggerTechnicalSnapshot/);
   assert.doesNotMatch(snapshot,/startMov001Batch|startSeriesBatch|startData002Batch|startPeopleBatch|processC6Batch/);
 });
