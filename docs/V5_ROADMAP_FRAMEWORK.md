@@ -2,18 +2,49 @@
 
 Estado: **marco de trabajo activo para definir V5 desde el estado real actual de V4**.
 
-## Método obligatorio
+## Método obligatorio por cada bloque
 
-La V5 se definirá bloque a bloque. Para cada uno de los 20 bloques:
+La V5 se definirá bloque a bloque. **Ninguno de los 20 bloques se considerará cerrado hasta completar íntegramente estas tres fases y en este orden:**
 
-1. Realizar una auditoría profunda del sistema real, no sólo de la documentación.
-2. Revisar código, datos, infraestructura, ejecución, UX y costes cuando aplique.
-3. Identificar defectos, deuda, riesgos, duplicidades, cuellos de botella y oportunidades de simplificación/evolución.
-4. Presentar **no menos de 10 propuestas concretas** de evolución/corrección para V5.
-5. Revisar las propuestas **una a una** con el usuario.
-6. Registrar cada propuesta como **APROBADA** o **RECHAZADA**, con motivo y alcance.
-7. No implementar funcionalidad V5 durante esta fase de definición salvo petición expresa posterior.
-8. Mantener este documento y los documentos de decisión actualizados para que el roadmap V5 sea recuperable desde Git sin depender del historial del chat.
+### Fase 1 — Auditoría extremadamente detallada
+
+1. Realizar una auditoría **completa, profunda y extremadamente detallada** del sistema real, no sólo de la documentación.
+2. Revisar todo lo que sea materialmente relevante para el bloque: código, datos, esquema e índices, infraestructura, ejecución real, colas, workers, integraciones, frontend/UX, CI/CD, seguridad, costes, logs, métricas y documentación cuando aplique.
+3. Contrastar documentación contra implementación y, cuando sea posible, contra el estado vivo de los servicios implicados.
+4. Identificar defectos, deuda, riesgos, duplicidades, incoherencias, cuellos de botella, trabajo redundante, costes evitables, límites de escalabilidad y oportunidades de simplificación/evolución.
+5. Separar claramente hechos observados, riesgos, hipótesis y oportunidades. No dar por bueno un comportamiento sólo porque esté documentado.
+6. Dejar la auditoría persistida en Git y suficientemente detallada para poder reconstruir el diagnóstico sin depender del historial del chat.
+
+### Fase 2 — Propuestas para V5
+
+7. A partir de la auditoría, presentar **como mínimo 10 propuestas concretas para V5**. Pueden ser ideas, mejoras, correcciones, simplificaciones, cambios funcionales, cambios de UX, arquitectura, operaciones, rendimiento, coste, seguridad o cualquier otra evolución que resulte justificada por la auditoría.
+8. Las propuestas se revisarán **una a una** con el usuario. No se aprobarán en bloque.
+9. Cada propuesta se registrará como **APROBADA** o **RECHAZADA**, con su motivo, alcance y límites.
+10. Cada decisión aprobada o rechazada debe persistirse en Git antes de pasar a la siguiente propuesta.
+11. No implementar funcionalidad V5 durante esta fase de definición salvo petición expresa posterior.
+
+### Fase 3 — Road Map Innovador
+
+12. Después de terminar las propuestas V5 del bloque, presentar **como mínimo 5 innovaciones deliberadamente rompedoras y atrevidas** que puedan tener sentido para versiones futuras, aunque no sean apropiadas para V5.
+13. Estas innovaciones deben surgir del conocimiento adquirido en la auditoría del bloque, pero pueden romper con la arquitectura o el producto actuales si existe una visión futura razonable.
+14. Las innovaciones se revisarán también **una a una** con el usuario. El usuario decide individualmente si cada una entra o no en el `ROADMAP_INNOVADOR.md`.
+15. Sólo las innovaciones expresamente aprobadas se incorporan al Road Map Innovador. Las rechazadas no se conservan como backlog implícito.
+16. Una innovación aprobada para el Road Map Innovador **no entra automáticamente en V5, V6 ni ninguna versión concreta**; su promoción a una versión requerirá una decisión futura específica.
+
+### Regla de cierre
+
+Un bloque sólo pasa a **CERRADO** cuando existen en Git: la auditoría completa, las decisiones de las propuestas V5 y la ronda de al menos 5 innovaciones futuras revisadas individualmente. Mantener los documentos suficientemente actualizados para que el roadmap completo sea recuperable desde Git sin depender del historial del chat.
+
+## Frontera de producto fija
+
+PikoFilm gestiona **la base de datos, el catálogo, su calidad, sus procesos, integraciones y operaciones**. **Plex es el sistema responsable del historial personal de visionado y de las señales de gusto del usuario.**
+
+Por tanto, esta revisión V5 y cualquier roadmap futuro deben respetar estas reglas:
+
+- PikoFilm no sustituirá a Plex como gestor de qué películas o episodios ha visto el usuario.
+- PikoFilm no construirá perfiles de gustos ni motores de recomendación personal basados en historial de visionado o valoraciones.
+- Si una función de gestión del catálogo necesita consultar si algo está visto, se tratará como un dato externo procedente de Plex, no como un dominio propio de PikoFilm.
+- Las propuestas de auditoría e innovación que invadan esta frontera deberán descartarse o reformularse.
 
 ## 20 bloques de revisión
 
@@ -160,7 +191,7 @@ La V5 se definirá bloque a bloque. Para cada uno de los 20 bloques:
 
 ## Estado de revisión
 
-- Punto 1 — Arquitectura general: **AUDITORÍA COMPLETADA — 15 PROPUESTAS PENDIENTES DE DECISIÓN** (`V5_AUDIT_01_ARCHITECTURE.md`)
+- Punto 1 — Arquitectura general: **CERRADO — auditoría completada; 15/15 propuestas V5 aprobadas; ronda de innovación completada; INNO-01 aprobada** (`V5_AUDIT_01_ARCHITECTURE.md`; decisiones en `V5_DECISIONS_01_ARCHITECTURE.md` y `V5_DECISIONS_01_ARCHITECTURE_10_15.md`; innovación aprobada en `ROADMAP_INNOVADOR.md`)
 - Punto 2 — Rendimiento: **PENDIENTE**
 - Punto 3 — Base de datos y modelo de datos: **PENDIENTE**
 - Punto 4 — Procesos automáticos y Batch: **PENDIENTE**
@@ -180,6 +211,10 @@ La V5 se definirá bloque a bloque. Para cada uno de los 20 bloques:
 - Punto 18 — Recuperación y resiliencia: **PENDIENTE**
 - Punto 19 — Calidad de datos: **PENDIENTE**
 - Punto 20 — Gobierno del producto: **PENDIENTE**
+
+## Road Map Innovador
+
+Existe `docs/ROADMAP_INNOVADOR.md` como banco separado de apuestas futuras. Tras cada auditoría temática se revisarán **como mínimo 5 innovaciones rompedoras, una a una**, y sólo se incorporarán al documento cuando sean aprobadas expresamente. Una innovación aprobada para este banco no genera alcance automático en V5 ni en ninguna versión futura.
 
 ## Regla de decisiones
 
