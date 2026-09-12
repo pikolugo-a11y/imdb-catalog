@@ -68,16 +68,15 @@ test('C6 reconcilia Lifecycle tanto en recálculo individual como en Batch',()=>
 
 test('la cobertura de Calidad incluye toda la biblioteca física y separa captura pendiente de error técnico',()=>{
   assert.match(page,/plex_technical_state pts/);
+  assert.match(page,/count\(\*\)::int physical/);
   assert.match(page,/capturePending/);
   assert.match(page,/technicalErrors/);
   assert.match(page,/captureWaiting/);
-  assert.match(page,/physical/);
-  assert.match(page,/coverageTotal=physical/);
-  assert.match(page,/coveragePct/);
+  assert.match(page,/coverage=coveragePct\(s\.evaluated,physical\)/);
   assert.match(page,/sin captura técnica/);
   assert.match(page,/error\(es\) de captura técnica/);
-  assert.match(page,/s\.pending_a===0&&s\.errors===0&&capturePending===0/);
-  assert.match(page,/de \{nf\(coverageTotal\)\} archivos físicos activos/);
+  assert.match(page,/c6Pending===0&&c6Errors===0&&capturePending===0/);
+  assert.match(page,/Cobertura vigente/);
 });
 
 test('Calidad no expone barridos técnicos masivos y los deriva a Operaciones',()=>{
