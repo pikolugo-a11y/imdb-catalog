@@ -183,11 +183,7 @@ La V5 se definirá bloque a bloque. Para cada uno de los 20 bloques:
 
 ## Road Map Innovador
 
-Existe además `docs/ROADMAP_INNOVADOR.md` como banco separado de apuestas futuras para V6+ y experimentos. Sus ideas son deliberadamente más ambiciosas que el roadmap comprometido de V5 y **no generan alcance automático**.
-
-El documento incluye inicialmente diez apuestas: PikoFilm Autopilot, gemelo digital, Shadow Mode universal, grafo temporal de procedencia/confianza, Time Machine de catálogo, Control Center conversacional, predicción de degradación, broker virtual de fuentes, decisiones explicables y aprendizaje seguro a partir de correcciones humanas.
-
-Una innovación sólo pasará a una versión concreta mediante una decisión posterior explícita y su propia evaluación de viabilidad, coste, seguridad e impacto.
+Existe `docs/ROADMAP_INNOVADOR.md` como banco separado de apuestas futuras. Las innovaciones se revisarán **una a una** con el usuario y sólo se incorporarán al documento cuando sean aprobadas expresamente. Una innovación aprobada para este banco no genera alcance automático en V5 ni en ninguna versión futura.
 
 ## Regla de decisiones
 
