@@ -24,9 +24,15 @@ test('los dos crons canónicos atraviesan middleware pero autentican fail-closed
   assert.match(middleware,/\/api\/cron\/activity-planner/);
   assert.match(middleware,/\/api\/cron\/dashboard-snapshot/);
   assert.match(middleware,/PUBLIC_CONTROL_PATHS\.has\(pathname\)/);
-  assert.match(planner,/isCronAuthorized\(request\)/);
-  assert.match(snapshot,/isCronAuthorized\(request\)/);
-  assert.match(auth,/if\(!secret\)return false/);
+  for(const route of [planner,snapshot]){
+    assert.match(route,/getCronAuthState\(request\)/);
+    assert.match(route,/if\(!auth\.authorized\)/);
+    assert.match(route,/logCronAuthFailure/);
+  }
+  assert.match(auth,/authorized:Boolean\(secret\)&&authorization===`Bearer \$\{secret\}`/);
+  assert.match(auth,/secretConfigured:Boolean\(secret\)/);
+  assert.match(auth,/authorizationPresent:Boolean\(authorization\)/);
+  assert.match(auth,/isCronAuthorized\(request\)/);
   assert.match(auth,/authorization/);
 });
 
@@ -90,8 +96,8 @@ test('links sin destino y todos los paginadores disabled dejan de ser enlaces',(
   assert.match(link,/aria-disabled="true"/);
   for(const path of ['app/calidad/identidad/page.js','app/calidad/datos/page.js','app/calidad/series/page.js','app/personas/page.js']){
     const source=read(path);
-    assert.match(source,/className=\{[^\n]*'disabled'/);
     assert.match(source,/NoPrefetchLink/);
+    assert.ok(/className=\{[^\n]*'disabled'/.test(source)||/aria-disabled="true"/.test(source),`${path} debe representar el estado disabled sin dejar un enlace navegable`);
   }
   for(const path of ['app/catalogo/page.js','app/catalogo/excluidas/page.js','app/sagas/page.js','app/calidad/validacion-identidad/page.js'])assert.match(read(path),/aria-disabled="true"/);
 });
