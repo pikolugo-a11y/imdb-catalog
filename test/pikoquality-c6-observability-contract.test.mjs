@@ -73,7 +73,8 @@ test('la cobertura de Calidad incluye toda la biblioteca física y separa captur
   assert.match(page,/technicalErrors/);
   assert.match(page,/captureWaiting/);
   assert.match(page,/coverage=coveragePct\(s\.evaluated,physical\)/);
-  assert.match(page,/sin captura técnica/);
+  assert.match(page,/pendientes de captura/);
+  assert.match(page,/esperan captura técnica válida/);
   assert.match(page,/error\(es\) de captura técnica/);
   assert.match(page,/c6Pending===0&&c6Errors===0&&capturePending===0/);
   assert.match(page,/Cobertura vigente/);
