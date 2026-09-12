@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const read=path=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 
-test('Operaciones V4 mantiene salud compacta pero muestra siempre las ejecuciones activas',async()=>{
+test('Operaciones V4 prioriza estado vivo, atención y acciones sobre el historial técnico',async()=>{
   const source=await read('app/admin/page.js');
   assert.match(source,/name="q"/);
-  assert.match(source,/Salud operativa/);
-  assert.match(source,/Ejecuciones activas/);
-  assert.match(source,/Estado vivo/);
-  assert.match(source,/Incidencias activas/);
+  assert.match(source,/¿Hay algo que hacer\?/);
+  assert.match(source,/Ahora mismo/);
+  assert.match(source,/Qué está haciendo PikoFilm ahora/);
+  assert.match(source,/Problemas que siguen abiertos/);
   assert.match(source,/Sistema \/ Batch/);
   assert.match(source,/Fuentes y límites/);
   assert.match(source,/Recuperación/);
@@ -17,7 +17,7 @@ test('Operaciones V4 mantiene salud compacta pero muestra siempre las ejecucione
   assert.doesNotMatch(source,/Ejecuciones recientes/);
 });
 
-test('los filtros técnicos funcionan sin obligar a escribir búsqueda libre y permanecen visibles',async()=>{
+test('los filtros técnicos siguen disponibles pero quedan dentro de Diagnóstico avanzado',async()=>{
   const query=await read('lib/operations-queries.js');
   const page=await read('app/admin/page.js');
   assert.match(query,/const hasFilters=Boolean\(q\|\|status\|\|kind\|\|process\|\|entity\|\|trigger\|\|source/);
@@ -25,18 +25,19 @@ test('los filtros técnicos funcionan sin obligar a escribir búsqueda libre y p
   assert.match(query,/executor/);
   assert.match(query,/AND \(\$\{q\}='' OR \(/);
   assert.match(query,/hasFilters\?sql/);
-  assert.match(page,/Filtros de ejecuciones/);
+  assert.match(page,/Filtros técnicos/);
   assert.match(page,/Origen \/ trigger/);
   assert.match(page,/Executor \/ fuente/);
   assert.match(page,/name="trigger"/);
   assert.match(page,/name="source"/);
-  assert.match(page,/No se ocultan al aplicar la búsqueda/);
-  assert.doesNotMatch(page,/<details className="ops-advanced"/);
+  assert.match(page,/<details className="ops-search-panel" open=\{d\.hasFilters\}>/);
+  assert.match(page,/Diagnóstico avanzado/);
 });
 
-test('technical search covers canonical runs titles people batch errors and events inside 30 days',async()=>{
+test('technical search covers canonical runs titles series people batch errors and events inside 30 days',async()=>{
   const source=await read('lib/operations-queries.js');
   assert.match(source,/now\(\)-interval '30 days'/);
+  assert.match(source,/series_reference sr/);
   assert.match(source,/FROM movies m/);
   assert.match(source,/FROM people p/);
   assert.match(source,/FROM batch_run_items bi/);
