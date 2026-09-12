@@ -32,7 +32,24 @@ Estado: **canónico**.
 
 No clasificar un servicio como legacy por nombre, sufijo o posición visual en el canvas. Cruzar siempre servicio -> deployment -> comando -> worker -> consumidores -> PROC.
 
-Servicios auditados vigentes en P4: API, FAST, Plex y Technical. Cambiar variables/configuración puede redeplegar; no hacerlo incidentalmente.
+Servicios vigentes: API, FAST, Plex y Technical. Cambiar variables/configuración puede redeplegar; no hacerlo incidentalmente.
+
+### Paridad Git ↔ Railway
+
+Un contenedor `online` no garantiza que el worker sea correcto. Antes de considerar sano un servicio:
+
+1. comprobar el commit realmente desplegado y compararlo con `main`;
+2. comprobar que el `startCommand` sólo arranca el worker canónico del repo;
+3. rechazar SQL de reparación/requeue incrustado en `startCommand` o cualquier receta productiva que exista sólo en la configuración de Railway;
+4. mantener el servicio siguiendo `main` y auto-deploy habilitado cuando la integración GitHub lo permita;
+5. si existe drift, usar **Deploy Latest Commit** y volver a verificar el SHA ejecutado;
+6. cuando esté disponible, habilitar **Wait for CI** para que Railway no despliegue un commit cuyo workflow de GitHub haya fallado.
+
+El workflow CI corre tanto en PR como en cada `push` integrado en `main`, requisito para poder usar `Wait for CI` de Railway.
+
+### Gate antes de activar productores automáticos
+
+Antes de habilitar/desbloquear un productor automático que vaya a crear trabajo Railway —especialmente `PROC-PLAN-002`— verificar que **todos los pools consumidores implicados ejecutan el mismo `main` validado**. No desbloquear un cron que pueda despachar trabajo a un worker conocido como desactualizado.
 
 ### Mantenimiento PikoQuality / Railway Technical
 
@@ -69,9 +86,17 @@ El workflow branch-first de migraciones valida cambios de `db/migrations/` antes
 
 Los deployments de producción los realiza el usuario. Tras un merge, comunicar el HEAD preparado; después de que el usuario confirme el deploy, verificar técnicamente que producción corresponde al commit esperado antes de iniciar aceptación funcional.
 
+### Cron canónico
+
+`/api/cron/activity-planner` y `/api/cron/dashboard-snapshot` deben atravesar explícitamente el middleware privado y autenticar después con `CRON_SECRET` de forma **fail-closed**. Un secreto ausente nunca convierte el endpoint en público.
+
+`PROC-PLAN-002` corre cada hora. Su ausencia o falta de una ejecución `succeeded|running` reciente es una degradación visible de Actividad; no debe mostrarse “planificación automática activa” por configuración estática. El mismo ciclo ejecuta la purga segura del histórico terminal de 30 días, por lo que un cron roto también afecta la retención.
+
 ## GitHub Actions
 
 GitHub Actions no debe convertirse en worker continuo. Los workflows persistentes deben tener responsabilidad operativa clara. Discovery IMDb es una excepción explícita y observada.
+
+CI se ejecuta en PR y sobre `main` tras merge. La protección de `main`/required checks es una configuración de GitHub y debe mantenerse activa cuando la cuenta/repositorio lo permita; si no está activa, la disciplina rama -> PR -> CI -> merge sigue siendo obligatoria a nivel de proceso.
 
 ## Validación funcional
 
