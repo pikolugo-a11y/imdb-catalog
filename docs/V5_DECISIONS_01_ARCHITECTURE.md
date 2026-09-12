@@ -233,3 +233,29 @@ La auditoría detectó que varias continuaciones se lanzan secuencialmente desde
 ### Alcance V5
 
 La implementación deberá conservar la semántica funcional actual y añadir durabilidad alrededor de las transiciones entre procesos. El diseño concreto del outbox se definirá después de cerrar el roadmap y deberá integrarse con ARQ-02, ARQ-03 y ARQ-05.
+
+## ARQ-08 — Configuration-as-code real y única para Railway
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+V5 tendrá una única fuente de verdad versionada en Git para la configuración relevante de cada servicio Railway. Build, Dockerfile, comando de arranque, healthcheck, política de reinicio, watch paths y demás parámetros estructurales deberán quedar declarados en archivos canónicos del repositorio y no depender de decisiones implícitas del panel.
+
+### Reglas
+
+- Cada servicio Railway tendrá una configuración canónica explícita en Git.
+- El panel Railway no será una segunda fuente de verdad para parámetros estructurales del servicio.
+- La configuración efectiva de producción deberá poder compararse contra la configuración versionada para detectar deriva.
+- Los cambios de configuración se revisarán por PR igual que el código.
+- Los archivos generales o legacy que puedan inducir a configuraciones ambiguas se eliminarán o dejarán claramente subordinados a la configuración específica de cada servicio.
+- La configuración deberá permitir reconstruir de forma determinista los servicios actuales a partir del repositorio y secretos/variables externas.
+
+### Motivo
+
+La auditoría encontró configuración repartida entre archivos del repo y estado efectivo del panel Railway. API y Technical referencian de forma explícita sus config files, mientras FAST y Plex no muestran la misma claridad en la configuración viva. Además existen referencias históricas en `railway.toml` que evidencian deriva. Una única fuente versionada reduce errores de despliegue y facilita auditoría y recuperación.
+
+### Alcance V5
+
+Esta decisión no cambia de proveedor ni rediseña los workers. Formaliza cómo se configura Railway para que la infraestructura productiva sea reproducible y verificable desde Git.
