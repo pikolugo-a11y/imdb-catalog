@@ -16,9 +16,9 @@ test('NOV-009 is the canonical observed global incremental Plex sync',()=>{
   assert.match(display,/'PROC-NOV-009':\{name:'Sincronizar Plex global'\}/);
 });
 
-test('Novedades keeps one visible Plex button and reads last global sync from NOV-009',()=>{
+test('Novedades keeps one visible Plex button and the component reads last global sync from NOV-009',()=>{
   assert.match(button,/process_code='PROC-NOV-009'/);
   assert.match(button,/process_code IN\('PROC-NOV-009','PROC-NOV-008'\)/);
-  assert.match(page,/process_code='PROC-NOV-009'/);
   assert.match(page,/<PlexSyncButton\/>/);
+  assert.doesNotMatch(page,/process_code='PROC-NOV-009'/);
 });
