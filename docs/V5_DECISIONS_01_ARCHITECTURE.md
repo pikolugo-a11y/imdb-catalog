@@ -170,3 +170,34 @@ La auditoría encontró que la verdad sobre los procesos está repartida entre d
 ### Alcance V5
 
 La introducción del registro deberá hacerse sin cambiar por sí sola la semántica funcional de los procesos existentes. Primero se modelará la realidad actual y después se aplicarán las evoluciones aprobadas del roadmap.
+
+## ARQ-06 — Sacar la orquestación de Lifecycle Continuation del worker API
+
+**Estado:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Decisión
+
+La receta funcional de `PROC-LC-001` dejará de vivir dentro del adapter del worker API. V5 tendrá un core canónico de orquestación de Lifecycle Continuation independiente del executor, responsable de definir la secuencia de pasos, gates y continuaciones funcionales.
+
+### Reglas
+
+- El worker API se limitará a reclamar el trabajo, preparar el contexto de ejecución y llamar al core canónico.
+- La lógica que decide qué pasos de Lifecycle ejecutar y en qué orden vivirá fuera del worker.
+- El core podrá ser invocado desde cualquier executor autorizado por el registro canónico sin duplicar lógica.
+- Las reglas funcionales de Lifecycle seguirán siendo una única fuente de verdad y podrán probarse sin levantar un worker completo.
+- ARQ-02, ARQ-03, ARQ-04 y ARQ-05 se utilizarán para resolver destino, runtime, identidad y contrato del proceso.
+
+### Límites
+
+- Esta decisión no cambia por sí sola la semántica funcional actual de Lifecycle.
+- No fusiona los procesos que Lifecycle coordina ni convierte el core en un worker independiente.
+- La elección del executor seguirá estando gobernada por el registro canónico.
+
+### Motivo
+
+La auditoría detectó que el worker API contiene actualmente lógica de orquestación funcional de `PROC-LC-001`, lo que acopla una receta de negocio a un executor concreto. Eso dificulta reutilización, pruebas y evolución de infraestructura y favorece duplicaciones futuras.
+
+### Alcance V5
+
+La implementación deberá extraer primero la receta actual sin alterar su comportamiento observable. Cualquier cambio funcional posterior sobre Lifecycle requerirá una decisión específica del roadmap correspondiente.
