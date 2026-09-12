@@ -26,17 +26,18 @@ export default async function Saga({params}){
   const cinema=catalog.filter(x=>x.availability_phase==='cinema'&&x.effective_status!=='in_plex');
   const actionable=catalog.filter(x=>x.availability_phase==='available'||x.effective_status==='in_plex');
   const actionableTotal=actionable.length,inPlex=actionable.filter(x=>x.effective_status==='in_plex').length;
-  const missing=actionable.filter(x=>x.effective_status!=='in_plex').length,pct=actionableTotal?Math.min(100,Math.round(inPlex/actionableTotal*100)):100;
+  const missing=actionable.filter(x=>x.effective_status!=='in_plex').length,pct=actionableTotal?Math.min(100,Math.round(inPlex/actionableTotal*100)):null;
   const scored=actionable.filter(x=>x.final_rating!=null),avg=scored.length?scored.reduce((a,x)=>a+Number(x.final_rating),0)/scored.length:null;
   const years=s.titles.map(x=>Number(x.year)).filter(Boolean),from=years.length?Math.min(...years):null,to=years.length?Math.max(...years):null;
-  const collectionState=missing===0?'Completa en Plex':inPlex===0?'Sin Plex':'Parcial en Plex';
+  const collectionState=actionableTotal===0?'Sin títulos exigibles':missing===0?'Completa en Plex':inPlex===0?'Sin Plex':'Parcial en Plex';
+  const collectionTone=actionableTotal===0?'empty':missing===0?'complete':inPlex?'partial':'empty';
   return <main className="sv4 sv4-detail">
     <div className="sv4-breadcrumbs"><Link href="/sagas">Sagas</Link><span>›</span><b>{s.name_clean}</b></div>
 
     <section className="sv4-detail-hero" style={s.backdrop_path?{'--sv4-bg':`url(${poster(s.backdrop_path,'w1280')})`}:undefined}>
       <div className="sv4-detail-shade"/>{poster(s.poster_path)&&<img className="sv4-detail-poster" src={poster(s.poster_path)} alt=""/>}
-      <div className="sv4-detail-copy"><span className="sv4-eyebrow">Saga · PikoFilm</span><h1>{s.name_clean}</h1><p>{from&&to?`${from}–${to} · `:''}{catalog.length} títulos admitidos en PikoFilm · {total} miembros según TMDb.</p><div className="sv4-detail-status"><span className={`sv4-state ${missing===0?'complete':inPlex?'partial':'empty'}`}>{collectionState}</span><b>{inPlex}/{actionableTotal} exigibles en Plex</b>{missing>0&&<span>{missing} sin Plex</span>}{cinema.length>0&&<span>{cinema.length} en cines</span>}{upcoming.length>0&&<span>{upcoming.length} próximas</span>}{outside.length>0&&<span>{outside.length} fuera de PikoFilm</span>}</div>{avg!=null&&<div className="sv4-detail-score"><span>PikoScore saga</span><strong>{score(avg)}</strong><small>{scored.length} obras exigibles valoradas</small></div>}<ActionButton action={refreshSagaCollectionAction} fields={{collectionId:name}} label="↻ Actualizar esta saga" pendingLabel="Actualizando…"/></div>
-      <div className="sv4-detail-plex"><strong>{inPlex}/{actionableTotal}</strong><span>en Plex</span><small>{pct}% físico</small></div>
+      <div className="sv4-detail-copy"><span className="sv4-eyebrow">Saga · PikoFilm</span><h1>{s.name_clean}</h1><p>{from&&to?`${from}–${to} · `:''}{catalog.length} títulos admitidos en PikoFilm · {total} miembros según TMDb.</p><div className="sv4-detail-status"><span className={`sv4-state ${collectionTone}`}>{collectionState}</span>{actionableTotal>0?<b>{inPlex}/{actionableTotal} exigibles en Plex</b>:<b>Ningún título exigible ahora</b>}{missing>0&&<span>{missing} sin Plex</span>}{cinema.length>0&&<span>{cinema.length} en cines</span>}{upcoming.length>0&&<span>{upcoming.length} próximas</span>}{outside.length>0&&<span>{outside.length} fuera de PikoFilm</span>}</div>{avg!=null&&<div className="sv4-detail-score"><span>PikoScore saga</span><strong>{score(avg)}</strong><small>{scored.length} obras exigibles valoradas</small></div>}<ActionButton action={refreshSagaCollectionAction} fields={{collectionId:name}} label="↻ Actualizar esta saga" pendingLabel="Actualizando…"/></div>
+      <div className="sv4-detail-plex"><strong>{actionableTotal>0?`${inPlex}/${actionableTotal}`:'—'}</strong><span>{actionableTotal>0?'en Plex':'sin exigibles'}</span><small>{pct==null?'No aplica':`${pct}% físico`}</small></div>
     </section>
 
     <section className="sv4-detail-kpis"><div><span>EN PLEX</span><strong>{inPlex}</strong><small>presencia física</small></div><div><span>SIN PLEX</span><strong>{missing}</strong><small>exigibles ahora</small></div><div><span>EN CINES</span><strong>{cinema.length}</strong><small>no penalizan</small></div><div><span>PRÓXIMAMENTE</span><strong>{upcoming.length}</strong><small>no estrenadas</small></div><div><span>FUERA PIKOFILM</span><strong>{outside.length}</strong><small>descubrimiento</small></div><div><span>PIKOSCORE</span><strong>{score(avg)}</strong><small>solo obras exigibles</small></div></section>
@@ -50,6 +51,6 @@ export default async function Saga({params}){
       </article>})}</div>
     </section>
 
-    <footer className="sv4-detail-footer"><div><span>ESTADO FÍSICO</span><strong>{collectionState}</strong><small>{missing===0?'Todos los títulos actualmente exigibles están en Plex.':`${missing} títulos admitidos y disponibles todavía no están en Plex.`}</small></div><Link href="/sagas">← Volver a Sagas</Link></footer>
+    <footer className="sv4-detail-footer"><div><span>ESTADO FÍSICO</span><strong>{collectionState}</strong><small>{actionableTotal===0?'No hay títulos exigibles actualmente; próximos estrenos y obras fuera de PikoFilm no penalizan.':missing===0?'Todos los títulos actualmente exigibles están en Plex.':`${missing} títulos admitidos y disponibles todavía no están en Plex.`}</small></div><Link href="/sagas">← Volver a Sagas</Link></footer>
   </main>;
 }
