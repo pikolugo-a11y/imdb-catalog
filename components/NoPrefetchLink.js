@@ -7,14 +7,17 @@ import NextLink from 'next/link';
  * dozens of unnecessary Vercel requests. Internal links are also nofollow so
  * cooperative crawlers do not expand the private catalogue graph.
  *
- * A missing destination must never masquerade as a link to "#": render it as
- * non-interactive text so mouse, keyboard and assistive technology agree.
+ * A missing or explicitly disabled destination must never masquerade as an
+ * interactive link: render it as non-interactive text so mouse, keyboard and
+ * assistive technology agree across every paginator.
  */
-export default function NoPrefetchLink({rel,href,...props}){
-  if(!href||href==='#'){
+export default function NoPrefetchLink({rel,href,className,...props}){
+  const disabledToken=String(className||'').split(/\s+/).includes('disabled');
+  const explicitlyDisabled=props['aria-disabled']===true||props['aria-disabled']==='true';
+  if(!href||href==='#'||disabledToken||explicitlyDisabled){
     const {target,onClick,...spanProps}=props;
-    return <span {...spanProps} aria-disabled="true"/>;
+    return <span {...spanProps} className={className} aria-disabled="true"/>;
   }
   const safeRel=rel?`${rel} nofollow`:'nofollow';
-  return <NextLink {...props} href={href} rel={safeRel} prefetch={false}/>;
+  return <NextLink {...props} className={className} href={href} rel={safeRel} prefetch={false}/>;
 }
