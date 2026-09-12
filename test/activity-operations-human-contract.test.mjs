@@ -34,7 +34,7 @@ test('Actividad expone una vista humana de Automatizaciones con próxima y últi
   assert.match(page,/Franja preferida/);
   assert.match(data,/CONFIGURABLE_AUTOMATIONS/);
   assert.match(data,/SYSTEM_AUTOMATIONS/);
-  assert.match(data,/nextFiveMinuteTick/);
+  assert.match(data,/nextHourlyTick/);
   assert.match(data,/nextDashboardSnapshot/);
 });
 
