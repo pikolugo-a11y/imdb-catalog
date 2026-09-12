@@ -100,11 +100,12 @@ test('Calendario usa un alias SQL no reservado para el día de Madrid',()=>{
   assert.doesNotMatch(source,/::text day,/);
 });
 
-test('Actividad permite forzar el mismo ciclo PLAN-002 desde el frontal',()=>{
+test('Actividad permite forzar el mismo ciclo PLAN-002 desde el frontal sin convertirlo en salud automática',()=>{
   const page=read('app/actividad/page.js'),actions=read('app/actividad/actions.js'),cycle=read('lib/activity-planner-cycle.js');
   assert.match(page,/Ejecutar ciclo automático ahora/);
   assert.match(page,/action=\{runAutomaticPlanningNow\}/);
   assert.match(page,/ConfirmSubmitButton/);
+  assert.match(page,/no sustituye al cron automático/i);
   assert.match(actions,/executeAutomaticPlanningCycle/);
   assert.match(actions,/triggerSource:'activity_manual'/);
   assert.match(actions,/manual:true/);
@@ -113,15 +114,31 @@ test('Actividad permite forzar el mismo ciclo PLAN-002 desde el frontal',()=>{
   assert.doesNotMatch(cycle,/PROC-NOV-009|syncPlexFastCore|scanPlexTechnicalLibrary/);
 });
 
-test('Actividad sólo declara la planificación automática activa con un PLAN-002 reciente y sano',()=>{
+test('Actividad sólo declara automatización sana con secreto, despacho frecuente y recálculo horario automáticos',()=>{
   const source=read('lib/activity-v4.js'),page=read('app/actividad/page.js');
-  assert.match(source,/ACTIVITY_PLANNER_HEALTH_MINUTES=90/);
+  assert.match(source,/ACTIVITY_PLANNER_HEALTH_MINUTES=75/);
+  assert.match(source,/ACTIVITY_DISPATCH_HEALTH_MINUTES=15/);
   assert.match(source,/process_code='PROC-PLAN-002'/);
-  assert.match(source,/plannerHealthy/);
-  assert.match(source,/\['succeeded','running'\]\.includes\(latestPlanner\.technical_status\)/);
-  assert.match(page,/calendar\.planner\?\.healthy/);
-  assert.match(page,/Planificación automática sin ciclo reciente/);
-  assert.match(page,/revisa Operaciones/);
+  assert.match(source,/trigger_source='activity_planner'/);
+  assert.match(source,/row\.context\?\.mode==='full'/);
+  assert.match(source,/Boolean\(process\.env\.CRON_SECRET\)/);
+  assert.match(source,/plannerHealthy=cronSecretConfigured&&dispatchHealthy&&fullHealthy/);
+  assert.match(page,/Automatización activa/);
+  assert.match(page,/cada 5 minutos/);
+  assert.match(page,/El botón manual no cuenta/);
+});
+
+test('despacho frecuente reutiliza PLAN-002 sin recalcular demanda pesada cada cinco minutos',()=>{
+  const vercel=read('vercel.json'),plannerCron=read('app/api/cron/activity-planner/route.js'),cycle=read('lib/activity-planner-cycle.js'),planner=read('lib/process-planning.js');
+  assert.match(vercel,/\*\/5 \* \* \* \*/);
+  assert.match(plannerCron,/cycleMode\(date\)/);
+  assert.match(plannerCron,/getUTCMinutes\(\)===0\?'full':'dispatch'/);
+  assert.match(plannerCron,/slotKey/);
+  assert.match(plannerCron,/PROC-PLAN-002:\$\{mode\}:/);
+  assert.match(cycle,/mode==='dispatch'/);
+  assert.match(cycle,/runActivityDispatchTick/);
+  assert.match(planner,/export async function runActivityDispatchTick/);
+  assert.match(planner,/dispatchDue\(sql,\{includeDelayed:false\}\)/);
 });
 
 test('calendario detecta picos agregados usando carga histórica real',()=>{
@@ -140,20 +157,23 @@ test('navegación reemplaza el popover lifecycle por Actividad global',()=>{
   assert.doesNotMatch(nav,/LifecycleActivity/);
 });
 
-test('cron horario delega en el ciclo canónico y snapshot diario ya no concentra mantenimiento',()=>{
+test('cron de Actividad mantiene recálculo completo horario y snapshot diario separado',()=>{
   const vercel=read('vercel.json'),plannerCron=read('app/api/cron/activity-planner/route.js'),cycle=read('lib/activity-planner-cycle.js'),snapshot=read('app/api/cron/dashboard-snapshot/route.js');
-  assert.match(vercel,/\/api\/cron\/activity-planner/);assert.match(vercel,/0 \* \* \* \*/);
+  assert.match(vercel,/\/api\/cron\/activity-planner/);assert.match(vercel,/\*\/5 \* \* \* \*/);
   assert.match(plannerCron,/executeAutomaticPlanningCycle/);assert.match(plannerCron,/PROC-PLAN-002/);
+  assert.match(plannerCron,/getUTCMinutes\(\)===0\?'full':'dispatch'/);
   assert.match(cycle,/runActivityPlanner/);
+  assert.match(cycle,/runActivityDispatchTick/);
   assert.doesNotMatch(snapshot,/qualityMaintenance|startMov001Batch|startSeriesBatch|startData002Batch|startPeopleBatch|processC6Batch/);
 });
 
-test('planes terminales se purgan tras la ventana funcional de 30 días',()=>{
+test('planes terminales se purgan tras la ventana funcional de 30 días sólo en ciclo completo',()=>{
   const retention=read('lib/process-planning-retention.js'),plannerCron=read('app/api/cron/activity-planner/route.js'),cycle=read('lib/activity-planner-cycle.js');
   assert.match(retention,/PROCESS_PLAN_RETENTION_DAYS=30/);
   assert.match(retention,/status IN \('completed','cancelled','expired'\)/);
   assert.match(retention,/DELETE FROM process_plans/);
   assert.match(cycle,/purgeTerminalProcessPlans/);
   assert.match(cycle,/purged_plans/);
+  assert.match(cycle,/if\(cycleMode==='dispatch'\)/);
   assert.match(plannerCron,/executeAutomaticPlanningCycle/);
 });
