@@ -192,7 +192,7 @@ Por tanto, esta revisión V5 y cualquier roadmap futuro deben respetar estas reg
 ## Estado de revisión
 
 - Punto 1 — Arquitectura general: **CERRADO — auditoría completada; 15/15 propuestas V5 aprobadas; ronda de innovación completada; INNO-01 aprobada** (`V5_AUDIT_01_ARCHITECTURE.md`; decisiones en `V5_DECISIONS_01_ARCHITECTURE.md` y `V5_DECISIONS_01_ARCHITECTURE_10_15.md`; innovación aprobada en `ROADMAP_INNOVADOR.md`)
-- Punto 2 — Rendimiento: **PENDIENTE**
+- Punto 2 — Rendimiento: **FASE 1 CERRADA — auditoría extremadamente detallada completada; Fase 2 de decisiones V5 pendiente** (`V5_AUDIT_02_PERFORMANCE.md`)
 - Punto 3 — Base de datos y modelo de datos: **PENDIENTE**
 - Punto 4 — Procesos automáticos y Batch: **PENDIENTE**
 - Punto 5 — Observabilidad y errores: **PENDIENTE**
