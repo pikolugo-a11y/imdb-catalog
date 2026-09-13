@@ -221,3 +221,34 @@ Sustituir ese patrón por una **lectura ligera y adaptativa del estado del run/p
 ### Objetivo
 
 Reducir de forma fuerte renders Vercel, consultas Neon y tráfico repetitivo durante procesos activos, manteniendo o mejorando la percepción de actualización en tiempo real.
+
+---
+
+## PERF-08 — Proyecciones idempotentes: escribir sólo cuando cambia el resultado
+
+**Decisión:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Problema observado
+
+`series_quality_read_model` tiene aproximadamente **956 filas**, pero las estadísticas vivas auditadas reflejan alrededor de **244.000 updates** y un bloat estimado de aproximadamente **6,7×**. Su reconstrucción actual hace `INSERT ... ON CONFLICT DO UPDATE` sobre todos los shows activos y actualiza `updated_at=now()` incluso cuando los valores funcionales proyectados no han cambiado.
+
+### Decisión V5
+
+Establecer como regla general para read models/proyecciones V5 que **recalcular no implica reescribir**. Una reconciliación puede evaluar el universo completo cuando corresponda, pero sólo deberá emitir `UPDATE`/escritura persistente para entidades cuyo resultado derivado haya cambiado realmente.
+
+En `series_quality_read_model` y proyecciones equivalentes, la implementación deberá comparar los campos proyectados —por ejemplo con `IS DISTINCT FROM` o mecanismo equivalente— antes de modificar una fila. `updated_at` deberá representar un cambio real de la proyección y no el mero hecho de haberla recalculado.
+
+### Límites y condiciones
+
+- Las reconciliaciones completas siguen siendo válidas como red de seguridad; lo que se elimina es la escritura idéntica innecesaria.
+- Las proyecciones nuevas derivadas de PERF-01, PERF-02, PERF-05 u otras decisiones deberán ser idempotentes por diseño.
+- Dos reconciliaciones consecutivas sin cambios en fuentes deben producir **cero escrituras funcionales** en la segunda ejecución.
+- Cuando sea posible, combinar reconciliación completa periódica con actualización incremental por entidad.
+- Registrar métricas por ejecución del tipo `evaluadas / modificadas / sin cambios` para detectar write amplification.
+- Preservar exactitud, reconstruibilidad y autoridad de las fuentes canónicas.
+- No ocultar cambios reales por intentar minimizar escrituras.
+
+### Objetivo
+
+Reducir WAL, bloat, autovacuum, I/O y coste de almacenamiento generado por reescrituras idénticas, y devolver significado operativo a los timestamps de modificación de las proyecciones.
