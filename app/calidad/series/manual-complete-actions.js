@@ -35,7 +35,7 @@ export async function setSeriesManualCompleteAction(formData){
     if(s.imdb_id)await recomputeLifecycleForIds([s.imdb_id]);
     await rebuildSeriesQualityReadModel(sql);
     const[after]=await sql`SELECT decision,note,created_at,updated_at FROM series_quality_overrides WHERE show_rating_key=${ratingKey} LIMIT 1`;
-    return{technicalStatus:'succeeded',functionalResult:mode==='mark'?'accepted_complete':'reopened',before:before||null,after:after||null,metrics:{series_overrides:mode==='mark'?1:0},message:mode==='mark'?'Serie marcada como cuadrada manualmente':'Serie devuelta al diagnóstico automático',imdbId:s.imdb_id||null,ratingKey};
+    return{technicalStatus:'succeeded',functionalResult:'updated',before:before||null,after:after||null,metrics:{series_overrides:mode==='mark'?1:0},context:{manual_decision:mode==='mark'?'manual_complete':'automatic'},message:mode==='mark'?'Serie marcada como cuadrada manualmente':'Serie devuelta al diagnóstico automático',imdbId:s.imdb_id||null,ratingKey};
   });
   refresh(ratingKey,observed.result?.imdbId);
   return observed.result;
