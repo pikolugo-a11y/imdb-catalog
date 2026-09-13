@@ -98,3 +98,33 @@ La lista de episodios se mantendrá como consulta paginada separada porque tiene
 ### Objetivo
 
 Reducir viajes, planificación repetida y trabajo duplicado en una de las superficies más ricas de PikoFilm, evitando que su coste crezca linealmente con cada nueva tarjeta o bloque funcional añadido al detalle de Series.
+
+---
+
+## PERF-04 — Búsqueda de Catálogo preparada para escalar
+
+**Decisión:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Problema observado
+
+La búsqueda actual de Catálogo sigue siendo aceptable al tamaño actual, pero utiliza normalización dinámica del texto —por ejemplo `translate(lower(...)) LIKE '%texto%'`— que no escala bien con índices B-tree ordinarios y obliga a trabajo aproximadamente proporcional al volumen total de títulos. En la auditoría se midieron aproximadamente 24 ms para el resumen/count, 31 ms para la primera página y 44 ms para un count de búsqueda substring normalizada tipo `matrix`.
+
+### Decisión V5
+
+Preparar una **representación de búsqueda normalizada e indexable** para Catálogo, de forma que la búsqueda textual no dependa de recorrer proporcionalmente el universo completo de títulos a medida que crece la base de datos.
+
+La implementación concreta —columna derivada, trigramas u otra estrategia PostgreSQL— se decidirá tras medir planes reales y encaja también con la auditoría específica de BBDD del Punto 3.
+
+### Límites y condiciones
+
+- Mantener búsqueda insensible a mayúsculas y acentos.
+- Mantener búsqueda por fragmentos de título.
+- Incluir título principal y, si el diseño final lo requiere, títulos alternativos relevantes.
+- No introducir por defecto un motor externo de búsqueda si PostgreSQL resuelve correctamente la escala prevista.
+- El índice o mecanismo elegido debe justificarse con planes reales, selectividad y coste de mantenimiento.
+- La optimización no puede degradar orden determinista ni semántica actual de filtros.
+
+### Objetivo
+
+Que la búsqueda del Catálogo siga siendo rápida al crecer 5x–10x y que su coste deje de depender principalmente de escanear y normalizar todos los títulos en cada consulta.
