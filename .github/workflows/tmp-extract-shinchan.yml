@@ -1,0 +1,21 @@
+name: tmp extract Shin-chan Wikipedia
+on:
+  push:
+    branches: [feature/series-episode-es-availability]
+    paths:
+      - '.github/workflows/tmp-extract-shinchan.yml'
+      - 'tools/tmp_extract_shinchan.py'
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4 lxml pandas
+      - run: python tools/tmp_extract_shinchan.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shinchan-wikipedia-extract
+          path: /tmp/shinchan-out/
