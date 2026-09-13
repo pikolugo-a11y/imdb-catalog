@@ -1,6 +1,6 @@
 # PikoFilm V5 — Handoff actual
 
-Fecha: 2026-09-13
+Fecha: 2026-09-14
 
 Este documento es el punto de reentrada canónico para continuar la definición de V5 sin depender del historial del chat.
 
@@ -119,6 +119,7 @@ Durante la pausa de PERF se corrigieron problemas reales detectados usando la ap
 - PR #556: corrección de ampliación doble→triple cuando el episodio intermedio ya estaba cubierto por el mismo archivo Plex.
 - PR #557: prioridad España para Series sin depender de FilmAffinity, perfil TMDb de temporadas/episodios/origen/proveedores y visualización T/E en Catálogo/ficha; FilmAffinity queda fuera de esta solución.
 - PR #558: detalle de Calidad · Series aligerado: temporadas/episodios siguen como cuerpo principal; pendientes y decisiones manuales se cargan sólo bajo demanda en paneles paginados; se retiró seguimiento batch del render normal de la ficha. Merge de main: `f56d1229ac83c87484af2e80293721f50f0fe5e3`; CI success.
+- PR #560: exclusión manual reversible de episodios oficiales en Calidad · Series. Usa `series_episode_overrides.decision='unavailable'`; la exclusión cuenta como cobertura efectiva y deja de ser pendiente sin falsear la presencia física en Plex. La UI muestra `⊘ Exclusión`, permite `Quitar exclusión`, y el agregado se denomina `Cobertura efectiva`. Merge de main: `bccf8ffe81d8eaeda22c547e97c7c6e9ad920132`; CI y migración Neon branch-first success. Contrato persistido en `docs/changes/2026-09-14_SERIES_EPISODE_EXCLUSIONS.md`. Queda únicamente deploy Vercel Production y validación visual/funcional por el usuario.
 
 Estas correcciones no cambian el punto exacto del roadmap: seguimos en la Fase 3 del Punto 2.
 
