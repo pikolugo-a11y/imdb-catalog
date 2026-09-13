@@ -52,3 +52,35 @@ test('la ampliación doble a triple usa evidencia mínima del episodio anterior'
   assert.match(page,/Ampliar a capítulo triple/);
   assert.doesNotMatch(page,/combinedByEpisode/);
 });
+
+test('Plex conserva la ruta física completa y la ficha la resume sin llamar a Plex en render',()=>{
+  const plex=read('lib/series-plex-sync.js');
+  const query=read('lib/series-detail-query.js');
+  const card=read('app/calidad/series/[ratingKey]/SeriesPhysicalManualCard.js');
+  assert.match(plex,/const filePathOf=/);
+  assert.match(plex,/file_path:filePathOf\(p\.file\)/);
+  assert.doesNotMatch(plex,/const filenameOf=/);
+  assert.match(query,/plex_files/);
+  assert.match(query,/physicalLocation/);
+  assert.match(card,/Ubicación física/);
+  assert.match(card,/Actualizar Plex/);
+});
+
+test('una serie puede cuadrarse manualmente sin falsificar la evidencia física Plex',()=>{
+  const migration=read('db/migrations/20260913_series_manual_complete.sql');
+  const action=read('app/calidad/series/manual-complete-actions.js');
+  const domain=read('lib/series-quality-domain.mjs');
+  const page=read('app/calidad/series/[ratingKey]/page.js');
+  const card=read('app/calidad/series/[ratingKey]/SeriesPhysicalManualCard.js');
+  assert.match(migration,/series_quality_overrides/);
+  assert.match(migration,/WHEN manual_complete THEN 'present'/);
+  assert.match(migration,/plex_diagnostic_status/);
+  assert.match(action,/processCode:'PROC-SER-008'/);
+  assert.match(action,/manual_complete/);
+  assert.match(domain,/MANUAL_COMPLETE/);
+  assert.match(domain,/Cuadrada manualmente/);
+  assert.match(page,/e\.plex_diagnostic_status/);
+  assert.match(page,/No encontrado · aceptado por ajuste de serie/);
+  assert.match(card,/no modificará Plex ni borrará el diagnóstico físico/i);
+  assert.match(card,/Volver al diagnóstico automático/);
+});
