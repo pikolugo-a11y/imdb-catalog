@@ -36,3 +36,31 @@ Debe poder incluir, según requiera el diseño final, métricas como número de 
 ### Objetivo
 
 Que el coste de servir Personas dependa principalmente de la página/filtros solicitados y no del volumen completo de créditos en cada navegación.
+
+---
+
+## PERF-02 — Clasificación, filtrado y paginación SQL reales para Calidad · Series
+
+**Decisión:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Problema observado
+
+`getClassifiedSeries()` carga prácticamente todo `series_quality_read_model`, calcula `availability_due` mediante un agregado global sobre estados efectivos de episodios y después realiza en Node.js la clasificación funcional, los filtros, la prioridad, el orden y la paginación. En la auditoría se midió aproximadamente **201 ms** para la consulta base representativa antes del trabajo adicional en aplicación; el coste principal estaba en recorrer y agregar decenas de miles de episodios/diagnósticos para terminar mostrando como máximo una página de 50 series.
+
+### Decisión V5
+
+Hacer que la superficie Calidad · Series consulte un read model preparado para que PostgreSQL pueda aplicar **estado primario, filtros, prioridad, orden y paginación antes de devolver filas**. Las señales derivadas necesarias —incluido `availability_due` o su equivalente canónico— deberán estar persistidas o mantenidas incrementalmente cuando eso sea seguro, evitando reconstruir agregados globales en cada navegación.
+
+### Límites y condiciones
+
+- Debe existir una única lógica funcional canónica de clasificación; no se mantendrán reglas divergentes en SQL y JavaScript.
+- El read model seguirá siendo derivado y reconstruible, nunca fuente de verdad.
+- Los cambios de inputs relevantes deben actualizar o invalidar sólo lo necesario cuando sea razonable.
+- Debe existir reconciliación completa de seguridad para detectar deriva del read model.
+- Los filtros reales deben reducir trabajo en base de datos, no limitar únicamente el número de filas enviado al navegador.
+- La optimización no puede alterar la semántica actual de estados, overrides manuales, prioridades o reglas de Calidad de Series.
+
+### Objetivo
+
+Que una consulta como `missing`, `unmapped`, `tracking` u otra clasificación equivalente pueda resolverse conceptualmente con `WHERE ... ORDER BY ... LIMIT ...` sobre datos derivados preparados, haciendo que el coste interactivo dependa de la selección solicitada y no del universo completo de episodios en cada request.
