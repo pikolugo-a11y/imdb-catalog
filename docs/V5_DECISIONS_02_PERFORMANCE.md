@@ -162,3 +162,33 @@ El read model contendrá únicamente campos cuya persistencia esté justificada 
 ### Objetivo
 
 Reducir CPU/IO repetida de Neon y simplificar las consultas interactivas, haciendo que un verdadero read model abarate la lectura en lugar de limitarse a encapsular una consulta compleja.
+
+---
+
+## PERF-06 — Separar la frescura de Actividad viva del calendario
+
+**Decisión:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Problema observado
+
+La pantalla de Actividad mezcla datos con ritmos de cambio distintos: ejecuciones activas, cronología y KPIs operativos por un lado, y calendario/planificación futura por otro. Mientras existe actividad, `ActivityRefresh` ejecuta `router.refresh()` cada 30 segundos y también al recuperar foco o visibilidad, lo que puede recalcular bloques de calendario y planificación que no han cambiado.
+
+### Decisión V5
+
+Separar la estrategia de actualización de Actividad por **volatilidad del dato**. El estado vivo deberá poder refrescarse con mayor frecuencia mediante un payload/lectura acotado, mientras que calendario y planificación sólo se invalidarán cuando cambien planes, automatizaciones, distribución de carga u otros inputs que realmente los afecten.
+
+La UX puede seguir presentándose como una sola pantalla; la separación es de lectura, invalidación y coste.
+
+### Límites y condiciones
+
+- No sacrificar frescura del estado de ejecuciones activas.
+- No reconstruir el árbol RSC completo ni recalcular planificación futura ante cada cambio de progreso si no es necesario.
+- Refrescar al recuperar foco/visibilidad sólo los dominios que puedan haberse quedado obsoletos.
+- Mantener una única fuente de verdad funcional para calendario y actividad.
+- Diseñar la frecuencia de actualización según volatilidad y coste del dato, no sólo según la página en la que aparece.
+- Evitar polling más agresivo del necesario como sustituto de una invalidación bien definida.
+
+### Objetivo
+
+Reducir consultas y renders repetidos en Actividad, manteniendo simultáneamente información operativa viva y una planificación futura correcta sin pagar el coste completo de ambas en cada refresco.
