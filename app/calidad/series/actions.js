@@ -4,6 +4,7 @@ import {db} from '@/lib/db';
 import {recomputeLifecycleForIds} from '@/lib/lifecycle';
 import {refreshSeriesUnitary,refreshSeriesUnitaryCore} from '@/lib/series-unitary';
 import {confirmSeriesEsAvailability} from '@/lib/series-es-availability';
+import {markAllEpisodesSpainAvailable,setEpisodeSpainAvailability} from '@/lib/series-episode-availability';
 import {startSeriesBatch} from '@/lib/series-batch';
 import {rebuildSeriesDiagnostics} from '@/lib/series-diagnostics-core.mjs';
 import {rebuildSeriesQualityReadModel} from '@/lib/series-quality-query';
@@ -29,6 +30,31 @@ export async function resetSeasonAvailabilityAction(formData){
   });
   revalidate(ratingKey,observed.result?.imdbId);return observed.result;
 }
+export async function setEpisodeSpainAvailabilityAction(formData){
+  const ratingKey=String(formData.get('ratingKey')||'').trim(),season=Number(formData.get('season')),episode=Number(formData.get('episode')),status=String(formData.get('status')||'').trim();
+  if(!ratingKey||!Number.isInteger(season)||season<0||!Number.isInteger(episode)||episode<1||!['available','not_yet_available'].includes(status))throw new Error('Disponibilidad de episodio inválida');
+  const sql=db(),entityId=`${ratingKey}:S${season}E${episode}`,requestKey=`PROC-SER-008:${entityId}:${status}:${Math.floor(Date.now()/3000)}`;
+  const observed=await executeObservedProcess({processCode:'PROC-SER-008',runKind:'individual',triggerSource:'calidad_series_manual',executor:'vercel',entityType:'episode',entityId,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:`/calidad/series/${ratingKey}`,operation:'set_episode_es_availability',rating_key:ratingKey,season,episode,status}},async trace=>{
+    const result=await setEpisodeSpainAvailability(sql,{ratingKey,season,episode,status,note:status==='available'?'Marcado manualmente como emitido en España':'Marcado manualmente como no emitido en España'});
+    await trace.event({eventType:'manual_decision',step:'set_episode_es_availability',entityType:'episode',entityId,message:status==='available'?'Marcar episodio como emitido en España':'Marcar episodio como no emitido en España',data:{season,episode,status,previous_status:result.before?.availability_status||null}});
+    await recomputeLifecycleForIds([result.imdbId]);await rebuildSeriesQualityReadModel(sql);
+    return{technicalStatus:'succeeded',functionalResult:status==='available'?'available_es':'not_available_es',before:result.before||null,after:{availability_status:status,source:'manual_ui'},metrics:{episodes:1},message:status==='available'?'Episodio marcado como emitido en España':'Episodio marcado como no emitido en España',imdbId:result.imdbId,ratingKey,season,episode};
+  });
+  revalidate(ratingKey,observed.result?.imdbId);return observed.result;
+}
+
+export async function markAllEpisodesSpainAvailableAction(formData){
+  const ratingKey=String(formData.get('ratingKey')||'').trim();if(!ratingKey)throw new Error('Serie inválida');
+  const sql=db(),requestKey=`PROC-SER-008:${ratingKey}:all_available:${Math.floor(Date.now()/3000)}`;
+  const observed=await executeObservedProcess({processCode:'PROC-SER-008',runKind:'individual',triggerSource:'calidad_series_manual',executor:'vercel',entityType:'series',entityId:ratingKey,correlationKey:requestKey,idempotencyKey:requestKey,context:{surface:`/calidad/series/${ratingKey}`,operation:'mark_all_episode_es_available',rating_key:ratingKey}},async trace=>{
+    const result=await markAllEpisodesSpainAvailable(sql,{ratingKey});
+    await trace.event({eventType:'manual_decision',step:'mark_all_episode_es_available',entityType:'series',entityId:ratingKey,message:'Marcar todos los episodios oficiales como emitidos en España',data:{episodes:result.total,already_available:result.alreadyAvailable,overwritten_no:result.overwrittenNo}});
+    await recomputeLifecycleForIds([result.imdbId]);await rebuildSeriesQualityReadModel(sql);
+    return{technicalStatus:'succeeded',functionalResult:'all_available_es',before:{already_available:result.alreadyAvailable,explicit_no:result.overwrittenNo},after:{availability_status:'available',episodes:result.total},metrics:{episodes:result.total,overwritten_no:result.overwrittenNo},message:`${result.total} episodios marcados como emitidos en España`,imdbId:result.imdbId,ratingKey};
+  });
+  revalidate(ratingKey,observed.result?.imdbId);return observed.result;
+}
+
 export async function reviewSeriesExtraAction(formData){
   const ratingKey=String(formData.get('ratingKey')||'').trim(),season=Number(formData.get('season')),episode=Number(formData.get('episode')),decision=String(formData.get('decision')||'').trim(),userNote=String(formData.get('note')||'').trim().slice(0,300);
   if(!ratingKey||!Number.isInteger(season)||!Number.isInteger(episode)||season<0||episode<0)throw new Error('Episodio inválido');if(!['special','not_needed','reopen'].includes(decision))throw new Error('Decisión inválida');

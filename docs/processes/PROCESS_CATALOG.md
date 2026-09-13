@@ -49,6 +49,7 @@ Estados de paridad:
 | PROC-SER-004 | Series | Disponibilidad España | individual | sí | `confirmSeriesEsAvailabilityCanonical` | Vercel / Railway API | PARCIAL controlada |
 | PROC-SER-005 | Series | Resolver anomalía de episodio | manual | no | acción observada + override | Vercel | NO APLICA |
 | PROC-SER-006 | Series | Retirar override de disponibilidad | manual | no | acción observada + refresh | Vercel | NO APLICA |
+| PROC-SER-008 | Series | Corregir disponibilidad España por episodio / marcar toda la serie | manual | no | `series-episode-availability.js` + acción observada | Vercel | NO APLICA |
 | PROC-NOV-001 | Novedades | Discovery IMDb global | global manual | no | GitHub Actions `imdb-discovery.yml` | GitHub Actions | SIN BATCH |
 | PROC-NOV-002 | Novedades | Alta manual IMDb | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-003 | Novedades | Reintento candidato manual | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
