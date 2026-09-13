@@ -17,6 +17,7 @@ test('SER-001 global manual se encola y ejecuta en Railway Plex',()=>{
   assert.doesNotMatch(globalAction,/syncPlexSeriesFastCore|syncPlexSeriesFast\(/);
   assert.doesNotMatch(actions,/syncPlexSeriesFast/);
   assert.match(batch,/'PROC-SER-001':\{pool:'plex',concurrency:1/);
+  assert.match(batch,/from '\.\/batch-engine\.js'/);
   assert.match(batch,/executor:cfg\.pool==='plex'\?'railway_batch_plex'/);
   assert.match(worker,/\['PROC-SER-001',\{execute:executeSer001\}\]/);
   assert.match(worker,/syncPlexSeriesFastCore\(\{trace\}\)/);
