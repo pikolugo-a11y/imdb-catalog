@@ -58,6 +58,22 @@ test('fallo de una biblioteca de series queda parcial y no provoca bajas en ella
 
 test('SER-001 reconstruye read model y encadena SER-002 sólo después del scan',()=>{assert.match(worker,/rebuildSeriesQualityReadModel\(sql\)/);assert.match(worker,/startSeriesBatch\('PROC-SER-002',\{triggerSource:'plex_sync_continuation'\}\)/);assert.ok(worker.indexOf('syncPlexSeriesFastCore({trace})')<worker.indexOf("startSeriesBatch('PROC-SER-002'"))});
 
+test('SER-001 traduce cobertura real a lenguaje de usuario y la sube al run padre',()=>{
+  assert.match(worker,/globalDiagnosticSnapshot/);
+  assert.match(worker,/globalDiagnosticChanges/);
+  assert.match(worker,/capítulo\$\{diff\.becamePresent\.length===1\?'':'s'\} nuevo/);
+  assert.match(worker,/activity_summary:activitySummary/);
+  assert.match(worker,/UPDATE process_runs SET after_compact=COALESCE\(after_compact,'\{\}'::jsonb\)/);
+  assert.match(worker,/diagnostics_became_present/);
+  assert.match(worker,/diagnostics_became_missing/);
+});
+
+test('Calidad distingue inventario físico Plex de episodios oficiales cubiertos',()=>{
+  assert.match(page,/físicos en Plex/);
+  assert.match(page,/oficiales cubiertos/);
+  assert.match(page,/Plex físicos/);
+});
+
 test('implementación safe deja de duplicar lógica funcional',()=>{assert.match(safe,/export \{syncPlexSeriesFast,syncPlexSeriesFastCore,syncPlexSeriesDetail\} from '\.\/series-plex-sync\.js'/);assert.doesNotMatch(safe,/function fingerprint|UPDATE series_reference|library\/sections/)});
 
 test('Operaciones muestra nombre y origen humanos de SER-001',()=>{assert.match(display,/'PROC-SER-001':\{name:'Sincronizar Plex de Series'\}/);assert.match(display,/calidad_series_manual:'Manual desde Series'/)});
