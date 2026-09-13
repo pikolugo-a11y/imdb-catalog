@@ -192,3 +192,32 @@ La UX puede seguir presentándose como una sola pantalla; la separación es de l
 ### Objetivo
 
 Reducir consultas y renders repetidos en Actividad, manteniendo simultáneamente información operativa viva y una planificación futura correcta sin pagar el coste completo de ambas en cada refresco.
+
+---
+
+## PERF-07 — Sustituir refrescos completos de 2–3 segundos por estado ligero adaptativo
+
+**Decisión:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Problema observado
+
+Varias superficies de procesos activos utilizan `router.refresh()` de página completa a intervalos muy cortos: `BatchAutoRefresh` cada 3 s, `IdentityBatchAutoRefresh` cada 3 s y `TechnicalAutoRefresh` cada 2 s. Una sola pestaña abierta durante 10 minutos puede provocar aproximadamente 200–300 renders completos, antes de contar las consultas internas de cada render.
+
+### Decisión V5
+
+Sustituir ese patrón por una **lectura ligera y adaptativa del estado del run/proceso**. La página completa se renderizará inicialmente; mientras el proceso esté activo se consultará sólo el estado mínimo necesario —progreso, estado técnico, contadores, mensaje actual y timestamps u otros campos equivalentes— y sólo se recargará información estructural cuando una transición real lo justifique.
+
+### Límites y condiciones
+
+- Ninguna superficie V5 deberá depender de un SSR/RSC completo cada 2–3 segundos para mostrar progreso ordinario.
+- El polling ligero podrá ser más frecuente durante progreso activo y reducir frecuencia cuando no haya cambios.
+- Debe detenerse o suspenderse cuando la pestaña esté oculta y reanudarse al recuperar visibilidad/foco.
+- Fin, error, pausa u otra transición estructural podrán invalidar/recargar bloques adicionales.
+- No introducir WebSockets/SSE u otra infraestructura persistente por defecto si un mecanismo HTTP ligero resuelve correctamente la necesidad.
+- Mantener información suficientemente fresca para control operativo.
+- Evitar que cada superficie implemente su propia semántica incompatible de polling y transiciones.
+
+### Objetivo
+
+Reducir de forma fuerte renders Vercel, consultas Neon y tráfico repetitivo durante procesos activos, manteniendo o mejorando la percepción de actualización en tiempo real.
