@@ -13,6 +13,19 @@ test('la UI permite decidir capítulo doble o triple desde un faltante',()=>{
   assert.match(page,/Capítulo combinado · decisión manual/);
 });
 
+test('un doble ya decidido puede ampliarse a triple usando el archivo Plex original',()=>{
+  const page=read('app/calidad/series/[ratingKey]/page.js');
+  const actions=read('app/calidad/series/actions.js');
+  assert.match(page,/combinedByEpisode/);
+  assert.match(page,/Ampliar a capítulo triple/);
+  assert.match(page,/previousEvidence\?\.source_episode/);
+  assert.match(actions,/parseCombinedEvidence/);
+  assert.match(actions,/previousTargets\.includes\(episode-1\)/);
+  assert.match(actions,/targetEpisodes=\[\.\.\.new Set\(\[\.\.\.previousTargets,episode\]\)\]/);
+  assert.match(actions,/extension:extending/);
+  assert.match(actions,/extend_combined_episode/);
+});
+
 test('la acción combinada valida y persiste dos o tres episodios oficiales',()=>{
   const actions=read('app/calidad/series/actions.js');
   assert.match(actions,/!\[2,3\]\.includes\(combinedSize\)/);
