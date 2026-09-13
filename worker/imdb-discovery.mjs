@@ -19,21 +19,21 @@ function profileFlags(type,rating,votes,settings){const profile=type==='movie'?s
 function candidateBlocked(id,known){if(known.catalog.has(id)||known.excluded.has(id))return true;const prior=known.candidates.get(id);return prior?.source_snapshot?.manual===true&&prior?.source_snapshot?.manualActive!==false}
 
 async function wikidataSpanishImdbIds(trace){
-  const ids=new Set(),pageSize=5000,maxPages=6;let errors=0;
+  const ids=new Set(),countries=new Map(),pageSize=5000,maxPages=6;let errors=0;
   await trace.event({eventType:'step_started',step:'spanish_market_index',message:'Construyendo índice IMDb de obras españolas para rescate de mercado'});
   for(let page=0;page<maxPages;page++){
-    const query=`SELECT DISTINCT ?imdb WHERE { ?item wdt:P345 ?imdb; wdt:P495 wd:Q29. FILTER(STRSTARTS(STR(?imdb), "tt")) } LIMIT ${pageSize} OFFSET ${page*pageSize}`;
+    const query=`SELECT DISTINCT ?imdb ?country WHERE { ?item wdt:P345 ?imdb; wdt:P495 wd:Q29; wdt:P495 ?country. FILTER(STRSTARTS(STR(?imdb), "tt")) } ORDER BY ?imdb ?country LIMIT ${pageSize} OFFSET ${page*pageSize}`;
     try{
       await trace.externalCall(1);
       const r=await fetch(`${WIKIDATA}?query=${encodeURIComponent(query)}&format=json`,{headers:{Accept:'application/sparql-results+json','User-Agent':'PikoFilm/3.0 personal non-commercial'}});
       if(!r.ok){errors++;break}
       const j=await r.json(),rows=j?.results?.bindings||[];
-      for(const row of rows){const id=String(row?.imdb?.value||'').trim();if(/^tt\d+$/.test(id))ids.add(id)}
+      for(const row of rows){const id=String(row?.imdb?.value||'').trim(),qid=String(row?.country?.value||'').split('/').pop();if(!/^tt\d+$/.test(id))continue;ids.add(id);if(qid){if(!countries.has(id))countries.set(id,new Set());countries.get(id).add(qid)}}
       if(rows.length<pageSize)break;
     }catch{errors++;break}
   }
   await trace.event({eventType:errors?'step_warning':'step_completed',step:'spanish_market_index',message:errors?`Índice español parcial: ${ids.size} IMDb recuperados`:`Índice español preparado: ${ids.size} IMDb`,data:{ids:ids.size,errors}});
-  return{ids,errors};
+  return{ids,countries,errors};
 }
 
 async function readRatings(settings,spanishIds,trace){
@@ -89,7 +89,7 @@ async function main(){const trace=await claimObservedWorkerRun(RUN_ID,{processCo
     const country=await resolveCountries(candidates,known,trace),excluded=new Set(settings.excludedCountries||[]),rows=[];let general=0,spain=0,spanishMarket=0,rejectedCountry=0,pendingCountry=0;
     for(const c of candidates){const countries=[...(country.map.get(c.imdb_id)||[])],isExcludedCountry=countries.some(x=>excluded.has(x)),isSpain=countries.some(x=>x==='ES'||x==='Q29');let eligibility='not_eligible',matchedRule=null,countryStatus=countries.length?'resolved':'pending';if(isExcludedCountry){eligibility='rejected';rejectedCountry++}else if(!countries.length){pendingCountry++}else if(c.general){eligibility='eligible';matchedRule='general';general++}else if(c.spainZone&&isSpain){eligibility='eligible';matchedRule='spain';spain++}rows.push({...c,eligibility_status:eligibility,source_snapshot:{title:c.title,originalTitle:c.originalTitle,isAdult:c.isAdult,matchedRule,discoveryVersion:'novedades-v1',countries,countryStatus,datasetRatings:RATINGS,datasetBasics:BASICS,discoveredAt:nowIso(),recoveredPending:Boolean(c.historicalPending)}})}
     const rowIds=new Set(rows.map(x=>x.imdb_id));
-    for(const c of basicsPhase.spanishCandidates){if(rowIds.has(c.imdb_id))continue;const matchedRule=c.general?'general':c.marketRescue?'spain_market':'spain';if(c.general)general++;else{spain++;if(c.marketRescue)spanishMarket++}rows.push({...c,eligibility_status:'eligible',source_snapshot:{title:c.title,originalTitle:c.originalTitle,isAdult:c.isAdult,matchedRule,discoveryVersion:'novedades-v1',countries:['Q29'],countryStatus:'resolved',countryEvidence:'wikidata:P495=Q29',marketRescue:Boolean(c.marketRescue),marketRescueRule:c.marketRescue?SPANISH_SERIES_MARKET_RESCUE:null,datasetRatings:RATINGS,datasetBasics:BASICS,discoveredAt:nowIso()}});rowIds.add(c.imdb_id)}
+    for(const c of basicsPhase.spanishCandidates){if(rowIds.has(c.imdb_id))continue;const countries=[...(spanishIndex.countries.get(c.imdb_id)||new Set(['Q29']))],isExcludedCountry=countries.some(x=>excluded.has(x));let eligibility='eligible',matchedRule=c.general?'general':c.marketRescue?'spain_market':'spain';if(isExcludedCountry){eligibility='rejected';matchedRule=null;rejectedCountry++}else if(c.general)general++;else{spain++;if(c.marketRescue)spanishMarket++}rows.push({...c,eligibility_status:eligibility,source_snapshot:{title:c.title,originalTitle:c.originalTitle,isAdult:c.isAdult,matchedRule,discoveryVersion:'novedades-v1',countries,countryStatus:'resolved',countryEvidence:'wikidata:P495=Q29',marketRescue:Boolean(c.marketRescue),marketRescueRule:c.marketRescue?SPANISH_SERIES_MARKET_RESCUE:null,datasetRatings:RATINGS,datasetBasics:BASICS,discoveredAt:nowIso()}});rowIds.add(c.imdb_id)}
     await trace.event({eventType:'step_started',step:'persist_candidates',message:`Persistiendo ${rows.length} candidatos evaluados`});for(let i=0;i<rows.length;i+=500)await upsertBatch(rows.slice(i,i+500));await trace.event({eventType:'step_completed',step:'persist_candidates',message:'Candidatos persistidos sin retirar discoveries anteriores',data:{rows:rows.length,spanish_market_rescues:spanishMarket}});
     const sourceErrors=country.wikidataErrors+country.tmdbErrors+spanishIndex.errors;if(sourceErrors)await trace.error(new Error(`${sourceErrors} fallos recuperables en fuentes de país`),{step:'country_resolution',source:'wikidata_tmdb',retryable:true,detail:{wikidata:country.wikidataErrors,tmdb:country.tmdbErrors,spanish_market_index:spanishIndex.errors}});
     const totalCandidates=candidates.length+basicsPhase.spanishCandidates.length,eligible=general+spain;
