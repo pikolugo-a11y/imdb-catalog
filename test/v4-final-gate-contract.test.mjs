@@ -54,11 +54,13 @@ test('acciones humanas sensibles del gate final muestran pendiente o confirmaci�
   assert.match(saga,/pendingLabel="Enviando…"/);
 });
 
-test('Series sólo presenta process_runs como historial de ejecución',()=>{
-  const list=read('lib/series-quality-query.js'),detail=read('lib/series-detail-query.js');
-  for(const source of [list,detail]){assert.match(source,/FROM process_runs/);assert.doesNotMatch(source,/FROM series_quality_runs/);}
+test('Series conserva process_runs en listados operativos pero no duplica historial batch dentro de la ficha',()=>{
+  const list=read('lib/series-quality-query.js'),detail=read('lib/series-detail-query.js'),page=read('app/calidad/series/[ratingKey]/page.js');
+  assert.match(list,/FROM process_runs/);assert.doesNotMatch(list,/FROM series_quality_runs/);
   assert.match(list,/PROC-SER-001/);assert.match(list,/PROC-SER-006/);
-  assert.match(detail,/PROC-SER-001/);assert.match(detail,/PROC-SER-006/);
+  assert.doesNotMatch(detail,/FROM process_runs/);assert.doesNotMatch(detail,/FROM series_quality_runs/);
+  assert.doesNotMatch(page,/Actividad reciente/);assert.doesNotMatch(page,/summary\.runs/);
+  assert.match(page,/Actualizar fuentes/);assert.match(page,/sin seguimiento batch/);
 });
 
 test('últimos detalles de accesibilidad y copy quedan normalizados',()=>{
