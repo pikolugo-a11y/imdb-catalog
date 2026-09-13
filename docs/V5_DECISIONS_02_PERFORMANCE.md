@@ -64,3 +64,37 @@ Hacer que la superficie Calidad · Series consulte un read model preparado para 
 ### Objetivo
 
 Que una consulta como `missing`, `unmapped`, `tracking` u otra clasificación equivalente pueda resolverse conceptualmente con `WHERE ... ORDER BY ... LIMIT ...` sobre datos derivados preparados, haciendo que el coste interactivo dependa de la selección solicitada y no del universo completo de episodios en cada request.
+
+---
+
+## PERF-03 — Reducir el fanout del detalle de Series
+
+**Decisión:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Problema observado
+
+El detalle de una serie realiza actualmente al menos **10 consultas lógicas a Neon** para un render completo: consulta base, siete lecturas paralelas de resumen/temporadas/anomalías/combinados/PikoQuality/runs/overrides, un count del scope de episodios y la consulta paginada de episodios. Varias vuelven a apoyarse en `series_episode_effective_status`, una vista compleja que deriva información sobre referencias, diagnósticos, disponibilidad y Plex.
+
+La ejecución en paralelo reduce parte del tiempo de pared, pero no elimina viajes Vercel↔Neon, planificación SQL repetida ni reevaluación de relaciones equivalentes.
+
+### Decisión V5
+
+Crear una **capa de lectura específica del detalle de Series** que agrupe en pocos paquetes coherentes la información necesaria de cabecera/resumen, evitando que cada bloque funcional añada una consulta independiente sobre datos derivados equivalentes.
+
+La lista de episodios se mantendrá como consulta paginada separada porque tiene navegación y filtros propios. El objetivo de diseño será que un render normal del detalle necesite aproximadamente **3–4 operaciones DB como máximo**, salvo evidencia posterior que justifique otro presupuesto.
+
+### Límites y condiciones
+
+- No sustituir el fanout por una única SQL monstruosa e inmantenible.
+- Reutilizar resultados derivados comunes cuando varios bloques necesiten la misma evidencia.
+- Mantener estado vivo donde sea funcionalmente necesario.
+- Preservar overrides manuales y reglas canónicas de Series.
+- No cargar todos los episodios para producir resúmenes.
+- Mantener paginación y filtros de episodios independientes.
+- Añadir un **test/presupuesto de número de consultas** para impedir regresiones silenciosas de fanout.
+- Cualquier read model o agregado añadido será derivado y reconstruible, nunca fuente de verdad.
+
+### Objetivo
+
+Reducir viajes, planificación repetida y trabajo duplicado en una de las superficies más ricas de PikoFilm, evitando que su coste crezca linealmente con cada nueva tarjeta o bloque funcional añadido al detalle de Series.
