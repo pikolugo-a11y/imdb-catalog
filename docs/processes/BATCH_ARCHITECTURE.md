@@ -22,7 +22,7 @@ Batch UI/planner
 
 El contexto puede cambiar `lane`, API governance, trazabilidad, cancelación cooperativa o concurrencia. No puede cambiar la receta funcional.
 
-Una intención individual que pueda superar la ventana HTTP de Vercel puede materializarse como **Batch durable de una sola entidad**. En ese caso Vercel sólo valida/encola y Railway ejecuta el mismo core canónico; no se considera una segunda receta ni obliga a mantener el request abierto.
+Una intención individual o global manual que pueda superar la ventana HTTP de Vercel puede materializarse como **Batch durable de una sola entidad lógica**. En ese caso Vercel sólo valida/encola y Railway ejecuta el mismo core canónico; no se considera una segunda receta ni obliga a mantener el request abierto.
 
 ## Persistencia vigente
 
@@ -70,7 +70,7 @@ Los adapters de worker no deben reimplementar estas responsabilidades ni contene
 |---|---|---|
 | `api` | `pikofilm-worker-api-v3` | ID-001, IV-001, DATA-001, DATA-002, SER-003, SER-004, SAGA-001, PER-001 |
 | `fast` | `pikofilm-batch-fast-worker-v1` | IV-002, DATA-003, MOV-001 |
-| `plex` | `pikofilm-batch-plex-worker-v2` | SER-002 |
+| `plex` | `pikofilm-batch-plex-worker-v2` | SER-001, SER-002 |
 | technical especializado | `pikofilm-technical-snapshot-worker-v1` | PQ-002 |
 
 Los nombres o sufijos no determinan si un servicio es legacy. Se clasifica por consumidores, comando y responsabilidad viva.
@@ -98,6 +98,7 @@ Una divergencia de commit/configuración entre Git y Railway se trata como incid
 | DATA-002 | `refreshRatingsCanonical` | EXACTA funcional |
 | DATA-003 | `executeData003Canonical` | EXACTA |
 | MOV-001 | `executeMov001Canonical` | EXACTA |
+| SER-001 | `syncPlexSeriesFastCore` | EXACTA |
 | SER-002 | `syncPlexSeriesDetailCore` | EXACTA |
 | SER-003 | `refreshSeriesUnitaryCanonical` | PARCIAL controlada |
 | SER-004 | `confirmSeriesEsAvailabilityCanonical` | PARCIAL controlada |
@@ -121,6 +122,21 @@ El refresco global de Sagas es un Batch común real:
 ### PER-001
 
 El Batch ejecuta directamente `refreshPersonFilmographyCanonical` dentro del child `process_run`; no llama al wrapper observado individual y por tanto no crea observabilidad anidada.
+
+### SER-001
+
+`syncPlexSeriesFastCore` sigue siendo la única receta funcional de la sincronización rápida global de Series. Su unidad durable es una sola entidad lógica `global`:
+
+- el botón manual `Actualizar Plex` sólo crea o reutiliza el parent Batch y responde tras encolar;
+- Railway Plex reclama el único item, crea el child `process_run` y ejecuta directamente `syncPlexSeriesFastCore`;
+- el worker renueva lease/heartbeat durante inventario, detalle físico y reconciliación; una caída puede recuperarse por el runtime común;
+- el inicio continúa siendo estrictamente manual y no queda habilitado para `PROC-PLAN-002`;
+- la concurrencia de lectura de páginas de episodios vive dentro del core y es acotada —3 por defecto, 1–6 configurable—; no multiplica items Batch ni réplicas;
+- el inventario completo se conserva para poder detectar altas, modificaciones y bajas; un inventario parcial falla cerrado y no genera bajas falsas;
+- sólo episodios nuevos/modificados solicitan media física detallada;
+- una vez terminado el core, el worker reconstruye el read model de Series y crea/reutiliza la continuación SER-002 si quedan series elegibles.
+
+Vercel deja de alojar el barrido largo y actúa exclusivamente como plano de control. **Paridad EXACTA**.
 
 ### SER-002
 
@@ -218,7 +234,7 @@ Reglas:
 
 `PROC-PLAN-002` puede iniciar Batch únicamente para procesos declarados seguros en la especificación V4. El planificador reutiliza los starters canónicos; no escribe directamente items simulando el comportamiento de cada dominio.
 
-El sync Plex global (`PROC-NOV-009`) permanece manual y **no** entra en el planner.
+Los sync Plex globales `PROC-NOV-009` y `PROC-SER-001` permanecen manuales y **no** entran en el planner. Que SER-001 use el Batch común como frontera durable no altera esta política.
 
 El endpoint horario de PLAN-002 debe atravesar el middleware privado, autenticar con `CRON_SECRET` de forma fail-closed y sólo entonces reconciliar/planificar/despachar. Si no existe un PLAN-002 `succeeded|running` reciente, Actividad debe mostrar el planificador como no saludable en vez de afirmar que está activo.
 
@@ -282,6 +298,7 @@ CI debe detectar, según aplique:
 - doble frontera `process_run`;
 - reaparición de tablas Batch V1 retiradas o de las lambdas FilmAffinity que dependían de ellas;
 - fuente gobernada consumida sin gate;
+- SER-001 global que vuelva a ejecutar el core pesado dentro del request de Vercel o que pierda su carácter estrictamente manual;
 - SER-002 manual que vuelva a ejecutar el core pesado dentro del request de Vercel;
 - pérdida de `NoPrefetchLink` que genere fanout de navegación o paginadores `disabled` todavía interactivos;
 - regresiones específicas de cada proceso, incluida la paridad SAGA-001 individual/global.
