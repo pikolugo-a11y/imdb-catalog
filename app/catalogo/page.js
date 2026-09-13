@@ -6,6 +6,7 @@ import CatalogFiltersV4 from '@/components/CatalogFiltersV4';
 import {refreshCatalogSeriesProfilesAction} from './actions';
 import {CATALOG_V4_PAGE_SIZE,catalogV4Href,getCatalogV4,getCatalogV4Genres,parseCatalogV4} from '@/lib/catalog-v4-queries';
 import './catalog-v4.css';
+import './catalog-series-v5.css';
 
 export const dynamic='force-dynamic';
 
@@ -25,7 +26,7 @@ export default async function Catalogo({searchParams}){
   const total=Number(result.summary.total||0),pages=result.pageCount,profileDue=Number(result.summary.profile_due||0);
   if(!s.invalidYearRange&&total>0&&Number(raw.page||1)>pages)redirect(catalogV4Href(s,{page:pages}));
   const first=total?((s.page-1)*CATALOG_V4_PAGE_SIZE)+1:0,last=Math.min(s.page*CATALOG_V4_PAGE_SIZE,total),returnTo=catalogV4Href(s);
-  const tabHref=scope=>catalogV4Href(s,{scope,sort:scope==='series'&&s.plex==='without_plex'?'spain':'score',dir:scope==='series'&&s.plex==='without_plex'?'desc':'desc',page:1});
+  const tabHref=scope=>catalogV4Href(s,{scope,sort:scope==='series'&&s.plex==='without_plex'?'spain':'score',dir:'desc',page:1});
   const pageHref=page=>catalogV4Href(s,{page});
   const clearHref=catalogV4Href(s,{q:'',plex:'all',genres:[],genreMode:'any',yearFrom:null,yearTo:null,page:1});
   const sagaHref=`/sagas?catalogReturn=${encodeURIComponent(returnTo)}`;
