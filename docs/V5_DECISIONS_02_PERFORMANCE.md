@@ -128,3 +128,37 @@ La implementación concreta —columna derivada, trigramas u otra estrategia Pos
 ### Objetivo
 
 Que la búsqueda del Catálogo siga siendo rápida al crecer 5x–10x y que su coste deje de depender principalmente de escanear y normalizar todos los títulos en cada consulta.
+
+---
+
+## PERF-05 — Convertir `catalog_read_model` en un read model materializado de lectura
+
+**Decisión:** APROBADA  
+**Fecha:** 2026-09-13
+
+### Problema observado
+
+`catalog_read_model` se denomina read model, pero actualmente es una **VIEW PostgreSQL no materializada**. Sus joins, subqueries y derivaciones vuelven a expandirse en cada consulta. Además, algunos consumidores vuelven a derivar información —como géneros— que pertenece conceptualmente al mismo dominio de lectura.
+
+### Decisión V5
+
+Convertir la proyección de Catálogo en un **read model derivado, materializado y regenerable**, preparado específicamente para las lecturas frecuentes del frontend y otros consumidores. La responsabilidad deberá quedar explícita:
+
+`datos canónicos → proyección/reconciliación → catalog_read_model de lectura → consumidores`
+
+El read model contendrá únicamente campos cuya persistencia esté justificada por frecuencia de lectura y coste de derivación: identidad, títulos, año, tipo, estado editorial, PikoScore y otras señales derivadas necesarias; géneros, países, Plex u otros campos se persistirán sólo si las mediciones y el diseño final justifican hacerlo.
+
+### Límites y condiciones
+
+- Nunca será fuente de verdad ni recibirá decisiones funcionales directas.
+- Debe ser completamente reconstruible desde fuentes canónicas.
+- Actualización incremental por entidad cuando cambien inputs relevantes.
+- Debe existir reconciliación/reconstrucción completa de seguridad.
+- No reconstruir toda la proyección ante cualquier cambio menor.
+- No persistir campos indiscriminadamente: cada dato materializado debe justificar coste de lectura frente a coste de mantenimiento.
+- Evitar duplicar derivaciones equivalentes en consumidores distintos.
+- La implementación debe preservar semántica, frescura necesaria y autoridad de los datos canónicos.
+
+### Objetivo
+
+Reducir CPU/IO repetida de Neon y simplificar las consultas interactivas, haciendo que un verdadero read model abarate la lectura en lugar de limitarse a encapsular una consulta compleja.
