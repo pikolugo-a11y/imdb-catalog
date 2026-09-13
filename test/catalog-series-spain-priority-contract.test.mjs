@@ -10,6 +10,9 @@ const profileQuery=fs.readFileSync('lib/catalog-series-profile-query.js','utf8')
 const detail=fs.readFileSync('app/catalogo/[imdbId]/page.js','utf8');
 const batch=fs.readFileSync('lib/series-batch.js','utf8');
 const worker=fs.readFileSync('worker/batch-api-worker.mjs','utf8');
+const discovery=fs.readFileSync('worker/imdb-discovery.mjs','utf8');
+const rescueSettings=fs.readFileSync('lib/news-discovery-settings.mjs','utf8');
+const criteria=fs.readFileSync('app/novedades/criterios/page.js','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
 
 test('Series sin Plex usan prioridad España sin sustituir PikoScore',()=>{
@@ -52,4 +55,17 @@ test('el backfill de perfiles es durable en Railway API y visible en Operaciones
   assert.match(worker,/refreshCatalogSeriesProfileCanonical/);
   assert.match(display,/'PROC-SER-007':\{name:'Actualizar perfil de catálogo de Series'\}/);
   assert.match(display,/catalog_series_profile_manual:'Manual desde Catálogo'/);
+});
+
+test('Discovery rescata series españolas de mercado sin rebajar el umbral global',()=>{
+  assert.match(rescueSettings,/SPANISH_SERIES_MARKET_RESCUE=Object\.freeze\(\{minRating:6\.5,minVotes:1000\}\)/);
+  assert.match(discovery,/wikidataSpanishImdbIds/);
+  assert.match(discovery,/wdt:P495 wd:Q29/);
+  assert.match(discovery,/spanishSeriesEligibility/);
+  assert.match(discovery,/mainVotes=Math\.min\(settings\.movie\.general\.minVotes,settings\.movie\.spain\.minVotes,settings\.series\.general\.minVotes\)/);
+  assert.doesNotMatch(discovery,/mainVotes=Math\.min\([^\n]*settings\.series\.spain\.minVotes/);
+  assert.match(discovery,/matchedRule=c\.general\?'general':c\.marketRescue\?'spain_market':'spain'/);
+  assert.match(discovery,/countryEvidence:'wikidata:P495=Q29'/);
+  assert.match(discovery,/spanish_market_rescues/);
+  assert.match(criteria,/rescate de mercado/i);
 });
