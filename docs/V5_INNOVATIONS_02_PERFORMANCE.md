@@ -1,7 +1,8 @@
 # PikoFilm V5 — Innovaciones 02: Rendimiento
 
-Estado: **EN REVISIÓN**  
+Estado: **COMPLETADA**  
 Fecha de inicio: **2026-09-14**  
+Fecha de cierre: **2026-09-14**  
 Rama: `audit/v5-02-performance`
 
 Este documento registra las decisiones de la Fase 3 del Punto 2 — Rendimiento. Se revisan una a una y cada decisión se persiste antes de presentar la siguiente. Sólo las innovaciones aprobadas se incorporan a `docs/ROADMAP_INNOVADOR.md`.
@@ -131,3 +132,40 @@ El salto cambia la pregunta de rendimiento de «¿cómo hacemos más rápida la 
 ### Horizonte
 
 Innovación de largo plazo. No implica implementación automática en V5/V6/V7. Requiere una futura decisión específica, prototipo de escritorio y evaluación profunda de sincronización, seguridad, portabilidad y coste de migración.
+
+---
+
+## INNO-PERF-05 — PikoFilm Compute Mesh
+
+**Decisión:** RECHAZADA  
+**Fecha:** 2026-09-14
+
+### Idea evaluada
+
+Convertir distintos equipos disponibles —PC, NAS, servidores domésticos o nodos cloud— en una malla coordinada de ejecución, repartiendo automáticamente trabajos de PikoFilm entre los nodos según proximidad a Plex, capacidad, disponibilidad o coste.
+
+### Motivo del rechazo
+
+No encaja con la realidad ni con la escala personal del producto. PikoFilm debe funcionar excelentemente con un único ordenador; no debe presuponer que el usuario compre, mantenga o administre infraestructura adicional para una aplicación personal.
+
+Aunque una arquitectura distribuida pueda ser técnicamente interesante, aquí supondría una enorme complejidad de coordinación, seguridad y recuperación para resolver un problema que el producto no tiene. La innovación futura debe reducir dependencia de infraestructura o transformar la experiencia, no crear una pequeña plataforma de computación doméstica como requisito implícito.
+
+### Consecuencia
+
+- No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
+- `INNO-PERF-04 — PikoFilm Native / Local-First` debe diseñarse para obtener valor completo en un único ordenador.
+- La capacidad cloud podrá seguir existiendo para tareas 24/7 o integraciones, pero no se plantea una malla personal de equipos como dirección de producto.
+
+---
+
+## Cierre de la ronda
+
+Se han revisado individualmente las cinco innovaciones mínimas exigidas para el Punto 2 — Rendimiento.
+
+- `INNO-PERF-01`: RECHAZADA.
+- `INNO-PERF-02`: RECHAZADA.
+- `INNO-PERF-03`: RECHAZADA.
+- `INNO-PERF-04`: APROBADA y registrada en `docs/ROADMAP_INNOVADOR.md` como `INNO-02 — PikoFilm Native / Local-First`.
+- `INNO-PERF-05`: RECHAZADA.
+
+Con la auditoría, las diez decisiones V5 y esta ronda de innovación completadas, el Punto 2 — Rendimiento queda formalmente listo para cierre.
