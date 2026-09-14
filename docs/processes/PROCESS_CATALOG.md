@@ -43,7 +43,7 @@ Estados de paridad:
 | PROC-MOV-001 | Películas | Validar archivo físico | individual | sí | `executeMov001Canonical` | Vercel / Railway FAST | EXACTA |
 | PROC-MOV-002 | Películas | Aceptar finding como excepción | manual | no | `setMovieQualityFindingAction` | Vercel | NO APLICA |
 | PROC-MOV-003 | Películas | Reset tras corrección física | manual | no | `resetTitleForFullReprocessing` | Vercel | NO APLICA |
-| PROC-SER-001 | Series | Sync Plex rápido global | global | no | `syncPlexSeriesFastCore` | Vercel | SIN BATCH |
+| PROC-SER-001 | Series | Sync Plex rápido global | global manual durable | sí (1 unidad global) | `syncPlexSeriesFastCore` | Railway Plex; Vercel sólo encola | EXACTA |
 | PROC-SER-002 | Series | Detalle Plex de serie | individual durable + batch | sí | `syncPlexSeriesDetailCore` | Railway Plex; Vercel sólo encola | EXACTA |
 | PROC-SER-003 | Series | Referencia TMDb | individual | sí | `refreshSeriesUnitaryCanonical` | Vercel / Railway API | PARCIAL controlada |
 | PROC-SER-004 | Series | Disponibilidad España | individual | sí | `confirmSeriesEsAvailabilityCanonical` | Vercel / Railway API | PARCIAL controlada |
@@ -79,7 +79,7 @@ Un proceso usa Batch común cuando una operación individual canónica puede rep
 
 Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
 
-`PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y el sync Plex global permanecen manuales y nunca forman parte del planificador automático.**
+`PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En SER-001 el Batch es sólo la frontera durable de ejecución de una unidad global, no una autorización para automatizar el barrido Plex.
 
 ## Procesos con Batch común
 
@@ -106,6 +106,20 @@ Individual `refreshRatingsAction` -> `refreshRatingsForTitle` -> `refreshRatings
 ### MOV-001
 
 Individual y Railway FAST usan `executeMov001Canonical`. **EXACTA**.
+
+### SER-001
+
+`PROC-SER-001` conserva una sola receta funcional: `syncPlexSeriesFastCore`.
+
+- El botón manual `Actualizar Plex` en `/calidad/series` ya no ejecuta el barrido dentro del request de Vercel: crea o reutiliza un Batch durable con una única entidad lógica `global` en el pool `plex` y responde tras encolar.
+- Railway Plex crea el child `process_run`, renueva lease/heartbeat durante las fases largas y ejecuta directamente el core canónico; el worker no contiene una segunda receta de sincronización.
+- El inicio sigue siendo estrictamente manual. Ni `PROC-PLAN-002` ni otro planificador pueden lanzar este barrido global.
+- El core sigue leyendo el inventario completo de series y episodios para detectar altas, cambios y bajas. Las páginas ligeras de episodios se leen con concurrencia interna acotada —3 por defecto, configurable entre 1 y 6— sin convertir cada página en un item Batch.
+- La protección fail-closed se mantiene: un inventario incompleto no provoca bajas de la biblioteca afectada.
+- El detalle físico se solicita sólo para episodios nuevos o modificados; las bajas se limpian por diferencia.
+- Tras finalizar el barrido, Railway reconstruye el read model de Series y sólo entonces crea/reutiliza la continuación `PROC-SER-002` para cualquier detalle que siga siendo elegible.
+
+La semántica funcional del sync no cambia; cambia el alojamiento y se reduce el tiempo de lectura Plex. **EXACTA**.
 
 ### SER-002
 
