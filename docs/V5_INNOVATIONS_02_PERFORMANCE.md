@@ -76,3 +76,58 @@ La ronda de innovación debe reservarse para ideas que cambien de verdad el para
 - No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
 - Los eventos de dominio pueden volver a aparecer en fases de arquitectura, procesos, observabilidad o implementación sin considerarse por ello innovación.
 - Las siguientes propuestas de esta ronda deberán superar explícitamente un listón de ruptura mucho mayor.
+
+---
+
+## INNO-PERF-04 — PikoFilm Native / Local-First
+
+**Decisión:** APROBADA  
+**Fecha:** 2026-09-14
+
+### Idea aprobada
+
+Transformar PikoFilm, a largo plazo, de una aplicación web ejecutada principalmente en Vercel a una plataforma instalada cuyo motor, almacenamiento de lectura y parte de los procesos se ejecutan directamente en el sistema operativo.
+
+El objetivo no es envolver la web existente en una ventana, sino cambiar el lugar donde vive la ejecución principal de PikoFilm. En escritorio, una aplicación instalada para Windows, macOS y Linux podría mantener una base local sincronizada, índices locales, lógica de lectura y workers propios. La nube conservaría el papel de fuente de verdad central, sincronización, coordinación, respaldo e integraciones que requieran disponibilidad continua.
+
+### Ruptura de paradigma
+
+Modelo actual aproximado:
+
+`Sistema operativo → navegador → Vercel → Neon → Vercel → navegador`
+
+Modelo futuro propuesto:
+
+`Sistema operativo → PikoFilm instalado → motor local + BBDD local`
+
+con sincronización controlada:
+
+`PikoFilm local ↔ capa segura de sincronización cloud ↔ Neon / servicios`
+
+La navegación ordinaria —búsquedas, filtros, ordenaciones, fichas, Personas, Sagas y otras superficies de lectura— podría resolverse localmente sin viajes a Vercel/Neon por cada interacción. Las mutaciones confirmadas en cloud se propagarían como cambios incrementales para que el sistema siguiera siendo vivo y una película recién añadida apareciera inmediatamente tras su confirmación.
+
+### Alcance potencial
+
+- Prioridad inicial en aplicaciones de escritorio instalables para Windows/macOS/Linux.
+- Posible extensión posterior a iPhone/iPad/Android, respetando las restricciones de ejecución en segundo plano de cada plataforma.
+- Base local sincronizada para lectura rápida y posibilidad de funcionamiento parcial offline.
+- Ejecución local de determinadas tareas y workers cuando sea seguro y útil.
+- Posible comunicación directa con Plex en la red local, evitando recorridos cloud innecesarios para procesos que puedan resolverse en el dispositivo.
+- Vercel dejaría de ser necesariamente el camino normal de ejecución del cliente instalado y podría quedar como web complementaria, API o desaparecer de determinadas rutas futuras.
+
+### Guardrails obligatorios
+
+- Neon o su sucesor cloud continúa siendo la autoridad canónica; la réplica local no se convierte en fuente de verdad global.
+- Nunca incrustar credenciales privilegiadas de Neon en el binario distribuido.
+- La sincronización debe pasar por una capa segura, autenticada y auditable.
+- Diseñar resolución de conflictos, versionado de esquema, recuperación y reconstrucción de la réplica local.
+- La transición debe ser progresiva: separar UI, motor funcional y sincronización antes de intentar mover toda la aplicación.
+- No asumir que todo proceso debe moverse al cliente; los trabajos 24/7, coordinados o sensibles pueden seguir en infraestructura cloud.
+
+### Valor potencial
+
+El salto cambia la pregunta de rendimiento de «¿cómo hacemos más rápida la consulta Vercel→Neon?» a «¿por qué esta interacción necesita Internet?». El objetivo es una experiencia cercana a una aplicación nativa, con respuestas locales inmediatas y la nube reservada para sincronizar, coordinar y respaldar.
+
+### Horizonte
+
+Innovación de largo plazo. No implica implementación automática en V5/V6/V7. Requiere una futura decisión específica, prototipo de escritorio y evaluación profunda de sincronización, seguridad, portabilidad y coste de migración.
