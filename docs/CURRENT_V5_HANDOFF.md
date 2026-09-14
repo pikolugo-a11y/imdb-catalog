@@ -1,6 +1,6 @@
 # PikoFilm V5 — Handoff actual
 
-Fecha: 2026-09-14
+Fecha: 2026-09-15
 
 Este documento es el punto de reentrada canónico para continuar la definición de V5 sin depender del historial del chat.
 
@@ -141,14 +141,16 @@ La Fase 2 deberá revisar al menos 10 propuestas una a una. La auditoría identi
 
 ## Contexto funcional reciente ya cerrado
 
-Durante la revisión de Rendimiento se corrigieron problemas reales detectados usando la aplicación. No reabrirlos salvo nueva evidencia.
+Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reales detectados usando la aplicación. No reabrirlos salvo nueva evidencia.
 
 - PR #553: capítulos combinados dobles/triples.
 - PR #556: corrección doble→triple.
 - PR #557: prioridad España y perfil TMDb de Series.
 - PR #558: detalle de Calidad · Series aligerado.
 - PR #560: exclusión manual reversible de episodios oficiales en Calidad · Series mediante `series_episode_overrides.decision='unavailable'`.
-- PR #560 está desplegado en Vercel Production en el commit `bccf8ffe81d8eaeda22c547e97c7c6e9ad920132`; la migración Neon branch-first también quedó aplicada en producción.
+- PR #563: margen canónico de 7 días desde el estreno antes de convertir una ausencia física en faltante exigible; listado, detalle y read models quedan alineados.
+- PR #564: conciliación automática adicional de episodios combinados Plex↔TMDb. Mantiene temporada+episodio como señal primaria y añade evidencia fuerte por numeración explícita de archivos (`01x01 - 01x02`, etc.) o, de forma conservadora, por títulos oficiales consecutivos + duración. Soporta combinados explícitos de varios episodios y protege decisiones manuales y coincidencias exactas. Caso real de referencia: Shin Chan.
+- PR #564 quedó mergeado en `main` como `3e34244f7c306cb84dc527198852e82bbd43fc0c`; CI #712 verde y los workers Railway Plex/API desplegados automáticamente en ese commit. No se realizó mutación manual de Neon ni deploy de Vercel Production.
 
 ## Persistencia y documentos canónicos
 
