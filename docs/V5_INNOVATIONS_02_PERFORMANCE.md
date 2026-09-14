@@ -6,6 +6,8 @@ Rama: `audit/v5-02-performance`
 
 Este documento registra las decisiones de la Fase 3 del Punto 2 — Rendimiento. Se revisan una a una y cada decisión se persiste antes de presentar la siguiente. Sólo las innovaciones aprobadas se incorporan a `docs/ROADMAP_INNOVADOR.md`.
 
+Criterio reforzado desde INNO-PERF-03: esta fase exige propuestas verdaderamente rompedoras, capaces de cambiar de forma sustancial la arquitectura o la experiencia de rendimiento de PikoFilm. Mejoras incrementales, patrones técnicos habituales o simples cambios de implementación no alcanzan por sí solos el listón de innovación de esta fase.
+
 ---
 
 ## INNO-PERF-01 — Snapshots instantáneos para superficies de lectura
@@ -51,3 +53,26 @@ Las mejoras de rendimiento deben priorizar rutas de lectura deterministas, presu
 - No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
 - Se mantiene como principio que una misma operación debe tener una estrategia de lectura predecible y observable.
 - La gestión de carga se resolverá preferentemente mediante arquitectura, colas, read models, límites y capacidad, no mediante cambios silenciosos de comportamiento en el frontal.
+
+---
+
+## INNO-PERF-03 — Actualización instantánea por eventos
+
+**Decisión:** RECHAZADA  
+**Fecha:** 2026-09-14
+
+### Idea evaluada
+
+Hacer que cambios relevantes del sistema emitan eventos de dominio para actualizar o invalidar de forma granular los read models, contadores y superficies afectadas, reduciendo polling y refrescos generales.
+
+### Motivo del rechazo
+
+Aunque puede ser una buena decisión de arquitectura en determinados contextos, no constituye una innovación suficientemente rompedora para esta fase. Es un patrón técnico conocido y, en PikoFilm, se percibe principalmente como una mejora de implementación y coordinación entre componentes, no como un salto cualitativo en rendimiento o experiencia.
+
+La ronda de innovación debe reservarse para ideas que cambien de verdad el paradigma de uso o de ejecución del sistema, no para etiquetar como innovación cualquier optimización arquitectónica razonable.
+
+### Consecuencia
+
+- No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
+- Los eventos de dominio pueden volver a aparecer en fases de arquitectura, procesos, observabilidad o implementación sin considerarse por ello innovación.
+- Las siguientes propuestas de esta ronda deberán superar explícitamente un listón de ruptura mucho mayor.
