@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {buildAutomaticCombinedCoverage,extractEpisodeMarkers,titleSimilarity} from '../lib/series-combined-auto-detection.mjs';
 
 const ref=(episode,name,runtime=8,season=1)=>({season_number:season,episode_number:episode,name,runtime_minutes:runtime});
@@ -75,4 +76,15 @@ test('no infiere por títulos con evidencia textual débil o duración incompati
   assert.equal(buildAutomaticCombinedCoverage({refs,plex:badTitles}).coverage.size,0);
   const badDuration=[plex(1,1,'Serie - 01x01 - Uno correcto _ Dos correcto _ Tres correcto.mp4',{duration:5})];
   assert.equal(buildAutomaticCombinedCoverage({refs,plex:badDuration}).coverage.size,0);
+});
+
+test('el diagnóstico canónico lee nombres de archivo y aplica manual, exacto, combinado automático y missing en ese orden',()=>{
+  const core=fs.readFileSync(new URL('../lib/series-diagnostics-core.mjs',import.meta.url),'utf8');
+  assert.match(core,/plex_files[\s\S]*file_path[\s\S]*file_paths/);
+  assert.match(core,/buildAutomaticCombinedCoverage\(\{refs,plex\}\)/);
+  const manual=core.indexOf('const manual=manualCoverage.get(officialKey)');
+  const exact=core.indexOf('const p=matchPlexBySeasonEpisode');
+  const automatic=core.indexOf('const automatic=automaticCombined.coverage.get(officialKey)');
+  const missing=core.indexOf("status:'missing'",automatic);
+  assert.ok(manual>=0&&exact>manual&&automatic>exact&&missing>automatic);
 });
