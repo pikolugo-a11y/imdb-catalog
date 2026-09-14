@@ -125,11 +125,19 @@ La auditoría contrastó Git con Neon vivo y no realizó ninguna mutación. Foto
 
 Fase 2 — PROPUESTAS: **ACTIVA**.
 
-SIGUIENTE PASO EXACTO: presentar al usuario `DB-01 — Contrato único de retención por clase de dato` y pedir APROBAR/RECHAZAR. No presentar `DB-02` hasta persistir la decisión de `DB-01`.
+Decisiones persistidas en `docs/V5_DECISIONS_03_DATABASE.md`:
 
-`DB-01` debe proponer que la retención deje de depender de cada módulo y se defina centralmente por categoría: estado canónico sin TTL, histórico operativo corto con 30 días por defecto, auditoría funcional/manual con retención explícita más larga, caché/proyección reconstruible con política propia y snapshots técnicos con TTL definido. Debe preservar decisiones manuales y evidencia funcional relevante; no es una purga indiscriminada.
+- `DB-01 — Contrato único de retención por clase de dato`: **APROBADA**.
+  - Histórico operativo/técnico: 30 días por defecto y purgable sin preocupación por conservar historia antigua.
+  - Invariante obligatoria: **la foto actual vigente nunca puede desaparecer por una purga de histórico**.
+  - Estado vigente, datos canónicos y decisiones manuales no pueden depender de que sobrevivan logs/históricos; deben persistirse como foto actual o ser reconstruibles de forma determinista desde fuentes no sujetas a esa purga.
+  - La decisión no autoriza todavía ninguna purga ni mutación de Neon.
 
-La Fase 2 deberá revisar al menos 10 propuestas una a una. La auditoría identifica como mínimo: retención, filmografía, write amplification de read models, reconcile de Series, doble modelo de géneros, ledger/drift de migraciones, ownership/canonicalidad por tabla, índices, raw payloads, guardrails de almacenamiento, constraints selectivas y tablas legacy/vacías.
+SIGUIENTE PASO EXACTO: presentar al usuario `DB-02 — Filmografía acotada y orientada a relevancia` y pedir APROBAR/RECHAZAR. No presentar `DB-03` hasta persistir la decisión de `DB-02`.
+
+`DB-02` debe abordar `person_filmography`: evitar que enriquecer Personas implique conservar indefinidamente todos los créditos externos de todas las personas. Mantener una foto actual suficiente para las funcionalidades reales de PikoFilm, con reglas de relevancia/alcance y reconstrucción/refresco, preservando siempre la información necesaria para la persona y sus relaciones con el catálogo. No confundir esta optimización con borrar el estado actual necesario.
+
+La Fase 2 deberá revisar al menos 10 propuestas una a una. La auditoría identifica además: write amplification de read models, reconcile de Series, doble modelo de géneros, ledger/drift de migraciones, ownership/canonicalidad por tabla, índices, raw payloads, guardrails de almacenamiento, constraints selectivas y tablas legacy/vacías.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -149,6 +157,7 @@ Durante la revisión de Rendimiento se corrigieron problemas reales detectados u
 - Decisiones Punto 2: `docs/V5_DECISIONS_02_PERFORMANCE.md`
 - Innovaciones Punto 2: `docs/V5_INNOVATIONS_02_PERFORMANCE.md`
 - Auditoría Punto 3: `docs/V5_AUDIT_03_DATABASE.md`
+- Decisiones Punto 3: `docs/V5_DECISIONS_03_DATABASE.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
