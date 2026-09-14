@@ -55,3 +55,37 @@ La autonomía siempre estará limitada por guardrails: presupuesto máximo, conc
 **Visión:** evolucionar Actividad + Calendario + Operaciones hacia un auténtico sistema operativo del catálogo.
 
 **Horizonte orientativo:** V6/V7 o experimento posterior, sujeto a una decisión futura específica.
+
+---
+
+### INNO-02 — PikoFilm Native / Local-First
+
+**Origen:** `INNO-PERF-04` — Punto 2, Rendimiento  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-14
+
+Transformar PikoFilm, a largo plazo, de una aplicación web ejecutada principalmente en Vercel a una plataforma instalada cuyo motor, almacenamiento de lectura y parte de los procesos se ejecuten directamente en el sistema operativo.
+
+La visión prioriza escritorio —Windows, macOS y Linux— y no consiste en envolver la web existente. Una instalación de PikoFilm podría mantener una base local sincronizada, índices y motor de lectura propios y determinados workers locales. La nube seguiría siendo la autoridad central y se reservaría principalmente para sincronización, coordinación, respaldo, seguridad e integraciones que requieran disponibilidad continua.
+
+**Cambio de paradigma:**
+
+`SO → navegador → Vercel → Neon → Vercel → navegador`
+
+podría evolucionar hacia:
+
+`SO → PikoFilm instalado → motor local + BBDD local`
+
+con:
+
+`PikoFilm local ↔ sincronización cloud segura ↔ Neon / servicios`
+
+Esto permitiría que búsquedas, filtros, ordenaciones, fichas y otras interacciones de lectura se resolvieran localmente, mientras las altas y modificaciones confirmadas se sincronizan incrementalmente para conservar el carácter vivo de PikoFilm. Una película recién añadida no dependería de un snapshot periódico para hacerse visible.
+
+También abre la puerta a ejecutar localmente tareas apropiadas y a comunicarse directamente con Plex dentro de la red local, evitando infraestructura cloud en recorridos donde no aporte valor. Vercel podría dejar de formar parte del camino normal de la aplicación instalada y conservarse sólo donde siga siendo útil.
+
+Guardrails: la réplica local nunca será la autoridad global, no se distribuirán credenciales privilegiadas de Neon, la sincronización deberá ser autenticada/auditable y existirán mecanismos de conflictos, migración de esquema, reconstrucción y recuperación.
+
+**Visión:** cambiar dónde vive PikoFilm: de una web que consulta un servidor a una aplicación instalada local-first sincronizada con su nube.
+
+**Horizonte orientativo:** apuesta de largo plazo y prototipo futuro de escritorio; no compromete V5/V6/V7 sin una evaluación y aprobación posterior específica.

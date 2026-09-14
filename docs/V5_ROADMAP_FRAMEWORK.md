@@ -112,88 +112,88 @@ Por tanto, esta revisión V5 y cualquier roadmap futuro deben respetar estas reg
    - tokens, tipografía, controles, cards, tablas y responsive
 
 10. **Código legacy y deuda técnica**
-    - componentes antiguos
-    - rutas obsoletas
-    - shims
-    - módulos duplicados
-    - utilidades equivalentes
+   - componentes antiguos
+   - rutas obsoletas
+   - shims
+   - módulos duplicados
+   - utilidades equivalentes
 
 11. **Tests**
-    - unitarios
-    - integración
-    - contratos
-    - E2E
-    - accesibilidad
-    - fallos reales de runtime
+   - unitarios
+   - integración
+   - contratos
+   - E2E
+   - accesibilidad
+   - fallos reales de runtime
 
 12. **CI/CD**
-    - cobertura real de GitHub Actions
-    - huecos aunque CI esté verde
-    - tiempos del pipeline
-    - gates de merge
-    - preproducción
+   - cobertura real de GitHub Actions
+   - huecos aunque CI esté verde
+   - tiempos del pipeline
+   - gates de merge
+   - preproducción
 
 13. **Seguridad**
-    - secretos
-    - permisos
-    - endpoints internos
-    - acciones peligrosas
-    - validación de inputs
-    - exposición de datos técnicos
+   - secretos
+   - permisos
+   - endpoints internos
+   - acciones peligrosas
+   - validación de inputs
+   - exposición de datos técnicos
 
 14. **Coste**
-    - Neon
-    - Railway
-    - Vercel
-    - almacenamiento
-    - logs
-    - consultas repetidas
-    - automatismos innecesarios
+   - Neon
+   - Railway
+   - Vercel
+   - almacenamiento
+   - logs
+   - consultas repetidas
+   - automatismos innecesarios
 
 15. **Mantenibilidad**
-    - implementación canónica
-    - documentación
-    - nomenclatura
-    - estructura de carpetas
-    - migraciones
-    - ramas/restos históricos
+   - implementación canónica
+   - documentación
+   - nomenclatura
+   - estructura de carpetas
+   - migraciones
+   - ramas/restos históricos
 
 16. **Escalabilidad**
-    - crecimiento 10x de catálogo
-    - crecimiento 10x de automatizaciones
-    - crecimiento 10x de actividad
-    - límites DB/workers/APIs
+   - crecimiento 10x de catálogo
+   - crecimiento 10x de automatizaciones
+   - crecimiento 10x de actividad
+   - límites DB/workers/APIs
 
 17. **Consistencia funcional**
-    - paridad manual / Batch / automático
-    - evitar reglas duplicadas
-    - una fuente de verdad por proceso
+   - paridad manual / Batch / automático
+   - evitar reglas duplicadas
+   - una fuente de verdad por proceso
 
 18. **Recuperación y resiliencia**
-    - caída/lentitud de Plex
-    - caída de Railway
-    - degradación de Neon
-    - timeout/muerte de Vercel
-    - recuperación automática y segura
+   - caída/lentitud de Plex
+   - caída de Railway
+   - degradación de Neon
+   - timeout/muerte de Vercel
+   - recuperación automática y segura
 
 19. **Calidad de datos**
-    - identidades
-    - duplicados
-    - inconsistencias Plex-catálogo
-    - datos parciales
-    - estados imposibles o contradictorios
+   - identidades
+   - duplicados
+   - inconsistencias Plex-catálogo
+   - datos parciales
+   - estados imposibles o contradictorios
 
 20. **Gobierno del producto**
-    - qué es canónico en V4
-    - qué se puede cambiar en V5
-    - qué áreas están cerradas
-    - qué se simplifica, rediseña o elimina
+   - qué es canónico en V4
+   - qué se puede cambiar en V5
+   - qué áreas están cerradas
+   - qué se simplifica, rediseña o elimina
 
 ## Estado de revisión
 
 - Punto 1 — Arquitectura general: **CERRADO — auditoría completada; 15/15 propuestas V5 aprobadas; ronda de innovación completada; INNO-01 aprobada** (`V5_AUDIT_01_ARCHITECTURE.md`; decisiones en `V5_DECISIONS_01_ARCHITECTURE.md` y `V5_DECISIONS_01_ARCHITECTURE_10_15.md`; innovación aprobada en `ROADMAP_INNOVADOR.md`)
-- Punto 2 — Rendimiento: **PENDIENTE**
-- Punto 3 — Base de datos y modelo de datos: **PENDIENTE**
+- Punto 2 — Rendimiento: **CERRADO — auditoría completada; 10/10 propuestas V5 aprobadas; 5 innovaciones revisadas; INNO-PERF-04 aprobada y registrada como INNO-02 — PikoFilm Native / Local-First** (`V5_AUDIT_02_PERFORMANCE.md`; `V5_DECISIONS_02_PERFORMANCE.md`; `V5_INNOVATIONS_02_PERFORMANCE.md`; `ROADMAP_INNOVADOR.md`)
+- Punto 3 — Base de datos y modelo de datos: **SIGUIENTE — iniciar Fase 1 con auditoría extremadamente detallada del sistema real**
 - Punto 4 — Procesos automáticos y Batch: **PENDIENTE**
 - Punto 5 — Observabilidad y errores: **PENDIENTE**
 - Punto 6 — Workers y servicios persistentes: **PENDIENTE**
