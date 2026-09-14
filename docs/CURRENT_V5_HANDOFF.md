@@ -102,22 +102,34 @@ CERRADO.
 
 ### Punto 3 — Base de datos y modelo de datos
 
-SIGUIENTE PUNTO.
+ACTIVO. Rama de trabajo: `audit/v5-03-database`.
 
-El siguiente paso exacto es iniciar la **Fase 1 — auditoría extremadamente detallada** del sistema real de datos. Debe revisarse, entre otros aspectos:
+Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_03_DATABASE.md` (commit inicial `db6e4b16...`).
 
-- esquema real de Neon y dependencias entre tablas/vistas;
-- datos canónicos frente a read models/proyecciones;
-- tablas redundantes, históricas, temporales u obsoletas;
-- tamaños, crecimiento, churn, dead tuples y bloat;
-- índices existentes, ausentes, duplicados o poco útiles;
-- claves, constraints, integridad referencial e identidades;
-- retención y limpieza, especialmente tablas operativas/logs;
-- migraciones y compatibilidad con el workflow branch-first;
-- patrones reales de escritura/lectura desde Vercel y Railway;
-- coste, escalabilidad, recuperación y riesgos de consistencia.
+La auditoría contrastó Git con Neon vivo y no realizó ninguna mutación. Foto final destacada:
 
-La auditoría debe contrastar Git con Neon vivo y persistirse en un nuevo documento del Punto 3 antes de presentar ninguna propuesta `DB-xx`.
+- `neondb` ronda **869 MB** de tamaño total;
+- `public` contiene 69 tablas, 7 views, 4 secuencias y 0 materialized views;
+- `person_filmography` es la relación más grande (~204 MB) con 549.892 filas, aunque sólo 9.563 de 144.866 personas tienen filmografía enriquecida;
+- si se enriqueciera todo el universo a densidad media similar, el modelo actual rondaría ~8,3 millones de filas: es un riesgo de modelo, no sólo de query;
+- `series_diagnostics` acumula ~1,38 M inserts y ~1,32 M deletes para ~62k filas vivas;
+- `series_quality_read_model` acumula ~761k updates para 971 filas vivas;
+- `process_run_events` (~59 MB), `process_runs` (~52 MB) y `admin_events` (~41 MB) hacen que observabilidad/histórico sea ya una fracción grande de la base;
+- la retención de 30 días está explícitamente implementada para `process_runs` (con cascadas) y `process_plans`, pero no existe un contrato global por clase de dato;
+- conviven `movie_genres` y `movie_genres_canonical`; no son equivalentes y tienen consumidores distintos;
+- no se detectaron corrupciones masivas ni huérfanos en relaciones nucleares; los overrides de Series sin referencia oficial observados corresponden a excepciones manuales válidas, no a basura;
+- todas las tablas ordinarias de `public` observadas tienen PK y el esquema vivo posee más FKs de lo que sugerían algunas descripciones históricas;
+- hay índices grandes con cero scans registrados, pero no deben eliminarse sin validar consumidores y planes;
+- el workflow branch-first de Neon es sólido, pero no existe ledger de migraciones aplicado en la DB y el repositorio conserva un segundo directorio histórico `migrations/` fuera del gate actual;
+- `catalog_read_model` sigue siendo una VIEW dinámica; la futura materialización aprobada en PERF-05 necesita contrato explícito de canonicalidad/reconstrucción.
+
+Fase 2 — PROPUESTAS: **ACTIVA**.
+
+SIGUIENTE PASO EXACTO: presentar al usuario `DB-01 — Contrato único de retención por clase de dato` y pedir APROBAR/RECHAZAR. No presentar `DB-02` hasta persistir la decisión de `DB-01`.
+
+`DB-01` debe proponer que la retención deje de depender de cada módulo y se defina centralmente por categoría: estado canónico sin TTL, histórico operativo corto con 30 días por defecto, auditoría funcional/manual con retención explícita más larga, caché/proyección reconstruible con política propia y snapshots técnicos con TTL definido. Debe preservar decisiones manuales y evidencia funcional relevante; no es una purga indiscriminada.
+
+La Fase 2 deberá revisar al menos 10 propuestas una a una. La auditoría identifica como mínimo: retención, filmografía, write amplification de read models, reconcile de Series, doble modelo de géneros, ledger/drift de migraciones, ownership/canonicalidad por tabla, índices, raw payloads, guardrails de almacenamiento, constraints selectivas y tablas legacy/vacías.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -136,7 +148,8 @@ Durante la revisión de Rendimiento se corrigieron problemas reales detectados u
 - Auditoría Punto 2: `docs/V5_AUDIT_02_PERFORMANCE.md`
 - Decisiones Punto 2: `docs/V5_DECISIONS_02_PERFORMANCE.md`
 - Innovaciones Punto 2: `docs/V5_INNOVATIONS_02_PERFORMANCE.md`
+- Auditoría Punto 3: `docs/V5_AUDIT_03_DATABASE.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-Al iniciar el Punto 3, usar una única rama dirigida por bloque y mantener este handoff actualizado para que un chat nuevo pueda continuar sin pedir al usuario que repita contexto.
+Al continuar el Punto 3, mantener una única rama dirigida por bloque y persistir cada decisión antes de presentar la siguiente.
