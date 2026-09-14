@@ -44,7 +44,7 @@ Auditoría completa, profunda y extremadamente detallada del sistema REAL del do
 
 ### Fase 2 — Propuestas V5
 
-Presentar como mínimo 10 propuestas concretas derivadas de la auditoría. Pueden ser mejoras funcionales, bugs, simplificaciones, UX, rendimiento, arquitectura, costes, seguridad, etc. Revisarlas UNA A UNA. Cada una debe quedar APROBADA o RECHAZADA y persistida en Git antes de pasar a la siguiente.
+Presentar como mínimo 10 propuestas concretas derivadas de la auditoría. Revisarlas UNA A UNA. Cada una debe quedar APROBADA o RECHAZADA y persistida en Git antes de pasar a la siguiente.
 
 ### Fase 3 — Road Map Innovador
 
@@ -83,52 +83,60 @@ La definición extensa y el estado formal viven en `docs/V5_ROADMAP_FRAMEWORK.md
 
 CERRADO.
 
-- Auditoría: `docs/V5_AUDIT_01_ARCHITECTURE.md`
-- Decisiones: `docs/V5_DECISIONS_01_ARCHITECTURE.md` y `docs/V5_DECISIONS_01_ARCHITECTURE_10_15.md`
+- Auditoría: `docs/V5_AUDIT_01_ARCHITECTURE.md`.
 - 15/15 propuestas V5 aprobadas.
 - Ronda de innovación completada.
-- Innovación aprobada: `INNO-01 — PikoFilm Autopilot`, registrada en `docs/ROADMAP_INNOVADOR.md`.
+- Innovación aprobada: `INNO-01 — PikoFilm Autopilot`.
 
 ### Punto 2 — Rendimiento
 
-ACTIVO. Rama de trabajo documental: `audit/v5-02-performance`.
+CERRADO.
 
-Fase 1 — AUDITORÍA: COMPLETADA y persistida en `docs/V5_AUDIT_02_PERFORMANCE.md`.
+- Auditoría: `docs/V5_AUDIT_02_PERFORMANCE.md`.
+- Fase 2: `PERF-01` a `PERF-10` aprobadas y persistidas en `docs/V5_DECISIONS_02_PERFORMANCE.md`.
+- Fase 3: cinco innovaciones revisadas y persistidas en `docs/V5_INNOVATIONS_02_PERFORMANCE.md`.
+- Rechazadas: `INNO-PERF-01`, `INNO-PERF-02`, `INNO-PERF-03` e `INNO-PERF-05`.
+- Aprobada: `INNO-PERF-04 — PikoFilm Native / Local-First`, registrada en `docs/ROADMAP_INNOVADOR.md` como `INNO-02`.
+- Criterio reforzado: una innovación del Road Map debe ser una ruptura real de paradigma; patrones técnicos habituales o mejoras incrementales no alcanzan el listón por sí solos.
+- Límite de `INNO-02`: debe aportar valor completo con un único ordenador. No presupone NAS, granja de equipos ni infraestructura doméstica adicional.
 
-Fase 2 — PROPUESTAS: COMPLETADA. `PERF-01` a `PERF-10` están APROBADAS y persistidas en `docs/V5_DECISIONS_02_PERFORMANCE.md`.
+### Punto 3 — Base de datos y modelo de datos
 
-Última decisión: `PERF-10 — Presupuesto de rendimiento por pantalla crítica`, aprobada y persistida en commit `5091b953...` de esta rama. La idea es proteger con contratos estructurales el rendimiento de superficies críticas, evitando umbrales frágiles de milisegundos en CI.
+SIGUIENTE PUNTO.
 
-Fase 3 — INNOVACIONES: ACTIVA.
+El siguiente paso exacto es iniciar la **Fase 1 — auditoría extremadamente detallada** del sistema real de datos. Debe revisarse, entre otros aspectos:
 
-La primera propuesta ya fue presentada al usuario pero NO fue aprobada ni rechazada porque la conversación se desvió a correcciones funcionales. Hay que reanudar exactamente aquí:
+- esquema real de Neon y dependencias entre tablas/vistas;
+- datos canónicos frente a read models/proyecciones;
+- tablas redundantes, históricas, temporales u obsoletas;
+- tamaños, crecimiento, churn, dead tuples y bloat;
+- índices existentes, ausentes, duplicados o poco útiles;
+- claves, constraints, integridad referencial e identidades;
+- retención y limpieza, especialmente tablas operativas/logs;
+- migraciones y compatibilidad con el workflow branch-first;
+- patrones reales de escritura/lectura desde Vercel y Railway;
+- coste, escalabilidad, recuperación y riesgos de consistencia.
 
-`INNO-PERF-01 — Snapshots instantáneos para superficies de lectura`
+La auditoría debe contrastar Git con Neon vivo y persistirse en un nuevo documento del Punto 3 antes de presentar ninguna propuesta `DB-xx`.
 
-Idea: para superficies de lectura poco volátiles y muy consultadas (Catálogo, Personas, Sagas y partes de Calidad), generar snapshots compactos, inmutables, derivados y versionados, publicados atómicamente y cacheables cerca del frontend. No son fuente de verdad y no se aplican a Actividad/Operaciones/estado vivo. Objetivo: navegación casi instantánea, menos fanout y menos tráfico Vercel↔Neon. Riesgos: invalidación, frescura y complejidad de versiones. Horizonte sugerido: experimento V6 tras los read models V5.
+## Contexto funcional reciente ya cerrado
 
-SIGUIENTE PASO EXACTO: pedir al usuario `¿Apruebas o rechazas INNO-PERF-01?`. No presentar INNO-PERF-02 antes de esa decisión y de persistirla si corresponde.
+Durante la revisión de Rendimiento se corrigieron problemas reales detectados usando la aplicación. No reabrirlos salvo nueva evidencia.
 
-Después hay que completar una ronda de AL MENOS 5 innovaciones de Rendimiento, una a una. Sólo las aprobadas entran en `docs/ROADMAP_INNOVADOR.md`. Cuando termine esa ronda, marcar el Punto 2 como CERRADO en el framework y pasar al Punto 3 — Base de datos y modelo de datos, empezando por su auditoría extremadamente detallada.
-
-## Contexto funcional reciente que ya está en main
-
-Durante la pausa de PERF se corrigieron problemas reales detectados usando la aplicación. No reabrirlos salvo nueva evidencia.
-
-- PR #553: soporte funcional de capítulos combinados dobles/triples.
-- PR #556: corrección de ampliación doble→triple cuando el episodio intermedio ya estaba cubierto por el mismo archivo Plex.
-- PR #557: prioridad España para Series sin depender de FilmAffinity, perfil TMDb de temporadas/episodios/origen/proveedores y visualización T/E en Catálogo/ficha; FilmAffinity queda fuera de esta solución.
-- PR #558: detalle de Calidad · Series aligerado: temporadas/episodios siguen como cuerpo principal; pendientes y decisiones manuales se cargan sólo bajo demanda en paneles paginados; se retiró seguimiento batch del render normal de la ficha. Merge de main: `f56d1229ac83c87484af2e80293721f50f0fe5e3`; CI success.
-- PR #560: exclusión manual reversible de episodios oficiales en Calidad · Series. Usa `series_episode_overrides.decision='unavailable'`; la exclusión cuenta como cobertura efectiva y deja de ser pendiente sin falsear la presencia física en Plex. La UI muestra `⊘ Exclusión`, permite `Quitar exclusión`, y el agregado se denomina `Cobertura efectiva`. Merge de main: `bccf8ffe81d8eaeda22c547e97c7c6e9ad920132`; CI y migración Neon branch-first success. Contrato persistido en `docs/changes/2026-09-14_SERIES_EPISODE_EXCLUSIONS.md`. Queda únicamente deploy Vercel Production y validación visual/funcional por el usuario.
-
-Estas correcciones no cambian el punto exacto del roadmap: seguimos en la Fase 3 del Punto 2.
+- PR #553: capítulos combinados dobles/triples.
+- PR #556: corrección doble→triple.
+- PR #557: prioridad España y perfil TMDb de Series.
+- PR #558: detalle de Calidad · Series aligerado.
+- PR #560: exclusión manual reversible de episodios oficiales en Calidad · Series mediante `series_episode_overrides.decision='unavailable'`.
+- PR #560 está desplegado en Vercel Production en el commit `bccf8ffe81d8eaeda22c547e97c7c6e9ad920132`; la migración Neon branch-first también quedó aplicada en producción.
 
 ## Persistencia y documentos canónicos
 
 - Marco/metodología/20 puntos/estado: `docs/V5_ROADMAP_FRAMEWORK.md`
 - Auditoría Punto 2: `docs/V5_AUDIT_02_PERFORMANCE.md`
-- Decisiones PERF-01..10: `docs/V5_DECISIONS_02_PERFORMANCE.md`
+- Decisiones Punto 2: `docs/V5_DECISIONS_02_PERFORMANCE.md`
+- Innovaciones Punto 2: `docs/V5_INNOVATIONS_02_PERFORMANCE.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-Al cerrar cada punto, actualizar el framework y este handoff para que un chat nuevo pueda continuar sin pedir al usuario que repita contexto.
+Al iniciar el Punto 3, usar una única rama dirigida por bloque y mantener este handoff actualizado para que un chat nuevo pueda continuar sin pedir al usuario que repita contexto.
