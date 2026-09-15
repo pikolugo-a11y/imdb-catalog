@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {spawnSync} from 'node:child_process';
 
 const action=fs.readFileSync('app/novedades/plex-actions.js','utf8');
 const button=fs.readFileSync('components/PlexSyncButton.js','utf8');
@@ -56,4 +57,9 @@ test('el timeout de 280 segundos ya no limita la ejecución completa; sólo sigu
   assert.match(plexSync,/AbortSignal\.timeout\(PLEX_REQUEST_TIMEOUT_MS\)/);
   assert.doesNotMatch(action,/280000/);
   assert.doesNotMatch(action,/plexDeadline/);
+});
+
+test('los adapters nuevos cargan con las mismas condiciones ESM que Railway',()=>{
+  const probe=spawnSync(process.execPath,['--conditions=react-server','--experimental-specifier-resolution=node','-e',"Promise.all([import('./lib/plex-global-worker.mjs'),import('./lib/plex-news-worker.mjs')]).catch(e=>{console.error(e);process.exit(1)})"],{encoding:'utf8',env:{...process.env,DATABASE_URL:process.env.DATABASE_URL||'postgresql://placeholder:placeholder@localhost:5432/placeholder'}});
+  assert.equal(probe.status,0,probe.stderr||probe.stdout);
 });
