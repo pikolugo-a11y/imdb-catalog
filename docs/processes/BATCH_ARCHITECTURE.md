@@ -68,9 +68,9 @@ Los adapters de worker no deben reimplementar estas responsabilidades ni contene
 
 | Pool | Servicio vigente | PROC actuales |
 |---|---|---|
-| `api` | `pikofilm-worker-api-v3` | ID-001, IV-001, DATA-001, DATA-002, SER-003, SER-004, SAGA-001, PER-001 |
+| `api` | `pikofilm-worker-api-v3` | NOV-008, ID-001, IV-001, DATA-001, DATA-002, SER-003, SER-004, SAGA-001, PER-001 |
 | `fast` | `pikofilm-batch-fast-worker-v1` | IV-002, DATA-003, MOV-001 |
-| `plex` | `pikofilm-batch-plex-worker-v2` | SER-001, SER-002 |
+| `plex` | `pikofilm-batch-plex-worker-v2` | NOV-009, SER-001, SER-002 |
 | technical especializado | `pikofilm-technical-snapshot-worker-v1` | PQ-002 |
 
 Los nombres o sufijos no determinan si un servicio es legacy. Se clasifica por consumidores, comando y responsabilidad viva.
@@ -91,6 +91,8 @@ Una divergencia de commit/configuración entre Git y Railway se trata como incid
 
 | PROC | Operación canónica por item | Estado |
 |---|---|---|
+| NOV-008 | `seedPlexNewsCandidates` | EXACTA |
+| NOV-009 | `syncPlexFast` | EXACTA |
 | ID-001 | `executeId001Canonical` | EXACTA |
 | IV-001 | `refreshIdentityEvidenceCanonical` | PARCIAL por guard humano |
 | IV-002 | `validateIdentityCanonical` | PARCIAL por guard humano |
@@ -122,6 +124,21 @@ El refresco global de Sagas es un Batch común real:
 ### PER-001
 
 El Batch ejecuta directamente `refreshPersonFilmographyCanonical` dentro del child `process_run`; no llama al wrapper observado individual y por tanto no crea observabilidad anidada.
+
+### NOV-009 / NOV-008
+
+La sincronización Plex global de Novedades usa el Batch común como **frontera durable de dos unidades globales encadenadas**, sin convertir el sync en automático:
+
+1. el usuario pulsa `Actualizar Plex` y Vercel sólo llama a `startPlexGlobalBatch('PROC-NOV-009')`;
+2. NOV-009 materializa una única entidad `global` en el pool `plex` y la Server Action responde inmediatamente;
+3. Railway Plex crea el child real, mantiene lease/heartbeat y ejecuta `syncPlexFast` sin límite global de duración de Vercel;
+4. el timeout de 280 s que permanece en `lib/plex-sync.js` protege **cada request Plex**, no la operación completa;
+5. tras éxito de NOV-009 se crea `PROC-NOV-008` como otra unidad `global`, esta vez en el pool `api`;
+6. Railway API ejecuta `seedPlexNewsCandidates`, donde viven las credenciales/API necesarias para preparar Novedades;
+7. NOV-008 es una continuación automática del NOV-009 manual, no un productor autónomo ni una autorización de polling Plex;
+8. la UI consulta estados `queued/running` reales y no expira artificialmente una ejecución porque supere cinco minutos.
+
+El snapshot histórico de Inicio conserva su cron diario canónico; no se introduce una dependencia de `next/cache` dentro del worker Plex. **Paridad EXACTA**.
 
 ### SER-001
 
@@ -234,7 +251,7 @@ Reglas:
 
 `PROC-PLAN-002` puede iniciar Batch únicamente para procesos declarados seguros en la especificación V4. El planificador reutiliza los starters canónicos; no escribe directamente items simulando el comportamiento de cada dominio.
 
-Los sync Plex globales `PROC-NOV-009` y `PROC-SER-001` permanecen manuales y **no** entran en el planner. Que SER-001 use el Batch común como frontera durable no altera esta política.
+Los sync Plex globales `PROC-NOV-009` y `PROC-SER-001` permanecen manuales y **no** entran en el planner. Que ambos usen el Batch común como frontera durable de una única unidad no altera esta política. `PROC-NOV-008` sólo puede aparecer como continuación del NOV-009 manual.
 
 El endpoint horario de PLAN-002 debe atravesar el middleware privado, autenticar con `CRON_SECRET` de forma fail-closed y sólo entonces reconciliar/planificar/despachar. Si no existe un PLAN-002 `succeeded|running` reciente, Actividad debe mostrar el planificador como no saludable en vez de afirmar que está activo.
 
@@ -298,6 +315,8 @@ CI debe detectar, según aplique:
 - doble frontera `process_run`;
 - reaparición de tablas Batch V1 retiradas o de las lambdas FilmAffinity que dependían de ellas;
 - fuente gobernada consumida sin gate;
+- NOV-009 global que vuelva a ejecutar `syncPlexFast` dentro del request de Vercel, reintroduzca un timeout global de 280 s o pierda su carácter estrictamente manual;
+- NOV-008 que deje de ser continuación durable del NOV-009 manual o se ejecute en un worker sin responsabilidad API;
 - SER-001 global que vuelva a ejecutar el core pesado dentro del request de Vercel o que pierda su carácter estrictamente manual;
 - SER-002 manual que vuelva a ejecutar el core pesado dentro del request de Vercel;
 - pérdida de `NoPrefetchLink` que genere fanout de navegación o paginadores `disabled` todavía interactivos;

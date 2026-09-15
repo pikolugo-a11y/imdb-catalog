@@ -1,44 +1,82 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {spawnSync} from 'node:child_process';
 
 const action=fs.readFileSync('app/novedades/plex-actions.js','utf8');
 const button=fs.readFileSync('components/PlexSyncButton.js','utf8');
-const page=fs.readFileSync('app/novedades/page.js','utf8');
+const client=fs.readFileSync('components/PlexSyncButtonClient.js','utf8');
+const starter=fs.readFileSync('lib/plex-global-batch.js','utf8');
+const plexWorker=fs.readFileSync('worker/batch-plex-worker.mjs','utf8');
+const apiWorker=fs.readFileSync('worker/batch-api-worker.mjs','utf8');
+const nov009Worker=fs.readFileSync('lib/plex-global-worker.mjs','utf8');
+const nov008Worker=fs.readFileSync('lib/plex-news-worker.mjs','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
 const plexSync=fs.readFileSync('lib/plex-sync.js','utf8');
+const plexDocker=fs.readFileSync('Dockerfile.batch-plex','utf8');
+const apiDocker=fs.readFileSync('Dockerfile.batch-api','utf8');
 
-test('NOV-009 is the canonical observed global incremental Plex sync',()=>{
-  assert.match(action,/processCode:'PROC-NOV-009'/);
-  assert.match(action,/operation:'sync_plex_global'/);
-  assert.match(action,/syncPlexFast\(\{reviewFrom\}\)/);
-  assert.match(action,/runKind:'system'/);
-  assert.match(action,/process_code IN\('PROC-NOV-009','PROC-NOV-008'\)/);
+test('NOV-009 se inicia manualmente en Vercel pero el barrido vive en Railway Plex',()=>{
+  assert.match(action,/startPlexGlobalBatch\('PROC-NOV-009'/);
+  assert.match(action,/triggerSource:'novedades_manual'/);
+  assert.doesNotMatch(action,/syncPlexFast/);
+  assert.doesNotMatch(action,/Promise\.race/);
+  assert.doesNotMatch(action,/PLEX_EXECUTION_TIMEOUT_MS/);
+  assert.match(starter,/'PROC-NOV-009':\{pool:'plex'/);
+  assert.match(starter,/executor:'railway_batch_plex'/);
+  assert.match(starter,/VALUES\(\$\{runId\}::uuid,\$\{cfg\.entityType\},'global',0,'queued'\)/);
+  assert.match(plexWorker,/executeNov009/);
+  assert.match(plexWorker,/\['PROC-NOV-009',\{execute:executeNov009\}\]/);
+  assert.match(nov009Worker,/syncPlexFast\(\{reviewFrom\}\)/);
+  assert.match(nov009Worker,/withLeaseHeartbeat/);
   assert.match(display,/'PROC-NOV-009':\{name:'Sincronizar Plex global'\}/);
 });
 
-test('Novedades keeps one visible Plex button and ignores stale Plex runs',()=>{
-  assert.match(button,/process_code='PROC-NOV-009'/);
-  assert.match(button,/process_code IN\('PROC-NOV-009','PROC-NOV-008'\)/);
-  assert.match(button,/PLEX_STALE_RUN_MINUTES=5/);
-  assert.match(button,/COALESCE\(started_at,requested_at\)>=now\(\)-/);
-  assert.match(page,/<PlexSyncButton\/>/);
-  assert.doesNotMatch(page,/process_code='PROC-NOV-009'/);
+test('NOV-009 mantiene la fecha solicitada y encadena NOV-008 de forma durable',()=>{
+  assert.match(starter,/review_from:contextReviewFrom\(reviewFrom\)/);
+  assert.match(nov009Worker,/parent\.context\?\.review_from/);
+  assert.match(nov009Worker,/startPlexGlobalBatch\('PROC-NOV-008'/);
+  assert.match(nov009Worker,/triggerSource:'plex_sync_continuation'/);
+  assert.match(starter,/'PROC-NOV-008':\{pool:'api'/);
+  assert.match(apiWorker,/executeNov008/);
+  assert.match(apiWorker,/'PROC-NOV-008':executeNov008/);
+  assert.match(nov008Worker,/seedPlexNewsCandidates\(\{sql,trace\}\)/);
 });
 
-test('NOV-009 allows up to 280 seconds and does not retry Plex requests',()=>{
+test('Novedades observa el estado durable sin considerar caducada una ejecución larga',()=>{
+  assert.match(button,/process_code IN\('PROC-NOV-009','PROC-NOV-008'\)/);
+  assert.match(button,/technical_status IN\('queued','running'\)/);
+  assert.doesNotMatch(button,/PLEX_STALE_RUN_MINUTES/);
+  assert.doesNotMatch(button,/interval '1 minute'/);
+  assert.match(client,/setInterval\(refresh,10000\)/);
+  assert.match(client,/document\.visibilityState==='visible'/);
+  assert.doesNotMatch(client,/useState/);
+  assert.doesNotMatch(client,/submitting/);
+});
+
+test('el timeout de 280 segundos ya no limita la ejecución completa; sólo sigue existiendo el timeout de requests Plex',()=>{
   assert.match(plexSync,/const PLEX_REQUEST_TIMEOUT_MS=280000;/);
   assert.match(plexSync,/AbortSignal\.timeout\(PLEX_REQUEST_TIMEOUT_MS\)/);
-  assert.doesNotMatch(plexSync,/attempt<2/);
-  assert.doesNotMatch(plexSync,/return get\(base,token,path,\{attempt:/);
-  assert.match(action,/const PLEX_EXECUTION_TIMEOUT_MS=280000;/);
-  assert.match(action,/retries:0/);
-  assert.match(action,/Promise\.race\(\[syncPlexFast\(\{reviewFrom\}\),plexDeadline\(\)\]\)/);
+  assert.doesNotMatch(action,/280000/);
+  assert.doesNotMatch(action,/plexDeadline/);
 });
 
-test('NOV-009 closes stale runs canonically before accepting another launch',()=>{
-  assert.match(action,/closeStalePlexRuns\(sql\)/);
-  assert.match(action,/recordProcessError\(row\.run_id/);
-  assert.match(action,/finishProcessRun\(row\.run_id,\{technicalStatus:'failed'/);
-  assert.match(action,/code:'PLEX_STALE_RUN'/);
+test('Plex y API normalizan los imports relativos antes de arrancar Railway',()=>{
+  assert.match(plexDocker,/node scripts\/normalize-worker-imports\.mjs lib/);
+  assert.match(apiDocker,/node scripts\/normalize-worker-imports\.mjs lib/);
+  const tmp=fs.mkdtempSync(path.join(process.cwd(),'.tmp-worker-runtime-'));
+  try{
+    const libDir=path.join(tmp,'lib');
+    fs.cpSync(path.join(process.cwd(),'lib'),libDir,{recursive:true});
+    const normalize=spawnSync(process.execPath,['scripts/normalize-worker-imports.mjs',libDir],{encoding:'utf8'});
+    assert.equal(normalize.status,0,normalize.stderr||normalize.stdout);
+    const plexUrl=pathToFileURL(path.join(libDir,'plex-global-worker.mjs')).href;
+    const apiUrl=pathToFileURL(path.join(libDir,'plex-news-worker.mjs')).href;
+    const probe=spawnSync(process.execPath,['--conditions=react-server','--experimental-specifier-resolution=node','-e',`Promise.all([import(${JSON.stringify(plexUrl)}),import(${JSON.stringify(apiUrl)})]).catch(e=>{console.error(e);process.exit(1)})`],{encoding:'utf8',env:{...process.env,DATABASE_URL:process.env.DATABASE_URL||'postgresql://placeholder:placeholder@localhost:5432/placeholder'}});
+    assert.equal(probe.status,0,probe.stderr||probe.stdout);
+  }finally{
+    fs.rmSync(tmp,{recursive:true,force:true});
+  }
 });
