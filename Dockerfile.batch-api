@@ -4,4 +4,7 @@ COPY package.json ./
 RUN npm install --omit=dev
 COPY lib ./lib
 COPY worker ./worker
+COPY scripts/normalize-worker-imports.mjs ./scripts/normalize-worker-imports.mjs
+# Railway ejecuta el worker directamente bajo Node ESM, sin el bundler de Next/Vercel.
+RUN node scripts/normalize-worker-imports.mjs lib
 CMD ["npm","run","worker:batch-api"]
