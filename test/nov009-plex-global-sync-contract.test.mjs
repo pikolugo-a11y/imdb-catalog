@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {spawnSync} from 'node:child_process';
 
 const action=fs.readFileSync('app/novedades/plex-actions.js','utf8');
@@ -13,6 +15,8 @@ const nov009Worker=fs.readFileSync('lib/plex-global-worker.mjs','utf8');
 const nov008Worker=fs.readFileSync('lib/plex-news-worker.mjs','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
 const plexSync=fs.readFileSync('lib/plex-sync.js','utf8');
+const plexDocker=fs.readFileSync('Dockerfile.batch-plex','utf8');
+const apiDocker=fs.readFileSync('Dockerfile.batch-api','utf8');
 
 test('NOV-009 se inicia manualmente en Vercel pero el barrido vive en Railway Plex',()=>{
   assert.match(action,/startPlexGlobalBatch\('PROC-NOV-009'/);
@@ -59,7 +63,20 @@ test('el timeout de 280 segundos ya no limita la ejecución completa; sólo sigu
   assert.doesNotMatch(action,/plexDeadline/);
 });
 
-test('los adapters nuevos cargan con las mismas condiciones ESM que Railway',()=>{
-  const probe=spawnSync(process.execPath,['--conditions=react-server','--experimental-specifier-resolution=node','-e',"Promise.all([import('./lib/plex-global-worker.mjs'),import('./lib/plex-news-worker.mjs')]).catch(e=>{console.error(e);process.exit(1)})"],{encoding:'utf8',env:{...process.env,DATABASE_URL:process.env.DATABASE_URL||'postgresql://placeholder:placeholder@localhost:5432/placeholder'}});
-  assert.equal(probe.status,0,probe.stderr||probe.stdout);
+test('Plex y API normalizan los imports relativos antes de arrancar Railway',()=>{
+  assert.match(plexDocker,/node scripts\/normalize-worker-imports\.mjs lib/);
+  assert.match(apiDocker,/node scripts\/normalize-worker-imports\.mjs lib/);
+  const tmp=fs.mkdtempSync(path.join(process.cwd(),'.tmp-worker-runtime-'));
+  try{
+    const libDir=path.join(tmp,'lib');
+    fs.cpSync(path.join(process.cwd(),'lib'),libDir,{recursive:true});
+    const normalize=spawnSync(process.execPath,['scripts/normalize-worker-imports.mjs',libDir],{encoding:'utf8'});
+    assert.equal(normalize.status,0,normalize.stderr||normalize.stdout);
+    const plexUrl=pathToFileURL(path.join(libDir,'plex-global-worker.mjs')).href;
+    const apiUrl=pathToFileURL(path.join(libDir,'plex-news-worker.mjs')).href;
+    const probe=spawnSync(process.execPath,['--conditions=react-server','--experimental-specifier-resolution=node','-e',`Promise.all([import(${JSON.stringify(plexUrl)}),import(${JSON.stringify(apiUrl)})]).catch(e=>{console.error(e);process.exit(1)})`],{encoding:'utf8',env:{...process.env,DATABASE_URL:process.env.DATABASE_URL||'postgresql://placeholder:placeholder@localhost:5432/placeholder'}});
+    assert.equal(probe.status,0,probe.stderr||probe.stdout);
+  }finally{
+    fs.rmSync(tmp,{recursive:true,force:true});
+  }
 });
