@@ -56,8 +56,8 @@ Estados de paridad:
 | PROC-NOV-005 | Novedades | Excluir candidato | manual | no | `app/novedades/exclude-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-006 | Novedades | Retirar origen manual | manual | no | `manual-remove-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-007 | Novedades | Admitir candidato al catálogo | manual | no | `catalog-admission-actions.js` | Vercel | NO APLICA |
-| PROC-NOV-008 | Novedades/Plex | Sembrar candidatos Plex | global encadenado | no | `seedPlexNewsCandidates` | Vercel | SIN BATCH |
-| PROC-NOV-009 | Novedades/Plex | Sync Plex global | global manual | no | `syncPlexFast` | Vercel | SIN BATCH |
+| PROC-NOV-008 | Novedades/Plex | Sembrar candidatos Plex | global encadenado durable | sí (1 unidad global) | `seedPlexNewsCandidates` | Railway API | EXACTA |
+| PROC-NOV-009 | Novedades/Plex | Sync Plex global | global manual durable | sí (1 unidad global) | `syncPlexFast` | Railway Plex; Vercel sólo encola | EXACTA |
 | PROC-NOV-010 | Novedades/Plex | Guardar IMDb manual de Plex | manual | no | `plex-identity-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-011 | Sagas/Novedades | Enviar miembro de Saga a Novedades | manual | no | `saga-news-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-016 | Excluidas | Restaurar exclusión | manual | no | `app/catalogo/excluidas/actions.js` | Vercel | NO APLICA |
@@ -79,7 +79,7 @@ Un proceso usa Batch común cuando una operación individual canónica puede rep
 
 Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
 
-`PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En SER-001 el Batch es sólo la frontera durable de ejecución de una unidad global, no una autorización para automatizar el barrido Plex.
+`PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En ambos casos el Batch es sólo la frontera durable de una única unidad global; no autoriza polling ni ejecución automática. `PROC-NOV-008` sólo nace como continuación durable de un NOV-009 iniciado manualmente.
 
 ## Procesos con Batch común
 
@@ -106,6 +106,20 @@ Individual `refreshRatingsAction` -> `refreshRatingsForTitle` -> `refreshRatings
 ### MOV-001
 
 Individual y Railway FAST usan `executeMov001Canonical`. **EXACTA**.
+
+### NOV-009 / NOV-008
+
+El botón `Actualizar Plex` de Novedades conserva inicio estrictamente manual, pero ya no aloja el barrido dentro de la Server Action:
+
+- Vercel llama a `startPlexGlobalBatch('PROC-NOV-009')`, materializa una única unidad lógica `global` en el pool `plex` y responde tras encolar;
+- Railway Plex reclama la unidad, mantiene lease/heartbeat y ejecuta el core canónico `syncPlexFast`; no existe un timeout global de 280 segundos ligado a Vercel;
+- los timeouts propios de cada request Plex siguen siendo protecciones del core, no un límite de duración de la operación completa;
+- al terminar NOV-009, Railway crea `PROC-NOV-008` como una única unidad global en el pool `api`;
+- Railway API ejecuta `seedPlexNewsCandidates`, conservando la responsabilidad/credenciales del plano API y sin exigir un segundo clic;
+- `PROC-NOV-008` puede ser automático únicamente como continuación del NOV-009 manual; ni NOV-009 ni su continuación se convierten en un sync Plex programado;
+- la UI observa `process_runs`/Batch reales; una operación larga no deja de considerarse activa por superar cinco minutos.
+
+La receta funcional de ambos procesos sigue siendo la misma; cambia el alojamiento para hacer durable la cadena. **EXACTA**.
 
 ### SER-001
 
@@ -156,7 +170,7 @@ Vercel crea la solicitud observada y despacha `.github/workflows/imdb-discovery.
 
 ### NOV-009 -> NOV-008
 
-La actualización Plex global y la siembra posterior de candidatos son procesos observados y correlacionados. El inicio de NOV-009 sigue siendo manual. No es un polling ni un Batch por título.
+La actualización Plex global sigue comenzando sólo por acción humana. Su ejecución pesada es durable en Railway Plex y, al completarse, crea la continuación durable NOV-008 en Railway API. La cadena es observada/correlacionada y no pertenece a `PROC-PLAN-002`.
 
 ### PQ-001
 
