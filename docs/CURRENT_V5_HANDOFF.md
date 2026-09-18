@@ -153,53 +153,46 @@ Invariantes funcionales:
 
 **APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
 
-Invariantes:
-
-- **Comprobar no equivale a cambiar**: si una proyección/read model recalcula exactamente la misma foto funcional, no debe reescribirse sólo porque el proceso volvió a ejecutarse.
-- Separar semánticamente `content_changed_at` de la mera frescura/comprobación operativa; no usar `updated_at` como falsa señal de cambio.
-- Preferir reconciliación por delta cuando pueda demostrarse equivalencia: idéntico→nada, nuevo→INSERT, cambiado→UPDATE, desaparecido realmente→DELETE.
-- PERF-08 queda formalizado como contrato de modelo de datos.
-
-**Salvaguarda reforzada de Series, vinculante por petición expresa del usuario:**
-
-- Series es el dominio más vivo del sistema y la eficiencia nunca tiene prioridad sobre corrección, frescura o recuperación.
-- No se cambia conciliación Plex↔TMDb, identidad temporada/episodio, combinados dobles/triples/múltiples, decisiones manuales, disponibilidad España, margen de 7 días, cobertura ni faltantes exigibles para ahorrar escrituras.
-- Antes de optimizar persistencia debe demostrarse paridad funcional exhaustiva con el comportamiento actual.
-- Decisiones manuales siempre prevalecen.
-- Debe mantenerse un `full rebuild/reconcile` seguro y probado como mecanismo de recuperación/auditoría.
-- Si la reconciliación incremental introduce divergencia, se vuelve al mecanismo seguro anterior antes que mantener el ahorro.
-- Es válido conservar una reconstrucción completa en cualquier subflujo de Series donde sea la opción más segura.
+- **Comprobar no equivale a cambiar**.
+- Separar semánticamente cambio funcional de comprobación operativa.
+- Preferir reconciliación por delta cuando pueda demostrarse equivalencia.
+- Series tiene salvaguarda reforzada: eficiencia nunca por encima de corrección, frescura o recuperación; mantener full rebuild/reconcile seguro y decisiones manuales prioritarias.
 
 #### DB-04 — Géneros canónicos únicos en castellano
 
 **APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
 
-Invariantes funcionales:
+- `genres` + `movie_genres_canonical` son la única verdad funcional.
+- Sólo géneros aprobados en castellano.
+- `movie_genres` es legacy sin autoridad funcional y se retirará tras migrar todos los consumidores.
+- Las fuentes externas siempre pasan por el mapeo canónico; no crean géneros de producto por sí solas.
+- `catalog_read_model` y todos los consumidores deben migrar al modelo canónico.
 
-- `genres` + `movie_genres_canonical` son la **única verdad funcional** de géneros de PikoFilm.
-- Los géneros de producto son exclusivamente los géneros aprobados en castellano.
-- `movie_genres` es legacy; puede existir sólo durante la transición, sin autoridad funcional.
-- Las etiquetas crudas de una fuente automática nunca alimentan directamente UX, filtros, Catálogo, Personas, Calidad ni read models: pasan siempre por el mapeo canónico aprobado.
-- `source_value` puede conservar trazabilidad de la fuente, pero no es un género de producto.
-- No habrá fallback permanente al legacy. Una ausencia/mapeo desconocido se trata como dato pendiente/calidad, no recuperando silenciosamente `movie_genres`.
-- `catalog_read_model` y todos los consumidores deben migrar al canónico.
-- El vocabulario `genres` es gobernado: una API no puede crear un género canónico nuevo por sí sola.
-- Tras validar todos los lectores/escritores, se retira físicamente `movie_genres`; CI debe impedir reintroducir dependencias funcionales al modelo legacy.
+#### DB-05 — Esquema versionado, ledger de migraciones y detección de drift
 
-Evidencia reciente:
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
 
-- `movie_genres`: 50.415 relaciones;
-- `movie_genres_canonical`: 52.102;
-- 32.322 coincidencias normalizadas, 18.093 sólo legacy y 19.780 sólo canónicas;
-- 20.886 títulos tienen ambos modelos y sólo 3 están únicamente en legacy, todos con valor `N/A`, por lo que no existe cobertura funcional que justifique mantener legacy.
+Invariantes:
+
+- Git conserva la historia oficial y Neon mantiene un ledger mínimo (`schema_migrations` o equivalente) de lo realmente aplicado.
+- `db/migrations/` es el único directorio válido para nuevas migraciones; `/migrations` queda como histórico a auditar y cerrar.
+- Migraciones aplicadas son inmutables; cambios posteriores requieren una migración nueva.
+- Cada migración registra checksum para detectar drift.
+- Git ↔ Neon se compara antes de migrar: pendiente, aplicada correcta o drift.
+- Producción aplicará todas las migraciones pendientes válidas en orden, no sólo las detectadas por el diff del último commit.
+- El workflow branch-first se conserva y se refuerza con ledger y detección de drift.
+- El bootstrap histórico no reejecutará SQL antiguo automáticamente: primero se contrasta el esquema real y se establece baseline.
+- **Impacto funcional para el usuario: ninguno.** Es seguridad de desarrollo/despliegue.
+- **Impacto de coste: no material/despreciable** frente al resto de Neon; no añade workers ni polling continuo.
+- El ledger representa estado estructural vigente y no se purga con la retención operativa de 30 días de DB-01.
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-05 — Ledger canónico de migraciones y detección de drift de esquema**, derivada del hecho de que el workflow branch-first es sólido pero Neon no puede demostrar por sí sola qué migraciones del repositorio están aplicadas y además existe un segundo directorio histórico `migrations/` fuera del gate actual.
+Presentar al usuario **DB-06 — Ownership, canonicalidad y rebuildabilidad explícita por tabla/dominio**, derivada de que hoy varias relaciones/read models/caches no declaran de forma uniforme quién es su fuente de verdad, quién puede escribirlas, si son reconstruibles y cuál es su mecanismo de rebuild.
 
-No presentar DB-06 hasta que DB-05 quede persistida como aprobada o rechazada.
+No presentar DB-07 hasta que DB-06 quede persistida como aprobada o rechazada.
 
-Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: ledger/drift de migraciones, ownership/canonicalidad/rebuildabilidad por tabla, revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 ya absorbe write amplification/idempotencia y reconciliación diferencial de Series; DB-04 absorbe el doble modelo de géneros.
+Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: ownership/canonicalidad/rebuildabilidad por tabla, revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 ya absorbe write amplification/idempotencia y reconciliación diferencial de Series; DB-04 absorbe el doble modelo de géneros; DB-05 absorbe ledger/drift de migraciones.
 
 ## Contexto funcional reciente ya cerrado
 
