@@ -170,13 +170,36 @@ Invariantes:
 - Si la reconciliación incremental introduce divergencia, se vuelve al mecanismo seguro anterior antes que mantener el ahorro.
 - Es válido conservar una reconstrucción completa en cualquier subflujo de Series donde sea la opción más segura.
 
+#### DB-04 — Géneros canónicos únicos en castellano
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes funcionales:
+
+- `genres` + `movie_genres_canonical` son la **única verdad funcional** de géneros de PikoFilm.
+- Los géneros de producto son exclusivamente los géneros aprobados en castellano.
+- `movie_genres` es legacy; puede existir sólo durante la transición, sin autoridad funcional.
+- Las etiquetas crudas de una fuente automática nunca alimentan directamente UX, filtros, Catálogo, Personas, Calidad ni read models: pasan siempre por el mapeo canónico aprobado.
+- `source_value` puede conservar trazabilidad de la fuente, pero no es un género de producto.
+- No habrá fallback permanente al legacy. Una ausencia/mapeo desconocido se trata como dato pendiente/calidad, no recuperando silenciosamente `movie_genres`.
+- `catalog_read_model` y todos los consumidores deben migrar al canónico.
+- El vocabulario `genres` es gobernado: una API no puede crear un género canónico nuevo por sí sola.
+- Tras validar todos los lectores/escritores, se retira físicamente `movie_genres`; CI debe impedir reintroducir dependencias funcionales al modelo legacy.
+
+Evidencia reciente:
+
+- `movie_genres`: 50.415 relaciones;
+- `movie_genres_canonical`: 52.102;
+- 32.322 coincidencias normalizadas, 18.093 sólo legacy y 19.780 sólo canónicas;
+- 20.886 títulos tienen ambos modelos y sólo 3 están únicamente en legacy, todos con valor `N/A`, por lo que no existe cobertura funcional que justifique mantener legacy.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-04 — Fuente canónica única de géneros y retirada del doble modelo legacy/canónico**, derivada de la divergencia real entre `movie_genres` y `movie_genres_canonical`, y pedir APROBAR/RECHAZAR.
+Presentar al usuario **DB-05 — Ledger canónico de migraciones y detección de drift de esquema**, derivada del hecho de que el workflow branch-first es sólido pero Neon no puede demostrar por sí sola qué migraciones del repositorio están aplicadas y además existe un segundo directorio histórico `migrations/` fuera del gate actual.
 
-No presentar DB-05 hasta que DB-04 quede persistida como aprobada o rechazada.
+No presentar DB-06 hasta que DB-05 quede persistida como aprobada o rechazada.
 
-Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: modelo único de géneros, ledger/drift de migraciones, ownership/canonicalidad/rebuildabilidad por tabla, revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 ya absorbe la propuesta específica de write amplification/idempotencia y la reconciliación diferencial de Series, con salvaguardas reforzadas.
+Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: ledger/drift de migraciones, ownership/canonicalidad/rebuildabilidad por tabla, revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 ya absorbe write amplification/idempotencia y reconciliación diferencial de Series; DB-04 absorbe el doble modelo de géneros.
 
 ## Contexto funcional reciente ya cerrado
 
