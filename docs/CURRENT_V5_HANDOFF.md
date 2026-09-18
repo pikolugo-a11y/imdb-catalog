@@ -119,7 +119,7 @@ Foto principal observada en Neon durante la auditoría:
 
 Fase 2 — PROPUESTAS: **ACTIVA**.
 
-Decisiones persistidas en `docs/V5_DECISIONS_03_DATABASE.md`:
+Decisiones persistidas en `docs/V5_DECISIONS_03_DATABASE.md` y, desde DB-03, en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`:
 
 #### DB-01 — Contrato único de retención por clase de dato
 
@@ -137,63 +137,46 @@ Decisiones persistidas en `docs/V5_DECISIONS_03_DATABASE.md`:
 Invariantes funcionales:
 
 - Sólo se enriquece filmografía completa para personas consolidadas: >5 películas distintas del catálogo como actor o >5 como director.
-- Corregir la regla de directores para reconocer `credit_type='director'` además del legacy `crew + Director`. La revisión detectó 544 directores omitidos actualmente por esta inconsistencia.
-- La filmografía sólo conserva **películas reales** útiles para PikoFilm.
-- **IMDb es obligatorio**: obra sin `imdb_id` resuelto queda fuera. Si en un refresco futuro obtiene IMDb y cumple las demás reglas, podrá entrar entonces.
+- Corregir la regla de directores para reconocer `credit_type='director'` además del legacy `crew + Director`; la revisión detectó 544 directores omitidos actualmente.
+- La filmografía sólo conserva películas reales útiles para PikoFilm.
+- **IMDb es obligatorio**: obra sin `imdb_id` resuelto queda fuera.
 - Fuera: cortos, conciertos, teatro filmado, ceremonias, eventos deportivos, recopilatorios, especiales/making-of/featurettes y equivalentes no cinematográficos.
 - Un género aislado (`Documental`, `Música`, `Película de TV`) no excluye una película legítima.
 - No excluir por una palabra del título; usar identidad/tipo y metadata estructurada.
-- Aunque la obra sea película válida, relaciones `Self`, `archive footage`, `host`, `presenter`, entrevistas/participantes y equivalentes se descartan.
+- Relaciones `Self`, `archive footage`, `host`, `presenter`, entrevistas/participantes y equivalentes se descartan.
 - Pertenecer al catálogo no salva un crédito basura.
-- **“Otros créditos” desaparece del frontal y del modelo persistido.** No habrá papelera de descartes: sólo métricas agregadas de descarte.
+- **“Otros créditos” desaparece del frontal y del modelo persistido.** No habrá papelera de descartes: sólo métricas agregadas.
+- La implementación es transversal: BBDD/backfill, `PROC-PER-001`/Batch/Railway, refresco manual, frontend/UX, APIs internas, tests y observabilidad.
+- La retirada física del modelo histórico antiguo requiere rama Neon, validación completa y autorización expresa del usuario.
 
-Datos reales que motivan DB-02:
+#### DB-03 — Escrituras idempotentes y reconciliación por delta
 
-- 126.349 filas actuales ya estaban marcadas como rechazadas (`short`, `self_or_archive`, `bonus_or_special`) y no deben pasar al modelo nuevo.
-- Entre `feature_film` hay 6.791 obras distintas sin IMDb, afectando 11.321 relaciones; quedan fuera por decisión del usuario. Estas cifras pueden solaparse con otros descartes.
-- Se detectaron al menos 677 obras adicionales hoy aceptadas que parecen conciertos/eventos/representaciones/recopilatorios no cinematográficos, afectando 1.260 créditos; es un suelo, no el inventario final.
-- Dentro de relaciones hoy protegidas por `catalog` aparecen 1.152 créditos `Self/archive/host/...` en 484 obras.
-- La tabla mezcla metadata de obra con relación persona↔obra: 549.892 filas representan sólo 176.116 obras distintas, por lo que existe repetición material de título/año/póster/géneros/etc.
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
 
-Modelo objetivo DB-02:
+Invariantes:
 
-- separar **obra de filmografía** de **relación persona↔obra**;
-- guardar una única vez la metadata compartida de cada película;
-- guardar aparte el crédito específico de la persona;
-- persistir únicamente el universo aceptado;
-- la foto actual útil de una persona elegible debe seguir siendo clara y persistente/reconstruible.
+- **Comprobar no equivale a cambiar**: si una proyección/read model recalcula exactamente la misma foto funcional, no debe reescribirse sólo porque el proceso volvió a ejecutarse.
+- Separar semánticamente `content_changed_at` de la mera frescura/comprobación operativa; no usar `updated_at` como falsa señal de cambio.
+- Preferir reconciliación por delta cuando pueda demostrarse equivalencia: idéntico→nada, nuevo→INSERT, cambiado→UPDATE, desaparecido realmente→DELETE.
+- PERF-08 queda formalizado como contrato de modelo de datos.
 
-Implementación futura obligatoriamente transversal; no tratar como una migración aislada:
+**Salvaguarda reforzada de Series, vinculante por petición expresa del usuario:**
 
-1. **BBDD y backfill:** nuevas estructuras normalizadas, backfill limpio, comparación persona a persona, medición real de tamaño antes/después, convivencia temporal con modelo viejo, retirada posterior sólo tras validación y autorización.
-2. **Proceso automático `PROC-PER-001` / Batch / Railway:** regla canónica de elegibilidad, IMDb obligatorio, filtro de tipo de obra y crédito antes de persistir, métricas agregadas de descartes e idempotencia.
-3. **Refresco manual:** debe usar exactamente la misma regla que Batch; no puede enriquecer juniors ni saltarse el clasificador.
-4. **Frontend/UX Personas:** eliminar “Otros créditos”, sus contadores, pestañas/textos/filtros y mostrar sólo filmografía aceptada.
-5. **Lecturas/API internas:** migrar `getPersonV2`, dashboard, Calidad de Personas y todos los consumers al nuevo contrato; no mantener dos fuentes de verdad.
-6. **Tests:** cubrir umbral, directores, missing IMDb, tipos aceptados/rechazados, falsos positivos por título, `Self/archive`, voces/narradores legítimos, desaparición de Otros créditos, paridad funcional e idempotencia.
-7. **Observabilidad:** personas elegibles/no elegibles, obras recibidas/aceptadas, descartes por missing IMDb/tipo/duración/crédito, errores de identidad y tamaño antes/después.
-
-Plan de limpieza aprobado conceptualmente:
-
-1. crear el nuevo modelo en rama temporal Neon;
-2. clasificar los datos actuales con reglas V5;
-3. backfill únicamente de obras con IMDb + créditos aceptados;
-4. comparar conteos y ejemplos reales contra modelo anterior;
-5. probar frontend, Calidad y procesos automáticos;
-6. medir tamaño/índices y revisar divergencias;
-7. desplegar código que lea/escriba el nuevo modelo;
-8. validar producción;
-9. **sólo con autorización expresa del usuario**, retirar la estructura histórica antigua y recuperar su almacenamiento.
-
-La aprobación de DB-02 **NO autoriza todavía DELETE/TRUNCATE/DROP ni otra mutación histórica de Neon Production**.
+- Series es el dominio más vivo del sistema y la eficiencia nunca tiene prioridad sobre corrección, frescura o recuperación.
+- No se cambia conciliación Plex↔TMDb, identidad temporada/episodio, combinados dobles/triples/múltiples, decisiones manuales, disponibilidad España, margen de 7 días, cobertura ni faltantes exigibles para ahorrar escrituras.
+- Antes de optimizar persistencia debe demostrarse paridad funcional exhaustiva con el comportamiento actual.
+- Decisiones manuales siempre prevalecen.
+- Debe mantenerse un `full rebuild/reconcile` seguro y probado como mecanismo de recuperación/auditoría.
+- Si la reconciliación incremental introduce divergencia, se vuelve al mecanismo seguro anterior antes que mantener el ahorro.
+- Es válido conservar una reconstrucción completa en cualquier subflujo de Series donde sea la opción más segura.
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-03**, derivada de la auditoría de Base de datos, y pedir APROBAR/RECHAZAR.
+Presentar al usuario **DB-04 — Fuente canónica única de géneros y retirada del doble modelo legacy/canónico**, derivada de la divergencia real entre `movie_genres` y `movie_genres_canonical`, y pedir APROBAR/RECHAZAR.
 
-No presentar DB-04 hasta que DB-03 quede persistida como aprobada o rechazada.
+No presentar DB-05 hasta que DB-04 quede persistida como aprobada o rechazada.
 
-Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: write amplification/idempotencia de read models, reconciliación diferencial de Series, modelo único de géneros, ledger/drift de migraciones, ownership/canonicalidad/rebuildabilidad por tabla, revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías.
+Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: modelo único de géneros, ledger/drift de migraciones, ownership/canonicalidad/rebuildabilidad por tabla, revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 ya absorbe la propuesta específica de write amplification/idempotencia y la reconciliación diferencial de Series, con salvaguardas reforzadas.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -217,7 +200,8 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Decisiones Punto 2: `docs/V5_DECISIONS_02_PERFORMANCE.md`
 - Innovaciones Punto 2: `docs/V5_INNOVATIONS_02_PERFORMANCE.md`
 - Auditoría Punto 3: `docs/V5_AUDIT_03_DATABASE.md`
-- Decisiones Punto 3: `docs/V5_DECISIONS_03_DATABASE.md`
+- Decisiones Punto 3 DB-01/DB-02: `docs/V5_DECISIONS_03_DATABASE.md`
+- Decisiones Punto 3 DB-03+: `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
