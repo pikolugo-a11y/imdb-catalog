@@ -192,3 +192,68 @@ DB-04 no autoriza un `DROP movie_genres` inmediato. La secuencia será:
 ### Resultado esperado
 
 Una película tendrá **una única lista oficial de géneros dentro de PikoFilm**, siempre en castellano y dentro del conjunto aprobado. Los valores automáticos de las fuentes son entradas para normalización, no una segunda verdad.
+
+## DB-05 — Esquema versionado, ledger de migraciones y detección de drift
+
+**Estado: APROBADA**
+
+### Decisión
+
+V5 mantendrá Git como historia oficial del esquema, pero Neon deberá poder demostrar qué migraciones están realmente aplicadas. Para ello se introducirá un ledger mínimo de migraciones (por ejemplo `schema_migrations`) y el workflow branch-first comparará el estado esperado en Git con el estado aplicado en Neon.
+
+La mejora es **puramente técnica**: no cambia ninguna funcionalidad de PikoFilm, no altera la UX ni el comportamiento del producto y no debe introducir coste material apreciable. El ledger tendrá un volumen mínimo y sólo participa en CI/migraciones, no en las consultas normales de la aplicación.
+
+### Invariantes
+
+- `db/migrations/` será el único directorio válido para nuevas migraciones.
+- El directorio histórico `/migrations` se auditará y se cerrará como fuente válida de cambios nuevos; sus SQL no se reejecutarán automáticamente por el mero hecho de existir.
+- Cada migración aplicada se registra con identificador/nombre, checksum, fecha de aplicación y, cuando sea útil, commit/origen de ejecución.
+- Una migración ya aplicada es **inmutable**. Si se necesita cambiar el esquema después, se crea una migración nueva.
+- El checksum permite detectar que un archivo histórico fue modificado después de aplicarse.
+- Antes de aplicar cambios, CI/deploy comparará migraciones de Git con el ledger de Neon.
+- Una migración presente en Git pero no aplicada se considera pendiente.
+- Una migración aplicada cuyo checksum no coincide con Git se considera **drift crítico**.
+- Una migración registrada en Neon que no existe en Git se considera drift y debe investigarse antes de continuar.
+- Tras merge, producción debe aplicar en orden todas las migraciones pendientes válidas, no sólo las que casualmente aparezcan en el diff de ese commit.
+
+### Workflow branch-first
+
+Se conserva el enfoque actual porque es correcto: PR → rama Neon efímera → aplicar migraciones → smoke tests → merge → producción. DB-05 añade verificación y memoria persistente del estado, no sustituye esa arquitectura.
+
+El workflow actual sólo observa `db/migrations/*.sql` modificados/añadidos en el diff del commit. V5 evolucionará ese mecanismo para resolver el conjunto pendiente usando el ledger, manteniendo el test en rama efímera antes de producción.
+
+### Bootstrap seguro del ledger
+
+La introducción del ledger no asumirá que todos los SQL históricos del repositorio deban volver a ejecutarse.
+
+1. inventariar migraciones históricas en `db/migrations/` y los dos SQL legacy de `/migrations`;
+2. contrastar objetos/columnas/constraints actuales en Neon para establecer el baseline real;
+3. registrar como baseline las migraciones demostrablemente ya aplicadas, con checksum actual y anotación de bootstrap cuando corresponda;
+4. investigar cualquier discrepancia antes de marcarla aplicada;
+5. a partir del baseline, toda migración nueva pasa por el ledger normal.
+
+### Impacto funcional y coste
+
+- **Impacto funcional para el usuario: ninguno.** Catálogo, Series, Personas, Calidad, Plex y el frontend deben comportarse igual.
+- **Coste de Neon: despreciable/no material** frente al resto del sistema. Se añade una tabla diminuta con decenas o cientos de filas y consultas ligeras únicamente durante migraciones/CI.
+- No añade un worker permanente, polling continuo ni procesos recurrentes de usuario.
+- No se usa como histórico operativo purgable a 30 días: representa el estado estructural vigente de la base y por tanto queda protegido por DB-01.
+
+### Relación con cambios grandes V5
+
+DB-05 será especialmente importante para DB-02 (nuevo modelo de filmografía y transición histórica), DB-04 (retirada del modelo legacy de géneros) y cualquier materialización/normalización posterior. Antes de retirar una estructura antigua debe poder demostrarse exactamente qué versión de esquema tiene producción.
+
+### Tests/gates mínimos
+
+- migración nueva pendiente → se detecta y aplica en orden;
+- segunda ejecución de la misma migración → no se reaplica;
+- archivo histórico modificado tras aplicación → fallo por checksum/drift;
+- migración del ledger ausente en Git → fallo de drift;
+- fallo de producción deja la migración pendiente y una ejecución posterior la vuelve a detectar;
+- rama efímera reproduce las pendientes antes del merge/aplicación;
+- ninguna migración nueva puede añadirse en `/migrations` fuera del directorio canónico;
+- bootstrap histórico no reejecuta SQL destructivo o antiguo automáticamente.
+
+### Resultado esperado
+
+PikoFilm podrá responder de forma determinista a: **qué migraciones existen, cuáles están aplicadas, con qué contenido y si Git y Neon están alineados**. Es una mejora de seguridad del desarrollo/despliegue, invisible para el usuario final y sin coste operativo relevante.
