@@ -44,3 +44,39 @@ Esta condición es obligatoria en el diseño V5: ningún estado vigente puede ex
 ### Motivo
 
 La auditoría detectó que la retención de 30 días está bien implementada en algunas tablas (`process_runs` y dependencias, `process_plans`) pero no existe un contrato global. Al mismo tiempo, observabilidad e históricos ya representan una fracción material del almacenamiento. Centralizar la política permite controlar coste y crecimiento sin comprometer el estado actual del producto.
+
+## DB-02 — Elegibilidad canónica de Personas y filmografía sólo de películas
+
+**Estado: EN REVISIÓN — requisitos funcionales del usuario fijados; pendiente de aprobación de la propuesta completa.**
+
+### Condiciones ya fijadas por el usuario
+
+- PikoFilm sólo debe conservar en la filmografía de Personas **películas reales que interesen funcionalmente**.
+- Los créditos que el clasificador ya considera secundarios/rechazados (`short`, `self_or_archive`, `bonus_or_special`) **no deben conservarse como filmografía canónica**, porque el usuario no quiere consultarlos ni mantenerlos.
+- La vista **“Otros créditos” debe desaparecer del frontal**; no se debe mantener una superficie sólo para exponer datos que el producto ha decidido rechazar.
+- La migración V5 deberá **eliminar de la base los registros rechazados existentes**, pero ninguna purga se ejecutará en producción durante esta fase de definición y requerirá migración probada y autorización expresa.
+- La clasificación debe ampliarse para detectar más elementos que TMDb publica dentro de `movie_credits` pero que no son películas útiles para PikoFilm: grabaciones de conciertos, representaciones teatrales filmadas, ceremonias/eventos, competiciones deportivas, recopilatorios de programas y otros especiales equivalentes.
+- No se autoriza una exclusión basada únicamente en palabras del título: se han observado falsos positivos reales. La clasificación final deberá apoyarse en identidad/tipo de obra y señales estructuradas de las fuentes.
+- Las películas legítimas no deben excluirse por pertenecer a géneros como Documental, Música o Película de TV; el género aislado no determina que una obra sea basura.
+
+### Evidencia cuantitativa observada en Neon durante la revisión
+
+- `person_filmography`: 549.892 filas y ~204 MB totales antes de cualquier cambio V5.
+- Créditos ya marcados como rechazados: 73.630 `short`, 52.364 `self_or_archive` y 355 `bonus_or_special`, unas 126.349 filas en total y ~35 MB de payload de fila aproximado antes de contar índices/TOAST.
+- Los 294.785 créditos hoy etiquetados `feature_film` representan 103.742 obras TMDb distintas; 6.791 de esas obras todavía no tienen IMDb resuelto.
+- Una pasada conservadora por señales inequívocas detectó al menos 677 obras adicionales actualmente tratadas como `feature_film` que parecen eventos/representaciones/recopilatorios no cinematográficos, afectando 1.260 créditos. Esta cifra es sólo un suelo, no el universo final a purgar.
+
+### Dirección técnica pendiente de cerrar
+
+La propuesta completa deberá combinar:
+
+1. una regla única de elegibilidad de personas (>5 películas del catálogo como actor o >5 como director, corrigiendo la representación real de `credit_type='director'` además del legacy `crew + Director`);
+2. normalización de obra y relación persona↔obra para no repetir metadatos de una misma película por cada persona;
+3. almacenamiento únicamente de relaciones aceptadas como películas útiles;
+4. desaparición de `Otros créditos` del frontend y de sus conteos;
+5. clasificación más fiable mediante metadata estructurada (preferentemente tipo de título IMDb cuando exista y señales TMDb adicionales) con exclusiones automáticas sólo cuando sean inequívocas;
+6. migración branch-first con comparación de paridad, métricas antes/después y limpieza de producción sólo tras validación y autorización.
+
+### Límite de esta anotación
+
+Esta sección **no marca DB-02 como aprobada todavía** y no autoriza ningún `DELETE`, `TRUNCATE`, migración ni mutación de Neon. Sólo persiste los requisitos funcionales y la evidencia revisada para que la siguiente versión de la propuesta no pueda reintroducir “Otros créditos” ni conservar basura rechazada por defecto.
