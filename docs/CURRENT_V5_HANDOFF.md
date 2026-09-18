@@ -1,6 +1,6 @@
 # PikoFilm V5 — Handoff actual
 
-Fecha: 2026-09-15
+Fecha: 2026-09-18
 
 Este documento es el punto de reentrada canónico para continuar la definición de V5 sin depender del historial del chat.
 
@@ -27,6 +27,7 @@ Reglas operativas:
 - Una única rama dirigida por corrección/bloque; evitar proliferación de ramas.
 - Cada decisión V5 aprobada o rechazada se persiste en Git ANTES de presentar la siguiente.
 - La documentación no prevalece sobre el estado real: contrastar código, Neon, Railway, Vercel y ejecución viva cuando aplique.
+- No mutar datos históricos de Neon sin autorización expresa del usuario.
 
 ## Frontera de producto fija
 
@@ -93,51 +94,106 @@ CERRADO.
 CERRADO.
 
 - Auditoría: `docs/V5_AUDIT_02_PERFORMANCE.md`.
-- Fase 2: `PERF-01` a `PERF-10` aprobadas y persistidas en `docs/V5_DECISIONS_02_PERFORMANCE.md`.
-- Fase 3: cinco innovaciones revisadas y persistidas en `docs/V5_INNOVATIONS_02_PERFORMANCE.md`.
-- Rechazadas: `INNO-PERF-01`, `INNO-PERF-02`, `INNO-PERF-03` e `INNO-PERF-05`.
-- Aprobada: `INNO-PERF-04 — PikoFilm Native / Local-First`, registrada en `docs/ROADMAP_INNOVADOR.md` como `INNO-02`.
-- Criterio reforzado: una innovación del Road Map debe ser una ruptura real de paradigma; patrones técnicos habituales o mejoras incrementales no alcanzan el listón por sí solos.
-- Límite de `INNO-02`: debe aportar valor completo con un único ordenador. No presupone NAS, granja de equipos ni infraestructura doméstica adicional.
+- Fase 2: `PERF-01` a `PERF-10` aprobadas y persistidas.
+- Fase 3: cinco innovaciones revisadas y persistidas.
+- Innovación aprobada: `INNO-02 — PikoFilm Native / Local-First`.
+- Debe aportar valor completo con un único ordenador. No presupone NAS, granja de equipos ni infraestructura doméstica adicional.
 
 ### Punto 3 — Base de datos y modelo de datos
 
 ACTIVO. Rama de trabajo: `audit/v5-03-database`.
 
-Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_03_DATABASE.md` (commit inicial `db6e4b16...`).
+Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_03_DATABASE.md`.
 
-La auditoría contrastó Git con Neon vivo y no realizó ninguna mutación. Foto final destacada:
+Foto principal observada en Neon durante la auditoría:
 
-- `neondb` ronda **869 MB** de tamaño total;
-- `public` contiene 69 tablas, 7 views, 4 secuencias y 0 materialized views;
-- `person_filmography` es la relación más grande (~204 MB) con 549.892 filas, aunque sólo 9.563 de 144.866 personas tienen filmografía enriquecida;
-- si se enriqueciera todo el universo a densidad media similar, el modelo actual rondaría ~8,3 millones de filas: es un riesgo de modelo, no sólo de query;
-- `series_diagnostics` acumula ~1,38 M inserts y ~1,32 M deletes para ~62k filas vivas;
-- `series_quality_read_model` acumula ~761k updates para 971 filas vivas;
-- `process_run_events` (~59 MB), `process_runs` (~52 MB) y `admin_events` (~41 MB) hacen que observabilidad/histórico sea ya una fracción grande de la base;
-- la retención de 30 días está explícitamente implementada para `process_runs` (con cascadas) y `process_plans`, pero no existe un contrato global por clase de dato;
-- conviven `movie_genres` y `movie_genres_canonical`; no son equivalentes y tienen consumidores distintos;
-- no se detectaron corrupciones masivas ni huérfanos en relaciones nucleares; los overrides de Series sin referencia oficial observados corresponden a excepciones manuales válidas, no a basura;
-- todas las tablas ordinarias de `public` observadas tienen PK y el esquema vivo posee más FKs de lo que sugerían algunas descripciones históricas;
-- hay índices grandes con cero scans registrados, pero no deben eliminarse sin validar consumidores y planes;
-- el workflow branch-first de Neon es sólido, pero no existe ledger de migraciones aplicado en la DB y el repositorio conserva un segundo directorio histórico `migrations/` fuera del gate actual;
-- `catalog_read_model` sigue siendo una VIEW dinámica; la futura materialización aprobada en PERF-05 necesita contrato explícito de canonicalidad/reconstrucción.
+- `neondb` ronda 869 MB;
+- `person_filmography` es la relación más grande (~204 MB), con 549.892 filas;
+- sólo 9.563 de 144.866 personas tienen filmografía enriquecida;
+- `series_diagnostics` y `series_quality_read_model` muestran write amplification muy alta;
+- `process_run_events`, `process_runs` y `admin_events` ocupan una fracción relevante de la base;
+- existe retención de 30 días en algunos módulos pero no contrato global;
+- conviven dos modelos de géneros divergentes;
+- el workflow branch-first de Neon es sólido pero no existe ledger de migraciones aplicado en DB;
+- `catalog_read_model` sigue siendo VIEW dinámica y necesita contrato de canonicalidad/rebuild para su futura materialización.
 
 Fase 2 — PROPUESTAS: **ACTIVA**.
 
 Decisiones persistidas en `docs/V5_DECISIONS_03_DATABASE.md`:
 
-- `DB-01 — Contrato único de retención por clase de dato`: **APROBADA**.
-  - Histórico operativo/técnico: 30 días por defecto y purgable sin preocupación por conservar historia antigua.
-  - Invariante obligatoria: **la foto actual vigente nunca puede desaparecer por una purga de histórico**.
-  - Estado vigente, datos canónicos y decisiones manuales no pueden depender de que sobrevivan logs/históricos; deben persistirse como foto actual o ser reconstruibles de forma determinista desde fuentes no sujetas a esa purga.
-  - La decisión no autoriza todavía ninguna purga ni mutación de Neon.
+#### DB-01 — Contrato único de retención por clase de dato
 
-SIGUIENTE PASO EXACTO: presentar al usuario `DB-02 — Filmografía acotada y orientada a relevancia` y pedir APROBAR/RECHAZAR. No presentar `DB-03` hasta persistir la decisión de `DB-02`.
+**APROBADA.**
 
-`DB-02` debe abordar `person_filmography`: evitar que enriquecer Personas implique conservar indefinidamente todos los créditos externos de todas las personas. Mantener una foto actual suficiente para las funcionalidades reales de PikoFilm, con reglas de relevancia/alcance y reconstrucción/refresco, preservando siempre la información necesaria para la persona y sus relaciones con el catálogo. No confundir esta optimización con borrar el estado actual necesario.
+- Histórico operativo/técnico: 30 días por defecto.
+- Invariante obligatoria: **la foto actual vigente nunca puede desaparecer por purgar histórico**.
+- Estado vigente, datos canónicos y decisiones manuales deben persistir aparte o ser reconstruibles de forma determinista desde fuentes no sujetas a esa purga.
+- No autoriza todavía ninguna purga ni mutación de Neon.
 
-La Fase 2 deberá revisar al menos 10 propuestas una a una. La auditoría identifica además: write amplification de read models, reconcile de Series, doble modelo de géneros, ledger/drift de migraciones, ownership/canonicalidad por tabla, índices, raw payloads, guardrails de almacenamiento, constraints selectivas y tablas legacy/vacías.
+#### DB-02 — Personas canónicas: sólo profesionales consolidados y sólo películas reales con IMDb
+
+**APROBADA.** Decisión detallada y vinculante en `docs/V5_DECISIONS_03_DATABASE.md`.
+
+Invariantes funcionales:
+
+- Sólo se enriquece filmografía completa para personas consolidadas: >5 películas distintas del catálogo como actor o >5 como director.
+- Corregir la regla de directores para reconocer `credit_type='director'` además del legacy `crew + Director`. La revisión detectó 544 directores omitidos actualmente por esta inconsistencia.
+- La filmografía sólo conserva **películas reales** útiles para PikoFilm.
+- **IMDb es obligatorio**: obra sin `imdb_id` resuelto queda fuera. Si en un refresco futuro obtiene IMDb y cumple las demás reglas, podrá entrar entonces.
+- Fuera: cortos, conciertos, teatro filmado, ceremonias, eventos deportivos, recopilatorios, especiales/making-of/featurettes y equivalentes no cinematográficos.
+- Un género aislado (`Documental`, `Música`, `Película de TV`) no excluye una película legítima.
+- No excluir por una palabra del título; usar identidad/tipo y metadata estructurada.
+- Aunque la obra sea película válida, relaciones `Self`, `archive footage`, `host`, `presenter`, entrevistas/participantes y equivalentes se descartan.
+- Pertenecer al catálogo no salva un crédito basura.
+- **“Otros créditos” desaparece del frontal y del modelo persistido.** No habrá papelera de descartes: sólo métricas agregadas de descarte.
+
+Datos reales que motivan DB-02:
+
+- 126.349 filas actuales ya estaban marcadas como rechazadas (`short`, `self_or_archive`, `bonus_or_special`) y no deben pasar al modelo nuevo.
+- Entre `feature_film` hay 6.791 obras distintas sin IMDb, afectando 11.321 relaciones; quedan fuera por decisión del usuario. Estas cifras pueden solaparse con otros descartes.
+- Se detectaron al menos 677 obras adicionales hoy aceptadas que parecen conciertos/eventos/representaciones/recopilatorios no cinematográficos, afectando 1.260 créditos; es un suelo, no el inventario final.
+- Dentro de relaciones hoy protegidas por `catalog` aparecen 1.152 créditos `Self/archive/host/...` en 484 obras.
+- La tabla mezcla metadata de obra con relación persona↔obra: 549.892 filas representan sólo 176.116 obras distintas, por lo que existe repetición material de título/año/póster/géneros/etc.
+
+Modelo objetivo DB-02:
+
+- separar **obra de filmografía** de **relación persona↔obra**;
+- guardar una única vez la metadata compartida de cada película;
+- guardar aparte el crédito específico de la persona;
+- persistir únicamente el universo aceptado;
+- la foto actual útil de una persona elegible debe seguir siendo clara y persistente/reconstruible.
+
+Implementación futura obligatoriamente transversal; no tratar como una migración aislada:
+
+1. **BBDD y backfill:** nuevas estructuras normalizadas, backfill limpio, comparación persona a persona, medición real de tamaño antes/después, convivencia temporal con modelo viejo, retirada posterior sólo tras validación y autorización.
+2. **Proceso automático `PROC-PER-001` / Batch / Railway:** regla canónica de elegibilidad, IMDb obligatorio, filtro de tipo de obra y crédito antes de persistir, métricas agregadas de descartes e idempotencia.
+3. **Refresco manual:** debe usar exactamente la misma regla que Batch; no puede enriquecer juniors ni saltarse el clasificador.
+4. **Frontend/UX Personas:** eliminar “Otros créditos”, sus contadores, pestañas/textos/filtros y mostrar sólo filmografía aceptada.
+5. **Lecturas/API internas:** migrar `getPersonV2`, dashboard, Calidad de Personas y todos los consumers al nuevo contrato; no mantener dos fuentes de verdad.
+6. **Tests:** cubrir umbral, directores, missing IMDb, tipos aceptados/rechazados, falsos positivos por título, `Self/archive`, voces/narradores legítimos, desaparición de Otros créditos, paridad funcional e idempotencia.
+7. **Observabilidad:** personas elegibles/no elegibles, obras recibidas/aceptadas, descartes por missing IMDb/tipo/duración/crédito, errores de identidad y tamaño antes/después.
+
+Plan de limpieza aprobado conceptualmente:
+
+1. crear el nuevo modelo en rama temporal Neon;
+2. clasificar los datos actuales con reglas V5;
+3. backfill únicamente de obras con IMDb + créditos aceptados;
+4. comparar conteos y ejemplos reales contra modelo anterior;
+5. probar frontend, Calidad y procesos automáticos;
+6. medir tamaño/índices y revisar divergencias;
+7. desplegar código que lea/escriba el nuevo modelo;
+8. validar producción;
+9. **sólo con autorización expresa del usuario**, retirar la estructura histórica antigua y recuperar su almacenamiento.
+
+La aprobación de DB-02 **NO autoriza todavía DELETE/TRUNCATE/DROP ni otra mutación histórica de Neon Production**.
+
+### SIGUIENTE PASO EXACTO
+
+Presentar al usuario **DB-03**, derivada de la auditoría de Base de datos, y pedir APROBAR/RECHAZAR.
+
+No presentar DB-04 hasta que DB-03 quede persistida como aprobada o rechazada.
+
+Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: write amplification/idempotencia de read models, reconciliación diferencial de Series, modelo único de géneros, ledger/drift de migraciones, ownership/canonicalidad/rebuildabilidad por tabla, revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -147,12 +203,12 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - PR #556: corrección doble→triple.
 - PR #557: prioridad España y perfil TMDb de Series.
 - PR #558: detalle de Calidad · Series aligerado.
-- PR #560: exclusión manual reversible de episodios oficiales en Calidad · Series mediante `series_episode_overrides.decision='unavailable'`.
-- PR #563: margen canónico de 7 días desde el estreno antes de convertir una ausencia física en faltante exigible; listado, detalle y read models quedan alineados.
-- PR #564: conciliación automática adicional de episodios combinados Plex↔TMDb. Mantiene temporada+episodio como señal primaria y añade evidencia fuerte por numeración explícita de archivos (`01x01 - 01x02`, etc.) o, de forma conservadora, por títulos oficiales consecutivos + duración. Soporta combinados explícitos de varios episodios y protege decisiones manuales y coincidencias exactas. Caso real de referencia: Shin Chan.
-- PR #564 quedó mergeado en `main` como `3e34244f7c306cb84dc527198852e82bbd43fc0c`; CI #712 verde y los workers Railway Plex/API desplegados automáticamente en ese commit. No se realizó mutación manual de Neon ni deploy de Vercel Production.
-- PR #565: corrección del sync Plex global de Novedades. Se confirmó que `PROC-NOV-009` todavía ejecutaba `syncPlexFast()` dentro de una Server Action de Vercel y la ejecución real `7569020d-2c6e-4999-a054-cd8c6b4232d1` falló exactamente a los 280 s con `PLEX_EXECUTION_TIMEOUT`. Ahora Vercel sólo encola NOV-009; Railway Plex ejecuta el sync durable con lease/heartbeat y encadena `PROC-NOV-008` en Railway API para preparar Novedades. El inicio sigue siendo manual y fuera de `PROC-PLAN-002`.
-- PR #565 quedó mergeado en `main` como `b282f9b9a3e7f852d162ceddc008aafc46bd432f`; CI PR #724 y CI `main` #725 verdes. Railway Plex y API auto-desplegaron correctamente el commit: Plex arrancó con adapters `PROC-NOV-009`, `PROC-SER-001`, `PROC-SER-002`; API con `PROC-NOV-008` y el resto de adapters API. No hubo migración ni mutación manual de Neon. Falta únicamente que el usuario despliegue Vercel Production para activar la nueva Server Action/UI de Novedades y realice la validación funcional.
+- PR #560: exclusión manual reversible de episodios oficiales.
+- PR #562: ordenación de Calidad · Series por faltantes y año.
+- PR #563: margen canónico de 7 días desde estreno antes de convertir una ausencia física en faltante exigible; listado, detalle y read models alineados.
+- PR #564: conciliación automática adicional de episodios combinados Plex↔TMDb mediante numeración explícita o títulos oficiales consecutivos + duración. Caso real de referencia: Shin Chan. Merge `3e34244f...`; CI verde y workers Railway desplegados.
+- PR #565: sync Plex global de Novedades movido fuera de Vercel. Vercel sólo encola `PROC-NOV-009`; Railway Plex ejecuta el sync durable y encadena `PROC-NOV-008` en Railway API. Merge `b282f9b9...`; CI verde.
+- La corrección de PR #565 ya quedó validada en producción: Vercel Production alcanzó `b282f9b9` y una ejecución real posterior de `PROC-NOV-009` terminó correctamente en Railway Plex en ~4m37s y encadenó `PROC-NOV-008` con éxito. El timeout global de 280s de Vercel queda cerrado.
 
 ## Persistencia y documentos canónicos
 
@@ -165,4 +221,4 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-Al continuar el Punto 3, mantener una única rama dirigida por bloque y persistir cada decisión antes de presentar la siguiente.
+Al continuar el Punto 3, mantener la rama `audit/v5-03-database` para esta fase de definición y persistir cada decisión antes de presentar la siguiente.
