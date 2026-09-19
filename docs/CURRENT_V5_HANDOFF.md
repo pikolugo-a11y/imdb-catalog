@@ -372,13 +372,25 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - Series conserva sus estados funcionales, margen de 7 días y overrides; PROC-04 sólo actúa cuando la repetición técnica ya no aporta valor.
 - No autoriza ahora migraciones ni mutación de los casos vivos observados.
 
+#### PROC-05 — Semántica canónica de estados Batch y planner
+
+**APROBADA.**
+
+- Estado técnico, resultado funcional y estado del plan son dimensiones distintas y se evalúan de forma canónica.
+- Un plan sólo queda `completed` cuando ya no existe trabajo funcional que PikoFilm espere continuar automáticamente.
+- `partial + pending/retryable` no se cierra silenciosamente; `partial` sólo por terminales conocidas puede cerrarse con incidencia.
+- `error_count>0` no implica por sí solo fallo si el objetivo funcional quedó resuelto.
+- Parent Batch, planner y Actividad deben compartir el mismo evaluador de resultado.
+- PROC-03 decide retry, PROC-04 terminalización y PROC-05 cierre global.
+- No exige multiplicar estados ni autoriza migraciones; puede expresarse con los estados actuales si son suficientes.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-05 — Semántica canónica de estados Batch y planner**, definiendo de forma única qué significan `succeeded`, `partial`, `failed`, `pending`, `completed` y `delayed`, y evitando que un parent `partial + pending` cierre silenciosamente un plan como completado.
+Presentar al usuario **PROC-06 — Planner horario único y eliminación del tick residual de 5 minutos**, alineando código, cron, documentación y UX con la cadencia real de producción y eliminando una segunda vía de dispatch que ya no está activa.
 
-No presentar PROC-06 hasta que PROC-05 quede persistida como APROBADA o RECHAZADA.
+No presentar PROC-07 hasta que PROC-06 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
