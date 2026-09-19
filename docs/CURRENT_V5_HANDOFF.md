@@ -587,11 +587,23 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - No se borra ni migra ahora `admin_events`; cualquier retirada seguirá DB-11 y requerirá evidencia de ausencia de consumidores/autoridad.
 - DB-01 y DB-06 gobiernan retención y ownership.
 
+#### OBS-09 — Correlación mínima con runtimes externos
+
+**APROBADA.**
+
+- Toda ejecución observable conserva referencias mínimas al runtime concreto: servicio/modelo, deployment/workflow y build/commit cuando aplique.
+- Los logs externos incluyen `run_id`, process/batch/entity IDs cuando el runtime lo permita.
+- La navegación debe funcionar en ambos sentidos: PikoFilm → runtime/log y log → run.
+- No se copian stdout/stderr ni trazas completas a Neon.
+- La metadata de runtime ayuda a detectar version skew y complementa PROC-02/PROC-09/PROC-10.
+- Actividad no se llena de infraestructura; la correlación permanece en Operaciones/diagnóstico técnico.
+- No se autoriza ahora cambio de esquema ni configuración de plataformas.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-09 — Correlación mínima con runtimes externos**, para que cada ejecución importante pueda localizar rápidamente su evidencia en Railway, Vercel o GitHub Actions mediante IDs/builds/deployments estructurados sin copiar los logs completos a Neon.
+Presentar al usuario **OBS-10 — KPIs canónicos de salud actual, fiabilidad y recurrencia**, para sustituir contadores brutos de errores por métricas que separen estado actual, fallos técnicos reales, recuperación, recurrencia, degradación y deuda funcional.
 
-No presentar OBS-10 hasta que OBS-09 quede persistida como APROBADA o RECHAZADA.
+No iniciar Fase 3 hasta que OBS-10 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
