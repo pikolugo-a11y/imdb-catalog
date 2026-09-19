@@ -578,7 +578,7 @@ Son decisiones humanas observadas y no deben masificarse automáticamente.
 - actúa sobre huecos reales;
 - no sustituye un valor presente por discrepancia de proveedor;
 - no se ejecuta periódicamente por antigüedad;
-- en Series/Miniseries TMDb-only obtiene los datos estructurales desde TMDb y los persiste únicamente en el esquema canónico vigente; los ratings siguen su pipeline propio en `title_ratings`.
+- en Series/Miniseries TMDb-only obtiene los datos estructurales desde TMDb y los persiste únicamente en el esquema canónico vigente; no exige ratings múltiples ni PikoScore para cerrar Datos/Lifecycle, aunque un rating TMDb pueda persistirse de forma informativa en `title_ratings`.
 
 ## 12.2 Correcciones manuales
 
