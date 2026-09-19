@@ -122,3 +122,32 @@ Shadow Scheduler puede decidir después **cómo** repartir esa demanda en el tie
 Se incorpora a `docs/ROADMAP_INNOVADOR.md` como **INNO-04 — PikoFilm Adaptive Freshness**.
 
 No entra automáticamente en V5, V6 ni V7.
+
+
+---
+
+## INNO-PROC-04 — PikoFilm Process Time Travel
+
+**Estado: RECHAZADA.**
+
+### Idea revisada
+
+Crear cápsulas mínimas de ejecución para poder reproducir en sandbox un proceso pasado con su contexto relevante, comparar una versión antigua con una nueva y convertir fallos reales de producción en casos reproducibles.
+
+La propuesta contemplaba:
+
+- identidad de proceso y build;
+- configuración/políticas relevantes;
+- input fingerprint;
+- evidencia mínima necesaria;
+- replay con versión original o candidata;
+- comparación de resultados;
+- posible uso como regresión sobre casos reales.
+
+### Decisión
+
+**RECHAZADA por el usuario.**
+
+Motivo expresado: **no le interesa**.
+
+No se añade a `docs/ROADMAP_INNOVADOR.md` y no queda como backlog implícito.
