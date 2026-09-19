@@ -493,11 +493,25 @@ Conclusiones principales verificadas contra código + Neon + Railway + Vercel:
 
 Fase 2 — PROPUESTAS: **ACTIVA**.
 
+Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
+
+#### OBS-01 — Taxonomía canónica de señal
+
+**APROBADA.**
+
+- Se distinguen fallo técnico, validación/rechazo funcional, estado funcional pendiente/bloqueado e incidencia activa.
+- Sólo un fallo técnico real genera `process_run_errors` y error de plataforma.
+- Una validación funcional esperable debe terminar como resultado funcional/evento, no como avería técnica.
+- `succeeded + pending/blocked` no equivale automáticamente a incidencia técnica.
+- Un error recuperado puede conservar evidencia histórica sin mantener atención activa.
+- Actividad, Operaciones y logs externos deben usar la misma taxonomía.
+- No se crea un sistema paralelo ni se autoriza migración o reescritura retroactiva de errores históricos.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-01 — Taxonomía canónica de señal: fallo técnico, validación funcional, estado pendiente e incidencia activa**, para impedir que una precondición funcional esperable se registre como fallo técnico/runtime y para que Actividad, Operaciones, Neon y logs de plataforma hablen el mismo idioma.
+Presentar al usuario **OBS-02 — Contrato canónico de incidencia activa y evidencia de resolución**, para que una incidencia sólo se cierre cuando exista evidencia suficiente de recuperación, descarte explícito o terminalización conocida, evitando la regla actual de “cualquier success posterior”.
 
-No presentar OBS-02 hasta que OBS-01 quede persistida como APROBADA o RECHAZADA.
+No presentar OBS-03 hasta que OBS-02 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -529,6 +543,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Decisiones Punto 4: `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`
 - Innovaciones Punto 4: `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`
 - Auditoría Punto 5: `docs/V5_AUDIT_05_OBSERVABILITY_ERRORS.md`
+- Decisiones Punto 5: `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
 El Punto 5 está activo en `audit/v5-05-observability`. Su Fase 1 ya está cerrada; continuar por Fase 2 y persistir cada decisión antes de presentar la siguiente.
