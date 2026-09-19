@@ -310,3 +310,105 @@ Series mantiene un criterio conservador:
 ### Resultado esperado
 
 PikoFilm reintenta únicamente aquello que tiene sentido reintentar y espera el tiempo adecuado según la causa, reduciendo latencia de recuperación, llamadas inútiles y ruido operativo sin sacrificar seguridad.
+
+
+---
+
+## PROC-04 — Terminalización de poison items y cuarentena funcional
+
+**Estado: APROBADA.**
+
+### Problema que resuelve
+
+La auditoría detectó casos que reaparecen en ejecuciones posteriores aunque el fallo sea repetitivo y conocido. El ejemplo vivo más claro está en `PROC-PQ-002`: cuatro elementos vuelven a fallar con mensajes del tipo “snapshot técnico sin streams”, provocando sucesivos runs `partial` pese a que el resto del trabajo converge.
+
+### Decisión
+
+V5 distinguirá entre un fallo todavía reintentable y un **item que ha demostrado no poder converger mediante el mismo mecanismo automático**.
+
+Cuando PROC-03 determine, con suficiente evidencia y según política del proceso, que repetir el mismo trabajo ya no aporta valor, el item dejará de circular por la cola normal y pasará a un estado terminal explícito.
+
+### Estados terminales conceptuales
+
+Como mínimo se contemplan categorías equivalentes a:
+
+- **PERMANENT_ERROR** — existe un fallo real que requiere corrección/revisión;
+- **NOT_APPLICABLE** — la operación no aplica legítimamente a ese item;
+- **MANUAL_REVIEW** — necesita decisión humana antes de continuar.
+
+La implementación exacta puede variar por dominio, pero no se utilizará una única “papelera” opaca.
+
+### Trazabilidad mínima
+
+Todo item terminal debe conservar o exponer:
+
+- entidad;
+- process code;
+- motivo/clase;
+- último error o causa funcional;
+- intentos realizados;
+- cuándo se terminalizó;
+- qué regla/política lo decidió;
+- condición de reentrada o forma de revisión.
+
+### Reentrada
+
+La terminalización no es necesariamente eterna.
+
+Si cambia la causa relevante —por ejemplo:
+
+- cambia el fingerprint/versión del elemento Plex;
+- cambia identidad;
+- cambia referencia TMDb;
+- cambia metadata necesaria;
+- cambia una decisión/configuración que invalida la causa terminal;
+
+el item puede volver a ser elegible de forma segura.
+
+La condición de reentrada debe ser determinista y específica del dominio.
+
+### Relación con PROC-03
+
+- PROC-03 decide si un fallo merece retry y cuándo.
+- PROC-04 decide cuándo **dejar de repetir** el mismo trabajo porque ya existe evidencia suficiente de no convergencia.
+
+Ambas propuestas deben compartir clasificación de errores/estados para evitar lógicas paralelas.
+
+### Semántica de runs
+
+Un conjunto de incidencias terminales ya conocidas no debería convertir indefinidamente cada ejecución posterior en `partial`.
+
+La ejecución debe distinguir entre:
+
+- fallo nuevo/activo durante ese run;
+- incidencia terminal ya conocida;
+- item legítimamente no aplicable.
+
+La semántica final exacta se coordinará con el Punto 5 — Observabilidad y errores, pero el principio queda aprobado aquí.
+
+### Protección de Series
+
+PROC-04 no sustituye estados funcionales propios de Series.
+
+No se terminaliza un episodio por el mero hecho de:
+
+- estar dentro del margen de 7 días;
+- tener disponibilidad todavía desconocida;
+- ser un especial;
+- estar cubierto por `not_needed`;
+- depender de un override manual.
+
+Sólo actúa sobre repetición técnica inútil o casos cuyo contrato funcional permita expresamente un estado terminal.
+
+### Límites
+
+- No borra items ni errores.
+- No oculta incidencias.
+- No convierte automáticamente cualquier tercer fallo en “terminal”.
+- No elimina revisión humana cuando sea necesaria.
+- No autoriza ahora migraciones, cambios en Neon ni mutación de los cuatro casos vivos observados.
+- Debe existir una ruta clara para invalidar/reabrir el estado cuando cambie la causa.
+
+### Resultado esperado
+
+Los mismos casos no contaminan indefinidamente nuevas ejecuciones. PikoFilm mantiene trazabilidad completa, reduce ruido y trabajo repetido y reserva `partial` para incidencias realmente activas o nuevas.
