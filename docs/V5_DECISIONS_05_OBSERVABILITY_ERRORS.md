@@ -521,3 +521,91 @@ El objetivo principal es mejorar relación señal/ruido y capacidad diagnóstica
 ### Invariante
 
 > La observabilidad debe maximizar señal, no volumen: los hechos durables viven en Neon y los logs externos priorizan cambios de estado, anomalías y resúmenes, no repetir continuamente que todo sigue igual.
+
+
+---
+
+## OBS-08 — Clasificación y destino de `admin_events`
+
+**APROBADA.**
+
+### Problema
+
+La auditoría confirmó que `admin_events` sigue siendo un segundo stream vivo y voluminoso:
+
+- ~64.600 filas;
+- ~41 MB;
+- escrituras actuales;
+- sin `run_id`;
+- sin `correlation_key`;
+- sin relación estructural con `process_runs`.
+
+No se asume que sea legacy ni que pueda borrarse. Primero debe entenderse qué parte conserva valor funcional real.
+
+### Decisión
+
+Cada familia de `admin_events` deberá clasificarse explícitamente en una de estas categorías:
+
+1. **Auditoría funcional canónica**
+   - decisiones/acciones con valor histórico propio;
+   - puede sobrevivir aunque no dependa de un proceso.
+
+2. **Evidencia de dominio útil y correlacionable**
+   - conserva utilidad propia;
+   - si pertenece a un `PROC-*`, debe poder vincularse por `run_id`, `correlation_key` o mecanismo equivalente.
+
+3. **Duplicación operativa**
+   - repite información ya representada de forma más completa en `process_run_events` u otra fuente canónica;
+   - su writer debe migrarse y la duplicación dejar de crecer.
+
+4. **Legacy/transición**
+   - sin readers, writers, recovery ni autoridad vigente;
+   - candidato a retirada controlada siguiendo DB-11.
+
+### Inventario obligatorio
+
+Antes de tocar datos, cada familia debe tener como mínimo:
+
+- `event_type`;
+- `action`;
+- writer;
+- reader/consumidor;
+- owner funcional;
+- propósito;
+- si duplica otra fuente;
+- si puede correlacionarse con runs;
+- política de retención;
+- destino V5.
+
+### Correlación
+
+Cuando un `admin_event` sobreviva y pertenezca a una ejecución observable, debe poder navegarse hacia el proceso correspondiente mediante una correlación explícita.
+
+No se acepta mantener dos historias paralelas imposibles de reconciliar.
+
+### Retención
+
+No toda familia necesita la misma retención:
+
+- auditoría funcional relevante puede conservarse más tiempo si está justificado;
+- detalle operativo duplicado debe migrarse o seguir la retención operativa;
+- legacy confirmado se retira de forma controlada.
+
+Siempre se respetan DB-01 y DB-06.
+
+### Coste
+
+El objetivo principal es eliminar ambigüedad y duplicación.
+
+El ahorro de almacenamiento es un beneficio secundario, pero puede ser material porque `admin_events` ya ocupa ~41 MB en menos de un mes.
+
+### Límites
+
+- No se autoriza borrar ni migrar ahora las ~64k filas.
+- No se autoriza DROP ni cambios destructivos en Neon.
+- No se presupone que todas las familias deban desaparecer.
+- La clasificación debe hacerse contra código y consumidores reales antes de actuar.
+
+### Invariante
+
+> `admin_events` deja de ser un cajón genérico: cada familia debe clasificarse como auditoría funcional, evidencia correlacionable, duplicación operativa o legacy, y sólo lo que tenga propósito demostrado sobrevive.
