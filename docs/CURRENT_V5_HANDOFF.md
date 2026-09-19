@@ -768,6 +768,25 @@ Estado:
 - Vercel Production no fue desplegado por el asistente.
 - WKR-07 sigue **PENDIENTE DE DECISIÓN**; no se aprobó ni rechazó durante este cambio.
 
+### CAMBIO FUNCIONAL INTERCALADO — Corrección de tipo + TMDb solo en Identidad
+
+Antes de decidir WKR-07, el usuario pidió poder corregir casos Plex/Series mal tipados y enlazar correctamente series que parten sólo de TMDb.
+
+Estado:
+- rama funcional: `fix/identity-type-tmdb-only`;
+- PR **#571** — **MERGEADA**;
+- CI **#738** — **SUCCESS**;
+- merge en `main`: `2f376128cb58701e18c5bca00535869a2843067a`;
+- Calidad → Identidad permite corregir Película / Serie / Miniserie;
+- cambiar tipo exige TMDb válido y se valida contra el tipo destino;
+- TMDb solo queda disponible al seleccionar Serie/Miniserie aunque el registro estuviera mal tipado como Película;
+- TMDb-only limpia overrides IMDb antiguos de Plex;
+- una serie Plex TMDb-only ya catalogada queda enlazada inmediatamente en `plex_catalog_status`, desplazando de forma segura cualquier vínculo previo del mismo rating key;
+- los refrescos preservan Miniserie;
+- no hubo migraciones ni mutaciones manuales de datos;
+- Vercel Production no fue desplegado por el asistente;
+- WKR-07 sigue **PENDIENTE DE DECISIÓN**.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-07**. WKR-06 ya está **APROBADA y persistida**.
