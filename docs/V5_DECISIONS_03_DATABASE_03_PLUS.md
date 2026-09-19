@@ -521,3 +521,123 @@ La aprobación de DB-08 **no autoriza ahora ninguna limpieza ni mutación de Neo
 ### Resultado esperado
 
 PikoFilm conservará de forma duradera la verdad procesada, el estado actual y la evidencia que realmente necesita, pero dejará de funcionar como archivo permanente de cada respuesta completa de cada API cuando esa respuesta sea prescindible y reconstruible.
+
+
+## DB-09 — Guardrails de almacenamiento y crecimiento por dominio
+
+**Estado: APROBADA**
+
+### Decisión
+
+V5 vigilará el crecimiento de Neon por base, tabla y cardinalidad para detectar anomalías antes de que se conviertan en coste, bloat o presión operativa. El objetivo es **avisar y diagnosticar**, no imponer techos artificiales ni ejecutar limpiezas destructivas automáticamente.
+
+La regla central es: **PikoFilm puede crecer, pero no debe crecer de forma inexplicable**.
+
+### Evidencia observada
+
+Medición del 2026-09-19:
+
+- tamaño total de `neondb`: ~877 MB;
+- `person_filmography`: ~170 MB de heap;
+- `piko_quality`: ~46 MB;
+- `process_run_events`: ~38 MB;
+- `title_ratings`: ~35 MB;
+- `admin_events`: ~34 MB;
+- `plex_items`: ~34 MB;
+- `process_runs`: ~30 MB;
+- `plex_technical_state`: ~24 MB;
+- `movie_credits`: ~24 MB;
+- `series_reference_episodes`: ~21 MB;
+- `series_diagnostics`: ~16 MB.
+
+El total observado durante la auditoría era ~869 MB; el cambio reciente no se considera por sí mismo anómalo.
+
+### Qué se medirá
+
+Como mínimo:
+
+- tamaño total de la base;
+- tamaño por tabla;
+- número de filas por tabla;
+- evolución diaria;
+- variación semanal;
+- relación entre crecimiento y actividad/proceso cuando pueda atribuirse.
+
+Para dominios de alta cardinalidad —especialmente Personas— se vigilarán **filas y tamaño**, no sólo MB.
+
+### Frecuencia y retención
+
+La vigilancia debe ser ligera:
+
+- una foto diaria es suficiente como base;
+- detalle diario: 30 días;
+- tendencia más larga, si aporta valor, mediante agregado mensual pequeño;
+- no se almacenará telemetría por minuto ni otro histórico desproporcionado.
+
+Con el orden de magnitud actual de tablas, esta observabilidad tiene coste despreciable frente al resto de Neon.
+
+### Detección de anomalías
+
+Los umbrales no se fijan como límites rígidos universales. Se combinarán crecimiento relativo y absoluto para evitar ruido.
+
+Punto de partida orientativo:
+
+- alerta de tabla si aumenta >25 % y además >10 MB en una semana;
+- alerta adicional por salto de cardinalidad anómalo;
+- para la base completa, comparación con su tendencia real y no sólo contra un número fijo de GB.
+
+Los valores definitivos se calibrarán con datos reales tras la implementación de DB-02/DB-08, porque esas decisiones cambiarán el baseline físico.
+
+### Integración con Actividad/Operaciones
+
+La señal debe ser comprensible para el usuario, por ejemplo:
+
+- tamaño actual y tendencia;
+- tabla/dominio que más crece;
+- magnitud del cambio;
+- proceso o ventana temporal correlacionada cuando pueda determinarse;
+- estado normal/aviso/anómalo.
+
+La observabilidad debe explicar **qué pasó y cuál fue el resultado**, coherente con el contrato de Actividad V4/V5.
+
+### Guardrails: qué NO hacen
+
+DB-09 no autoriza ni ejecutará automáticamente:
+
+- borrado de tablas;
+- purga de datos canónicos;
+- eliminación de índices;
+- `VACUUM FULL`;
+- bloqueo de inserts;
+- detener sincronización Plex;
+- impedir incorporaciones de catálogo;
+- detener conciliación o refresco de Series;
+- modificar decisiones manuales;
+- limpiezas destructivas de históricos.
+
+Ante crecimiento anómalo: detectar → avisar → atribuir → investigar → corregir la causa según las reglas del dominio.
+
+### Protección reforzada de Series
+
+Series nunca quedará bloqueada por un presupuesto de almacenamiento. La sincronización, referencia oficial, conciliación, cobertura y decisiones manuales siguen teniendo prioridad funcional.
+
+Un crecimiento anómalo en Series genera diagnóstico, no bloqueo automático.
+
+### Relación con otras decisiones
+
+- DB-01 define qué histórico puede purgarse;
+- DB-02 reducirá y normalizará Personas, por lo que su nuevo baseline se recalibrará;
+- DB-03 reduce write amplification;
+- DB-06 indica qué puede y no puede limpiarse;
+- DB-07 gobierna índices;
+- DB-08 reduce payload reconstruible.
+
+DB-09 observa si esas políticas funcionan en el tiempo y detecta regresiones.
+
+### Impacto funcional y coste
+
+No cambia la funcionalidad del producto. Añade observabilidad ligera y preventiva, con coste de almacenamiento/consulta no material frente al sistema actual.
+
+### Resultado esperado
+
+PikoFilm podrá detectar pronto que una tabla, dominio o proceso está creciendo a un ritmo inesperado y explicar dónde ocurre, antes de que el usuario lo descubra por degradación o coste. La reacción será siempre diagnóstica y controlada, nunca destructiva por defecto.
