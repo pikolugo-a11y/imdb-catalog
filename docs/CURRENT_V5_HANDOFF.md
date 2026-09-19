@@ -346,13 +346,27 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - Complementa el CI estático de PROC-01 con una comprobación runtime/deploy.
 - No autoriza ahora cambios de infraestructura ni producción.
 
+#### PROC-03 — Política de reintentos por proceso y tipo de fallo
+
+**APROBADA.**
+
+- El retry deja de ser una regla global 6 h / 24 h / 3 intentos para cualquier error.
+- El runtime clasifica fallos como TRANSIENT, RATE_LIMIT, QUOTA, PERMANENT, FUNCTIONAL_PENDING o CAPABILITY.
+- Los 429/cuotas respetan `Retry-After`, `blocked_until` y circuit breaker existentes.
+- Los errores permanentes no consumen retries inútiles; los estados funcionales pendientes se reprograman según reglas de negocio.
+- PROC-02 previene los fallos de capacidad antes de materializar items.
+- La política base es común y conservadora; cada proceso sólo ajusta lo estrictamente necesario.
+- Para Batch, la fuente canónica del intento es `batch_run_items.attempt_count`; `process_runs.retry_count` no se considera actualmente canónico.
+- Series mantiene sus reglas funcionales, margen de 7 días y decisiones manuales intactas.
+- No autoriza ahora migraciones ni reintentos retroactivos.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-03 — Política de reintentos por proceso y tipo de fallo**, sustituyendo la regla global 6 h / 24 h / máximo 3 por un contrato explícito y conservador que diferencie errores transitorios, cuotas, fallos permanentes y procesos sensibles.
+Presentar al usuario **PROC-04 — Terminalización de poison items y cuarentena funcional**, para que un item que demuestra repetidamente que no puede converger deje de contaminar ejecuciones futuras y pase a un estado explícito/revisable sin perder trazabilidad.
 
-No presentar PROC-04 hasta que PROC-03 quede persistida como APROBADA o RECHAZADA.
+No presentar PROC-05 hasta que PROC-04 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
