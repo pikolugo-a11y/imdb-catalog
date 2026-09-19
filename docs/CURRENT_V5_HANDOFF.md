@@ -186,13 +186,27 @@ Invariantes:
 - **Impacto de coste: no material/despreciable** frente al resto de Neon; no añade workers ni polling continuo.
 - El ledger representa estado estructural vigente y no se purga con la retención operativa de 30 días de DB-01.
 
+#### DB-06 — Ownership, canonicalidad y rebuildabilidad explícita
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Cada objeto persistente material debe declarar clase, owner funcional, fuente de verdad, escritores autorizados, reconstruibilidad, procedimiento de recovery y política de retención.
+- Se distinguen explícitamente: canónico PikoFilm, decisión manual canónica, snapshot externo, proyección/read model, estado operativo vigente, histórico/auditoría y legacy/transición.
+- **Toda decisión manual del usuario es no sustituible por un rebuild automático salvo regla de negocio aprobada en sentido contrario.**
+- `series_episode_overrides` y demás overrides/correcciones manuales deben sobrevivir full rebuilds.
+- Una proyección reconstruible debe tener mecanismo de rebuild probado; una tabla legacy sólo se retira cuando no conserve autoridad ni consumidores necesarios.
+- La clasificación se versionará en Git y debe acompañar a nuevos objetos persistentes relevantes.
+- DB-06 no añade procesos permanentes ni coste material y no altera la UX.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-06 — Ownership, canonicalidad y rebuildabilidad explícita por tabla/dominio**, derivada de que hoy varias relaciones/read models/caches no declaran de forma uniforme quién es su fuente de verdad, quién puede escribirlas, si son reconstruibles y cuál es su mecanismo de rebuild.
+Presentar al usuario **DB-07 — Revisión y gobierno de índices basada en evidencia**, derivada de que la auditoría detectó índices grandes con pocos o cero scans registrados, pero también de que esas estadísticas no justifican borrar índices a ciegas sin validar consumidores, planes reales y ventanas de observación.
 
-No presentar DB-07 hasta que DB-06 quede persistida como aprobada o rechazada.
+No presentar DB-08 hasta que DB-07 quede persistida como aprobada o rechazada.
 
-Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: ownership/canonicalidad/rebuildabilidad por tabla, revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 ya absorbe write amplification/idempotencia y reconciliación diferencial de Series; DB-04 absorbe el doble modelo de géneros; DB-05 absorbe ledger/drift de migraciones.
+Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia y reconciliación diferencial de Series; DB-04 el doble modelo de géneros; DB-05 ledger/drift de migraciones; DB-06 ownership/canonicalidad/rebuildabilidad.
 
 ## Contexto funcional reciente ya cerrado
 
