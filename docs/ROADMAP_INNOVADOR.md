@@ -122,3 +122,33 @@ A largo plazo puede convertirse en una herramienta de “qué pasa si…” para
 **Visión:** permitir que PikoFilm ensaye el futuro operativo antes de elegirlo.
 
 **Horizonte orientativo:** capacidad futura posterior a V5, posiblemente vinculada a Autopilot; no compromete ninguna versión concreta.
+
+
+---
+
+### INNO-04 — PikoFilm Adaptive Freshness
+
+**Origen:** `INNO-PROC-03` — Punto 4, Procesos automáticos y Batch  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-19
+
+Evolucionar el mantenimiento de PikoFilm desde cadencias rígidas por proceso hacia una estrategia de **frescura adaptativa por dato o entidad**.
+
+Cada próximo refresco se calcularía a partir de señales observables como edad del título, fecha de estreno, estado de una serie, cambios detectados en comprobaciones previas, crecimiento de votos, estabilidad de la fuente, secuencias de `no_change` y SLA funcional del dominio.
+
+El objetivo no es “comprobar menos” sin más, sino mantener cada dato suficientemente fresco con el mínimo trabajo innecesario.
+
+Ejemplos:
+
+- una película clásica y estable puede espaciar progresivamente sus comprobaciones;
+- un estreno reciente puede revisarse con mucha más frecuencia;
+- una serie activa puede mantener una cadencia alta mientras una serie terminada hace años reduce frecuencia;
+- un dato que llevaba meses estable y cambia de repente puede volver temporalmente a una cadencia rápida.
+
+**Guardrail esencial:** el cálculo adaptativo nunca puede superar el máximo de antigüedad permitido por el SLA funcional del proceso. Series conserva sus reglas explícitas, margen de 7 días, disponibilidad, overrides y demás invariantes.
+
+La estrategia puede combinarse con Shadow Scheduler: Adaptive Freshness decide cuándo surge demanda y Shadow Scheduler ensaya cómo repartirla.
+
+**Visión:** pasar de “actualiza todo cada X días” a “actualiza cada dato cuando realmente tiene riesgo de estar obsoleto, dentro de límites explícitos”.
+
+**Horizonte orientativo:** posterior a V5 y sujeto a una evaluación futura específica; no compromete ninguna versión concreta.
