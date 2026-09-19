@@ -178,3 +178,90 @@ Esta aprobación:
 ### Invariante
 
 > La ausencia de trabajo debe reducir automáticamente la frecuencia de consulta; tener un worker disponible no implica consultar Neon de forma agresiva permanentemente.
+
+
+---
+
+## WKR-03 — Technical realmente quiescente cuando está detenido
+
+**APROBADA.**
+
+### Decisión
+
+Cuando `Technical Snapshot` esté funcionalmente detenido, debe entrar en un estado realmente quiescente.
+
+`requested_state='stopped'` no debe implicar:
+
+- lectura de control cada ~10 segundos;
+- escritura de heartbeat cada ~10 segundos;
+- actualización repetitiva de `plex_technical_control`;
+- logs INFO reiterando continuamente que sigue parado.
+
+### Separación de señales
+
+Se separan de forma explícita:
+
+1. **presencia del runtime** — WKR-01;
+2. **estado funcional de Technical** — running / paused / stopped.
+
+Un worker puede estar disponible y sano mientras Technical permanece `stopped`.
+
+### Transiciones
+
+Los cambios de estado sí deben registrarse inmediatamente:
+
+- running → paused;
+- paused → running;
+- running/paused → stopped;
+- stopped → running.
+
+Una vez estable en `stopped`, la señal repetitiva se reduce al mínimo necesario.
+
+### Presencia
+
+La presencia del servicio se mantendrá mediante el contrato común de WKR-01, con heartbeat de baja frecuencia y sin convertirlo en otro loop agresivo.
+
+La frecuencia exacta se decidirá durante implementación según coste y tiempo de detección aceptable.
+
+### Reactivación
+
+El paso de `stopped` a `running` debe detectarse con latencia razonable.
+
+La implementación futura puede usar:
+
+- control con backoff;
+- wake hint;
+- mecanismo equivalente.
+
+No se obliga todavía a una solución física concreta.
+
+### Paused vs stopped
+
+Se conserva la diferencia semántica:
+
+- `paused`: existe intención de continuar el trabajo suspendido;
+- `stopped`: no existe trabajo funcional activo.
+
+Ambos estados deben ser de bajo consumo, pero no tienen por qué compartir exactamente la misma política de control.
+
+### Observabilidad
+
+Encaja con OBS-07:
+
+- los cambios de estado se registran;
+- el estado estable no genera spam continuo;
+- el heartbeat y el logging quedan desacoplados.
+
+### Límites
+
+Esta aprobación:
+
+- no apaga todavía el contenedor Railway;
+- no activa sleep/serverless;
+- no cambia autosuspend de Neon;
+- no define todavía el mecanismo exacto de wake;
+- no autoriza cambios en Production ahora.
+
+### Invariante
+
+> Un proceso funcional detenido no debe generar actividad continua sólo para confirmar que sigue detenido; la presencia del runtime y el estado funcional se observan por canales separados y de baja frecuencia.
