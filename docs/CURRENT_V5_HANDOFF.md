@@ -830,6 +830,27 @@ Estado:
 - Vercel Production no fue desplegado por el asistente;
 - WKR-07 sigue **PENDIENTE DE DECISIÓN**.
 
+### CAMBIO FUNCIONAL INTERCALADO — Series sin fecha TMDb no exigibles
+
+El usuario detectó que episodios oficiales aún ausentes de Plex pero sin `air_date` en TMDb aparecían como disponibilidad pendiente / por confirmar (caso real: Héroes de Guardia T2).
+
+Estado:
+- rama funcional: `fix/series-undated-not-due`;
+- PR **#574** — **MERGEADA**;
+- CI **#746** — **SUCCESS**;
+- merge en `main`: `078e5ddef9f79c764f721a74f5bdd40636c9f57a`;
+- regla canónica: episodio ausente + `air_date IS NULL` = **no exigible aún**;
+- no cuenta como faltante exigible;
+- no genera disponibilidad España pendiente ni `availability_unknown` operativo;
+- no fuerza `SERIES_REVIEW`;
+- PROC-SER-004 omite comprobaciones TMDb/Watchmode para episodios sin fecha;
+- en UX se muestra **Sin fecha de estreno / No exigible aún**;
+- cuando TMDb publique fecha, vuelve a aplicar fecha + margen normal;
+- validación read-only en Héroes de Guardia T2: 8 ausentes físicos, 0 exigibles, 0 pendientes España, 8 no exigibles aún;
+- sin migraciones ni mutaciones de datos;
+- Vercel Production no fue desplegado por el asistente;
+- WKR-07 sigue **PENDIENTE DE DECISIÓN**.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-07**. WKR-06 ya está **APROBADA y persistida**.
