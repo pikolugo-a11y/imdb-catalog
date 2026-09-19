@@ -631,11 +631,37 @@ Decisiones persistidas en `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`:
 
 **CERRADO.** Auditoría completa + 10/10 propuestas OBS-01 a OBS-10 aprobadas + 5/5 innovaciones revisadas/persistidas.
 
+## Punto 6 — Workers y servicios persistentes
+
+**ACTIVO.** Rama de definición: `audit/v5-06-workers`.
+
+Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_06_WORKERS.md`.
+
+Conclusiones principales verificadas contra código + Railway + Neon + Vercel:
+
+- Los cuatro servicios Railway están sanos y con una réplica, pero permanecen vivos la mayor parte del tiempo sin trabajo funcional.
+- API/FAST/Plex consumen la cola mediante polling periódico de Neon incluso cuando no hay Batch.
+- Las estadísticas acumuladas de PostgreSQL muestran millones de accesos sobre tablas de coordinación diminutas: el coste de coordinación ociosa es real.
+- Technical Snapshot en estado funcional `stopped` continúa vivo, consulta/escribe su control aproximadamente cada 10 segundos y genera logs repetitivos.
+- Technical sí tiene heartbeat durable; API/FAST/Plex no tienen liveness/capability durable cuando están ociosos.
+- El lease de un child se renueva mediante `trace.heartbeat()`, pero el runtime común no lo hace automáticamente alrededor de cualquier core largo; Plex se protege explícitamente en sus rutas largas.
+- Existe graceful shutdown básico y recuperación por leases expiradas.
+- Technical usa restart policy `NEVER`; API/Plex usan `ON_FAILURE` con 10 retries y FAST con 3, sin un contrato único que explique la diferencia.
+- Los cuatro workers se siguen redeployando por commits documentales; el selective deploy aprobado en PROC-10 todavía no está implementado.
+- Railway tiene `checkSuites:false`; CI usa Node 22 mientras los contenedores reales mezclan Node 20/22/24 y no construye explícitamente todos los Dockerfiles.
+- Plex/API/Technical emiten warnings `MODULE_TYPELESS_PACKAGE_JSON` que Railway clasifica como error aunque el worker arranca correctamente.
+- Neon Production tiene `suspend_timeout_seconds=0`: reducir polling no haría dormir el compute por sí solo.
+- El sleep/serverless de Railway no puede activarse sin más: el polling/heartbeat impide dormir y, sin un mecanismo de wake, una cola PostgreSQL podría quedarse sin consumidor.
+- No hay evidencia de necesidad de escalar horizontalmente; la prioridad es idle/wake/readiness/recovery, no más réplicas.
+- Estado actual sano: 0 Batch activos, 0 runs queued/running, cuatro deployments Railway SUCCESS y 0 errores Vercel en 24 h.
+
+Fase 2 — PROPUESTAS: **ACTIVA**.
+
 ### SIGUIENTE PASO EXACTO
 
-Cerrar la rama del Punto 5 mediante PR/CI/merge y, desde `main` actualizado, abrir una única rama para **Punto 6 — Workers y servicios persistentes**.
+Presentar al usuario **WKR-01 — Contrato canónico de presencia, versión y capacidades de worker**, para que PikoFilm pueda distinguir de forma durable entre un pool ocioso pero sano, uno no disponible y uno incompatible antes de materializar trabajo.
 
-La Fase 1 del Punto 6 debe auditar especialmente consumo inactivo, polling, heartbeats, wake/sleep, despliegues, aislamiento entre workers, recovery, capacidad real, coste y coherencia entre Railway, Vercel y Neon.
+No presentar WKR-02 hasta que WKR-01 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -669,6 +695,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Auditoría Punto 5: `docs/V5_AUDIT_05_OBSERVABILITY_ERRORS.md`
 - Decisiones Punto 5: `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`
 - Innovaciones Punto 5: `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`
+- Auditoría Punto 6: `docs/V5_AUDIT_06_WORKERS.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento es PR/CI/merge de esta rama y después abrir el Punto 6 desde `main` actualizado.
+El Punto 6 está activo en `audit/v5-06-workers`. Su Fase 1 está cerrada; continuar por Fase 2 y persistir cada decisión antes de presentar la siguiente.
