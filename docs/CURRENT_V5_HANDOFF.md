@@ -296,7 +296,7 @@ Invariantes:
 
 ### Punto 4 — Procesos automáticos y Batch
 
-**ACTIVO.** Rama de trabajo: `audit/v5-04-processes`.
+**CERRADO.** Rama de definición `audit/v5-04-processes`; PR #567 mergeada en `main` como `f101bcbdf98f577e3b8f5e3d5241845549d6cad7`.
 
 Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_04_PROCESSES_BATCH.md`.
 
@@ -466,11 +466,38 @@ Decisiones persistidas en `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`:
 
 
 
+### Punto 5 — Observabilidad y errores
+
+**ACTIVO.** Rama de trabajo: `audit/v5-05-observability`.
+
+Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_05_OBSERVABILITY_ERRORS.md`.
+
+Conclusiones principales verificadas contra código + Neon + Railway + Vercel:
+
+- El modelo canónico `process_runs + process_run_events + process_run_errors` está estructuralmente sano: FKs, índices, cobertura de `run_started`, `error_count` y metadatos de error son coherentes.
+- En la ventana auditada hay ~39.435 runs, ~166.432 events y 432 errors; `process_run_events` ocupa ~61 MB, `process_runs` ~54 MB y errors ~496 kB.
+- `admin_events` sigue siendo un segundo stream vivo (~64.637 filas / ~41 MB), sin `run_id` ni correlación estructural con el modelo canónico. No se autoriza borrarlo: primero debe clasificarse y auditarse su ownership/consumo.
+- Los 432 errores de 30 días tienen step/source/code/entity completos; la calidad estructural del error es una fortaleza.
+- Según la regla actual de Operaciones hay 0 incidencias activas: 310 errores fueron descartados manualmente y 122 se consideran auto-resueltos por éxito posterior.
+- `resolved_at` significa hoy principalmente “deja de requerir atención”, no “causa reparada”. PikoQuality demuestra la diferencia: los process errors pueden estar descartados mientras el estado físico actual conserva 5 capture errors y 6 pendientes.
+- La auto-resolución actual es demasiado amplia: cualquier run posterior técnicamente `succeeded` del mismo proceso/entidad basta. Se encontraron 3 SER-005 cerrados sólo por un success posterior con `functional_result=NULL`.
+- El mayor ruido real es la mezcla entre validación funcional y fallo técnico: 204 intentos de “deshacer” una decisión inexistente de Series se registraron como process errors y dominaron además los errores runtime de Vercel.
+- Vercel está sano en la foto reciente: **0 runtime errors en las últimas 24 h**; el histórico de 7 días está contaminado por errores funcionales esperables y fallos antiguos ya corregidos.
+- `PROC-LC-001` confirma que `succeeded` puede contener errores recuperados: 55 runs succeeded con error_count>0 en 30 días; en ~72 h, 107 succeeded+updated acumularon 53 errores.
+- Parents Batch/system pueden terminar failed/partial sin error directo porque la causa vive en hijos/items; la UX debe representar causa agregada sin fingir que “sin error directo” equivale a “sin fallo”.
+- `event_type='error'` no es 1:1 con `process_run_errors`: 652 error-events vs 432 error rows; 83 runs tienen error-event sin error-row. Hace falta contrato semántico.
+- Technical Snapshot, incluso en `stopped`, genera una línea de log aproximadamente cada 10 s; en ~84 min se alcanzaron 501 líneas casi idénticas. Heartbeat y logging deben desacoplarse.
+- FAST/Plex registran cada `batch_item_done` en Railway; es útil para diagnóstico pero duplica estado durable y escala linealmente con el volumen.
+- La retención de 30 días está funcionando y no se observaron filas canónicas más antiguas.
+- Actividad/Operaciones tienen una buena separación UX: el problema V5 es mejorar la calidad de la señal, no añadir otro sistema de tracing ni mostrar más logs al usuario.
+
+Fase 2 — PROPUESTAS: **ACTIVA**.
+
 ### SIGUIENTE PASO EXACTO
 
-Cerrar la rama del Punto 4 mediante PR/CI/merge y, desde `main` actualizado, abrir una única rama para **Punto 5 — Observabilidad y errores**.
+Presentar al usuario **OBS-01 — Taxonomía canónica de señal: fallo técnico, validación funcional, estado pendiente e incidencia activa**, para impedir que una precondición funcional esperable se registre como fallo técnico/runtime y para que Actividad, Operaciones, Neon y logs de plataforma hablen el mismo idioma.
 
-La Fase 1 del Punto 5 debe comenzar con una auditoría extremadamente detallada del sistema real de observabilidad: errores activos vs históricos, resolución, trazabilidad, métricas, logs, alertas, estados engañosos, coste de logging y coherencia entre Neon, Railway, Vercel, GitHub y UX.
+No presentar OBS-02 hasta que OBS-01 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -501,6 +528,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Auditoría Punto 4: `docs/V5_AUDIT_04_PROCESSES_BATCH.md`
 - Decisiones Punto 4: `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`
 - Innovaciones Punto 4: `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`
+- Auditoría Punto 5: `docs/V5_AUDIT_05_OBSERVABILITY_ERRORS.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-El Punto 4 queda cerrado en `audit/v5-04-processes`. El siguiente movimiento es PR/CI/merge de esta rama y después abrir el Punto 5 desde `main` actualizado.
+El Punto 5 está activo en `audit/v5-05-observability`. Su Fase 1 ya está cerrada; continuar por Fase 2 y persistir cada decisión antes de presentar la siguiente.
