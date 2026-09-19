@@ -296,7 +296,7 @@ Invariantes:
 
 ### Punto 4 — Procesos automáticos y Batch
 
-**ACTIVO.** Rama de trabajo: `audit/v5-04-processes`.
+**CERRADO.** Rama de definición `audit/v5-04-processes`; PR #567 mergeada en `main` como `f101bcbdf98f577e3b8f5e3d5241845549d6cad7`.
 
 Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_04_PROCESSES_BATCH.md`.
 
@@ -466,11 +466,176 @@ Decisiones persistidas en `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`:
 
 
 
+### Punto 5 — Observabilidad y errores
+
+**ACTIVO.** Rama de trabajo: `audit/v5-05-observability`.
+
+Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_05_OBSERVABILITY_ERRORS.md`.
+
+Conclusiones principales verificadas contra código + Neon + Railway + Vercel:
+
+- El modelo canónico `process_runs + process_run_events + process_run_errors` está estructuralmente sano: FKs, índices, cobertura de `run_started`, `error_count` y metadatos de error son coherentes.
+- En la ventana auditada hay ~39.435 runs, ~166.432 events y 432 errors; `process_run_events` ocupa ~61 MB, `process_runs` ~54 MB y errors ~496 kB.
+- `admin_events` sigue siendo un segundo stream vivo (~64.637 filas / ~41 MB), sin `run_id` ni correlación estructural con el modelo canónico. No se autoriza borrarlo: primero debe clasificarse y auditarse su ownership/consumo.
+- Los 432 errores de 30 días tienen step/source/code/entity completos; la calidad estructural del error es una fortaleza.
+- Según la regla actual de Operaciones hay 0 incidencias activas: 310 errores fueron descartados manualmente y 122 se consideran auto-resueltos por éxito posterior.
+- `resolved_at` significa hoy principalmente “deja de requerir atención”, no “causa reparada”. PikoQuality demuestra la diferencia: los process errors pueden estar descartados mientras el estado físico actual conserva 5 capture errors y 6 pendientes.
+- La auto-resolución actual es demasiado amplia: cualquier run posterior técnicamente `succeeded` del mismo proceso/entidad basta. Se encontraron 3 SER-005 cerrados sólo por un success posterior con `functional_result=NULL`.
+- El mayor ruido real es la mezcla entre validación funcional y fallo técnico: 204 intentos de “deshacer” una decisión inexistente de Series se registraron como process errors y dominaron además los errores runtime de Vercel.
+- Vercel está sano en la foto reciente: **0 runtime errors en las últimas 24 h**; el histórico de 7 días está contaminado por errores funcionales esperables y fallos antiguos ya corregidos.
+- `PROC-LC-001` confirma que `succeeded` puede contener errores recuperados: 55 runs succeeded con error_count>0 en 30 días; en ~72 h, 107 succeeded+updated acumularon 53 errores.
+- Parents Batch/system pueden terminar failed/partial sin error directo porque la causa vive en hijos/items; la UX debe representar causa agregada sin fingir que “sin error directo” equivale a “sin fallo”.
+- `event_type='error'` no es 1:1 con `process_run_errors`: 652 error-events vs 432 error rows; 83 runs tienen error-event sin error-row. Hace falta contrato semántico.
+- Technical Snapshot, incluso en `stopped`, genera una línea de log aproximadamente cada 10 s; en ~84 min se alcanzaron 501 líneas casi idénticas. Heartbeat y logging deben desacoplarse.
+- FAST/Plex registran cada `batch_item_done` en Railway; es útil para diagnóstico pero duplica estado durable y escala linealmente con el volumen.
+- La retención de 30 días está funcionando y no se observaron filas canónicas más antiguas.
+- Actividad/Operaciones tienen una buena separación UX: el problema V5 es mejorar la calidad de la señal, no añadir otro sistema de tracing ni mostrar más logs al usuario.
+
+Fase 2 — PROPUESTAS: **ACTIVA**.
+
+Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
+
+#### OBS-01 — Taxonomía canónica de señal
+
+**APROBADA.**
+
+- Se distinguen fallo técnico, validación/rechazo funcional, estado funcional pendiente/bloqueado e incidencia activa.
+- Sólo un fallo técnico real genera `process_run_errors` y error de plataforma.
+- Una validación funcional esperable debe terminar como resultado funcional/evento, no como avería técnica.
+- `succeeded + pending/blocked` no equivale automáticamente a incidencia técnica.
+- Un error recuperado puede conservar evidencia histórica sin mantener atención activa.
+- Actividad, Operaciones y logs externos deben usar la misma taxonomía.
+- No se crea un sistema paralelo ni se autoriza migración o reescritura retroactiva de errores históricos.
+
+#### OBS-02 — Contrato canónico de incidencia activa y evidencia de resolución
+
+**APROBADA.**
+
+- Una incidencia sólo deja de estar activa cuando existe evidencia suficiente de que la condición original ya no requiere atención.
+- Se reconocen cuatro vías: recuperación demostrada, resolución manual explícita, terminalización conocida y supersedida por nueva verdad.
+- La resolución manual distingue descartar/aceptar/no aplicable/obsoleta de una reparación real.
+- El cierre conserva procedencia: modo, razón, fecha, evidencia/run y alcance cuando corresponda.
+- Un nuevo episodio del mismo problema tras el cierre se trata como recurrencia nueva, sin borrar el historial anterior.
+- La regla actual de “cualquier success posterior del mismo proceso/entidad” deja de ser suficiente por sí sola.
+- No autoriza ahora migraciones ni reescritura retroactiva del histórico.
+
+#### OBS-03 — Causa efectiva agregada para parents, hijos e items
+
+**APROBADA.**
+
+- Un parent compuesto puede terminar partial/failed aunque no tenga un error directo propio.
+- La causa efectiva se deriva de children, items y errors sin copiar filas al parent.
+- Se distinguen fallo directo, fallos derivados, terminales, retries y trabajo funcional pendiente.
+- Actividad resume impacto funcional; Operaciones explica la causa técnica agregada y permite navegar al detalle.
+- Un mismo hecho no se cuenta varias veces por aparecer en distintas capas.
+- No autoriza ahora nuevas tablas, migraciones ni cambios de UI.
+
+#### OBS-04 — Contrato canónico de eventos, warnings y errores
+
+**APROBADA.**
+
+- Los eventos describen hechos de ejecución; los warnings expresan degradación tolerada; `process_run_errors` representa fallos técnicos reales.
+- `event_type='error'` deja de ser un contador alternativo de fallos.
+- Si un error técnico aparece también en timeline, debe referenciar el mismo error canónico y no contarse dos veces.
+- Los warnings tienen métricas separadas y no crean automáticamente incidencia activa.
+- Los errores recuperados conservan evidencia técnica, mientras OBS-02 decide si requieren atención.
+- No se reescribe el histórico ni se autoriza ahora cambio de esquema.
+
+#### OBS-05 — Estado operativo vigente separado del historial
+
+**APROBADA.**
+
+- El histórico responde qué ocurrió; el estado vigente responde qué requiere atención ahora.
+- Cada dominio relevante expone su propia verdad actual de salud/deuda y Operaciones la consume mediante una proyección común.
+- Descartar una incidencia histórica no puede ocultar un estado físico o funcional que siga degradado.
+- Un error histórico tampoco mantiene el sistema en rojo si la condición actual ya está sana.
+- Actividad puede mostrar incidencias pasadas aunque Operaciones esté hoy en verde.
+- Se reutilizan tablas, heartbeats, breakers, planes y read models existentes; no se crea polling continuo ni un worker adicional.
+- No se autoriza ahora una nueva tabla central de health ni cambios de producción.
+
+#### OBS-06 — Procedencia estructurada de resolución y recurrencia
+
+**APROBADA.**
+
+- Toda resolución conserva modo, razón normalizada, evidencia/run cuando exista, fecha/hora y alcance.
+- Se distinguen recuperada, descartada, no aplicable, terminal conocida y supersedida.
+- Una reaparición tras el cierre se registra como nueva recurrencia/incidencia, no como reapertura artificial del episodio anterior.
+- Las recurrencias pueden agruparse mediante un fingerprint estable basado en proceso, paso, código/clase, fuente, causa normalizada y scope.
+- El texto literal completo no es la única identidad del patrón.
+- No se crea ahora una plataforma de incident management ni se autoriza migración.
+
+#### OBS-07 — Política de logging por nivel, agregación y sampling
+
+**APROBADA.**
+
+- ERROR queda reservado a fallos técnicos reales; WARN a degradación tolerada; INFO a transiciones/resúmenes; DEBUG a detalle de alta cardinalidad.
+- Heartbeat y logging quedan desacoplados: un worker puede mantener señal de vida sin imprimir el mismo estado cada ciclo.
+- Technical Snapshot no debe repetir `stopped` cada ~10 s.
+- FAST/Plex/API deben preferir progreso agregado y resumen final frente a un INFO por cada item correcto.
+- Errores, retries, terminalizaciones, breakers, crashes y transiciones críticas nunca se samplean ni suprimen.
+- Los logs externos siguen siendo complementarios; la verdad durable permanece en Neon.
+- No cambia ahora configuración de producción.
+
+#### OBS-08 — Clasificación y destino de `admin_events`
+
+**APROBADA.**
+
+- Cada familia se clasifica como auditoría funcional canónica, evidencia de dominio correlacionable, duplicación operativa o legacy/transición.
+- Antes de tocar datos se inventarían event/action, writer, readers, owner, propósito, duplicación, correlación, retención y destino V5.
+- Las familias vinculadas a procesos deben poder correlacionarse con `process_runs`.
+- La duplicación operativa debe dejar de crecer cuando exista una fuente canónica equivalente.
+- No se borra ni migra ahora `admin_events`; cualquier retirada seguirá DB-11 y requerirá evidencia de ausencia de consumidores/autoridad.
+- DB-01 y DB-06 gobiernan retención y ownership.
+
+#### OBS-09 — Correlación mínima con runtimes externos
+
+**APROBADA.**
+
+- Toda ejecución observable conserva referencias mínimas al runtime concreto: servicio/modelo, deployment/workflow y build/commit cuando aplique.
+- Los logs externos incluyen `run_id`, process/batch/entity IDs cuando el runtime lo permita.
+- La navegación debe funcionar en ambos sentidos: PikoFilm → runtime/log y log → run.
+- No se copian stdout/stderr ni trazas completas a Neon.
+- La metadata de runtime ayuda a detectar version skew y complementa PROC-02/PROC-09/PROC-10.
+- Actividad no se llena de infraestructura; la correlación permanece en Operaciones/diagnóstico técnico.
+- No se autoriza ahora cambio de esquema ni configuración de plataformas.
+
+#### OBS-10 — KPIs canónicos de salud actual, fiabilidad y recurrencia
+
+**APROBADA.**
+
+- La salud se separa en estado actual, fallos técnicos, recuperación, recurrencia, degradación y deuda funcional.
+- Operaciones prioriza primero lo que requiere atención ahora y después aporta tendencia histórica.
+- Los contadores brutos de errores no se usan como indicador aislado de salud.
+- Se podrán medir incidencias nuevas, recurrencias y tiempo hasta recuperación por proceso/dominio.
+- No se usará un único “health score” opaco que mezcle dimensiones heterogéneas.
+- Las métricas se derivan preferentemente de fuentes existentes y sin nueva plataforma obligatoria.
+- No autoriza ahora cambios de UI, esquema ni recalificación retroactiva.
+
+### ESTADO DE FASE 2
+
+**COMPLETADA.** OBS-01 a OBS-10 han sido revisadas individualmente, aprobadas y persistidas.
+
+### ESTADO DE FASE 3 — INNOVACIÓN
+
+**COMPLETADA.** 5/5 innovaciones revisadas y persistidas. Sólo INNO-OBS-02 fue aprobada e incorporada a `docs/ROADMAP_INNOVADOR.md` como INNO-06.
+
+Decisiones persistidas en `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`:
+
+- `INNO-OBS-01 — PikoFilm Causal X-Ray`: **RECHAZADA**. No se incorpora al Road Map Innovador.
+- `INNO-OBS-02 — PikoFilm Sentinel`: **APROBADA**. Incorporada a `docs/ROADMAP_INNOVADOR.md` como **INNO-06**.
+- `INNO-OBS-03 — PikoFilm Anomaly Radar`: **RECHAZADA**. No se incorpora al Road Map Innovador.
+- `INNO-OBS-04 — PikoFilm Blast Shield`: **RECHAZADA**. No se incorpora al Road Map Innovador.
+- `INNO-OBS-05 — PikoFilm Chaos Lab`: **RECHAZADA**. No se incorpora al Road Map Innovador.
+
+### CIERRE DEL PUNTO 5
+
+**CERRADO.** Auditoría completa + 10/10 propuestas OBS-01 a OBS-10 aprobadas + 5/5 innovaciones revisadas/persistidas.
+
 ### SIGUIENTE PASO EXACTO
 
-Cerrar la rama del Punto 4 mediante PR/CI/merge y, desde `main` actualizado, abrir una única rama para **Punto 5 — Observabilidad y errores**.
+Cerrar la rama del Punto 5 mediante PR/CI/merge y, desde `main` actualizado, abrir una única rama para **Punto 6 — Workers y servicios persistentes**.
 
-La Fase 1 del Punto 5 debe comenzar con una auditoría extremadamente detallada del sistema real de observabilidad: errores activos vs históricos, resolución, trazabilidad, métricas, logs, alertas, estados engañosos, coste de logging y coherencia entre Neon, Railway, Vercel, GitHub y UX.
+La Fase 1 del Punto 6 debe auditar especialmente consumo inactivo, polling, heartbeats, wake/sleep, despliegues, aislamiento entre workers, recovery, capacidad real, coste y coherencia entre Railway, Vercel y Neon.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -501,6 +666,9 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Auditoría Punto 4: `docs/V5_AUDIT_04_PROCESSES_BATCH.md`
 - Decisiones Punto 4: `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`
 - Innovaciones Punto 4: `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`
+- Auditoría Punto 5: `docs/V5_AUDIT_05_OBSERVABILITY_ERRORS.md`
+- Decisiones Punto 5: `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`
+- Innovaciones Punto 5: `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-El Punto 4 queda cerrado en `audit/v5-04-processes`. El siguiente movimiento es PR/CI/merge de esta rama y después abrir el Punto 5 desde `main` actualizado.
+El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento es PR/CI/merge de esta rama y después abrir el Punto 6 desde `main` actualizado.
