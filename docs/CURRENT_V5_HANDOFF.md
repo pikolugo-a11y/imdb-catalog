@@ -360,13 +360,25 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - Series mantiene sus reglas funcionales, margen de 7 días y decisiones manuales intactas.
 - No autoriza ahora migraciones ni reintentos retroactivos.
 
+#### PROC-04 — Terminalización de poison items y cuarentena funcional
+
+**APROBADA.**
+
+- Un item que demuestra no poder converger mediante el mismo mecanismo automático deja de circular por la cola normal.
+- Se distinguen estados equivalentes a PERMANENT_ERROR, NOT_APPLICABLE y MANUAL_REVIEW; no existe una papelera opaca.
+- Se conserva entidad, proceso, causa, intentos, fecha de terminalización, regla aplicada y condición de reentrada.
+- Si cambia fingerprint/identidad/referencia/configuración relevante, la terminalización puede invalidarse y el item vuelve a ser elegible.
+- Incidencias terminales conocidas no deben convertir indefinidamente cada nueva ejecución en `partial`.
+- Series conserva sus estados funcionales, margen de 7 días y overrides; PROC-04 sólo actúa cuando la repetición técnica ya no aporta valor.
+- No autoriza ahora migraciones ni mutación de los casos vivos observados.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-04 — Terminalización de poison items y cuarentena funcional**, para que un item que demuestra repetidamente que no puede converger deje de contaminar ejecuciones futuras y pase a un estado explícito/revisable sin perder trazabilidad.
+Presentar al usuario **PROC-05 — Semántica canónica de estados Batch y planner**, definiendo de forma única qué significan `succeeded`, `partial`, `failed`, `pending`, `completed` y `delayed`, y evitando que un parent `partial + pending` cierre silenciosamente un plan como completado.
 
-No presentar PROC-05 hasta que PROC-04 quede persistida como APROBADA o RECHAZADA.
+No presentar PROC-06 hasta que PROC-05 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
