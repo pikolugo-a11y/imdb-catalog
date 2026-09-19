@@ -265,3 +265,68 @@ Esta aprobación:
 ### Invariante
 
 > Un proceso funcional detenido no debe generar actividad continua sólo para confirmar que sigue detenido; la presencia del runtime y el estado funcional se observan por canales separados y de baja frecuencia.
+
+
+---
+
+## WKR-04 — Lease heartbeat propiedad del runtime
+
+**APROBADA.**
+
+### Decisión
+
+La renovación básica del lease de cualquier child Batch será responsabilidad del runtime común, no de cada core funcional.
+
+Cuando `executeClaimedItem()` o su equivalente empiece a ejecutar un item:
+
+1. crea/inicia el child;
+2. arranca un heartbeat automático de ejecución;
+3. renueva periódicamente `process_runs.last_heartbeat_at` y `batch_run_items.lease_until`;
+4. ejecuta el core funcional;
+5. detiene siempre el heartbeat al terminar, fallar, cancelar o cerrar.
+
+### Core funcional
+
+Los cores pueden seguir emitiendo heartbeats/eventos funcionales para aportar contexto o progreso, pero ya no deben depender de esas llamadas manuales para mantener vivo el lease.
+
+La seguridad temporal pertenece al runtime.
+
+### Frecuencia
+
+La frecuencia del heartbeat automático debe:
+
+- guardar margen suficiente respecto al TTL del lease;
+- evitar escrituras excesivas;
+- ejecutarse sólo mientras haya un item realmente activo;
+- detenerse de forma determinista al finalizar.
+
+No se fija todavía un intervalo exacto.
+
+### Recovery
+
+Si el proceso muere de verdad:
+
+- el heartbeat automático cesa;
+- el lease expira;
+- la reconciliación vigente puede recuperar/reencolar según la política;
+- no se pierde el mecanismo actual de recuperación.
+
+### Relación con WKR-01
+
+- WKR-01 mantiene presencia/capacidad del worker.
+- WKR-04 mantiene la vigencia del trabajo que ya está ejecutando.
+
+Son señales distintas.
+
+### Límites
+
+Esta aprobación:
+
+- no cambia todavía el TTL del lease;
+- no cambia número de intentos;
+- no modifica la política de retries de PROC-03;
+- no autoriza cambios en Production ahora.
+
+### Invariante
+
+> Mientras un worker siga ejecutando legítimamente un child Batch, el runtime común debe mantener automáticamente vigente su lease; ningún core funcional debe depender de llamadas manuales de heartbeat para evitar una falsa expiración.
