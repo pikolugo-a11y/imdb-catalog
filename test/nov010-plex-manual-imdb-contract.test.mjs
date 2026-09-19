@@ -22,9 +22,12 @@ test('NOV-010 keeps IMDb manual mode and adds explicit TMDb-only series mode',()
   assert.match(action,/eligibility_status[^\n]*'eligible'/);
   assert.doesNotMatch(action,/setPlexIdentity\(ratingKey,\{imdbId:internalId\}\)/);
   assert.doesNotMatch(action,/seedPlexNewsCandidates/);
-  assert.match(action,/linkCatalogTitleToPlex\(internalId,ratingKey\)/);
-  assert.match(action,/correctIdentityIds\(\{oldImdbId:internalId,newImdbId:internalId,tmdbId,newType:targetType,tmdbOnly:true,trace\}\)/);
-  assert.match(action,/markIdentityRefreshPending\(internalId,'manual_plex_tmdb_only'\)/);
+  assert.match(action,/source_status->>'identity_mode'='tmdb_only'/);
+  assert.match(action,/tmdb_id=\$\{tmdbId\}/);
+  assert.match(action,/const canonicalId=existing\?\.imdb_id\|\|internalId/);
+  assert.match(action,/linkCatalogTitleToPlex\(canonicalId,ratingKey\)/);
+  assert.match(action,/correctIdentityIds\(\{oldImdbId:canonicalId,newImdbId:canonicalId,tmdbId,newType:targetType,tmdbOnly:true,trace\}\)/);
+  assert.match(action,/markIdentityRefreshPending\(canonicalId,'manual_plex_tmdb_only'\)/);
   assert.match(action,/plex_linked:1/);
 });
 
@@ -49,6 +52,9 @@ test('TMDb-only Plex candidates are admitted with manual canonical mode and link
   assert.match(admission,/technical_identity_key:'plex_tmdb_only'/);
   assert.match(admission,/tmdb_id,tmdb_url,imdb_url/);
   assert.match(admission,/s\?\.plexRatingKey\|\|s\?\.ratingKey/);
+  assert.match(admission,/existingTmdbOnly/);
+  assert.match(admission,/catalogAdmission:'reused_tmdb_only_v4'/);
+  assert.match(admission,/canonicalImdbId:canonicalId/);
   assert.match(news,/source_snapshot->>'identityMode'='tmdb_only'/);
 });
 
@@ -58,6 +64,7 @@ test('Lifecycle and structural data honor TMDb-only without falling back to IMDb
   assert.match(lifecycle,/if\(String\(row\?\.identity_mode\|\|''\)==='tmdb_only'\)return false/);
   assert.match(data,/const tmdbOnly=before\.identity_mode==='tmdb_only'/);
   assert.match(data,/const sources=tmdbOnly\?\[\['tmdb',refreshTmdb\]\]/);
-  assert.match(data,/tmdb_rating=CASE WHEN \$\{tmdbOnly\}/);
+  assert.match(data,/const sources=tmdbOnly\?\[\['tmdb',refreshTmdb\]\]/);
+  assert.doesNotMatch(data,/tmdb_rating=|tmdb_votes=/);
   assert.match(display,/'PROC-NOV-010':\{name:'Guardar identidad manual de Plex'\}/);
 });
