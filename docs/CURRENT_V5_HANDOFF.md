@@ -432,13 +432,33 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - No fuerza PQ-001, PQ-002 o NOV-001 al Batch Engine común ni crea un orquestador central nuevo.
 - No autoriza ahora cambios de producción.
 
+#### PROC-10 — Despliegue seguro y selectivo de workers
+
+**APROBADA.**
+
+- Todo cambio que pueda afectar al runtime de un worker debe desplegarlo.
+- Cambios demostrablemente ajenos a su runtime, como documentación, no deben reiniciarlo.
+- La selectividad debe considerar dependencias reales, incluidas librerías compartidas y contratos, no sólo archivos del worker.
+- Una versión nueva no debe aceptar trabajo antes de superar CI/contratos/compatibilidad y el preflight runtime de PROC-02.
+- Redeploys necesarios pueden ser frecuentes; el objetivo no es ahorrar deploys reales sino eliminar churn inútil y reducir version skew.
+- No obliga a blue/green, Kubernetes ni nueva plataforma.
+- No autoriza ahora cambios de configuración Railway.
+
+### ESTADO DE FASE 2
+
+**COMPLETADA.** Se han revisado individualmente y persistido 10 propuestas PROC-01 a PROC-10, todas aprobadas.
+
+### ESTADO DE FASE 3 — INNOVACIÓN
+
+**ACTIVA.** Deben revisarse al menos 5 innovaciones rompedoras, una a una. Sólo las aprobadas se incorporarán a `docs/ROADMAP_INNOVADOR.md`.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-10 — Despliegue seguro y selectivo de workers**, evitando redeploys por cambios irrelevantes y haciendo que una nueva versión de worker sólo entre en producción después de superar los gates de CI/compatibilidad correspondientes.
+Presentar al usuario **INNO-PROC-01 — PikoFilm Event Fabric**, una arquitectura futura basada en eventos de dominio durables que sustituya progresivamente el planner/cron como mecanismo primario de reacción, manteniendo timers sólo para vencimientos temporales.
 
-No cerrar Fase 2 hasta que PROC-10 quede persistida como APROBADA o RECHAZADA.
+No presentar INNO-PROC-02 hasta que INNO-PROC-01 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
