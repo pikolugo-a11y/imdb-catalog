@@ -333,13 +333,26 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - El registro no absorbe lógica funcional de Series, Personas, Novedades, PikoScore, etc.
 - No autoriza aún refactor funcional, cambios de Neon ni despliegues.
 
+#### PROC-02 — Preflight de capacidades antes de encolar Batch
+
+**APROBADA.**
+
+- PROC-01 declara la capacidad requerida; PROC-02 verifica la capacidad realmente desplegada antes de materializar `batch_run_control` + items.
+- Cada worker/pool publica una foto ligera de build/versión, contrato y process codes/adapters soportados.
+- Worker compatible pero temporalmente offline no equivale a worker incompatible.
+- Si falta capacidad real, no se crea trabajo masivo destinado a fallar; el plan/demanda permanece pendiente o demorado de forma observable.
+- Debe detectar control plane nuevo frente a worker aún antiguo.
+- Permitirá retirar recuperaciones ad hoc por `Adapter API no registrado`.
+- Complementa el CI estático de PROC-01 con una comprobación runtime/deploy.
+- No autoriza ahora cambios de infraestructura ni producción.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-02 — Preflight de capacidades antes de encolar Batch**, para impedir materializar trabajo cuando el worker desplegado no puede ejecutar el proceso/adaptador requerido.
+Presentar al usuario **PROC-03 — Política de reintentos por proceso y tipo de fallo**, sustituyendo la regla global 6 h / 24 h / máximo 3 por un contrato explícito y conservador que diferencie errores transitorios, cuotas, fallos permanentes y procesos sensibles.
 
-No presentar PROC-03 hasta que PROC-02 quede persistida como APROBADA o RECHAZADA.
+No presentar PROC-04 hasta que PROC-03 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
