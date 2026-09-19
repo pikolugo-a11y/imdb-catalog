@@ -694,11 +694,21 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Encaja con OBS-07: registrar cambios, no repetir continuamente que nada cambió.
 - No apaga todavía el contenedor Railway ni activa serverless/autosuspend.
 
+#### WKR-04 — Lease heartbeat propiedad del runtime
+
+**APROBADA.**
+
+- El runtime común renueva automáticamente `last_heartbeat_at` y `lease_until` mientras un child Batch siga ejecutándose.
+- Los cores pueden emitir progreso funcional, pero ya no dependen de heartbeats manuales para evitar expiraciones falsas.
+- El heartbeat automático sólo existe mientras haya trabajo activo y se detiene siempre al finalizar/fallar/cancelar/cerrar.
+- Si el proceso muere realmente, el heartbeat cesa y la lease expirada sigue permitiendo recovery.
+- No cambia todavía TTL, retries ni número de intentos.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **WKR-04 — Lease heartbeat propiedad del runtime**, para que cualquier child Batch mantenga su lease automáticamente mientras su core siga vivo, sin depender de que cada proceso largo recuerde invocar `trace.heartbeat()`.
+Presentar al usuario **WKR-05 — Drain seguro antes de reinicio o deploy**, para que un worker deje de reclamar trabajo, espere o entregue de forma segura sus items activos y sólo entonces permita apagado/redeploy, reduciendo interrupciones y recuperaciones innecesarias.
 
-No presentar WKR-05 hasta que WKR-04 quede persistida como APROBADA o RECHAZADA.
+No presentar WKR-06 hasta que WKR-05 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
