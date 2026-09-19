@@ -58,3 +58,27 @@ La propuesta añadiría una capa de modelado y mantenimiento considerable —pr�
 - No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
 - Se mantienen los modelos canónicos simples como fuente de verdad.
 - Cuando existan discrepancias entre fuentes, se resolverán mediante reglas de producto/datos concretas y tests, sin crear un motor general de claims/evidencias.
+
+
+---
+
+## INNO-DB-03 — PikoFilm Phoenix
+
+**Decisión:** RECHAZADA  
+**Fecha:** 2026-09-19
+
+### Idea evaluada
+
+Separar conceptualmente PikoFilm en un núcleo mínimo irremplazable —catálogo, decisiones manuales, overrides, reglas y configuración— y una gran capa reconstruible de metadata, ratings, Plex, Personas, Calidad, read models y estados derivados.
+
+El objetivo era poder levantar una base prácticamente desde cero restaurando sólo el núcleo y regenerando automáticamente todo lo demás.
+
+### Motivo del rechazo
+
+El usuario no considera útil orientar el producto hacia una capacidad de reconstrucción total de este tipo. Aunque puede aportar resiliencia y portabilidad, añade complejidad de diseño y recovery que no aporta suficiente valor práctico frente a backups, migraciones seguras y mecanismos de rebuild específicos ya previstos para los dominios que realmente lo necesitan.
+
+### Consecuencia
+
+- No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
+- Se mantienen backups y recovery convencionales, más rebuilds específicos donde DB-06 los declare necesarios.
+- No se perseguirá una reconstrucción integral de toda la plataforma como objetivo de producto.
