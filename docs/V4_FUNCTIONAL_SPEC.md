@@ -561,7 +561,7 @@ Incluyen:
 - aceptar/revertir decisión;
 - forzar asociación excepcional.
 
-Al guardar TMDb solo desde una serie Plex ya existente en Catálogo, la relación Plex ↔ Catálogo se actualiza en la misma operación y cualquier vínculo previo del mismo rating key se deja como ausente antes de activar el nuevo.
+Al guardar o confirmar una identidad desde Calidad, PikoFilm intenta re-enlazarla con Plex mediante la identidad canónica: IMDb en modo normal y TMDb en modo TMDb solo. El enlace automático sólo se aplica cuando existe una única coincidencia Plex activa del tipo correcto. El sync global conserva esa misma semántica: las Series/Miniseries TMDb-only reconstruyen su presencia Plex por TMDb, no por IMDb. Si un rating key estaba ligado a otra obra, el vínculo anterior se deja como ausente antes de activar el nuevo.
 
 Son decisiones humanas observadas y no deben masificarse automáticamente.
 
