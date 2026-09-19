@@ -53,17 +53,17 @@ export async function savePlexIdentityFromNewsAction(formData){
     const candidateType=typeOf(plex.item_type);
     if(!title||!candidateType)return{technicalStatus:'succeeded',functionalResult:'invalid',message:'Plex no aporta título/tipo mínimo',metrics:{rating_key:ratingKey}};
     if(identityMode==='tmdb_only'&&plex.item_type!=='show')return{technicalStatus:'succeeded',functionalResult:'invalid',message:'TMDb solo únicamente está disponible para series',metrics:{rating_key:ratingKey,identity_mode:identityMode}};
+    const [existing]=await sql`SELECT imdb_id,type FROM movies WHERE imdb_id=${internalId} LIMIT 1`;
+    let correction=null;
+    if(existing&&identityMode==='tmdb_only'){
+      const targetType=existing.type==='Miniserie'?'Miniserie':'Serie';
+      correction=await correctIdentityIds({oldImdbId:internalId,newImdbId:internalId,tmdbId,newType:targetType,tmdbOnly:true,trace});
+    }
     await trace.event({eventType:'step',step:'protect_manual_identity',message:identityMode==='tmdb_only'?'Guardando TMDb manual como fuente principal':'Guardando y protegiendo IMDb manual',data:{identity_mode:identityMode,tmdb_id:identityMode==='tmdb_only'?tmdbId:null}});
     if(identityMode==='tmdb_only')await setPlexIdentity(ratingKey,{tmdbId});
     else await setPlexIdentity(ratingKey,{imdbId});
-    const [existing]=await sql`SELECT imdb_id,type FROM movies WHERE imdb_id=${internalId} LIMIT 1`;
     if(existing){
-      let correction=null;
-      if(identityMode==='tmdb_only'){
-        const targetType=existing.type==='Miniserie'?'Miniserie':'Serie';
-        correction=await correctIdentityIds({oldImdbId:internalId,newImdbId:internalId,tmdbId,newType:targetType,tmdbOnly:true,trace});
-        if(correction.changed)await markIdentityRefreshPending(internalId,'manual_plex_tmdb_only');
-      }
+      if(correction?.changed)await markIdentityRefreshPending(internalId,'manual_plex_tmdb_only');
       const displaced=await linkExistingPlexTitle(sql,internalId,ratingKey);
       await recomputeLifecycleForIds([...new Set([...displaced,internalId])]);
       await audit('identity','plex',ratingKey,identityMode==='tmdb_only'?'manual_tmdb_only_catalogued':'manual_imdb_catalogued',{imdb_id:internalId,tmdb_id:identityMode==='tmdb_only'?tmdbId:null,identity_mode:identityMode,plex_linked:true,displaced_imdb_ids:displaced});
