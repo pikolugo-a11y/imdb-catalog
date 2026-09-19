@@ -530,11 +530,22 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - Un mismo hecho no se cuenta varias veces por aparecer en distintas capas.
 - No autoriza ahora nuevas tablas, migraciones ni cambios de UI.
 
+#### OBS-04 — Contrato canónico de eventos, warnings y errores
+
+**APROBADA.**
+
+- Los eventos describen hechos de ejecución; los warnings expresan degradación tolerada; `process_run_errors` representa fallos técnicos reales.
+- `event_type='error'` deja de ser un contador alternativo de fallos.
+- Si un error técnico aparece también en timeline, debe referenciar el mismo error canónico y no contarse dos veces.
+- Los warnings tienen métricas separadas y no crean automáticamente incidencia activa.
+- Los errores recuperados conservan evidencia técnica, mientras OBS-02 decide si requieren atención.
+- No se reescribe el histórico ni se autoriza ahora cambio de esquema.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-04 — Contrato canónico de eventos, warnings y errores**, para que `process_run_events` y `process_run_errors` dejen de usar la palabra “error” con semánticas incompatibles y las métricas no cuenten dos veces la misma señal.
+Presentar al usuario **OBS-05 — Estado operativo vigente separado del historial**, para que cada dominio exponga una foto actual canónica de salud/deuda y el histórico de errors/events nunca sea usado por sí solo para afirmar que un problema sigue activo.
 
-No presentar OBS-05 hasta que OBS-04 quede persistida como APROBADA o RECHAZADA.
+No presentar OBS-06 hasta que OBS-05 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
