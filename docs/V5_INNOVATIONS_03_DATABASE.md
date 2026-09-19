@@ -1,7 +1,8 @@
 # PikoFilm V5 — Innovaciones 03: Base de datos y modelo de datos
 
-Estado: **EN REVISIÓN**  
+Estado: **COMPLETADA**  
 Fecha de inicio: **2026-09-19**  
+Fecha de cierre: **2026-09-19**  
 Rama: `audit/v5-03-database`
 
 Este documento registra las decisiones de la Fase 3 del Punto 3 — Base de datos y modelo de datos. Las innovaciones se revisan una a una y cada decisión se persiste antes de presentar la siguiente. Sólo las aprobadas se incorporan a `docs/ROADMAP_INNOVADOR.md`.
@@ -106,3 +107,25 @@ El usuario rechaza incorporar esta idea al Road Map Innovador. Aunque podría re
 - No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
 - Se mantienen diagnósticos, rebuilds y reparaciones explícitas por dominio cuando sean necesarias.
 - Las decisiones manuales y datos no reconstruibles continúan protegidos por DB-06 sin introducir un motor general de autoreparación.
+
+
+---
+
+## INNO-DB-05 — PikoFilm Time Machine
+
+**Decisión:** RECHAZADA  
+**Fecha:** 2026-09-19
+
+### Idea evaluada
+
+Introducir change sets reversibles para mutaciones funcionales importantes, permitiendo deshacer una operación concreta sin restaurar toda la base. La propuesta contemplaba registrar valores anterior/nuevo, entidad, proceso/usuario y proteger cambios posteriores para no sobrescribir correcciones legítimas realizadas después.
+
+### Motivo del rechazo
+
+El usuario rechaza incorporar esta idea al Road Map Innovador. No se considera necesario añadir un sistema general de versionado/rollback funcional por operación a la capa de datos.
+
+### Consecuencia
+
+- No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
+- Se mantienen backups, migraciones controladas, decisiones manuales protegidas y mecanismos de rollback específicos cuando una implementación concreta los requiera.
+- La Fase 3 del Punto 3 queda completada con 5/5 innovaciones revisadas y ninguna aprobada.
