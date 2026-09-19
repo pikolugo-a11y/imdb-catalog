@@ -29,3 +29,61 @@ Reconstruir automáticamente la cadena causal completa de un cambio o incidencia
 **RECHAZADA por el usuario.**
 
 No se añade a `docs/ROADMAP_INNOVADOR.md` y no queda como backlog implícito.
+
+
+---
+
+## INNO-OBS-02 — PikoFilm Sentinel
+
+**Estado: APROBADA.**
+
+### Idea revisada
+
+Crear una red futura de canarios sintéticos y pruebas extremo a extremo seguras para verificar que las rutas críticas están realmente operativas antes de lanzar trabajo importante.
+
+Los canarios podrán validar, según la ruta:
+
+- conectividad con Neon;
+- disponibilidad y respuesta de APIs externas;
+- autenticación y parsing;
+- worker/adapter/capability desplegados;
+- transformaciones en dry-run;
+- invariantes funcionales;
+- compatibilidad de versiones;
+- estado de circuit breakers y dependencias.
+
+### Disparadores futuros posibles
+
+- antes de un Batch grande;
+- después de un deploy relevante;
+- tras recuperarse un breaker;
+- cuando una ruta crítica lleve tiempo sin trabajo real;
+- en una cadencia limitada para rutas especialmente sensibles.
+
+### Guardrails
+
+- preferencia por operaciones read-only;
+- dry-run cuando exista transformación;
+- datos sintéticos aislados/reversibles si una escritura es imprescindible;
+- nunca modificar catálogo canónico sólo para probar;
+- frecuencia y coste limitados;
+- un canario fallido bloquea o demora trabajo de alto impacto sólo bajo reglas explícitas.
+
+### Relación con decisiones existentes
+
+- PROC-02 valida capacidades/versiones antes de materializar trabajo.
+- Sentinel valida además que **la ruta completa funciona realmente**.
+- OBS-05 aporta estado vigente.
+- OBS-09 permite correlacionar canario, runtime y build.
+
+### Decisión
+
+**APROBADA por el usuario.**
+
+Se incorpora a `docs/ROADMAP_INNOVADOR.md` como **INNO-06 — PikoFilm Sentinel**.
+
+No entra automáticamente en V5, V6 ni V7.
+
+### Visión
+
+> PikoFilm prueba que el camino funciona antes de mandar trabajo real por él.
