@@ -609,3 +609,114 @@ El ahorro de almacenamiento es un beneficio secundario, pero puede ser material 
 ### Invariante
 
 > `admin_events` deja de ser un cajón genérico: cada familia debe clasificarse como auditoría funcional, evidencia correlacionable, duplicación operativa o legacy, y sólo lo que tenga propósito demostrado sobrevive.
+
+
+---
+
+## OBS-09 — Correlación mínima con runtimes externos
+
+**APROBADA.**
+
+### Problema
+
+La verdad durable principal está en Neon, pero investigar una ejecución concreta puede exigir saltar manualmente entre Neon, Railway, Vercel y GitHub Actions.
+
+Ese salto es especialmente costoso cuando:
+
+- hay varios workers;
+- existen múltiples deploys cercanos;
+- se sospecha version skew;
+- un proceso especial corre fuera del Batch común.
+
+### Decisión
+
+Toda ejecución observable debe conservar la referencia mínima necesaria para identificar **dónde corrió exactamente y con qué versión**.
+
+Ejemplos conceptuales:
+
+Railway:
+- executor/runtime;
+- service;
+- deployment id;
+- build/commit;
+- worker version/registry version si aplica.
+
+Vercel:
+- deployment id;
+- route/entrypoint;
+- build/commit.
+
+GitHub Actions:
+- workflow run id;
+- workflow/job cuando sea relevante;
+- commit SHA.
+
+### Correlación bidireccional
+
+Cuando el runtime externo lo permita, los logs deberán incluir identificadores estructurados equivalentes a:
+
+- `run_id`;
+- `process_code`;
+- `parent_run_id`;
+- `batch_run_id`;
+- `entity_id`.
+
+Objetivo:
+
+`Neon → runtime/log externo`
+
+y también:
+
+`log externo → run de PikoFilm`.
+
+### Relación con PROC-02, PROC-09 y PROC-10
+
+- PROC-02 valida capacidad desplegada antes de materializar trabajo.
+- PROC-09 define un contrato operativo común entre distintos motores.
+- PROC-10 exige despliegues selectivos/seguros.
+- OBS-09 hace observable qué versión concreta atendió cada ejecución.
+
+Esto permite detectar version skew real sin inferencias manuales.
+
+### Qué no se persiste
+
+Neon no almacenará una copia de:
+
+- stdout/stderr completo;
+- trazas completas de Railway/Vercel;
+- miles de líneas por item.
+
+Se conservan **referencias estructuradas y metadata mínima**, no réplicas de logs externos.
+
+### Retención
+
+Las referencias pueden vivir mientras viva la ejecución dentro de la política operativa.
+
+Si el proveedor externo elimina sus logs, PikoFilm conserva al menos:
+
+- runtime;
+- build;
+- deployment/workflow;
+- proceso/entidad relacionados.
+
+### UX
+
+Operaciones puede mostrar de forma secundaria algo equivalente a:
+
+> Ejecutado en Railway · Plex worker · build abc1234
+
+con navegación técnica cuando exista un destino utilizable.
+
+La portada no se convierte en una pantalla de infraestructura.
+
+### Límites
+
+- No obliga a copiar logs externos.
+- No cambia ahora Railway, Vercel ni GitHub Actions.
+- No autoriza nuevas tablas ni migraciones.
+- La metadata exacta dependerá del modelo de ejecución declarado por PROC-01/PROC-09.
+- No se expone ruido técnico en Actividad.
+
+### Invariante
+
+> Toda ejecución observable debe poder identificar su runtime y versión concreta con referencias mínimas estructuradas; los logs externos siguen viviendo en su plataforma y no se duplican en Neon.
