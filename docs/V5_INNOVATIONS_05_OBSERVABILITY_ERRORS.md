@@ -121,3 +121,36 @@ Aislar automáticamente sólo el proceso, fuente, adapter, worker, build o scope
 **RECHAZADA por el usuario.**
 
 No se añade a `docs/ROADMAP_INNOVADOR.md` y no queda como backlog implícito.
+
+
+---
+
+## INNO-OBS-05 — PikoFilm Chaos Lab
+
+**Estado: RECHAZADA.**
+
+### Idea revisada
+
+Crear una capacidad futura de fault injection controlado en entornos seguros para demostrar que retries, breakers, leases, idempotencia y recovery se comportan correctamente ante fallos simulados.
+
+### Decisión
+
+**RECHAZADA por el usuario.**
+
+No se añade a `docs/ROADMAP_INNOVADOR.md` y no queda como backlog implícito.
+
+---
+
+## Cierre de Fase 3
+
+**COMPLETADA.**
+
+Se han revisado individualmente cinco innovaciones del Punto 5:
+
+- INNO-OBS-01 — RECHAZADA
+- INNO-OBS-02 — APROBADA → INNO-06
+- INNO-OBS-03 — RECHAZADA
+- INNO-OBS-04 — RECHAZADA
+- INNO-OBS-05 — RECHAZADA
+
+Con ello el Punto 5 cumple sus tres fases obligatorias y queda listo para cierre formal.
