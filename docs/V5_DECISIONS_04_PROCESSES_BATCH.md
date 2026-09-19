@@ -412,3 +412,109 @@ Sólo actúa sobre repetición técnica inútil o casos cuyo contrato funcional 
 ### Resultado esperado
 
 Los mismos casos no contaminan indefinidamente nuevas ejecuciones. PikoFilm mantiene trazabilidad completa, reduce ruido y trabajo repetido y reserva `partial` para incidencias realmente activas o nuevas.
+
+
+---
+
+## PROC-05 — Semántica canónica de estados Batch y planner
+
+**Estado: APROBADA.**
+
+### Problema que resuelve
+
+El planner actual puede marcar un plan como `completed` cuando el parent termina en `technical_status='partial'`, incluso si `functional_result='pending'`.
+
+La auditoría no encontró aún un caso automático real perjudicado, pero el contrato permite confundir:
+
+- ejecución técnicamente terminada;
+- objetivo funcional realmente resuelto;
+- necesidad de continuar/reintentar trabajo.
+
+### Decisión
+
+V5 separará y gobernará de forma canónica tres dimensiones:
+
+1. **estado técnico** — qué ocurrió durante la ejecución;
+2. **resultado funcional** — si el objetivo quedó resuelto;
+3. **estado del plan** — si queda trabajo futuro que PikoFilm espera realizar.
+
+Un plan sólo podrá considerarse **completed** cuando funcionalmente ya no quede trabajo pendiente de continuación automática.
+
+### Reglas conceptuales
+
+Como mínimo:
+
+- `succeeded + objetivo resuelto + sin trabajo pendiente` → plan `completed`;
+- `succeeded` con errores recuperados pero objetivo resuelto → plan `completed`;
+- `partial + trabajo retryable/pendiente` → plan `delayed` o equivalente de continuación;
+- `partial` causado únicamente por incidencias terminales conocidas de PROC-04 y sin trabajo futuro → plan puede quedar `completed` con incidencia;
+- `failed` recuperable → continuidad/replanificación;
+- `failed` permanente → incidencia terminal, no retry automático ciego;
+- `cancelled` → plan cancelado.
+
+La implementación exacta puede conservar los conjuntos pequeños actuales de estados; la decisión no exige multiplicar enums.
+
+### Evaluador canónico
+
+La lógica de transición deberá centralizarse en una función/contrato único equivalente a `evaluateProcessOutcome`, evitando que planner, Actividad, Batch padres y superficies administrativas interpreten combinaciones de forma distinta.
+
+La evaluación podrá usar:
+
+- estado técnico;
+- resultado funcional;
+- items totales/resueltos;
+- items pendientes;
+- items retryables;
+- items terminalizados por PROC-04;
+- cancelación;
+- políticas PROC-03;
+- excepciones explícitas declaradas en PROC-01.
+
+### Parent Batch
+
+El parent no debe inventar un resultado independiente de sus items.
+
+Su resultado debe reflejar de forma consistente si:
+
+- todo quedó resuelto;
+- queda continuidad automática;
+- sólo quedan terminales conocidas;
+- existe un fallo estructural;
+- fue cancelado.
+
+### Relación con PROC-03 y PROC-04
+
+Cadena aprobada:
+
+`fallo → PROC-03 decide retry → PROC-04 decide terminalización → PROC-05 decide si el trabajo global puede cerrarse`.
+
+### Observabilidad
+
+`error_count > 0` no implica por sí solo fallo del proceso. Un run puede haber registrado errores recuperables y aun así haber cumplido el objetivo.
+
+Actividad/Operaciones deberán poder distinguir, cuando corresponda:
+
+- completado;
+- completado con incidencias conocidas;
+- incompleto y pendiente de retry;
+- fallo terminal;
+- cancelado.
+
+La UX concreta se revisará en los puntos posteriores, pero la semántica nace aquí.
+
+### Protección de dominios
+
+- No altera reglas funcionales de Series/Plex/Lifecycle.
+- Series mantiene margen de 7 días, disponibilidad, overrides y conciliación existentes.
+- Cualquier cambio de transición se cubrirá con tests de contrato antes de implementación.
+
+### Límites
+
+- No reabre runs históricos.
+- No modifica ahora `process_plans`, `process_runs` ni enums de Neon.
+- No autoriza migraciones ni despliegues.
+- No obliga a crear estados nuevos si la combinación de estados actuales puede expresar correctamente el contrato.
+
+### Resultado esperado
+
+PikoFilm deja de confundir “la ejecución acabó” con “el trabajo quedó terminado”. El planner sólo cierra lo que ya no necesita continuación funcional.
