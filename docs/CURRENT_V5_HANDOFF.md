@@ -619,11 +619,15 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 
 **ACTIVA.** Deben revisarse al menos 5 innovaciones rompedoras, una a una. Sólo las aprobadas se incorporarán a `docs/ROADMAP_INNOVADOR.md`.
 
+Decisiones persistidas en `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`:
+
+- `INNO-OBS-01 — PikoFilm Causal X-Ray`: **RECHAZADA**. No se incorpora al Road Map Innovador.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **INNO-OBS-01 — PikoFilm Causal X-Ray**, una capacidad futura para reconstruir automáticamente la cadena causal completa de cualquier cambio o incidencia —fuente externa, proceso, runtime, decisión, dato modificado y consecuencias posteriores— en una sola vista explicable.
+Presentar al usuario **INNO-OBS-02 — PikoFilm Sentinel**, una red futura de canarios sintéticos y pruebas de extremo a extremo que verifique de forma segura las rutas críticas antes de que un fallo real afecte a procesos importantes.
 
-No presentar INNO-OBS-02 hasta que INNO-OBS-01 quede persistida como APROBADA o RECHAZADA.
+No presentar INNO-OBS-03 hasta que INNO-OBS-02 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
