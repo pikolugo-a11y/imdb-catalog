@@ -716,9 +716,35 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Con una réplica el objetivo no es zero downtime, sino no perder trabajo ni interrumpirlo innecesariamente.
 - No añade réplicas, blue/green ni cambia retries/leases.
 
+### INCIDENCIA INTERCALADA — Plex SER-001
+
+Mientras WKR-06 estaba presentada pero todavía **sin decisión**, el usuario pidió revisar un fallo real de sincronización Plex.
+
+Causa confirmada:
+- `PROC-SER-001` falló en `sync_library` porque la petición Plex superó el timeout duro de 45 s.
+- El mismo patrón ya había ocurrido el 13/09.
+- Plex/Railway/Neon seguían sanos; fue una respuesta lenta/transitoria de esa consulta.
+- El timeout no quedaba bien clasificado como retryable y SER-001 terminaba como `partial/no_change`, con resumen engañoso de 0 capítulos comprobados.
+
+Corrección realizada en rama separada `fix/plex-series-timeout-retry`:
+- helper de requests Plex con reintentos 45 s → 60 s → 90 s;
+- heartbeat entre reintentos;
+- timeout agotado queda `retryable=true`;
+- SER-001 propaga fallos transitorios al Batch en vez de convertirlos en `partial/no_change`;
+- tests específicos añadidos.
+
+Estado:
+- PR **#569** — **MERGEADA**;
+- CI **#732** — **SUCCESS**;
+- merge en `main`: `fed1ec0f40eef52b262785933ca97f48154e9625`;
+- no se hizo deploy manual de Vercel Production;
+- Railway puede redeplegar los workers afectados por seguir `main`.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **WKR-06 — Política canónica de restart y fallo fatal**, para sustituir la disparidad actual entre Technical `NEVER`, FAST `ON_FAILURE x3` y API/Plex `ON_FAILURE x10` por un contrato explícito según tipo de fallo, evitando tanto workers muertos silenciosamente como bucles de restart inútiles.
+Retomar **WKR-06 — Política canónica de restart y fallo fatal** exactamente donde quedó: la propuesta ya fue presentada al usuario pero **todavía no está APROBADA ni RECHAZADA**.
+
+Antes de persistir WKR-06, refrescar la rama `audit/v5-06-workers` contra `main` actualizado si es necesario para no perder el hotfix #569.
 
 No presentar WKR-07 hasta que WKR-06 quede persistida como APROBADA o RECHAZADA.
 
