@@ -735,3 +735,93 @@ La aprobación de DB-10 no autoriza ahora nuevas constraints ni cambios de datos
 ### Resultado esperado
 
 La base de datos impedirá las relaciones y valores que sean realmente imposibles, mientras PikoFilm mantiene en código las reglas funcionales complejas y cambiantes. Se obtiene integridad sin convertir PostgreSQL en una segunda implementación rígida del producto.
+
+
+## DB-11 — Inventario y retirada controlada de objetos legacy o vacíos
+
+**Estado: APROBADA**
+
+### Decisión
+
+V5 clasificará explícitamente cada tabla/objeto persistente como **ACTIVO**, **TRANSICIÓN**, **LEGACY CONFIRMADO** o **GESTIONADO EXTERNAMENTE**, y retirará únicamente aquellos objetos cuya falta de responsabilidad real pueda demostrarse.
+
+La regla central es: **un objeto no permanece porque sea antiguo ni desaparece porque esté vacío; permanece sólo mientras tenga una responsabilidad real.**
+
+### Evidencia observada
+
+En la foto viva de Neon del 2026-09-19 existen varias tablas públicas con 0 filas, entre ellas:
+
+- `acquisition_status`: 0 filas pero ~1,63 M index scans;
+- `series_episode_availability`: 0 filas pero ~149k index scans;
+- `batch_api_source_leases`: 0 filas pero >43k seq scans;
+- `acquisition_priority_snapshots`: 0 filas;
+- `plex_review_tasks`: 0 filas;
+- `saga_universes`, `saga_universe_titles`, `saga_universe_collections`: 0 filas.
+
+Esto demuestra que **vacío no significa inútil**. Algunas tablas representan estado temporal y pueden estar normalmente vacías mientras siguen siendo funcionalmente activas.
+
+Además, las tablas vacías del esquema `neon_auth` son gestionadas externamente y no se tocarán por estar vacías.
+
+### Clasificación
+
+- **ACTIVO:** utilizado por código, workers, queries, recovery o funcionalidad vigente, aunque actualmente tenga 0 filas.
+- **TRANSICIÓN:** objeto conservado mientras se migran consumidores/writers a un modelo nuevo; ejemplo: `movie_genres` bajo DB-04.
+- **LEGACY CONFIRMADO:** no tiene readers, writers, dependencias, función de recovery ni responsabilidad futura aprobada.
+- **GESTIONADO EXTERNAMENTE:** pertenece a Neon/Auth u otra infraestructura externa y queda fuera de limpieza local salvo procedimiento específico del proveedor.
+
+### Protocolo antes de retirar
+
+Para declarar un objeto LEGACY CONFIRMADO y eliminarlo deben comprobarse, como mínimo:
+
+1. readers en código/SQL/frontend;
+2. writers en workers, Batch, scripts y procesos manuales;
+3. views, FKs, triggers, funciones y dependencias SQL;
+4. uso en recovery, bootstrap o mantenimiento;
+5. funcionalidad futura ya aprobada;
+6. actividad real/estadísticas cuando aporten contexto;
+7. pruebas de la aplicación sin ese objeto.
+
+La transición será:
+
+1. declarar `DEPRECATED/TRANSICIÓN` en el inventario DB-06;
+2. eliminar writers;
+3. eliminar readers;
+4. añadir gate CI contra referencias nuevas;
+5. probar la aplicación completa;
+6. probar `DROP` en rama Neon;
+7. ejecutar smoke/tests;
+8. sólo entonces retirar mediante migración controlada.
+
+### Casos específicos
+
+- `acquisition_status`, `batch_api_source_leases` y `series_episode_availability` no son candidatos a borrado por el mero hecho de estar vacíos; tienen actividad/semántica vigente que debe preservarse.
+- `saga_universe_*` y `plex_review_tasks` son candidatos a auditoría, no a borrado automático.
+- `movie_genres` es transición aprobada: se retirará cuando DB-04 haya migrado todos los consumidores.
+- el modelo histórico `person_filmography` podrá retirarse sólo después de desplegar, validar y autorizar expresamente la transición DB-02.
+- objetos de `neon_auth` no forman parte de la limpieza de esquema de PikoFilm.
+
+### No mantener un museo de tablas
+
+La prudencia no implica conservar indefinidamente objetos sin función. Si la auditoría demuestra:
+
+- 0 readers;
+- 0 writers;
+- 0 dependencias;
+- 0 recovery;
+- 0 funcionalidad vigente/futura aprobada;
+
+el objeto debe retirarse y Git/migraciones conservan la historia.
+
+### Protección reforzada de Series
+
+Ninguna estructura de Series se elimina por vacío, poco uso o ahorro pequeño. Sólo se retira cuando existe sustituto probado y paridad funcional completa.
+
+### Coste e impacto funcional
+
+La retirada de tablas diminutas aporta sobre todo reducción de deuda y ambigüedad, no ahorro económico relevante. En objetos legacy grandes, como el modelo antiguo de Personas o géneros, sí puede existir ahorro material adicional.
+
+La aprobación de DB-11 no autoriza ahora ningún `DROP TABLE`, `DROP VIEW` ni mutación destructiva de Neon Production.
+
+### Resultado esperado
+
+El esquema de producción dejará de acumular estructuras sin responsabilidad real, pero sin borrar estados temporales, objetos externos o piezas vivas sólo porque estén vacías. Cada retirada será demostrable, reversible durante la transición y probada antes de producción.
