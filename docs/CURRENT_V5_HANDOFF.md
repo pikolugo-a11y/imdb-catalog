@@ -384,13 +384,25 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - PROC-03 decide retry, PROC-04 terminalización y PROC-05 cierre global.
 - No exige multiplicar estados ni autoriza migraciones; puede expresarse con los estados actuales si son suficientes.
 
+#### PROC-06 — Planner horario único
+
+**APROBADA.**
+
+- El único reloj automático global de mantenimiento será el ciclo horario completo.
+- Se retira como arquitectura objetivo el tick global de sólo dispatch cada 5 minutos.
+- Código, `vercel.json`, documentación, RUNBOOK, Actividad y tests deben expresar la misma cadencia real.
+- Las continuaciones urgentes pertenecen al proceso que las necesita y pueden seguir siendo inmediatas/durables.
+- No hace automáticos `PROC-NOV-009` ni `PROC-SER-001`.
+- Si un proceso futuro necesita SLA sub-horario, se resolverá de forma específica y justificada.
+- No autoriza ahora cambios en Vercel Production.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-06 — Planner horario único y eliminación del tick residual de 5 minutos**, alineando código, cron, documentación y UX con la cadencia real de producción y eliminando una segunda vía de dispatch que ya no está activa.
+Presentar al usuario **PROC-07 — Planificación agregada por demanda, no por microplanes**, reduciendo la proliferación de cientos de filas futuras para el mismo proceso y conservando visibilidad, reparto de carga y capacidad de picos deliberados.
 
-No presentar PROC-07 hasta que PROC-06 quede persistida como APROBADA o RECHAZADA.
+No presentar PROC-08 hasta que PROC-07 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
