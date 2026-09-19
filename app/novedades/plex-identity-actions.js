@@ -6,11 +6,21 @@ import {setPlexIdentity} from '@/lib/identity';
 import {audit} from '@/lib/runlog';
 import {executeObservedProcess} from '@/lib/process-runtime';
 import {recomputeLifecycleForIds} from '@/lib/lifecycle';
+import {correctIdentityIds} from '@/lib/identity-correction';
+import {markIdentityRefreshPending} from '@/lib/identity-refresh';
 
 const imdbOk=value=>/^tt\d+$/.test(String(value||''));
 const tmdbOk=value=>/^\d+$/.test(String(value||''));
 const typeOf=itemType=>itemType==='movie'?'movie':itemType==='show'?'tvSeries':null;
 const technicalIdentityKeyForPlex=ratingKey=>`tt990${Array.from(String(ratingKey||'')).map(ch=>String(ch.charCodeAt(0)).padStart(3,'0')).join('')}`;
+
+async function linkExistingPlexTitle(sql,internalId,ratingKey){
+  const displaced=await sql`SELECT imdb_id FROM plex_catalog_status WHERE rating_key=${ratingKey} AND imdb_id<>${internalId} AND status='in_plex'`;
+  if(displaced.length)await sql`UPDATE plex_catalog_status SET status='missing',rating_key=NULL,updated_at=now() WHERE rating_key=${ratingKey} AND imdb_id<>${internalId}`;
+  const[media]=await sql`SELECT resolution FROM plex_media WHERE rating_key=${ratingKey} ORDER BY media_index LIMIT 1`;
+  await sql`INSERT INTO plex_catalog_status(imdb_id,status,rating_key,resolution,last_confirmed_at,source_updated_at,updated_at) VALUES(${internalId},'in_plex',${ratingKey},${media?.resolution||null},now(),now(),now()) ON CONFLICT(imdb_id) DO UPDATE SET status='in_plex',rating_key=EXCLUDED.rating_key,resolution=COALESCE(EXCLUDED.resolution,plex_catalog_status.resolution),last_confirmed_at=now(),source_updated_at=now(),updated_at=now()`;
+  return displaced.map(x=>x.imdb_id).filter(Boolean);
+}
 
 function refresh(imdbId){
   revalidatePath('/novedades');
@@ -46,11 +56,18 @@ export async function savePlexIdentityFromNewsAction(formData){
     await trace.event({eventType:'step',step:'protect_manual_identity',message:identityMode==='tmdb_only'?'Guardando TMDb manual como fuente principal':'Guardando y protegiendo IMDb manual',data:{identity_mode:identityMode,tmdb_id:identityMode==='tmdb_only'?tmdbId:null}});
     if(identityMode==='tmdb_only')await setPlexIdentity(ratingKey,{tmdbId});
     else await setPlexIdentity(ratingKey,{imdbId});
-    const [existing]=await sql`SELECT imdb_id FROM movies WHERE imdb_id=${internalId} LIMIT 1`;
+    const [existing]=await sql`SELECT imdb_id,type FROM movies WHERE imdb_id=${internalId} LIMIT 1`;
     if(existing){
-      await recomputeLifecycleForIds([internalId]);
-      await audit('identity','plex',ratingKey,identityMode==='tmdb_only'?'manual_tmdb_only_catalogued':'manual_imdb_catalogued',{imdb_id:internalId,tmdb_id:identityMode==='tmdb_only'?tmdbId:null,identity_mode:identityMode});
-      return{technicalStatus:'succeeded',functionalResult:'updated',message:'Identidad manual guardada; el título ya estaba en catálogo',metrics:{catalogued:1,candidate_created:0,identity_mode:identityMode}};
+      let correction=null;
+      if(identityMode==='tmdb_only'){
+        const targetType=existing.type==='Miniserie'?'Miniserie':'Serie';
+        correction=await correctIdentityIds({oldImdbId:internalId,newImdbId:internalId,tmdbId,newType:targetType,tmdbOnly:true,trace});
+        if(correction.changed)await markIdentityRefreshPending(internalId,'manual_plex_tmdb_only');
+      }
+      const displaced=await linkExistingPlexTitle(sql,internalId,ratingKey);
+      await recomputeLifecycleForIds([...new Set([...displaced,internalId])]);
+      await audit('identity','plex',ratingKey,identityMode==='tmdb_only'?'manual_tmdb_only_catalogued':'manual_imdb_catalogued',{imdb_id:internalId,tmdb_id:identityMode==='tmdb_only'?tmdbId:null,identity_mode:identityMode,plex_linked:true,displaced_imdb_ids:displaced});
+      return{technicalStatus:'succeeded',functionalResult:'updated',message:'Identidad manual guardada y Plex enlazado al título existente',metrics:{catalogued:1,candidate_created:0,plex_linked:1,displaced:displaced.length,identity_corrected:correction?.changed?1:0,identity_mode:identityMode}};
     }
     await trace.event({eventType:'step',step:'route_to_news',message:'Creando candidato Plex mínimo en Novedades'});
     const snapshot={origin:'plex',origins:['plex'],matchedRule:'plex_manual_identity',manualPlexIdentity:true,manualPlexIdentityAt:new Date().toISOString(),ratingKey,plexRatingKey:ratingKey,title,discoveryVersion:'novedades-v1',identityMode,tmdbId:identityMode==='tmdb_only'?tmdbId:null,technicalIdentityKey:identityMode==='tmdb_only'};
