@@ -805,6 +805,27 @@ Estado:
 - Vercel Production no fue desplegado por el asistente;
 - WKR-07 sigue **PENDIENTE DE DECISIÓN**.
 
+### CAMBIO FUNCIONAL INTERCALADO — TMDb-only: Datos + deduplicación Plex
+
+Tras el sync de Series, el usuario detectó dos defectos reales en producción: El retorno de D'Artacán quedaba en DATA_INCOMPLETE pese a tener TMDb-only, y Will y Grace (2017) se duplicó al cambiar su rating_key de Plex.
+
+Estado:
+- rama funcional: `fix/tmdb-only-data-dedupe`;
+- PR **#573** — **MERGEADA**;
+- CI **#744** — **SUCCESS**;
+- merge en `main`: `ea1defb416baa5fb2d4ac65921891e12e2348ef7`;
+- DATA-001 TMDb-only ya no escribe columnas legacy inexistentes de ratings en `movies`;
+- `enrichTitleTmdbOnly` ya no usa columnas legacy IMDb/FA/TMDb;
+- DATA-001 queda estrictamente estructural; ratings continúan en `title_ratings`;
+- Calidad → Datos alinea TMDb-only con Lifecycle: exige ficha estructural, pero no exige ratings múltiples ni PikoScore;
+- NOV-010 deduplica TMDb-only por `tmdb_id` antes de crear candidato;
+- NOV-007 repite la deduplicación en admisión como segunda barrera;
+- sólo existe un duplicado TMDb-only histórico conocido en producción: Will y Grace, TMDb 74321;
+- ese duplicado histórico NO fue eliminado ni fusionado porque requiere autorización explícita para mutar datos;
+- sin migraciones ni mutaciones manuales de Neon;
+- Vercel Production no fue desplegado por el asistente;
+- WKR-07 sigue **PENDIENTE DE DECISIÓN**.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-07**. WKR-06 ya está **APROBADA y persistida**.
