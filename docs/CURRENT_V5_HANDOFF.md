@@ -787,6 +787,24 @@ Estado:
 - Vercel Production no fue desplegado por el asistente;
 - WKR-07 sigue **PENDIENTE DE DECISIÓN**.
 
+### CAMBIO FUNCIONAL INTERCALADO — Reparación de enlaces Plex para TMDb-only
+
+Tras comprobar Will y Grace (2017), se detectó que títulos ya catalogados no aparecen en Novedades y que el rebuild global de `plex_catalog_status` dependía de IMDb, rompiendo la presencia de series TMDb-only.
+
+Estado:
+- rama funcional: `fix/plex-tmdb-only-status`;
+- PR **#572** — **MERGEADA**;
+- CI **#740** — **SUCCESS**;
+- merge en `main`: `beb29752ebf07c172726ace8f3364d1c842eb5e8`;
+- sync global Plex: modo normal cruza por IMDb; Series/Miniseries TMDb-only cruzan por TMDb;
+- Calidad → Identidad puede re-enlazar Plex por identidad canónica incluso cuando IDs/tipo no cambian;
+- el enlace automático sólo se aplica con una única coincidencia Plex activa del tipo correcto;
+- Novedades reutiliza el mismo linker canónico;
+- comprobación real read-only: Will y Grace (2017), TMDb 74321, resuelve a Plex rating_key 156955;
+- sin migraciones ni mutaciones manuales de Neon;
+- Vercel Production no fue desplegado por el asistente;
+- WKR-07 sigue **PENDIENTE DE DECISIÓN**.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-07**. WKR-06 ya está **APROBADA y persistida**.
