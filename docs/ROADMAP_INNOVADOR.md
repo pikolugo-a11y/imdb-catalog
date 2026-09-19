@@ -89,3 +89,104 @@ Guardrails: la réplica local nunca será la autoridad global, no se distribuir�
 **Visión:** cambiar dónde vive PikoFilm: de una web que consulta un servidor a una aplicación instalada local-first sincronizada con su nube.
 
 **Horizonte orientativo:** apuesta de largo plazo y prototipo futuro de escritorio; no compromete V5/V6/V7 sin una evaluación y aprobación posterior específica.
+
+
+---
+
+### INNO-03 — PikoFilm Shadow Scheduler
+
+**Origen:** `INNO-PROC-02` — Punto 4, Procesos automáticos y Batch  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-19
+
+Construir un planificador en modo sombra capaz de simular futuros alternativos sobre la demanda real de PikoFilm sin ejecutar nada.
+
+El Shadow Scheduler combinaría demanda agregada, capacidad de workers, deadlines, prioridades, límites de APIs, ventanas funcionales y tiempos históricos para comparar distintos repartos de carga: ejecución uniforme, aceleración controlada, concentración nocturna o picos deliberados.
+
+Mientras el planner real continúa funcionando con su política vigente, el planificador sombra puede estimar:
+
+- fecha de finalización;
+- carga por día/franja;
+- utilización prevista de workers;
+- presión esperada sobre TMDb/OMDb/MDBList;
+- backlog residual;
+- impacto de saltarse días de mantenimiento;
+- efecto de adelantar o concentrar trabajo.
+
+También permite comparar posteriormente la simulación con lo que realmente ocurrió, de forma que PikoFilm pueda mejorar sus estimaciones usando datos reales de ejecución.
+
+A largo plazo puede convertirse en una herramienta de “qué pasa si…” para Actividad/Operaciones y en una capacidad especializada de PikoFilm Autopilot, capaz de recomendar un reparto mejor antes de aplicarlo.
+
+**Guardrail esencial:** simular no equivale a ejecutar. Ninguna política nueva se adopta automáticamente por existir una simulación; cualquier nivel adicional de autonomía requiere aprobación futura explícita.
+
+**Visión:** permitir que PikoFilm ensaye el futuro operativo antes de elegirlo.
+
+**Horizonte orientativo:** capacidad futura posterior a V5, posiblemente vinculada a Autopilot; no compromete ninguna versión concreta.
+
+
+---
+
+### INNO-04 — PikoFilm Adaptive Freshness
+
+**Origen:** `INNO-PROC-03` — Punto 4, Procesos automáticos y Batch  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-19
+
+Evolucionar el mantenimiento de PikoFilm desde cadencias rígidas por proceso hacia una estrategia de **frescura adaptativa por dato o entidad**.
+
+Cada próximo refresco se calcularía a partir de señales observables como edad del título, fecha de estreno, estado de una serie, cambios detectados en comprobaciones previas, crecimiento de votos, estabilidad de la fuente, secuencias de `no_change` y SLA funcional del dominio.
+
+El objetivo no es “comprobar menos” sin más, sino mantener cada dato suficientemente fresco con el mínimo trabajo innecesario.
+
+Ejemplos:
+
+- una película clásica y estable puede espaciar progresivamente sus comprobaciones;
+- un estreno reciente puede revisarse con mucha más frecuencia;
+- una serie activa puede mantener una cadencia alta mientras una serie terminada hace años reduce frecuencia;
+- un dato que llevaba meses estable y cambia de repente puede volver temporalmente a una cadencia rápida.
+
+**Guardrail esencial:** el cálculo adaptativo nunca puede superar el máximo de antigüedad permitido por el SLA funcional del proceso. Series conserva sus reglas explícitas, margen de 7 días, disponibilidad, overrides y demás invariantes.
+
+La estrategia puede combinarse con Shadow Scheduler: Adaptive Freshness decide cuándo surge demanda y Shadow Scheduler ensaya cómo repartirla.
+
+**Visión:** pasar de “actualiza todo cada X días” a “actualiza cada dato cuando realmente tiene riesgo de estar obsoleto, dentro de límites explícitos”.
+
+**Horizonte orientativo:** posterior a V5 y sujeto a una evaluación futura específica; no compromete ninguna versión concreta.
+
+
+---
+
+### INNO-05 — PikoFilm Self-Tuning Batch Engine
+
+**Origen:** `INNO-PROC-05` — Punto 4, Procesos automáticos y Batch  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-19
+
+Evolucionar el Batch Engine hacia un motor que ajuste automáticamente, dentro de guardrails explícitos, el tamaño de bloque, la concurrencia y el ritmo de ejecución según el comportamiento real del sistema.
+
+La adaptación podrá usar señales como:
+
+- tiempo por item/batch;
+- backlog y deadlines;
+- latencia de fuentes externas;
+- 429, cuotas y circuit breakers;
+- errores transitorios;
+- CPU/memoria disponibles;
+- estabilidad histórica de cada proceso.
+
+Cada proceso conservará límites absolutos de seguridad —tamaño mínimo/máximo, concurrencia mínima/máxima, frecuencia permitida— y podrá declarar `adaptive=false` cuando se prefiera comportamiento fijo.
+
+El motor deberá usar ventanas de observación e histéresis para evitar oscilaciones por una ejecución puntual lenta o rápida.
+
+**Relación con otras apuestas futuras:**
+
+- Adaptive Freshness decide cuándo aparece demanda;
+- Shadow Scheduler ensaya cómo repartirla;
+- Self-Tuning Batch Engine regula la velocidad segura de ejecución;
+- PikoFilm Autopilot podría coordinar estas capacidades en una evolución posterior.
+
+**Guardrail esencial:** el sistema optimiza únicamente dentro de límites aprobados; nunca eleva por sí solo cuotas, infraestructura, concurrencia o tamaño de bloque más allá del rango permitido.
+
+**Visión:** conseguir que PikoFilm encuentre continuamente la máxima velocidad segura para cada proceso sin necesidad de fijar parámetros manuales para siempre.
+
+**Horizonte orientativo:** posterior a V5 y sujeto a una decisión futura específica; no compromete ninguna versión concreta.

@@ -1,6 +1,6 @@
 # PikoFilm V5 — Handoff actual
 
-Fecha: 2026-09-18
+Fecha: 2026-09-19
 
 Este documento es el punto de reentrada canónico para continuar la definición de V5 sin depender del historial del chat.
 
@@ -117,7 +117,7 @@ Foto principal observada en Neon durante la auditoría:
 - el workflow branch-first de Neon es sólido pero no existe ledger de migraciones aplicado en DB;
 - `catalog_read_model` sigue siendo VIEW dinámica y necesita contrato de canonicalidad/rebuild para su futura materialización.
 
-Fase 2 — PROPUESTAS: **ACTIVA**.
+Fase 2 — PROPUESTAS: **COMPLETADA**.
 
 Decisiones persistidas en `docs/V5_DECISIONS_03_DATABASE.md` y, desde DB-03, en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`:
 
@@ -292,11 +292,185 @@ Invariantes:
 
 **CERRADO.** Auditoría completa + 11 propuestas V5 revisadas/aprobadas + 5 innovaciones revisadas/persistidas.
 
+
+
+### Punto 4 — Procesos automáticos y Batch
+
+**ACTIVO.** Rama de trabajo: `audit/v5-04-processes`.
+
+Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_04_PROCESSES_BATCH.md`.
+
+Conclusiones principales verificadas contra código + Neon + Railway + Vercel:
+
+- El Batch Engine común está estructuralmente sano: en la foto auditada hay **0** runs activos huérfanos, **0** controls/padres desalineados, **0** items activos sin child y **0** parents terminales con items pendientes.
+- La paridad manual/Batch es una fortaleza: los dominios revisados llaman cores canónicos compartidos.
+- No existe un registro canónico único de procesos. La metadata está duplicada entre documentación, display, starters, adapters, planner y automatizaciones; `PROC-SER-007` y `PROC-LC-001` ejecutan producción pero no aparecen en el catálogo maestro.
+- El planner real de producción es **horario**. El código conserva soporte para ticks de dispatch cada 5 minutos y un anexo documental sigue describiendo `*/5`, pero Vercel ejecuta `0 * * * *` y los logs lo confirman.
+- El planner trata actualmente un parent `partial` como plan `completed`; aún no se observó un caso automático real afectado, pero el contrato permite `partial + pending` y debe gobernarse explícitamente.
+- Batch común usa una política global de máximo 3 intentos con reintentos aproximadamente a 6 h y 24 h; `process_runs.retry_count` permanece en 0 y no representa los retries reales, que viven en items/errors.
+- Se documentó un fallo real de capability drift: un Batch SAGA materializó 1.584 items para un worker sin adapter; tras corregir el despliegue, los 1.584 se procesaron correctamente.
+- Existe una recuperación ad hoc de `PROC-LC-001` para el error `Adapter API no registrado`, señal de que falta un contrato genérico worker↔proceso.
+- `PROC-PQ-002` repite cuatro poison items “sin streams” entre ejecuciones y convierte runs sucesivos en `partial`.
+- Railway redeployó API/FAST/Plex/Technical incluso por el merge documental del Punto 3; además la configuración observada no espera explícitamente el CI post-merge.
+- La gobernanza TMDb/OMDb/MDBList está funcionando: 0 rate limits en la ventana auditada y sin evidencia de presión de cuota.
+- `PROC-NOV-009` está sano tras #565: las ejecuciones recientes en Railway Plex finalizan correctamente; no reabrir el antiguo timeout de Vercel salvo nueva evidencia.
+- La selección automática de Personas aún usa la condición legacy de directores y debe quedar alineada cuando se implemente DB-02.
+- `process_run_errors` conserva errores históricos abiertos que no equivalen a fallos actuales; se profundizará en Punto 5.
+
+Fase 2 — PROPUESTAS: **ACTIVA**.
+
+Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
+
+#### PROC-01 — Registro canónico y ejecutable de procesos
+
+**APROBADA.**
+
+- Un único registro versionado en Git será la fuente técnica de verdad para la identidad y contrato de cada `PROC-*`.
+- Declarará, según el modelo de ejecución, nombre, dominio, estado, manual/Batch/automático/sistema, pool, adapter/capacidad requerida, planner, globalidad, concurrencia, core canónico y fuentes relevantes.
+- Los procesos especiales permanecen especiales de forma explícita; no se fuerzan al Batch común.
+- Planner, workers, UI técnica, labels y documentación deberán derivarse del registro o validarse contra él.
+- CI debe fallar ante process codes desconocidos, adapters/pools incompatibles, procesos no automáticos introducidos en planner o metadata contradictoria.
+- El registro no absorbe lógica funcional de Series, Personas, Novedades, PikoScore, etc.
+- No autoriza aún refactor funcional, cambios de Neon ni despliegues.
+
+#### PROC-02 — Preflight de capacidades antes de encolar Batch
+
+**APROBADA.**
+
+- PROC-01 declara la capacidad requerida; PROC-02 verifica la capacidad realmente desplegada antes de materializar `batch_run_control` + items.
+- Cada worker/pool publica una foto ligera de build/versión, contrato y process codes/adapters soportados.
+- Worker compatible pero temporalmente offline no equivale a worker incompatible.
+- Si falta capacidad real, no se crea trabajo masivo destinado a fallar; el plan/demanda permanece pendiente o demorado de forma observable.
+- Debe detectar control plane nuevo frente a worker aún antiguo.
+- Permitirá retirar recuperaciones ad hoc por `Adapter API no registrado`.
+- Complementa el CI estático de PROC-01 con una comprobación runtime/deploy.
+- No autoriza ahora cambios de infraestructura ni producción.
+
+#### PROC-03 — Política de reintentos por proceso y tipo de fallo
+
+**APROBADA.**
+
+- El retry deja de ser una regla global 6 h / 24 h / 3 intentos para cualquier error.
+- El runtime clasifica fallos como TRANSIENT, RATE_LIMIT, QUOTA, PERMANENT, FUNCTIONAL_PENDING o CAPABILITY.
+- Los 429/cuotas respetan `Retry-After`, `blocked_until` y circuit breaker existentes.
+- Los errores permanentes no consumen retries inútiles; los estados funcionales pendientes se reprograman según reglas de negocio.
+- PROC-02 previene los fallos de capacidad antes de materializar items.
+- La política base es común y conservadora; cada proceso sólo ajusta lo estrictamente necesario.
+- Para Batch, la fuente canónica del intento es `batch_run_items.attempt_count`; `process_runs.retry_count` no se considera actualmente canónico.
+- Series mantiene sus reglas funcionales, margen de 7 días y decisiones manuales intactas.
+- No autoriza ahora migraciones ni reintentos retroactivos.
+
+#### PROC-04 — Terminalización de poison items y cuarentena funcional
+
+**APROBADA.**
+
+- Un item que demuestra no poder converger mediante el mismo mecanismo automático deja de circular por la cola normal.
+- Se distinguen estados equivalentes a PERMANENT_ERROR, NOT_APPLICABLE y MANUAL_REVIEW; no existe una papelera opaca.
+- Se conserva entidad, proceso, causa, intentos, fecha de terminalización, regla aplicada y condición de reentrada.
+- Si cambia fingerprint/identidad/referencia/configuración relevante, la terminalización puede invalidarse y el item vuelve a ser elegible.
+- Incidencias terminales conocidas no deben convertir indefinidamente cada nueva ejecución en `partial`.
+- Series conserva sus estados funcionales, margen de 7 días y overrides; PROC-04 sólo actúa cuando la repetición técnica ya no aporta valor.
+- No autoriza ahora migraciones ni mutación de los casos vivos observados.
+
+#### PROC-05 — Semántica canónica de estados Batch y planner
+
+**APROBADA.**
+
+- Estado técnico, resultado funcional y estado del plan son dimensiones distintas y se evalúan de forma canónica.
+- Un plan sólo queda `completed` cuando ya no existe trabajo funcional que PikoFilm espere continuar automáticamente.
+- `partial + pending/retryable` no se cierra silenciosamente; `partial` sólo por terminales conocidas puede cerrarse con incidencia.
+- `error_count>0` no implica por sí solo fallo si el objetivo funcional quedó resuelto.
+- Parent Batch, planner y Actividad deben compartir el mismo evaluador de resultado.
+- PROC-03 decide retry, PROC-04 terminalización y PROC-05 cierre global.
+- No exige multiplicar estados ni autoriza migraciones; puede expresarse con los estados actuales si son suficientes.
+
+#### PROC-06 — Planner horario único
+
+**APROBADA.**
+
+- El único reloj automático global de mantenimiento será el ciclo horario completo.
+- Se retira como arquitectura objetivo el tick global de sólo dispatch cada 5 minutos.
+- Código, `vercel.json`, documentación, RUNBOOK, Actividad y tests deben expresar la misma cadencia real.
+- Las continuaciones urgentes pertenecen al proceso que las necesita y pueden seguir siendo inmediatas/durables.
+- No hace automáticos `PROC-NOV-009` ni `PROC-SER-001`.
+- Si un proceso futuro necesita SLA sub-horario, se resolverá de forma específica y justificada.
+- No autoriza ahora cambios en Vercel Production.
+
+#### PROC-07 — Planificación agregada por demanda
+
+**APROBADA.**
+
+- El trabajo futuro se representa preferentemente como demanda agregada + capacidad, no como cientos de microplanes homogéneos.
+- Las ejecuciones reales se materializan cuando toca lanzarlas y siguen siendo totalmente trazables.
+- Actividad conserva previsión por día/franja, carga, fecha estimada de finalización y próximos vencimientos.
+- Se mantienen picos deliberados protegidos frente al equilibrador automático.
+- El planner reconcilia la demanda viva antes de ejecutar para evitar microplanes obsoletos.
+- Series sólo agrega unidades con la misma ventana funcional; no se pierde precisión temporal.
+- No autoriza ahora migrar los planes existentes ni cambiar elegibilidad/concurrencia.
+
+#### PROC-08 — Concurrencia por entidad para Lifecycle
+
+**APROBADA.**
+
+- Lifecycle deja de serializar globalmente por defecto y pasa a exclusión por entidad/dependencia real cuando la independencia esté demostrada.
+- La misma entidad nunca ejecuta dos pipelines contradictorios; se reutiliza/encadena el run activo o se informa “ya en proceso”.
+- PROC-01 declara el scope de lock cuando aplique: global, entidad o recurso compartido.
+- Límites de pool, cuotas, circuit breakers y locks globales justificados permanecen.
+- Procesos realmente globales, como sync Plex global, pueden seguir serializados.
+- La implementación futura requiere inventario de writers, tests de carrera/idempotencia y límites conservadores.
+- No cambia ahora la concurrencia de producción.
+
+#### PROC-09 — Contrato común para modelos de ejecución especiales
+
+**APROBADA.**
+
+- Batch común, Vercel chunked, controladores persistentes y GitHub Actions pueden seguir existiendo como motores distintos.
+- Todos exponen una semántica común de estado, progreso, heartbeat/señal de vida, resultado funcional, trabajo pendiente, controles y recuperación.
+- PROC-01 declara el modelo de ejecución y las capacidades pause/resume/cancel/retry cuando correspondan.
+- PROC-05 aporta la semántica canónica de cierre/continuación.
+- Actividad/Operaciones podrán consultar cualquier ejecución mediante una abstracción común sin conocer su infraestructura interna.
+- No fuerza PQ-001, PQ-002 o NOV-001 al Batch Engine común ni crea un orquestador central nuevo.
+- No autoriza ahora cambios de producción.
+
+#### PROC-10 — Despliegue seguro y selectivo de workers
+
+**APROBADA.**
+
+- Todo cambio que pueda afectar al runtime de un worker debe desplegarlo.
+- Cambios demostrablemente ajenos a su runtime, como documentación, no deben reiniciarlo.
+- La selectividad debe considerar dependencias reales, incluidas librerías compartidas y contratos, no sólo archivos del worker.
+- Una versión nueva no debe aceptar trabajo antes de superar CI/contratos/compatibilidad y el preflight runtime de PROC-02.
+- Redeploys necesarios pueden ser frecuentes; el objetivo no es ahorrar deploys reales sino eliminar churn inútil y reducir version skew.
+- No obliga a blue/green, Kubernetes ni nueva plataforma.
+- No autoriza ahora cambios de configuración Railway.
+
+### ESTADO DE FASE 2
+
+**COMPLETADA.** Se han revisado individualmente y persistido 10 propuestas PROC-01 a PROC-10, todas aprobadas.
+
+### ESTADO DE FASE 3 — INNOVACIÓN
+
+**COMPLETADA.** 5/5 innovaciones revisadas y persistidas.
+
+Decisiones persistidas en `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`:
+
+- `INNO-PROC-01 — PikoFilm Event Fabric`: **RECHAZADA**.
+- `INNO-PROC-02 — PikoFilm Shadow Scheduler`: **APROBADA** → `INNO-03`.
+- `INNO-PROC-03 — PikoFilm Adaptive Freshness`: **APROBADA** → `INNO-04`.
+- `INNO-PROC-04 — PikoFilm Process Time Travel`: **RECHAZADA**.
+- `INNO-PROC-05 — PikoFilm Self-Tuning Batch Engine`: **APROBADA** → `INNO-05`.
+
+### CIERRE DEL PUNTO 4
+
+**CERRADO.** Auditoría completa + 10 propuestas V5 revisadas/aprobadas + 5 innovaciones revisadas/persistidas.
+
+
+
 ### SIGUIENTE PASO EXACTO
 
-Abrir **Punto 4 — Procesos automáticos y Batch** con Fase 1: auditoría extremadamente detallada del sistema REAL. Revisar planificación, concurrencia, colas, leases, reintentos, timeouts, huérfanos, recuperación, reparto de carga, ejecución manual/automática, Railway/Vercel/Neon, observabilidad, costes y documentación. Persistir la auditoría antes de presentar propuestas.
+Cerrar la rama del Punto 4 mediante PR/CI/merge y, desde `main` actualizado, abrir una única rama para **Punto 5 — Observabilidad y errores**.
 
-No presentar propuestas del Punto 4 hasta completar y persistir su auditoría.
+La Fase 1 del Punto 5 debe comenzar con una auditoría extremadamente detallada del sistema real de observabilidad: errores activos vs históricos, resolución, trazabilidad, métricas, logs, alertas, estados engañosos, coste de logging y coherencia entre Neon, Railway, Vercel, GitHub y UX.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -324,6 +498,9 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Decisiones Punto 3 DB-03+: `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`
 - Innovaciones Punto 3: `docs/V5_INNOVATIONS_03_DATABASE.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
+- Auditoría Punto 4: `docs/V5_AUDIT_04_PROCESSES_BATCH.md`
+- Decisiones Punto 4: `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`
+- Innovaciones Punto 4: `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-El Punto 3 queda cerrado. El siguiente bloque es el Punto 4 — Procesos automáticos y Batch; iniciar su auditoría en una única rama dirigida al bloque, sin proliferar ramas.
+El Punto 4 queda cerrado en `audit/v5-04-processes`. El siguiente movimiento es PR/CI/merge de esta rama y después abrir el Punto 5 desde `main` actualizado.
