@@ -6,6 +6,7 @@ const page=fs.readFileSync('app/catalogo/page.js','utf8');
 const query=fs.readFileSync('lib/catalog-v4-queries.js','utf8');
 const excluded=fs.readFileSync('app/catalogo/excluidas/page.js','utf8');
 const excludedQuery=fs.readFileSync('lib/excluded-v4-queries.js','utf8');
+const filters=fs.readFileSync('components/CatalogFiltersV4.js','utf8');
 
 test('Catalog V4 is list-first and exposes only approved primary data',()=>{
   assert.match(query,/VIEWS=new Set\(\['list','posters'\]\)/);
@@ -32,6 +33,19 @@ test('Catalog V4 supports multi-genre OR and AND filtering on canonical genre sc
   assert.match(query,/SELECT name_es value FROM genres/);
   assert.doesNotMatch(query,/g\.genre/);
   assert.match(page,/className="more">\+\{more\}/);
+});
+
+test('Catalog V4 shows country and filters movies and series by canonical country',()=>{
+  assert.match(page,/<th>País<\/th>/);
+  assert.match(page,/countryPreview\(r\.countries\)/);
+  assert.match(page,/getCatalogV4Countries/);
+  assert.match(filters,/<span>País<\/span><select value=\{country\}/);
+  assert.match(filters,/countries\.map/);
+  assert.match(query,/movie_countries mc JOIN countries ctry/);
+  assert.match(query,/ctry\.name_es=\$\$\{i\}/);
+  assert.match(query,/getCatalogV4Countries/);
+  assert.match(query,/array_agg\(ctry\.name_es ORDER BY ctry\.name_es\)/);
+  assert.match(query,/regexp_split_to_array\(mv\.country/);
 });
 
 test('Excluidas V4 is a simple searchable reversible history',()=>{
