@@ -553,11 +553,22 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - Se reutilizan tablas, heartbeats, breakers, planes y read models existentes; no se crea polling continuo ni un worker adicional.
 - No se autoriza ahora una nueva tabla central de health ni cambios de producción.
 
+#### OBS-06 — Procedencia estructurada de resolución y recurrencia
+
+**APROBADA.**
+
+- Toda resolución conserva modo, razón normalizada, evidencia/run cuando exista, fecha/hora y alcance.
+- Se distinguen recuperada, descartada, no aplicable, terminal conocida y supersedida.
+- Una reaparición tras el cierre se registra como nueva recurrencia/incidencia, no como reapertura artificial del episodio anterior.
+- Las recurrencias pueden agruparse mediante un fingerprint estable basado en proceso, paso, código/clase, fuente, causa normalizada y scope.
+- El texto literal completo no es la única identidad del patrón.
+- No se crea ahora una plataforma de incident management ni se autoriza migración.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-06 — Procedencia estructurada de resolución y recurrencia**, para que Operaciones pueda distinguir de forma fiable entre recuperada automáticamente, descartada por el usuario, terminal conocida y supersedida, y tratar una reaparición como nueva recurrencia sin perder historial.
+Presentar al usuario **OBS-07 — Política de logging por nivel, agregación y sampling**, para reducir ruido y coste en Railway/Vercel sin perder capacidad diagnóstica, empezando por Technical Snapshot detenido y los logs `batch_item_done` de alta cardinalidad.
 
-No presentar OBS-07 hasta que OBS-06 quede persistida como APROBADA o RECHAZADA.
+No presentar OBS-08 hasta que OBS-07 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
