@@ -415,3 +415,102 @@ Esta aprobación:
 ### Invariante
 
 > Un worker que va a detenerse o redeplegarse debe dejar de aceptar trabajo nuevo antes de apagarse y, cuando sea posible, finalizar limpiamente sus ejecuciones activas antes de cederlas al mecanismo de recovery.
+
+
+
+---
+
+## WKR-06 — Política canónica de restart y fallo fatal
+
+**APROBADA.**
+
+### Decisión
+
+Los workers persistentes deben compartir un contrato canónico de restart basado en la **causa real de terminación y su recurrencia**, no en cifras históricas arbitrarias distintas por servicio.
+
+La política debe distinguir, de forma equivalente a:
+
+- `EXPECTED_STOP`: parada limpia e intencionada;
+- `DEPLOY_RESTART`: reinicio esperado por deploy o mantenimiento;
+- `CRASH`: caída inesperada durante funcionamiento normal;
+- `STARTUP_FAILURE`: fallo al arrancar por configuración, import, dependencia, incompatibilidad o condición equivalente;
+- `RESOURCE_FAILURE`: muerte por memoria, recursos u otra condición de infraestructura equivalente.
+
+No se fijan todavía nombres técnicos exactos ni códigos persistidos.
+
+### Restart budget
+
+Los fallos recuperables pueden provocar restart automático, pero siempre dentro de un **restart budget** limitado y observable.
+
+La V5 debe eliminar como contrato objetivo diferencias arbitrarias como:
+
+- FAST: 3 retries;
+- API/Plex: 10 retries;
+- Technical: `NEVER`.
+
+El presupuesto definitivo podrá variar justificadamente por tipo de fallo o runtime, pero deberá derivarse de una política explícita y documentada.
+
+Cuando se agota:
+
+- el worker deja de intentar reinicios indefinidos;
+- pasa a `UNAVAILABLE`;
+- queda visible como incidencia operativa;
+- deja de aceptar trabajo;
+- requiere recuperación válida antes de volver a servicio.
+
+### Reinicio no equivale a readiness
+
+Un proceso que consigue volver a arrancar no está automáticamente preparado para consumir trabajo.
+
+Después de cualquier restart, WKR-01 debe volver a validar como mínimo:
+
+1. presencia/heartbeat vigente;
+2. versión, build o deployment compatible;
+3. capabilities/adapters requeridos;
+4. preflight de dependencias necesario.
+
+Sólo después puede volver a `READY` y reclamar trabajo.
+
+### Terminaciones esperadas
+
+`EXPECTED_STOP` y `DEPLOY_RESTART` no constituyen por sí solos una avería.
+
+Cuando el entorno lo permita, los reinicios por deploy/mantenimiento deben seguir WKR-05:
+
+`DRAINING → 0 trabajo activo o timeout de drain → restart → preflight → READY`.
+
+### Trabajo activo durante un crash
+
+Si el proceso muere con items activos:
+
+- WKR-04 deja naturalmente de renovar sus leases;
+- la lease expira;
+- el mecanismo canónico de recovery/retry recupera las unidades según PROC-03 y Batch Engine;
+- no se introduce un segundo mecanismo paralelo de recuperación.
+
+### Observabilidad
+
+Cada crash/restart relevante debe conservar evidencia suficiente para distinguir:
+
+- causa de terminación;
+- número de reinicios dentro de la ventana/budget;
+- última recuperación;
+- agotamiento del budget;
+- transición posterior a `READY` o `UNAVAILABLE`.
+
+Una recuperación posterior no borra el hecho histórico del crash.
+
+### Límites
+
+Esta aprobación:
+
+- no fija todavía valores numéricos del restart budget;
+- no cambia ahora configuración Railway Production;
+- no aumenta réplicas;
+- no introduce supervisor, Kubernetes ni plataforma nueva;
+- no modifica retries funcionales de PROC-03;
+- no autoriza migraciones ni mutaciones de Neon Production.
+
+### Invariante
+
+> Un worker se reinicia de acuerdo con la naturaleza y recurrencia del fallo, no por una cifra histórica arbitraria asociada al servicio; y un proceso reiniciado sólo vuelve a `READY` cuando demuestra de nuevo que está realmente preparado.
