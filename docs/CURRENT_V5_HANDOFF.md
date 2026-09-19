@@ -670,11 +670,23 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Heartbeats espaciados y orientados a presencia, no otro polling de alta frecuencia.
 - No decide todavía wake/sleep, autosuspend, réplicas ni implementación física.
 
+#### WKR-02 — Idle adaptativo sin polling agresivo
+
+**APROBADA.**
+
+- API/FAST/Plex reducen progresivamente la frecuencia de consulta cuando la cola permanece vacía.
+- Al reaparecer trabajo, el worker vuelve inmediatamente a modo activo.
+- Claim, mantenimiento de leases y heartbeat de presencia dejan de compartir necesariamente la misma cadencia.
+- Cada pool puede tener límites de idle distintos según volumen y latencia aceptable.
+- Puede evolucionar a wake hint ligero sin exigir broker o plataforma nueva.
+- No activa todavía Railway sleep/serverless ni cambia Neon autosuspend.
+- Recovery y demanda pendiente nunca pueden quedar bloqueados indefinidamente.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **WKR-02 — Idle adaptativo sin polling agresivo**, para reducir drásticamente consultas ociosas de API/FAST/Plex mediante backoff progresivo y despertar rápido cuando exista demanda, sin comprometer recuperación ni dejar trabajo bloqueado.
+Presentar al usuario **WKR-03 — Technical realmente quiescente cuando está detenido**, para que `requested_state='stopped'` deje de provocar consultas, escrituras y logs cada ~10 segundos y conserve sólo la señal mínima necesaria para saber que el servicio sigue disponible.
 
-No presentar WKR-03 hasta que WKR-02 quede persistida como APROBADA o RECHAZADA.
+No presentar WKR-04 hasta que WKR-03 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
