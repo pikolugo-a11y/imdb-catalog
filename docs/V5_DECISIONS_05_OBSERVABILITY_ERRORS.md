@@ -720,3 +720,134 @@ La portada no se convierte en una pantalla de infraestructura.
 ### Invariante
 
 > Toda ejecución observable debe poder identificar su runtime y versión concreta con referencias mínimas estructuradas; los logs externos siguen viviendo en su plataforma y no se duplican en Neon.
+
+
+---
+
+## OBS-10 — KPIs canónicos de salud actual, fiabilidad y recurrencia
+
+**APROBADA.**
+
+### Problema
+
+Un contador bruto de errores mezcla señales incompatibles:
+
+- fallos técnicos reales;
+- errores ya recuperados;
+- validaciones funcionales;
+- degradaciones toleradas;
+- recurrencias;
+- deuda funcional;
+- problemas históricos que ya no están activos.
+
+Por sí solo no representa la salud real de PikoFilm.
+
+### Decisión
+
+V5 definirá un conjunto pequeño de KPIs canónicos que separen claramente:
+
+1. **Estado actual**
+   - incidencias activas;
+   - runs atascados;
+   - breakers abiertos;
+   - dominios degradados;
+   - deuda funcional relevante;
+   - terminales conocidas.
+
+2. **Fallos técnicos**
+   - errores técnicos canónicos ocurridos en una ventana temporal.
+
+3. **Recuperación**
+   - cuántos fallos se recuperaron automáticamente;
+   - tiempo hasta recuperación/evidencia equivalente.
+
+4. **Recurrencia**
+   - cuántos patrones previamente cerrados reaparecieron;
+   - frecuencia de repetición por patrón/proceso/dominio.
+
+5. **Degradación**
+   - warnings, fallbacks y estados tolerados que no equivalen a incidencia activa.
+
+6. **Deuda funcional**
+   - estados `pending`, `blocked`, terminales conocidos y demás trabajo pendiente que no sea avería técnica.
+
+### Presentación
+
+Operaciones debe priorizar primero la salud actual:
+
+> Todo funciona con normalidad.
+
+Y sólo después aportar contexto histórico:
+
+> En las últimas 24 h hubo N fallos técnicos, todos recuperados automáticamente.
+
+Actividad conserva su foco funcional e histórico.
+
+### Métricas temporales
+
+Se podrán derivar indicadores como:
+
+- nuevas incidencias;
+- recurrencias;
+- tiempo medio/mediano hasta recuperación;
+- fallos técnicos por proceso/dominio;
+- warnings/degradaciones;
+- deuda funcional vigente.
+
+No se usará un único “health score” opaco que mezcle dimensiones heterogéneas.
+
+### Filtrado
+
+Los KPIs podrán consultarse por dominio/proceso cuando aporte valor, pero la portada de Operaciones debe mantenerse simple y orientada a decisión.
+
+### Infraestructura
+
+- Se derivan preferentemente de las tablas y estados ya existentes.
+- No se introduce Prometheus/Grafana u otra plataforma adicional como requisito de V5.
+- No se crea un sistema paralelo de métricas.
+- La agregación deberá ser barata y coherente con la retención.
+
+### Relación con OBS-01..OBS-09
+
+OBS-10 sólo es fiable si:
+
+- OBS-01 clasifica correctamente la señal;
+- OBS-02/06 gobiernan resolución y recurrencia;
+- OBS-05 aporta estado vigente;
+- OBS-04 separa events/warnings/errors;
+- OBS-03 agrega causas;
+- OBS-07 reduce ruido;
+- OBS-08 clasifica streams secundarios;
+- OBS-09 correlaciona runtimes.
+
+### Límites
+
+- No autoriza ahora cambios de UI ni esquema.
+- No recalcula ni reetiqueta retroactivamente el histórico.
+- No obliga a persistir agregados si pueden calcularse de forma eficiente.
+- No modifica reglas funcionales de dominios.
+
+### Invariante
+
+> La salud de PikoFilm se mide con estado actual, fallos técnicos reales, recuperación, recurrencia, degradación y deuda funcional; nunca con un contador bruto de errores sin contexto.
+
+---
+
+## Cierre de Fase 2
+
+**COMPLETADA.**
+
+Se han revisado y persistido individualmente diez propuestas del Punto 5:
+
+- OBS-01 — APROBADA
+- OBS-02 — APROBADA
+- OBS-03 — APROBADA
+- OBS-04 — APROBADA
+- OBS-05 — APROBADA
+- OBS-06 — APROBADA
+- OBS-07 — APROBADA
+- OBS-08 — APROBADA
+- OBS-09 — APROBADA
+- OBS-10 — APROBADA
+
+La Fase 3 de innovación queda abierta.
