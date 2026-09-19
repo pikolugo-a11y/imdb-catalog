@@ -613,7 +613,7 @@ Distinguir claramente:
 
 Una identidad validada no aparece como “pendiente” por edad. Los estados de revisión deben explicar la razón.
 
-La acción **Corregir identidad** permite corregir también el tipo canónico. Al elegir Serie o Miniserie debe estar disponible el modo **TMDb solo**, aunque el título estuviera previamente clasificado como Película. El formulario debe advertir antes de cambiar de tipo y mostrar que TMDb pasa a ser la fuente canónica cuando se selecciona ese modo.
+La acción **Corregir identidad** permite corregir también el tipo canónico. Al elegir Serie o Miniserie debe estar disponible el modo **TMDb solo**, aunque el título estuviera previamente clasificado como Película. El formulario debe advertir antes de cambiar de tipo y mostrar que TMDb pasa a ser la fuente canónica cuando se selecciona ese modo. Guardar también puede reparar el vínculo Plex si la identidad ya era correcta pero la presencia física estaba desincronizada; en ese caso la UI informa `Plex enlazado correctamente`.
 
 ## 14.4 Personas
 
