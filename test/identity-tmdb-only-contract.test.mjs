@@ -37,6 +37,17 @@ test('refresco de una serie TMDb-only no consulta IMDb y usa enriquecimiento exc
   assert.match(enrich,/row\.type==='Miniserie'\?'Miniserie':'Serie'/);
 });
 
+test('Identidad re-enlaza Plex por la identidad canónica aunque los IDs no cambien',()=>{
+  const action=read('app/calidad/identidad/actions.js');
+  const identity=read('lib/identity.js');
+  assert.match(action,/relinkCatalogTitleFromPlex\(savedId\)/);
+  assert.match(action,/if\(!r\.changed\)\{/);
+  assert.match(action,/Identidad sin cambios; Plex enlazado correctamente/);
+  assert.match(identity,/const provider=tmdbOnly\?'tmdb':'imdb'/);
+  assert.match(identity,/matches\.length!==1/);
+  assert.match(identity,/linkCatalogTitleToPlex\(id,matches\[0\]\.rating_key\)/);
+});
+
 test('Identidad permite buscar series ya resueltas y corregirlas a TMDb solo',()=>{
   const query=read('lib/identity-page.js');
   const page=read('app/calidad/identidad/page.js');
