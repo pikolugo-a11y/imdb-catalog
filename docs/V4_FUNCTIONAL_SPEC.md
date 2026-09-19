@@ -687,6 +687,8 @@ Un cambio Plex puede invalidar/reabrir lo necesario.
 
 Un episodio futuro es información. No cuenta como faltante.
 
+Si TMDb todavía no publica `air_date`, un episodio ausente en Plex se considera **no exigible aún**: no cuenta como faltante exigible, no genera `availability_unknown` operativo, no entra en la revisión de disponibilidad España y no fuerza `SERIES_REVIEW`. Cuando aparezca una fecha, empieza a aplicar la regla normal de fecha de estreno + margen.
+
 ## 14.6 Disponibilidad España
 
 `UNKNOWN` se vuelve a comprobar automáticamente tras 14 días. La disponibilidad confirmada no se consulta cada 14 días de forma perpetua; se reactiva cuando cambia evidencia relevante.
