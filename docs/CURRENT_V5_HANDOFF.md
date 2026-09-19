@@ -408,13 +408,25 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - Series sólo agrega unidades con la misma ventana funcional; no se pierde precisión temporal.
 - No autoriza ahora migrar los planes existentes ni cambiar elegibilidad/concurrencia.
 
+#### PROC-08 — Concurrencia por entidad para Lifecycle
+
+**APROBADA.**
+
+- Lifecycle deja de serializar globalmente por defecto y pasa a exclusión por entidad/dependencia real cuando la independencia esté demostrada.
+- La misma entidad nunca ejecuta dos pipelines contradictorios; se reutiliza/encadena el run activo o se informa “ya en proceso”.
+- PROC-01 declara el scope de lock cuando aplique: global, entidad o recurso compartido.
+- Límites de pool, cuotas, circuit breakers y locks globales justificados permanecen.
+- Procesos realmente globales, como sync Plex global, pueden seguir serializados.
+- La implementación futura requiere inventario de writers, tests de carrera/idempotencia y límites conservadores.
+- No cambia ahora la concurrencia de producción.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-08 — Concurrencia por entidad para Lifecycle**, sustituyendo el bloqueo global de admisión por exclusión sólo sobre la misma entidad/dependencia, para permitir altas independientes en paralelo sin romper la consistencia funcional.
+Presentar al usuario **PROC-09 — Contrato único para modelos de ejecución especiales**, formalizando Batch común, Vercel chunked, controlador persistente y GitHub Actions bajo la misma semántica de control/estado sin forzar una implementación única.
 
-No presentar PROC-09 hasta que PROC-08 quede persistida como APROBADA o RECHAZADA.
+No presentar PROC-10 hasta que PROC-09 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
