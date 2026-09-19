@@ -200,13 +200,27 @@ Invariantes:
 - La clasificación se versionará en Git y debe acompañar a nuevos objetos persistentes relevantes.
 - DB-06 no añade procesos permanentes ni coste material y no altera la UX.
 
+#### DB-07 — Gobierno de índices basado en evidencia
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Un índice con pocos/cero scans es candidato a revisión, no candidato automático a borrado.
+- Antes de retirar: comprobar constraints, consumidores, queries reales, solapamientos, `EXPLAIN/EXPLAIN ANALYZE` y prueba en rama Neon.
+- Priorizar índices grandes, tablas con alto churn y duplicidades/solapamientos; no perseguir microahorros irrelevantes.
+- También se pueden añadir índices cuando una necesidad real y medida lo justifique.
+- Índices de tablas legacy se retiran junto con la tabla cuando corresponda.
+- Series mantiene criterio especialmente conservador: ningún ahorro de MB tiene prioridad sobre conciliación, Calidad, frescura o recovery.
+- La aprobación no autoriza ahora cambios de índices en producción.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-07 — Revisión y gobierno de índices basada en evidencia**, derivada de que la auditoría detectó índices grandes con pocos o cero scans registrados, pero también de que esas estadísticas no justifican borrar índices a ciegas sin validar consumidores, planes reales y ventanas de observación.
+Presentar al usuario **DB-08 — Retención selectiva de raw payloads y evidencia técnica**, derivada de que varias familias guardan simultáneamente resultado procesado + JSON/evidencia reconstruible, con coste acumulativo de almacenamiento.
 
-No presentar DB-08 hasta que DB-07 quede persistida como aprobada o rechazada.
+No presentar DB-09 hasta que DB-08 quede persistida como aprobada o rechazada.
 
-Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: revisión de índices basada en evidencia, raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia y reconciliación diferencial de Series; DB-04 el doble modelo de géneros; DB-05 ledger/drift de migraciones; DB-06 ownership/canonicalidad/rebuildabilidad.
+Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia; DB-04 géneros; DB-05 ledger/drift; DB-06 ownership/rebuildabilidad; DB-07 índices.
 
 ## Contexto funcional reciente ya cerrado
 
