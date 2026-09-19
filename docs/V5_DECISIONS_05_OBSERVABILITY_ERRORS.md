@@ -194,3 +194,62 @@ OBS-03 añade la explicación causal de cómo una ejecución compuesta llegó a 
 ### Invariante
 
 > Un parent compuesto no necesita tener un error propio para explicar un fallo; debe resumir de forma determinista las causas reales de sus hijos e items sin duplicarlas.
+
+
+---
+
+## OBS-04 — Contrato canónico de eventos, warnings y errores
+
+**APROBADA.**
+
+### Problema
+
+La auditoría encontró 652 eventos con `event_type='error'` frente a 432 filas en `process_run_errors`, además de 83 runs con eventos de error pero sin error canónico asociado.
+
+Eso demuestra que hoy “error” tiene más de una semántica operativa.
+
+### Decisión
+
+V5 separará tres niveles de señal:
+
+1. **Evento normal**
+   - describe hechos de ejecución: `step_started`, `step_completed`, `functional_change`, `manual_decision`, etc.;
+   - no implica degradación ni fallo.
+
+2. **Warning / degradación**
+   - expresa una condición anómala pero tolerada: fallback, lentitud, dato incompleto permitido, retry programado o degradación equivalente;
+   - no crea automáticamente una incidencia activa;
+   - puede agregarse estadísticamente para detectar recurrencia.
+
+3. **Error técnico canónico**
+   - la fuente de verdad es `process_run_errors`;
+   - representa un fallo técnico real según OBS-01;
+   - si además se refleja en el timeline de eventos, debe quedar relacionado con el mismo error canónico y no contarse como un fallo adicional.
+
+### Fuente de verdad y métricas
+
+- Los contadores de “errores técnicos” se basarán en `process_run_errors`, no en la suma de events + errors.
+- Los warnings tendrán métricas separadas.
+- Los eventos cuentan historia, no sirven como contador alternativo de fallos.
+- Un mismo error técnico no puede contarse dos veces por existir como fila y como evento asociado.
+
+### Errores recuperados
+
+Un fallo técnico intermedio puede registrar:
+
+- la fila canónica de error;
+- eventos de fallback/retry/recuperación;
+- un run final `succeeded`.
+
+En ese caso la evidencia histórica se conserva, pero OBS-02 decide si la incidencia sigue activa o queda recuperada.
+
+### Compatibilidad
+
+- No se borran ni reescriben los 652 eventos históricos observados.
+- No se modifica todavía el esquema.
+- No se obliga a eliminar los event types actuales hasta diseñar compatibilidad/migración.
+- No se degrada el detalle técnico disponible para diagnóstico.
+
+### Invariante
+
+> Los eventos cuentan la historia; los warnings señalan degradación; `process_run_errors` representa fallos técnicos reales. Nunca se usan los tres como contadores equivalentes.
