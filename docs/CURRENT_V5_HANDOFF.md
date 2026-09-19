@@ -682,11 +682,23 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - No activa todavía Railway sleep/serverless ni cambia Neon autosuspend.
 - Recovery y demanda pendiente nunca pueden quedar bloqueados indefinidamente.
 
+#### WKR-03 — Technical realmente quiescente cuando está detenido
+
+**APROBADA.**
+
+- `requested_state='stopped'` deja de provocar lectura, UPDATE y log cada ~10 segundos.
+- Presencia del runtime y estado funcional de Technical quedan separados.
+- Las transiciones se registran inmediatamente; el estado estable se observa con señal de baja frecuencia.
+- `paused` conserva semántica distinta de `stopped`.
+- La reactivación debe tener latencia razonable mediante backoff/wake equivalente.
+- Encaja con OBS-07: registrar cambios, no repetir continuamente que nada cambió.
+- No apaga todavía el contenedor Railway ni activa serverless/autosuspend.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **WKR-03 — Technical realmente quiescente cuando está detenido**, para que `requested_state='stopped'` deje de provocar consultas, escrituras y logs cada ~10 segundos y conserve sólo la señal mínima necesaria para saber que el servicio sigue disponible.
+Presentar al usuario **WKR-04 — Lease heartbeat propiedad del runtime**, para que cualquier child Batch mantenga su lease automáticamente mientras su core siga vivo, sin depender de que cada proceso largo recuerde invocar `trace.heartbeat()`.
 
-No presentar WKR-04 hasta que WKR-03 quede persistida como APROBADA o RECHAZADA.
+No presentar WKR-05 hasta que WKR-04 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
