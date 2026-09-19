@@ -330,3 +330,88 @@ Esta aprobación:
 ### Invariante
 
 > Mientras un worker siga ejecutando legítimamente un child Batch, el runtime común debe mantener automáticamente vigente su lease; ningún core funcional debe depender de llamadas manuales de heartbeat para evitar una falsa expiración.
+
+
+---
+
+## WKR-05 — Drain seguro antes de reinicio o deploy
+
+**APROBADA.**
+
+### Decisión
+
+Todo worker persistente que vaya a detenerse, reiniciarse o redeplegarse debe entrar primero, cuando el entorno lo permita, en un estado explícito de **drain**.
+
+Secuencia canónica:
+
+1. pasar a `DRAINING`;
+2. dejar inmediatamente de reclamar trabajo nuevo;
+3. mantener vivos los heartbeats de presencia y de los items ya activos;
+4. permitir que las ejecuciones en vuelo finalicen normalmente;
+5. confirmar ausencia de trabajo activo;
+6. detener/reiniciar/redeplegar.
+
+### Límite de drain
+
+El drain no puede bloquear indefinidamente una operación de mantenimiento.
+
+Debe existir un timeout explícito. Si una ejecución no termina dentro de ese margen:
+
+- el worker deja de admitir trabajo nuevo igualmente;
+- el apagado puede continuar;
+- WKR-04 deja de renovar al morir el proceso;
+- la lease expira;
+- el recovery/retry canónico recupera la unidad según PROC-03 y el Batch Engine.
+
+### Claims
+
+Desde el instante en que un worker entra en `DRAINING`:
+
+> no puede reclamar nuevos items.
+
+Los items ya activos conservan ejecución normal hasta terminar o hasta que expire el límite de drain.
+
+### Operaciones
+
+WKR-01 debe permitir representar de forma explícita:
+
+- worker `DRAINING`;
+- número de items activos;
+- motivo cuando sea relevante, por ejemplo deploy/mantenimiento;
+- instante desde el que drena.
+
+### Relación con PROC-10
+
+PROC-10 decide **qué workers necesitan deploy**.
+
+WKR-05 define **cómo se detienen de forma segura** los workers afectados.
+
+Flujo futuro deseado:
+
+`worker afectado → DRAINING → 0 trabajo activo → deploy → preflight WKR-01 → READY`.
+
+### Disponibilidad
+
+PikoFilm funciona actualmente con una réplica por servicio.
+
+Por tanto, el objetivo no es prometer zero downtime, sino garantizar:
+
+- trabajo durable;
+- ausencia de claims nuevos durante drain;
+- mínima interrupción de ejecuciones activas;
+- recovery seguro cuando una ejecución no puede terminar;
+- vuelta a servicio sólo después de readiness/capabilities válidas.
+
+### Límites
+
+Esta aprobación:
+
+- no aumenta réplicas;
+- no introduce blue/green deployment;
+- no obliga todavía a automatizar el drain desde Railway;
+- no cambia leases/retries;
+- no autoriza cambios de Production ahora.
+
+### Invariante
+
+> Un worker que va a detenerse o redeplegarse debe dejar de aceptar trabajo nuevo antes de apagarse y, cuando sea posible, finalizar limpiamente sus ejecuciones activas antes de cederlas al mecanismo de recovery.
