@@ -617,7 +617,7 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 
 ### ESTADO DE FASE 3 — INNOVACIÓN
 
-**ACTIVA.** Deben revisarse al menos 5 innovaciones rompedoras, una a una. Sólo las aprobadas se incorporarán a `docs/ROADMAP_INNOVADOR.md`.
+**COMPLETADA.** 5/5 innovaciones revisadas y persistidas. Sólo INNO-OBS-02 fue aprobada e incorporada a `docs/ROADMAP_INNOVADOR.md` como INNO-06.
 
 Decisiones persistidas en `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`:
 
@@ -625,12 +625,17 @@ Decisiones persistidas en `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`:
 - `INNO-OBS-02 — PikoFilm Sentinel`: **APROBADA**. Incorporada a `docs/ROADMAP_INNOVADOR.md` como **INNO-06**.
 - `INNO-OBS-03 — PikoFilm Anomaly Radar`: **RECHAZADA**. No se incorpora al Road Map Innovador.
 - `INNO-OBS-04 — PikoFilm Blast Shield`: **RECHAZADA**. No se incorpora al Road Map Innovador.
+- `INNO-OBS-05 — PikoFilm Chaos Lab`: **RECHAZADA**. No se incorpora al Road Map Innovador.
+
+### CIERRE DEL PUNTO 5
+
+**CERRADO.** Auditoría completa + 10/10 propuestas OBS-01 a OBS-10 aprobadas + 5/5 innovaciones revisadas/persistidas.
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **INNO-OBS-05 — PikoFilm Chaos Lab**, una capacidad futura para inyectar fallos controlados y reversibles en entornos seguros con el fin de demostrar que retries, breakers, recovery, alertas y degradación funcionan antes de sufrir una avería real.
+Cerrar la rama del Punto 5 mediante PR/CI/merge y, desde `main` actualizado, abrir una única rama para **Punto 6 — Workers y servicios persistentes**.
 
-No cerrar el Punto 5 hasta que INNO-OBS-05 quede persistida como APROBADA o RECHAZADA.
+La Fase 1 del Punto 6 debe auditar especialmente consumo inactivo, polling, heartbeats, wake/sleep, despliegues, aislamiento entre workers, recovery, capacidad real, coste y coherencia entre Railway, Vercel y Neon.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -666,4 +671,4 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Innovaciones Punto 5: `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-El Punto 5 está activo en `audit/v5-05-observability`. Fases 1 y 2 están cerradas; continuar por Fase 3 de innovación y persistir cada decisión antes de presentar la siguiente.
+El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento es PR/CI/merge de esta rama y después abrir el Punto 6 desde `main` actualizado.
