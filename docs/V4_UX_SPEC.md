@@ -219,6 +219,7 @@ Incluye de manera compacta:
 
 - búsqueda;
 - Plex;
+- país;
 - género(s);
 - año desde/hasta;
 - orden;
@@ -244,10 +245,11 @@ Orden recomendado de percepción:
 1. Título;
 2. Año;
 3. Tipo;
-4. Géneros;
-5. PikoScore;
-6. PikoQuality;
-7. Plex.
+4. País;
+5. Géneros;
+6. PikoScore;
+7. PikoQuality;
+8. Plex.
 
 PikoScore debe destacar más que el resto de métricas. Plex queda como estado físico corto.
 
