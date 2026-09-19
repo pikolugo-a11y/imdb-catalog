@@ -87,3 +87,20 @@ No entra automáticamente en V5, V6 ni V7.
 ### Visión
 
 > PikoFilm prueba que el camino funciona antes de mandar trabajo real por él.
+
+
+---
+
+## INNO-OBS-03 — PikoFilm Anomaly Radar
+
+**Estado: RECHAZADA.**
+
+### Idea revisada
+
+Detectar automáticamente desviaciones relevantes respecto al comportamiento normal de cada proceso —duración, volumen, distribución de resultados, errores, warnings, retries o consumo externo— antes de que aparezca un fallo técnico explícito.
+
+### Decisión
+
+**RECHAZADA por el usuario.**
+
+No se añade a `docs/ROADMAP_INNOVADOR.md` y no queda como backlog implícito.
