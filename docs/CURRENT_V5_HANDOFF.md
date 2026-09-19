@@ -456,14 +456,15 @@ Decisiones persistidas en `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`:
 
 - `INNO-PROC-01 — PikoFilm Event Fabric`: **RECHAZADA**. No se incorpora al Road Map Innovador.
 - `INNO-PROC-02 — PikoFilm Shadow Scheduler`: **APROBADA**. Incorporada a `docs/ROADMAP_INNOVADOR.md` como **INNO-03**.
+- `INNO-PROC-03 — PikoFilm Adaptive Freshness`: **APROBADA**. Incorporada a `docs/ROADMAP_INNOVADOR.md` como **INNO-04**.
 
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **INNO-PROC-03 — PikoFilm Adaptive Freshness**, un motor futuro que abandone cadencias rígidas por entidad y calcule cuándo conviene refrescar cada dato según su probabilidad real de cambio, ciclo de vida y SLA funcional.
+Presentar al usuario **INNO-PROC-04 — PikoFilm Process Time Travel**, una capacidad futura de ejecutar cualquier proceso sobre una foto histórica/simulada de su contexto para reproducir fallos, comparar versiones y validar cambios sin tocar el estado canónico.
 
-No presentar INNO-PROC-04 hasta que INNO-PROC-03 quede persistida como APROBADA o RECHAZADA.
+No presentar INNO-PROC-05 hasta que INNO-PROC-04 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
