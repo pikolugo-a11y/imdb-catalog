@@ -641,3 +641,97 @@ No cambia la funcionalidad del producto. Añade observabilidad ligera y preventi
 ### Resultado esperado
 
 PikoFilm podrá detectar pronto que una tabla, dominio o proceso está creciendo a un ritmo inesperado y explicar dónde ocurre, antes de que el usuario lo descubra por degradación o coste. La reacción será siempre diagnóstica y controlada, nunca destructiva por defecto.
+
+
+## DB-10 — Constraints selectivas para invariantes canónicos
+
+**Estado: APROBADA**
+
+### Decisión
+
+V5 usará constraints de PostgreSQL para proteger únicamente **invariantes estructurales estables y universales**. La base debe impedir estados imposibles, pero no debe intentar codificar en SQL toda la lógica funcional evolutiva de PikoFilm.
+
+No se añadirán FOREIGN KEY, CHECK, UNIQUE o NOT NULL por intuición. Cada constraint nueva exige evidencia de que la regla no admite excepciones legítimas.
+
+### Evidencia observada
+
+La revisión viva confirma que el esquema actual ya está razonablemente protegido y no presenta corrupción masiva en los dominios auditados:
+
+- `title_ratings` sin película canónica: 0;
+- `movie_credits` sin película: 0;
+- `movie_credits` sin persona: 0;
+- `person_filmography` sin persona: 0;
+- `plex_catalog_status` sin película: 0;
+- `series_reference_episodes` sin `series_reference` padre: 0;
+- `series_diagnostics` sin serie de referencia: 0.
+
+También existen ya relaciones útiles como:
+
+- `movie_credits.imdb_id -> movies.imdb_id`;
+- `movie_credits.tmdb_person_id -> people.tmdb_person_id`;
+- `movie_genres_canonical -> movies + genres`;
+- `title_ratings.imdb_id -> movies.imdb_id`;
+- Plex media/technical state ligados a `plex_items`;
+- availability de episodios ligada a referencia oficial;
+- múltiples CHECK de estados cerrados.
+
+### Contraejemplo que obliga a ser selectivos
+
+La revisión detectó **2.933 filas de `plex_streams` sin correspondencia exacta en `plex_files`** bajo la clave aparentemente natural `rating_key + media_index + part_index`.
+
+Esto demuestra que no se puede asumir automáticamente que “todo stream debe tener file” y crear una FK. Esa situación debe entenderse primero: puede ser semántica válida de Plex, deuda histórica o inconsistencia real.
+
+DB-10 prohíbe corregir o borrar esas filas sólo para hacer encajar una constraint.
+
+### Protección especial de Series
+
+Series conserva excepciones funcionales legítimas.
+
+En particular, `series_episode_overrides` puede contener decisiones como `special`, `not_needed` o combinados que no correspondan 1:1 con un episodio oficial. Por ello no se añadirá una FK obligatoria a `series_reference_episodes` mientras esa relación no sea universal.
+
+Las reglas de margen de 7 días, disponibilidad, conciliación Plex↔TMDb, dobles/triples/múltiples y demás lógica viva seguirán en código/tests, no en CHECK SQL complejos.
+
+### Tipos de constraint aceptados
+
+Se usarán de forma selectiva:
+
+- **FOREIGN KEY:** cuando una referencia sin padre sea siempre inválida;
+- **UNIQUE:** cuando funcionalmente sólo pueda existir una identidad/relación;
+- **CHECK:** para dominios cerrados y reglas simples/estables;
+- **NOT NULL:** para datos verdaderamente obligatorios.
+
+No se duplicará lógica compleja de negocio en SQL.
+
+### Nuevo modelo de Personas DB-02
+
+El sustituto V5 de `person_filmography` deberá nacer estructuralmente protegido:
+
+- créditos ligados a una persona canónica existente;
+- relaciones ligadas a una obra de filmografía existente;
+- identidad de obra sin duplicados incompatibles;
+- `imdb_id` obligatorio para cualquier obra aceptada, coherente con DB-02;
+- reglas estructurales estables protegidas en DB;
+- clasificación cinematográfica y elegibilidad de persona siguen siendo lógica de negocio probada en código.
+
+### Procedimiento obligatorio antes de añadir una constraint
+
+1. demostrar que la regla es funcionalmente universal;
+2. auditar los datos actuales y contar violaciones;
+3. investigar cualquier violación antes de modificarla;
+4. diseñar la semántica de delete/update adecuada;
+5. probar la migración en rama Neon;
+6. ejecutar tests funcionales y de migración;
+7. activar sólo si no invalida excepciones reales;
+8. medir impacto de escritura cuando la FK/constraint afecte tablas vivas.
+
+Una migración no puede “sanear” datos destructivamente sólo para conseguir que una constraint valide.
+
+### Coste e impacto funcional
+
+Las constraints simples tienen coste razonable y aportan protección frente a corrupción, pero no se multiplicarán sin necesidad. La integridad estructural tiene prioridad; el modelado debe seguir siendo flexible donde el negocio sea evolutivo.
+
+La aprobación de DB-10 no autoriza ahora nuevas constraints ni cambios de datos en Neon Production.
+
+### Resultado esperado
+
+La base de datos impedirá las relaciones y valores que sean realmente imposibles, mientras PikoFilm mantiene en código las reglas funcionales complejas y cambiantes. Se obtiene integridad sin convertir PostgreSQL en una segunda implementación rígida del producto.
