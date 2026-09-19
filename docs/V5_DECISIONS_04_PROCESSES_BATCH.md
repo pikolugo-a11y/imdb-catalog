@@ -810,3 +810,113 @@ La implementación futura requiere:
 ### Resultado esperado
 
 Un título lento o problemático deja de bloquear trabajos independientes. PikoFilm serializa sólo aquello que realmente comparte estado y conserva idempotencia estricta sobre la misma entidad.
+
+
+---
+
+## PROC-09 — Contrato único para modelos de ejecución especiales
+
+**Estado: APROBADA.**
+
+### Problema que resuelve
+
+PikoFilm utiliza varios modelos de ejecución legítimamente distintos:
+
+- Batch Engine común;
+- procesos chunked en Vercel;
+- controladores persistentes especializados como `PROC-PQ-002`;
+- workflows externos como `PROC-NOV-001` en GitHub Actions.
+
+El problema no es la diversidad de motores, sino que cada uno expone estados, controles, progreso y recuperación de manera diferente.
+
+### Decisión
+
+V5 definirá un **contrato operativo común** para cualquier proceso durable, sin obligar a que todos utilicen el mismo motor.
+
+PROC-01 declarará el modelo de ejecución de cada proceso y sus capacidades operativas.
+
+### Modelos de ejecución explícitos
+
+Como mínimo podrán existir categorías equivalentes a:
+
+- `batch_common`;
+- `vercel_chunked`;
+- `persistent_controller`;
+- `github_actions`;
+- otros modelos excepcionales sólo si se declaran de forma explícita.
+
+### Contrato operativo común
+
+Todo proceso durable deberá poder exponer, cuando sea aplicable:
+
+- ejecutor/modelo;
+- estado actual;
+- fecha de solicitud/inicio/fin;
+- progreso;
+- heartbeat o señal equivalente de vida;
+- trabajo pendiente;
+- resultado funcional;
+- incidencias activas/terminales;
+- capacidad de pause/resume/cancel;
+- estrategia de recuperación;
+- correlación con el runtime externo si existe.
+
+La ausencia de una capacidad también debe ser explícita.
+
+### Controles
+
+PROC-01 podrá declarar capacidades como:
+
+- pause;
+- resume;
+- cancel;
+- retry;
+- manual continuation;
+- unsupported.
+
+Actividad/Operaciones podrá mostrar controles a partir de este contrato en lugar de mantener excepciones por proceso.
+
+### Recuperación por modelo
+
+Cada modelo conserva su mecanismo interno:
+
+- Batch común → lease expiry / reclaim / child runs;
+- controlador persistente → heartbeat + estado del controlador;
+- GitHub Actions → correlación con workflow/run;
+- Vercel chunked → checkpoints/continuación según su diseño.
+
+La semántica exterior debe ser común aunque la implementación sea distinta.
+
+### Relación con PROC-05
+
+El contrato operativo utilizará la semántica canónica de:
+
+- estado técnico;
+- resultado funcional;
+- necesidad de continuación;
+- terminalización.
+
+No se crean interpretaciones paralelas para cada motor.
+
+### Actividad y Operaciones
+
+Una superficie puede consultar cualquier ejecución mediante una abstracción común equivalente a `getProcessExecutionState(run_id)`, evitando conocer internamente si el proceso vive en Railway, Vercel, GitHub Actions o un controlador especializado.
+
+### Excepciones preservadas
+
+- `PROC-NOV-001` mantiene GitHub Actions y su cooldown semanal.
+- `PROC-PQ-002` puede mantener su controlador Technical Snapshot.
+- `PROC-PQ-001` puede mantener ejecución chunked si sigue siendo el modelo adecuado.
+- No se fuerza ninguna de ellas al Batch Engine común sólo por uniformidad.
+
+### Límites
+
+- No crea un orquestador central nuevo por sí sola.
+- No migra procesos entre infraestructuras.
+- No elimina GitHub Actions ni controladores especializados.
+- No cambia lógica funcional.
+- No autoriza ahora cambios de producción.
+
+### Resultado esperado
+
+PikoFilm puede conservar motores de ejecución especializados, pero todos hablan el mismo idioma operativo y pueden integrarse de forma uniforme en Actividad, Operaciones y observabilidad.
