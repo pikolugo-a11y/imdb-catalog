@@ -820,8 +820,12 @@ Estado:
 - Calidad → Datos alinea TMDb-only con Lifecycle: exige ficha estructural, pero no exige ratings múltiples ni PikoScore;
 - NOV-010 deduplica TMDb-only por `tmdb_id` antes de crear candidato;
 - NOV-007 repite la deduplicación en admisión como segunda barrera;
-- sólo existe un duplicado TMDb-only histórico conocido en producción: Will y Grace, TMDb 74321;
-- ese duplicado histórico NO fue eliminado ni fusionado porque requiere autorización explícita para mutar datos;
+- el único duplicado TMDb-only histórico detectado en producción era Will y Grace, TMDb 74321;
+- el usuario autorizó explícitamente la limpieza y se ejecutó en Neon de forma controlada;
+- se conservó la ficha canónica antigua `tt990049053054057053053`, se fusionaron póster/backdrop, país y 5 créditos útiles de la ficha errónea, y Plex quedó enlazado al `rating_key` activo `159392`;
+- se retiró la referencia de serie obsoleta `156955` junto con 52 referencias de episodio y 52 diagnósticos asociados a ese rating key inactivo;
+- se eliminó la ficha duplicada `tt990049053057051057050`; el candidato histórico se conservó marcado con `deduplicatedTo` para trazabilidad;
+- verificación final: 1 sola obra TMDb-only con `tmdb_id=74321`, 0 residuos de la ficha duplicada en tablas canónicas, 1 referencia de serie activa, 52 episodios oficiales y Lifecycle `COMPLETE`;
 - sin migraciones ni mutaciones manuales de Neon;
 - Vercel Production no fue desplegado por el asistente;
 - WKR-07 sigue **PENDIENTE DE DECISIÓN**.
