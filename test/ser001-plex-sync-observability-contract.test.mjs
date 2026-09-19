@@ -77,3 +77,10 @@ test('Calidad distingue inventario físico Plex de episodios oficiales cubiertos
 test('implementación safe deja de duplicar lógica funcional',()=>{assert.match(safe,/export \{syncPlexSeriesFast,syncPlexSeriesFastCore,syncPlexSeriesDetail\} from '\.\/series-plex-sync\.js'/);assert.doesNotMatch(safe,/function fingerprint|UPDATE series_reference|library\/sections/)});
 
 test('Operaciones muestra nombre y origen humanos de SER-001',()=>{assert.match(display,/'PROC-SER-001':\{name:'Sincronizar Plex de Series'\}/);assert.match(display,/calidad_series_manual:'Manual desde Series'/)});
+
+test('SER-001 reintenta timeouts Plex y propaga fallos transitorios al Batch',()=>{
+  assert.match(sync,/fetchPlexJsonWithRetry/);
+  assert.match(sync,/PLEX_REQUEST_TIMEOUTS=\[45000,60000,90000\]/);
+  assert.match(sync,/if\(e\?\.retryable\)\{e\.processStep=e\.processStep\|\|'sync_library';throw e\}/);
+  assert.match(sync,/if\(e\?\.retryable\)\{e\.processStep=e\.processStep\|\|'sync_episode_inventory';throw e\}/);
+});
