@@ -920,3 +920,107 @@ Una superficie puede consultar cualquier ejecución mediante una abstracción co
 ### Resultado esperado
 
 PikoFilm puede conservar motores de ejecución especializados, pero todos hablan el mismo idioma operativo y pueden integrarse de forma uniforme en Actividad, Operaciones y observabilidad.
+
+
+---
+
+## PROC-10 — Despliegue seguro y selectivo de workers
+
+**Estado: APROBADA.**
+
+### Problema que resuelve
+
+La auditoría observó que los cuatro servicios Railway (API, FAST, Plex y Technical) se redesplegaron incluso por un merge exclusivamente documental del Punto 3.
+
+También se observó que la configuración de Railway no expresa de forma clara una dependencia explícita respecto al CI post-merge antes de desplegar una nueva versión.
+
+El problema no es desplegar con frecuencia cuando existe un cambio real. El problema es reiniciar servicios sin utilidad o permitir que una versión nueva empiece a recibir trabajo antes de haber superado los controles correspondientes.
+
+### Decisión
+
+V5 aplicará un modelo de despliegue selectivo y seguro:
+
+1. si un cambio puede afectar al runtime de un worker, ese worker debe desplegarse;
+2. si el cambio es demostrablemente ajeno a su runtime —por ejemplo documentación— no debe reiniciarlo;
+3. una versión nueva de worker no debe aceptar trabajo hasta haber superado sus validaciones de código, contrato y compatibilidad.
+
+### Selectividad
+
+Cada servicio Railway deberá tener un conjunto de dependencias reales de despliegue.
+
+La decisión no se limita a observar archivos `worker/*.mjs`: también deben considerarse librerías compartidas, configuración, contratos y cualquier módulo importado que pueda cambiar el comportamiento del servicio.
+
+Ejemplos conceptuales:
+
+- cambio en `docs/**` → ningún worker;
+- cambio exclusivo del frontend → ningún worker;
+- cambio en worker API → API;
+- cambio en librería compartida usada por API y FAST → API + FAST;
+- cambio en contrato usado por Plex → Plex y cualquier consumidor dependiente.
+
+### Gate previo a aceptar trabajo
+
+El flujo objetivo es:
+
+`merge → CI/contratos → compatibilidad → deploy de servicios afectados → preflight PROC-02 → aceptar trabajo`.
+
+No se exige una plataforma de CD compleja; el mecanismo puede apoyarse en Railway/GitHub siempre que respete este orden funcional.
+
+### Relación con PROC-01 y PROC-02
+
+- PROC-01 define qué procesos/adapters/capacidades corresponden a cada worker.
+- PROC-10 garantiza que la versión que se despliega ha pasado los checks relevantes.
+- PROC-02 confirma en runtime que la versión efectivamente desplegada declara la capacidad requerida antes de materializar trabajo.
+
+### Compatibilidad con trabajo en curso
+
+Un redeploy legítimo no debe invalidar silenciosamente leases, runs o trabajo durable iniciado por la versión anterior.
+
+Cuando exista incompatibilidad entre versiones, debe estar declarada y gestionada explícitamente mediante contratos/versionado.
+
+### Coste
+
+El ahorro económico de evitar deploys innecesarios no es el objetivo principal.
+
+Los beneficios prioritarios son:
+
+- menos reinicios sin valor;
+- menos churn de heartbeats/logs;
+- menor posibilidad de interrupciones temporales;
+- menor riesgo de version skew;
+- despliegues más predecibles.
+
+Si existen veinte cambios reales en un worker, veinte deploys son aceptables y deseables.
+
+### Límites
+
+- No limita la frecuencia de deploys necesarios.
+- No obliga a blue/green, Kubernetes ni nueva plataforma.
+- No cambia número de workers, región, concurrencia ni lógica funcional.
+- No modifica Vercel Production ni Neon.
+- No autoriza ahora cambios de configuración Railway.
+
+### Resultado esperado
+
+Cada worker se redespliega cuando realmente puede haber cambiado su runtime, y sólo empieza a recibir trabajo después de superar las validaciones que demuestran que esa versión es compatible y operativa.
+
+---
+
+## Estado de Fase 2
+
+**COMPLETADA.**
+
+Se han revisado individualmente y persistido 10 propuestas V5 del Punto 4:
+
+- PROC-01 — APROBADA
+- PROC-02 — APROBADA
+- PROC-03 — APROBADA
+- PROC-04 — APROBADA
+- PROC-05 — APROBADA
+- PROC-06 — APROBADA
+- PROC-07 — APROBADA
+- PROC-08 — APROBADA
+- PROC-09 — APROBADA
+- PROC-10 — APROBADA
+
+El Punto 4 pasa a **Fase 3 — Road Map Innovador**. Las innovaciones se revisarán una a una y sólo las aprobadas se incorporarán a `docs/ROADMAP_INNOVADOR.md`.
