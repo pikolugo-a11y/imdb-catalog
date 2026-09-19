@@ -430,3 +430,94 @@ OBS-06 define cómo registrar de forma canónica:
 ### Invariante
 
 > Cada cierre debe explicar su procedencia y cada reaparición posterior debe registrarse como una nueva recurrencia, vinculable al mismo patrón pero sin borrar ni reabrir artificialmente el episodio anterior.
+
+
+---
+
+## OBS-07 — Política de logging por nivel, agregación y sampling
+
+**APROBADA.**
+
+### Problema
+
+La auditoría detectó ruido elevado en logs externos:
+
+- Technical Snapshot, aun con `control='stopped'` y sin trabajo, genera líneas repetitivas aproximadamente cada 10 segundos;
+- FAST/Plex registran `batch_item_done` por cada item aunque la verdad durable ya exista en Neon.
+
+Esto reduce señal, complica diagnóstico y escala linealmente con el volumen de trabajo.
+
+### Decisión
+
+Todos los workers y servicios de PikoFilm deberán seguir una política común de logging por nivel:
+
+- **ERROR** — fallo técnico real no recuperado o que requiere intervención;
+- **WARN** — degradación tolerada, fallback, retry, condición anómala relevante;
+- **INFO** — cambios de estado, inicio/fin de procesos, pausas, reanudaciones, despliegues, resúmenes operativos;
+- **DEBUG** — detalle de alta cardinalidad como items individuales, claims y trazas finas.
+
+### Technical Snapshot
+
+- El heartbeat durable puede seguir actualizándose sin emitir una línea de log en cada ciclo.
+- Un cambio de estado como `running → stopped` sí merece INFO.
+- Un estado estable y repetitivo no debe imprimirse cada ~10 s.
+- Si se desea presencia periódica, debe ser agregada y de baja frecuencia.
+
+### Batch de alta cardinalidad
+
+Para FAST/Plex/API:
+
+- no registrar cada éxito individual en INFO por defecto;
+- mantener todos los fallos, retries y terminalizaciones;
+- preferir progreso agregado periódico y resumen final;
+- permitir DEBUG o sampling puntual cuando se investigue un problema.
+
+### Sampling
+
+Para señales repetitivas se permite un patrón conservador equivalente a:
+
+- primeros N eventos;
+- muestra periódica;
+- todos los errores/anomalías;
+- resumen final completo.
+
+El sampling nunca puede eliminar la única evidencia durable de un fallo; esa verdad sigue en Neon.
+
+### Fuente de verdad
+
+Los logs externos son evidencia de runtime complementaria.
+
+La verdad durable sigue en:
+
+- `process_runs`;
+- `process_run_events`;
+- `process_run_errors`;
+- `batch_run_items`;
+- demás estados canónicos del dominio.
+
+### No se samplea ni suprime
+
+- errores técnicos reales;
+- apertura/cierre de circuit breaker;
+- pérdida/reclamación relevante de lease;
+- crash/startup;
+- terminalizaciones;
+- transiciones críticas;
+- acciones manuales sensibles;
+- cualquier evento cuya ausencia impida reconstruir una incidencia.
+
+### Objetivo
+
+El objetivo principal es mejorar relación señal/ruido y capacidad diagnóstica; el ahorro de coste es secundario.
+
+### Límites
+
+- No cambia ahora niveles de log en producción.
+- No modifica Railway/Vercel ni su retención.
+- No desactiva heartbeats funcionales.
+- No autoriza pérdida de evidencia durable.
+- La política concreta por worker se definirá durante implementación.
+
+### Invariante
+
+> La observabilidad debe maximizar señal, no volumen: los hechos durables viven en Neon y los logs externos priorizan cambios de estado, anomalías y resúmenes, no repetir continuamente que todo sigue igual.
