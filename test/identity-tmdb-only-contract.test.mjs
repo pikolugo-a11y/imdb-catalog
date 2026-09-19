@@ -17,6 +17,7 @@ test('backend valida y persiste la excepción TMDb-only sin exigir coincidencia 
   const code=read('lib/identity-correction.js');
   assert.match(code,/TMDb solo únicamente está disponible para series y miniseries/);
   assert.match(code,/targetType=requestedType\|\|before\.type/);
+  assert.match(code,/targetType!==before\.type&&!newTmdb/);
   assert.match(code,/validateTmdbIdentity\(newTmdb,targetType,newId\)/);
   assert.match(code,/saveIdentity\(oldId,\{imdbId:newId,tmdbId:newTmdb,type:targetType\}/);
   assert.match(code,/if\(!useTmdbOnly&&!verification\.actualImdbId\)/);
