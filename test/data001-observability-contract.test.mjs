@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const actions=fs.readFileSync('app/calidad/datos/actions.js','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
+const canonical=fs.readFileSync('lib/data001-canonical.mjs','utf8');
 
 test('DATA-001 runs through common observability runtime',()=>{
   assert.match(actions,/processCode:'PROC-DATA-001'/);
@@ -18,6 +19,12 @@ test('DATA-001 preserves fill-missing canonical operation and distinguishes part
   assert.match(actions,/technicalStatus=failed\.length\?'partial':'succeeded'/);
   assert.match(actions,/functionalResult=!after\.data_ready\?'pending':recovered\.length\?'updated':'no_change'/);
   assert.match(actions,/non_blocking:true/);
+});
+
+test('DATA-001 TMDb-only persists structural fields only in the current schema',()=>{
+  assert.match(canonical,/const sources=tmdbOnly\?\[\['tmdb',refreshTmdb\]\]/);
+  assert.match(canonical,/tmdb_url=CASE WHEN \$\{tmdbOnly\}/);
+  assert.doesNotMatch(canonical,/tmdb_rating=|tmdb_votes=/);
 });
 
 test('DATA-001 is human-readable in Operations',()=>{
