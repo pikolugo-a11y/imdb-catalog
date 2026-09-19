@@ -594,3 +594,122 @@ Si una necesidad real demuestra que un proceso concreto requiere un SLA inferior
 ### Resultado esperado
 
 Menos código muerto y menos ambigüedad: planificación, ejecución, UX y documentación comparten una sola cadencia global real y verificable.
+
+
+---
+
+## PROC-07 — Planificación agregada por demanda, no por microplanes
+
+**Estado: APROBADA.**
+
+### Problema que resuelve
+
+La planificación actual materializa el trabajo futuro en muchos microplanes homogéneos. En la auditoría se observaron:
+
+- 305 planes totales;
+- 278 futuros;
+- 208 planes futuros sólo para `PROC-PER-001`, representando 5.095 personas en bloques de 25.
+
+El modelo funciona, pero escala en número de filas con cada bloque futuro y obliga a replanificar/cancelar muchas filas cuando cambia la demanda real.
+
+### Decisión
+
+V5 separará explícitamente:
+
+1. **demanda futura agregada** — cuánto trabajo existe, cuándo empieza a vencer, cuándo debe estar resuelto y qué prioridad/carga tiene;
+2. **ejecución concreta** — el Batch real que se materializa cuando llega el momento de consumir parte de esa demanda.
+
+El futuro se modelará preferentemente como demanda + capacidad, no como cientos de ejecuciones predibujadas.
+
+### Demanda agregada
+
+Cuando unidades comparten realmente la misma ventana funcional, PikoFilm podrá representarlas como un bucket agregado con, al menos:
+
+- process code;
+- dominio;
+- volumen;
+- ventana/fecha de elegibilidad;
+- fecha límite;
+- prioridad;
+- perfil horario;
+- carga estimada;
+- origen automático/manual;
+- protección;
+- indicador de pico deliberado cuando aplique.
+
+No se agregan unidades cuya diferencia temporal o funcional cambie su semántica.
+
+### Materialización tardía
+
+El planner horario consume progresivamente la demanda y sólo crea la ejecución real cuando toca lanzarla.
+
+Ejemplo conceptual:
+
+`demanda PER-001 = 450 → planner decide 25 ahora → materializa Batch de 25 → quedan 425`.
+
+Las ejecuciones reales continúan totalmente trazables en `process_runs`/Batch.
+
+### Visibilidad futura
+
+La reducción de microplanes **no reduce la visibilidad en Actividad**.
+
+PikoFilm seguirá pudiendo mostrar:
+
+- volumen previsto por día/franja;
+- carga futura;
+- fecha estimada de finalización;
+- ritmo recomendado;
+- atrasos;
+- próximos vencimientos;
+- capacidad disponible.
+
+La previsión puede derivarse de demanda + capacidad en vez de requerir una fila física por bloque futuro.
+
+### Picos deliberados
+
+Se conserva la capacidad de decidir explícitamente un pico.
+
+Un usuario puede pedir que un día concreto se procese un volumen muy superior al reparto normal. Ese objetivo queda marcado como deliberado y el equilibrador no intenta “corregirlo” automáticamente.
+
+### Reconciliación con demanda viva
+
+Si la elegibilidad cambia antes de ejecutar:
+
+- aumenta/disminuye demanda;
+- algunas entidades dejan de ser elegibles;
+- aparecen nuevas unidades;
+
+el planner reconciliará el bucket agregado con la realidad actual en vez de mantener microplanes obsoletos.
+
+### Series
+
+Series mantiene criterio conservador.
+
+Sólo se agregan unidades que compartan la misma ventana funcional. Fechas distintas de disponibilidad/recheck/next_check se mantienen separadas cuando agregarlas pudiera adelantar, retrasar o alterar una regla funcional.
+
+### Datos que deben conservarse
+
+La agregación no puede perder:
+
+- deadline real;
+- prioridad;
+- origen;
+- protección;
+- intención manual;
+- pico deliberado;
+- carga estimada;
+- volumen ya consumido;
+- explicación del reparto.
+
+### Límites
+
+- No modifica elegibilidad funcional.
+- No cambia límites de API ni concurrencia.
+- No elimina planificación manual.
+- No impide ejecutar un Batch inmediatamente.
+- No obliga a una única fila por proceso; puede haber múltiples buckets cuando existen ventanas funcionales distintas.
+- No autoriza ahora migraciones ni transformación de los 305 planes vivos.
+
+### Resultado esperado
+
+El planner escala por demanda significativa y no por cantidad de bloques futuros. Se mantiene la visibilidad del calendario, mejora la replanificación y se preserva la capacidad de repartir carga o provocar picos deliberados.
