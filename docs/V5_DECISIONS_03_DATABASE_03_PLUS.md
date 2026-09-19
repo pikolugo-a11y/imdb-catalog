@@ -350,3 +350,81 @@ DB-06 es una mejora de seguridad y mantenibilidad. No debe alterar la experienci
 ### Resultado esperado
 
 PikoFilm podrá responder para cualquier dato importante: **quién es su dueño, cuál es su verdad, quién puede cambiarlo, si se puede regenerar, cómo se recupera y si es seguro purgarlo**. En particular, ninguna optimización o reconstrucción podrá borrar una decisión manual del usuario por confundirla con dato derivado.
+
+## DB-07 — Gobierno de índices basado en evidencia
+
+**Estado: APROBADA**
+
+### Decisión
+
+V5 gobernará los índices por **evidencia de uso, coste y necesidad real**, no por intuición ni por una lectura aislada de `idx_scan`.
+
+Un índice con cero o pocos scans es sólo un candidato a revisión. No se eliminará sin comprobar consumidores, consultas reales, planes de ejecución, solapamientos, constraints y comportamiento en una rama Neon.
+
+### Evidencia observada
+
+Medición de Neon del 2026-09-19:
+
+- 186 índices en la base auditada;
+- 42 índices no únicos aparecen con menos de 50 scans registrados;
+- `idx_plex_technical_state_technical_fingerprint`: ~12 MB, 0 scans;
+- `process_run_events_type_time_idx`: ~11 MB, 0 scans;
+- `process_runs_correlation_key_idx`: ~2,6 MB, 0 scans;
+- `plex_items_updated_idx`: ~2,2 MB, 0 scans;
+- `admin_events_created_idx`: ~1,8 MB, 2 scans;
+- `plex_items_parent_idx`: ~1,5 MB, 3 scans;
+- `plex_items_active_idx`: ~1,1 MB, 0 scans;
+- `title_ratings_status_idx`: ~1 MB, 1 scan;
+- `movie_countries_country_idx`: ~912 KB, 0 scans.
+
+La estadística `pg_stat_database.stats_reset` no aporta una ventana fechada útil en esta foto, por lo que los contadores no pueden interpretarse como “cero uso en los últimos X días”.
+
+### Regla de decisión
+
+Para retirar un índice material:
+
+1. confirmar que no respalda una constraint/UNIQUE ni una necesidad estructural;
+2. localizar lectores/queries potenciales en código, SQL, workers y scripts;
+3. revisar si existe otro índice equivalente o más útil que lo cubra;
+4. capturar `EXPLAIN`/`EXPLAIN ANALYZE` de las consultas representativas;
+5. probar el cambio en rama Neon;
+6. comparar planes, tiempos y comportamiento antes/después;
+7. retirar sólo si el ahorro/coste evitado compensa y no existe regresión funcional o de rendimiento;
+8. volver a medir tras el cambio.
+
+Nunca se aplicará la regla `idx_scan = 0 => DROP INDEX`.
+
+### Priorización
+
+La revisión priorizará:
+
+- índices grandes;
+- índices sobre tablas con alto churn/escritura;
+- índices duplicados o materialmente solapados;
+- índices cuyo mantenimiento penalice procesos vivos;
+- oportunidades claras de añadir un índice cuando una query importante haga scans caros y exista evidencia de mejora.
+
+No se invertirá esfuerzo desproporcionado en microahorros de índices de 8/16/32 KB salvo que formen parte de una limpieza estructural mayor.
+
+### Legacy
+
+Los índices pertenecientes a tablas cuya retirada completa ya esté aprobada —por ejemplo `movie_genres` bajo DB-04— no se optimizarán individualmente salvo necesidad temporal. Desaparecerán con su tabla una vez completada la transición segura.
+
+### Salvaguarda reforzada de Series
+
+Series mantiene criterio especialmente conservador:
+
+- no se retira un índice de referencia oficial, diagnósticos, disponibilidad, overrides o Calidad sólo porque registre pocos scans;
+- deben reproducirse los recorridos reales y comprobarse planes;
+- si existe duda razonable de degradar conciliación, calidad, frescura o recuperación, el índice se conserva;
+- el ahorro de unos MB nunca tiene prioridad sobre el correcto funcionamiento del dominio más vivo del sistema.
+
+### Impacto funcional y coste
+
+DB-07 no cambia funcionalidades ni UX. Busca reducir almacenamiento, I/O, WAL y mantenimiento de índices inútiles, y también añadir índices sólo cuando una necesidad real lo justifique.
+
+Los cambios futuros serán migraciones controladas branch-first. La aprobación de DB-07 no autoriza ahora ningún `DROP INDEX` ni `CREATE INDEX` en producción.
+
+### Resultado esperado
+
+PikoFilm tendrá los índices que necesita, no simplemente todos los que alguna vez se crearon. Cada índice material deberá justificar su coste con una consulta, constraint o necesidad operativa demostrable, manteniendo siempre prioridad sobre corrección y rendimiento real.
