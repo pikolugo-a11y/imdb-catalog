@@ -176,6 +176,7 @@ Columnas de escritorio:
 - Título;
 - Año;
 - Tipo;
+- País;
 - Géneros;
 - PikoScore;
 - PikoQuality;
@@ -196,6 +197,7 @@ Debe ignorar diferencias de mayúsculas y acentos cuando el modelo lo permita.
 ## 6.5 Filtros
 
 - Plex;
+- país;
 - múltiples géneros;
 - rango de años.
 
