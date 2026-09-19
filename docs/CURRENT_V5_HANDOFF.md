@@ -704,11 +704,23 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Si el proceso muere realmente, el heartbeat cesa y la lease expirada sigue permitiendo recovery.
 - No cambia todavía TTL, retries ni número de intentos.
 
+#### WKR-05 — Drain seguro antes de reinicio o deploy
+
+**APROBADA.**
+
+- Antes de detener/reiniciar/redeployar, el worker entra en `DRAINING` cuando el entorno lo permita.
+- En `DRAINING` deja de reclamar trabajo nuevo pero mantiene vivos sus items activos.
+- Existe un timeout de drain: si un item no termina, el apagado puede continuar y el recovery por lease se hace cargo.
+- Operaciones debe poder mostrar worker en drain, trabajo activo y motivo.
+- PROC-10 decide qué worker necesita deploy; WKR-05 define cómo detenerlo de forma segura.
+- Con una réplica el objetivo no es zero downtime, sino no perder trabajo ni interrumpirlo innecesariamente.
+- No añade réplicas, blue/green ni cambia retries/leases.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **WKR-05 — Drain seguro antes de reinicio o deploy**, para que un worker deje de reclamar trabajo, espere o entregue de forma segura sus items activos y sólo entonces permita apagado/redeploy, reduciendo interrupciones y recuperaciones innecesarias.
+Presentar al usuario **WKR-06 — Política canónica de restart y fallo fatal**, para sustituir la disparidad actual entre Technical `NEVER`, FAST `ON_FAILURE x3` y API/Plex `ON_FAILURE x10` por un contrato explícito según tipo de fallo, evitando tanto workers muertos silenciosamente como bucles de restart inútiles.
 
-No presentar WKR-06 hasta que WKR-05 quede persistida como APROBADA o RECHAZADA.
+No presentar WKR-07 hasta que WKR-06 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
