@@ -151,3 +151,70 @@ La propuesta contemplaba:
 Motivo expresado: **no le interesa**.
 
 No se añade a `docs/ROADMAP_INNOVADOR.md` y no queda como backlog implícito.
+
+
+---
+
+## INNO-PROC-05 — PikoFilm Self-Tuning Batch Engine
+
+**Estado: APROBADA.**
+
+### Idea revisada
+
+Evolucionar el Batch Engine hacia un motor capaz de ajustar automáticamente, dentro de límites explícitos, el tamaño de bloque, la concurrencia y el ritmo de ejecución según telemetría real.
+
+Las decisiones podrían considerar:
+
+- duración real por item/batch;
+- backlog;
+- deadlines;
+- CPU/memoria disponibles;
+- latencia y estabilidad de fuentes externas;
+- rate limits y `blocked_until`;
+- circuit breakers;
+- cuota consumida;
+- errores transitorios;
+- estabilidad histórica del proceso.
+
+### Guardrails
+
+Cada proceso tendría límites absolutos de seguridad, por ejemplo:
+
+- tamaño mínimo/máximo de bloque;
+- concurrencia mínima/máxima;
+- límites de frecuencia;
+- capacidad de declarar `adaptive=false`;
+- histéresis y ventanas de observación para evitar oscilaciones.
+
+El sistema nunca podría “experimentar” fuera de esos límites.
+
+### Relación con otras apuestas
+
+- Adaptive Freshness decide **cuándo** aparece demanda.
+- Shadow Scheduler decide **cómo repartirla en el tiempo**.
+- Self-Tuning Batch Engine decide **a qué velocidad segura ejecutar lo que ya toca**.
+- PikoFilm Autopilot podría coordinar estas capacidades en una evolución futura.
+
+### Decisión
+
+**APROBADA por el usuario.**
+
+Se incorpora a `docs/ROADMAP_INNOVADOR.md` como **INNO-05 — PikoFilm Self-Tuning Batch Engine**.
+
+No entra automáticamente en V5, V6 ni V7.
+
+---
+
+## Cierre de Fase 3
+
+**COMPLETADA.**
+
+Se han revisado individualmente cinco innovaciones del Punto 4:
+
+- INNO-PROC-01 — RECHAZADA
+- INNO-PROC-02 — APROBADA → INNO-03
+- INNO-PROC-03 — APROBADA → INNO-04
+- INNO-PROC-04 — RECHAZADA
+- INNO-PROC-05 — APROBADA → INNO-05
+
+Con ello el Punto 4 cumple las tres fases obligatorias y queda listo para cierre formal.
