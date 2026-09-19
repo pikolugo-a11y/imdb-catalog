@@ -722,6 +722,18 @@ Presentar al usuario **WKR-06 — Política canónica de restart y fallo fatal**
 
 No presentar WKR-07 hasta que WKR-06 quede persistida como APROBADA o RECHAZADA.
 
+## Incidente Plex corregido durante Punto 6
+
+- El 2026-09-19 una ejecución manual de `PROC-SER-001` terminó `partial` porque la lectura de la biblioteca Plex `Series` superó el timeout fijo de 45 s.
+- Se confirmó el mismo patrón histórico el 2026-09-13: timeout prácticamente exacto a 45 s en `sync_library`.
+- No fue una caída general de Railway/Neon/Plex: `PROC-NOV-009` y sincronizaciones individuales Plex funcionaban alrededor del mismo intervalo.
+- PR #569 corrige el problema: reintentos de peticiones Series Plex con ventanas 45/60/90 s, heartbeat entre intentos y propagación del fallo transitorio como `retryable` en vez de convertirlo en `partial/no_change`.
+- Tests específicos añadidos; CI #732 verde.
+- PR #569 mergeada a `main` como `fed1ec0f40eef52b262785933ca97f48154e9625`.
+- Railway Plex desplegó ese commit con estado SUCCESS y el worker arrancó con adapters `PROC-NOV-009`, `PROC-SER-001` y `PROC-SER-002`.
+- No se ejecutó manualmente una nueva sincronización de producción sólo para probar el cambio.
+- **WKR-06 sigue pendiente de decisión; no fue aprobada ni rechazada durante este incidente.**
+
 ## Contexto funcional reciente ya cerrado
 
 Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reales detectados usando la aplicación. No reabrirlos salvo nueva evidencia.
