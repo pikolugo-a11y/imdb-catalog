@@ -101,7 +101,7 @@ CERRADO.
 
 ### Punto 3 — Base de datos y modelo de datos
 
-ACTIVO. Rama de trabajo: `audit/v5-03-database`.
+**CERRADO.** Rama de definición: `audit/v5-03-database`.
 
 Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_03_DATABASE.md`.
 
@@ -278,17 +278,25 @@ Invariantes:
 
 ### ESTADO DE FASE 3 — INNOVACIÓN
 
-- 4/5 innovaciones mínimas revisadas.
+**COMPLETADA.** 5/5 innovaciones mínimas revisadas:
+
 - `INNO-DB-01 — PikoFilm Data Twin`: **RECHAZADA**.
 - `INNO-DB-02 — PikoFilm Truth Engine`: **RECHAZADA**.
 - `INNO-DB-03 — PikoFilm Phoenix`: **RECHAZADA**.
 - `INNO-DB-04 — PikoFilm Self-Healing Data`: **RECHAZADA**.
-- Las decisiones están persistidas en `docs/V5_INNOVATIONS_03_DATABASE.md`.
-- Ninguna se incorpora al Road Map Innovador.
+- `INNO-DB-05 — PikoFilm Time Machine`: **RECHAZADA**.
+- Las cinco decisiones están persistidas en `docs/V5_INNOVATIONS_03_DATABASE.md`.
+- Ninguna innovación del Punto 3 se incorpora al Road Map Innovador.
+
+### CIERRE DEL PUNTO 3
+
+**CERRADO.** Auditoría completa + 11 propuestas V5 revisadas/aprobadas + 5 innovaciones revisadas/persistidas.
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **INNO-DB-05**, quinta innovación rompedora del Punto 3. Tras persistir su decisión, cerrar formalmente la Fase 3 y el Punto 3 si no hay más innovaciones que revisar.
+Abrir **Punto 4 — Procesos automáticos y Batch** con Fase 1: auditoría extremadamente detallada del sistema REAL. Revisar planificación, concurrencia, colas, leases, reintentos, timeouts, huérfanos, recuperación, reparto de carga, ejecución manual/automática, Railway/Vercel/Neon, observabilidad, costes y documentación. Persistir la auditoría antes de presentar propuestas.
+
+No presentar propuestas del Punto 4 hasta completar y persistir su auditoría.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -318,4 +326,4 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-Al continuar el Punto 3, mantener la rama `audit/v5-03-database` para esta fase de definición y persistir cada decisión antes de presentar la siguiente.
+El Punto 3 queda cerrado. El siguiente bloque es el Punto 4 — Procesos automáticos y Batch; iniciar su auditoría en una única rama dirigida al bloque, sin proliferar ramas.
