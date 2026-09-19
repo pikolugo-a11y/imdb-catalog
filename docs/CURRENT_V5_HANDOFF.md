@@ -257,13 +257,30 @@ Invariantes:
 - El nuevo modelo de Personas DB-02 debe nacer con relaciones estructurales protegidas e IMDb obligatorio para obras aceptadas.
 - La aprobación no autoriza ahora constraints nuevas ni mutaciones de Neon Production.
 
+#### DB-11 — Inventario y retirada controlada de objetos legacy o vacíos
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Vacío no significa inútil; se clasifican objetos como ACTIVO, TRANSICIÓN, LEGACY CONFIRMADO o GESTIONADO EXTERNAMENTE.
+- Antes de retirar se demuestran ausencia de readers, writers, dependencias, recovery y función futura aprobada.
+- La retirada pasa por deprecación, eliminación de writers/readers, gate CI, prueba completa, rama Neon y migración controlada.
+- `acquisition_status`, `batch_api_source_leases` y `series_episode_availability` no se eliminan por estar a 0 filas.
+- Objetos `neon_auth` quedan fuera de la limpieza local.
+- `movie_genres` y el modelo histórico de Personas se retirarán sólo al completar sus transiciones ya aprobadas.
+- Series mantiene protección reforzada.
+- DB-11 no autoriza ahora ningún DROP destructivo en Neon Production.
+
+### ESTADO DE FASE 2
+
+**COMPLETADA.** Se han revisado individualmente y persistido 11 propuestas DB-01 a DB-11, todas aprobadas.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-11 — Inventario y retirada controlada de tablas/objetos legacy o vacíos**, para dejar de arrastrar estructuras sin autoridad funcional y reducir deuda de esquema, siempre demostrando antes que no tienen consumidores ni datos necesarios.
+Iniciar **Fase 3 — Road Map Innovador del Punto 3**. Presentar al usuario la primera de al menos 5 innovaciones deliberadamente rompedoras derivadas de la auditoría de Base de datos, una a una. Sólo las innovaciones expresamente aprobadas se incorporan a `docs/ROADMAP_INNOVADOR.md`.
 
-No presentar DB-12 ni pasar a innovaciones hasta que DB-11 quede persistida como aprobada o rechazada y se reevalúe si la Fase 2 queda suficientemente cerrada.
-
-Candidatos pendientes de la Fase 2: clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia; DB-04 géneros; DB-05 ledger/drift; DB-06 ownership/rebuildabilidad; DB-07 índices; DB-08 raw payloads; DB-09 guardrails; DB-10 constraints.
+No cerrar el Punto 3 hasta revisar y persistir al menos 5 innovaciones.
 
 ## Contexto funcional reciente ya cerrado
 
