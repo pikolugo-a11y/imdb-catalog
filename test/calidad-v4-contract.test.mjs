@@ -39,6 +39,22 @@ test('Series separa atención humana de seguimiento automático',()=>{
   assert.match(page,/\['attention','Atención',c\.attention\],\['tracking','Seguimiento',c\.tracking\],\['uptodate','Al día',c\.uptodate\]/);
 });
 
+test('Series permite ordenar por capítulos faltantes y por año sin perder filtros',()=>{
+  const query=read('lib/series-quality-query.js');
+  const page=read('app/calidad/series/page.js');
+  assert.match(query,/sortAllowed=new Set\(\['priority','missing_asc','missing_desc','year_desc','year_asc'\]\)/);
+  assert.match(query,/sort==='missing_asc'/);
+  assert.match(query,/sort==='missing_desc'/);
+  assert.match(query,/sort==='year_asc'\|\|sort==='year_desc'/);
+  assert.match(query,/episode_missing_total/);
+  assert.match(page,/Faltan: menos → más/);
+  assert.match(page,/Faltan: más → menos/);
+  assert.match(page,/Año: reciente → antiguo/);
+  assert.match(page,/Año: antiguo → reciente/);
+  assert.match(page,/qs\(p,\{view,sort:value==='priority'\?'':value,page:1\}\)/);
+  assert.match(page,/sort:sort==='priority'\?'':sort,episode/);
+});
+
 test('Películas distingue incidencias de validación pendiente',()=>{
   const page=read('app/calidad/peliculas/page.js');
   assert.match(page,/Requieren atención/);
