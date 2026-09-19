@@ -420,13 +420,25 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - La implementación futura requiere inventario de writers, tests de carrera/idempotencia y límites conservadores.
 - No cambia ahora la concurrencia de producción.
 
+#### PROC-09 — Contrato común para modelos de ejecución especiales
+
+**APROBADA.**
+
+- Batch común, Vercel chunked, controladores persistentes y GitHub Actions pueden seguir existiendo como motores distintos.
+- Todos exponen una semántica común de estado, progreso, heartbeat/señal de vida, resultado funcional, trabajo pendiente, controles y recuperación.
+- PROC-01 declara el modelo de ejecución y las capacidades pause/resume/cancel/retry cuando correspondan.
+- PROC-05 aporta la semántica canónica de cierre/continuación.
+- Actividad/Operaciones podrán consultar cualquier ejecución mediante una abstracción común sin conocer su infraestructura interna.
+- No fuerza PQ-001, PQ-002 o NOV-001 al Batch Engine común ni crea un orquestador central nuevo.
+- No autoriza ahora cambios de producción.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-09 — Contrato único para modelos de ejecución especiales**, formalizando Batch común, Vercel chunked, controlador persistente y GitHub Actions bajo la misma semántica de control/estado sin forzar una implementación única.
+Presentar al usuario **PROC-10 — Despliegue seguro y selectivo de workers**, evitando redeploys por cambios irrelevantes y haciendo que una nueva versión de worker sólo entre en producción después de superar los gates de CI/compatibilidad correspondientes.
 
-No presentar PROC-10 hasta que PROC-09 quede persistida como APROBADA o RECHAZADA.
+No cerrar Fase 2 hasta que PROC-10 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
