@@ -507,11 +507,23 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - Actividad, Operaciones y logs externos deben usar la misma taxonomía.
 - No se crea un sistema paralelo ni se autoriza migración o reescritura retroactiva de errores históricos.
 
+#### OBS-02 — Contrato canónico de incidencia activa y evidencia de resolución
+
+**APROBADA.**
+
+- Una incidencia sólo deja de estar activa cuando existe evidencia suficiente de que la condición original ya no requiere atención.
+- Se reconocen cuatro vías: recuperación demostrada, resolución manual explícita, terminalización conocida y supersedida por nueva verdad.
+- La resolución manual distingue descartar/aceptar/no aplicable/obsoleta de una reparación real.
+- El cierre conserva procedencia: modo, razón, fecha, evidencia/run y alcance cuando corresponda.
+- Un nuevo episodio del mismo problema tras el cierre se trata como recurrencia nueva, sin borrar el historial anterior.
+- La regla actual de “cualquier success posterior del mismo proceso/entidad” deja de ser suficiente por sí sola.
+- No autoriza ahora migraciones ni reescritura retroactiva del histórico.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-02 — Contrato canónico de incidencia activa y evidencia de resolución**, para que una incidencia sólo se cierre cuando exista evidencia suficiente de recuperación, descarte explícito o terminalización conocida, evitando la regla actual de “cualquier success posterior”.
+Presentar al usuario **OBS-03 — Causa efectiva agregada para parents, hijos e items**, para que un parent Batch/system pueda explicar correctamente por qué quedó partial/failed aunque no tenga un error directo propio, sin duplicar errores ni ocultar la causa real.
 
-No presentar OBS-03 hasta que OBS-02 quede persistida como APROBADA o RECHAZADA.
+No presentar OBS-04 hasta que OBS-03 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
