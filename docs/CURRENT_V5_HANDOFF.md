@@ -752,6 +752,22 @@ Estado:
 - no se hizo deploy manual de Vercel Production;
 - Railway puede redeplegar los workers afectados por seguir `main`.
 
+### CAMBIO FUNCIONAL INTERCALADO — País en Catálogo
+
+Antes de decidir WKR-07, el usuario pidió añadir país al listado de Catálogo y permitir filtrarlo.
+
+Estado:
+- rama funcional: `fix/catalog-country-filter`;
+- PR **#570** — **MERGEADA**;
+- CI **#736** — **SUCCESS**;
+- merge en `main`: `f443a00a4098b05aba39cf5128173e0734c57a1d`;
+- Catálogo muestra país en escritorio, carátulas y móvil;
+- filtro País disponible para Todo, Películas y Series;
+- fuente principal: `movie_countries + countries`, con fallback de compatibilidad a `movies.country`;
+- Neon sólo se consultó en lectura; no hubo migraciones ni mutaciones;
+- Vercel Production no fue desplegado por el asistente.
+- WKR-07 sigue **PENDIENTE DE DECISIÓN**; no se aprobó ni rechazó durante este cambio.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-07**. WKR-06 ya está **APROBADA y persistida**.
