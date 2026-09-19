@@ -15,6 +15,7 @@ const nov009Worker=fs.readFileSync('lib/plex-global-worker.mjs','utf8');
 const nov008Worker=fs.readFileSync('lib/plex-news-worker.mjs','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
 const plexSync=fs.readFileSync('lib/plex-sync.js','utf8');
+const plexSyncCore=fs.readFileSync('lib/plex-sync-core.mjs','utf8');
 const plexDocker=fs.readFileSync('Dockerfile.batch-plex','utf8');
 const apiDocker=fs.readFileSync('Dockerfile.batch-api','utf8');
 
@@ -61,6 +62,14 @@ test('el timeout de 280 segundos ya no limita la ejecución completa; sólo sigu
   assert.match(plexSync,/AbortSignal\.timeout\(PLEX_REQUEST_TIMEOUT_MS\)/);
   assert.doesNotMatch(action,/280000/);
   assert.doesNotMatch(action,/plexDeadline/);
+});
+
+test('el estado Plex se reconstruye por IMDb en modo normal y por TMDb en series TMDb-only',()=>{
+  assert.match(plexSyncCore,/source_status->>'identity_mode'/);
+  assert.match(plexSyncCore,/e\.provider='imdb'/);
+  assert.match(plexSyncCore,/e\.provider='tmdb'/);
+  assert.match(plexSyncCore,/e\.external_id=m\.tmdb_id::text/);
+  assert.match(plexSyncCore,/m\.type IN\('Serie','Miniserie'\) AND p\.item_type='show'/);
 });
 
 test('Plex y API normalizan los imports relativos antes de arrancar Railway',()=>{
