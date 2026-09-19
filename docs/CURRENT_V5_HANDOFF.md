@@ -214,13 +214,28 @@ Invariantes:
 - Series mantiene criterio especialmente conservador: ningún ahorro de MB tiene prioridad sobre conciliación, Calidad, frescura o recovery.
 - La aprobación no autoriza ahora cambios de índices en producción.
 
+#### DB-08 — Retención selectiva de raw payloads y evidencia técnica
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- PikoFilm conserva verdad procesada, estado funcional actual y evidencia necesaria; no archiva indefinidamente payload bruto reconstruible sin utilidad demostrada.
+- JSON no se considera basura por ser JSON: se clasifica según DB-06.
+- `piko_quality.components` se conserva por explicabilidad funcional.
+- `title_ratings.raw_payload` es candidato a TTL una vez comprobados lectores y extraídos todos los campos útiles.
+- `catalog_candidates.source_snapshot` puede expirar tras quedar resuelto/procesado, conservando el estado estructurado necesario.
+- Histórico/payload operativo sigue DB-01, 30 días por defecto.
+- Antes de retirar un raw: inventario de consumidores, normalización de campos útiles, tests de paridad y cambio de writers para evitar recrearlo.
+- Limpieza futura progresiva/batcheada; no autoriza ahora mutaciones de Neon Production.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-08 — Retención selectiva de raw payloads y evidencia técnica**, derivada de que varias familias guardan simultáneamente resultado procesado + JSON/evidencia reconstruible, con coste acumulativo de almacenamiento.
+Presentar al usuario **DB-09 — Guardrails de almacenamiento y crecimiento por dominio**, para detectar crecimiento anómalo antes de que se convierta en coste o presión operativa, sin bloquear funcionalidad crítica ni ejecutar limpiezas destructivas automáticas.
 
-No presentar DB-09 hasta que DB-08 quede persistida como aprobada o rechazada.
+No presentar DB-10 hasta que DB-09 quede persistida como aprobada o rechazada.
 
-Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: raw payloads/evidencia, guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia; DB-04 géneros; DB-05 ledger/drift; DB-06 ownership/rebuildabilidad; DB-07 índices.
+Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia; DB-04 géneros; DB-05 ledger/drift; DB-06 ownership/rebuildabilidad; DB-07 índices; DB-08 raw payloads/evidencia.
 
 ## Contexto funcional reciente ya cerrado
 
