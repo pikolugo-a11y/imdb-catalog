@@ -22,7 +22,7 @@ test('NOV-010 keeps IMDb manual mode and adds explicit TMDb-only series mode',()
   assert.match(action,/eligibility_status[^\n]*'eligible'/);
   assert.doesNotMatch(action,/setPlexIdentity\(ratingKey,\{imdbId:internalId\}\)/);
   assert.doesNotMatch(action,/seedPlexNewsCandidates/);
-  assert.match(action,/linkExistingPlexTitle/);
+  assert.match(action,/linkCatalogTitleToPlex\(internalId,ratingKey\)/);
   assert.match(action,/correctIdentityIds\(\{oldImdbId:internalId,newImdbId:internalId,tmdbId,newType:targetType,tmdbOnly:true,trace\}\)/);
   assert.match(action,/markIdentityRefreshPending\(internalId,'manual_plex_tmdb_only'\)/);
   assert.match(action,/plex_linked:1/);
