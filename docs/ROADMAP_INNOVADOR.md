@@ -190,3 +190,41 @@ El motor deberá usar ventanas de observación e histéresis para evitar oscilac
 **Visión:** conseguir que PikoFilm encuentre continuamente la máxima velocidad segura para cada proceso sin necesidad de fijar parámetros manuales para siempre.
 
 **Horizonte orientativo:** posterior a V5 y sujeto a una decisión futura específica; no compromete ninguna versión concreta.
+
+
+---
+
+### INNO-06 — PikoFilm Sentinel
+
+**Origen:** `INNO-OBS-02` — Punto 5, Observabilidad y errores  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-19
+
+Crear una red futura de **canarios sintéticos y pruebas extremo a extremo seguras** que validen las rutas críticas de PikoFilm antes de enviar trabajo real de alto impacto.
+
+Sentinel no se limita a un `/health = 200`. Puede comprobar de forma controlada que una ruta completa funciona: autenticación, fuente externa, parsing, adapter, worker, transformación, invariantes, conexión con Neon y compatibilidad de versiones.
+
+Podría ejecutarse, por ejemplo:
+
+- antes de un Batch grande;
+- después de un deploy relevante;
+- tras la recuperación de un circuit breaker;
+- cuando una ruta crítica lleve tiempo sin ejecución real;
+- con una cadencia limitada en integraciones especialmente sensibles.
+
+Un Sentinel fallido puede impedir que PikoFilm materialice miles de items destinados a fallar y convertir el problema en una incidencia clara antes de afectar trabajo real.
+
+**Guardrails esenciales:**
+
+- preferencia por pruebas read-only;
+- dry-run para transformaciones;
+- datos sintéticos aislados/reversibles sólo cuando una escritura sea imprescindible;
+- nunca modificar datos canónicos para probar;
+- frecuencia y coste bajos;
+- cualquier bloqueo automático de trabajo debe estar gobernado por reglas explícitas.
+
+**Relación con otras capacidades:** PROC-02 verifica que existe la capacidad/runtime compatible; Sentinel verifica que el recorrido completo realmente funciona. OBS-09 permite identificar qué runtime/build ejecutó el canario.
+
+**Visión:** hacer que PikoFilm pruebe el camino antes de mandar trabajo real por él.
+
+**Horizonte orientativo:** posterior a V5 y sujeto a decisión futura específica; no compromete ninguna versión concreta.
