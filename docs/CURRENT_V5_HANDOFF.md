@@ -716,6 +716,18 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Con una réplica el objetivo no es zero downtime, sino no perder trabajo ni interrumpirlo innecesariamente.
 - No añade réplicas, blue/green ni cambia retries/leases.
 
+
+#### WKR-06 — Política canónica de restart y fallo fatal
+
+**APROBADA.**
+
+- Restart se decide por causa de terminación y recurrencia, no por cifras arbitrarias distintas por servicio.
+- Se distinguen parada esperada, restart de deploy, crash, fallo de startup y fallo de recursos.
+- Los fallos recuperables usan un restart budget limitado y observable; agotarlo lleva el worker a `UNAVAILABLE`.
+- Reiniciar no equivale a estar listo: WKR-01 vuelve a validar heartbeat, versión/build, capabilities y preflight antes de `READY`.
+- Un crash con trabajo activo sigue recuperándose mediante expiración de lease y PROC-03/Batch Engine; no se crea recovery paralelo.
+- No fija todavía números del budget ni cambia Railway Production, réplicas, retries funcionales o Neon.
+
 ### INCIDENCIA INTERCALADA — Plex SER-001
 
 Mientras WKR-06 estaba presentada pero todavía **sin decisión**, el usuario pidió revisar un fallo real de sincronización Plex.
@@ -742,11 +754,11 @@ Estado:
 
 ### SIGUIENTE PASO EXACTO
 
-Retomar **WKR-06 — Política canónica de restart y fallo fatal** exactamente donde quedó: la propuesta ya fue presentada al usuario pero **todavía no está APROBADA ni RECHAZADA**.
+Presentar **WKR-07**. WKR-06 ya está **APROBADA y persistida**.
 
-Antes de persistir WKR-06, refrescar la rama `audit/v5-06-workers` contra `main` actualizado si es necesario para no perder el hotfix #569.
+La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
-No presentar WKR-07 hasta que WKR-06 quede persistida como APROBADA o RECHAZADA.
+Mantener el gate: no presentar WKR-08 hasta que WKR-07 quede APROBADA o RECHAZADA y persistida.
 
 ## Incidente Plex corregido durante Punto 6
 
@@ -758,7 +770,7 @@ No presentar WKR-07 hasta que WKR-06 quede persistida como APROBADA o RECHAZADA.
 - PR #569 mergeada a `main` como `fed1ec0f40eef52b262785933ca97f48154e9625`.
 - Railway Plex desplegó ese commit con estado SUCCESS y el worker arrancó con adapters `PROC-NOV-009`, `PROC-SER-001` y `PROC-SER-002`.
 - No se ejecutó manualmente una nueva sincronización de producción sólo para probar el cambio.
-- **WKR-06 sigue pendiente de decisión; no fue aprobada ni rechazada durante este incidente.**
+- WKR-06 quedó posteriormente **APROBADA** y persistida; durante el incidente todavía estaba pendiente.
 
 ## Contexto funcional reciente ya cerrado
 
