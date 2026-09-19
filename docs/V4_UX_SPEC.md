@@ -1391,6 +1391,8 @@ Antes de cerrar un cambio UX comprobar:
 
 ### Calidad
 
+En Series, un episodio ausente sin fecha de estreno en TMDb se muestra como **Sin fecha de estreno / No exigible aún**, nunca como **Por confirmar**. Puede seguir visible como episodio oficial ausente, pero no debe parecer una tarea pendiente.
+
 - ¿distingo humano vs automático?
 - ¿puedo llegar al dominio correcto desde el hub?
 - ¿no estoy viendo logs técnicos?
