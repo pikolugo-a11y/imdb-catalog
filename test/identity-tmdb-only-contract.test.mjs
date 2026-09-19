@@ -31,8 +31,8 @@ test('refresco de una serie TMDb-only no consulta IMDb y usa enriquecimiento exc
   assert.match(refresh,/tmdbOnly\?await enrichTitleTmdbOnly\(imdbId\):await enrichTitle\(imdbId\)/);
   assert.match(refresh,/if\(!tmdbOnly\)await ensureImdbRating/);
   assert.match(enrich,/\/3\/tv\/\$\{tmdbId\}/);
-  assert.match(enrich,/imdb_rating=NULL,imdb_votes=NULL,imdb_url=NULL/);
-  assert.match(enrich,/fa_id=NULL,fa_rating=NULL,fa_votes=NULL,fa_url=NULL/);
+  assert.match(enrich,/imdb_url=NULL/);
+  assert.doesNotMatch(enrich,/imdb_rating|imdb_votes|fa_rating|fa_votes|tmdb_rating|tmdb_votes/);
   assert.match(enrich,/metadata_source='tmdb'/);
   assert.match(enrich,/row\.type==='Miniserie'\?'Miniserie':'Serie'/);
 });
