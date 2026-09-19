@@ -576,11 +576,22 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - Los logs externos siguen siendo complementarios; la verdad durable permanece en Neon.
 - No cambia ahora configuración de producción.
 
+#### OBS-08 — Clasificación y destino de `admin_events`
+
+**APROBADA.**
+
+- Cada familia se clasifica como auditoría funcional canónica, evidencia de dominio correlacionable, duplicación operativa o legacy/transición.
+- Antes de tocar datos se inventarían event/action, writer, readers, owner, propósito, duplicación, correlación, retención y destino V5.
+- Las familias vinculadas a procesos deben poder correlacionarse con `process_runs`.
+- La duplicación operativa debe dejar de crecer cuando exista una fuente canónica equivalente.
+- No se borra ni migra ahora `admin_events`; cualquier retirada seguirá DB-11 y requerirá evidencia de ausencia de consumidores/autoridad.
+- DB-01 y DB-06 gobiernan retención y ownership.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-08 — Clasificación y destino de `admin_events`**, para decidir qué parte de ese segundo stream de ~41 MB es auditoría funcional que debe conservarse, qué parte debe correlacionarse con `process_runs` y qué parte es duplicación/legacy que debe migrarse o retirarse de forma controlada.
+Presentar al usuario **OBS-09 — Correlación mínima con runtimes externos**, para que cada ejecución importante pueda localizar rápidamente su evidencia en Railway, Vercel o GitHub Actions mediante IDs/builds/deployments estructurados sin copiar los logs completos a Neon.
 
-No presentar OBS-09 hasta que OBS-08 quede persistida como APROBADA o RECHAZADA.
+No presentar OBS-10 hasta que OBS-09 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
