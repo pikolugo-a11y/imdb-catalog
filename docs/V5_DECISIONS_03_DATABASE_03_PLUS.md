@@ -428,3 +428,96 @@ Los cambios futuros serán migraciones controladas branch-first. La aprobación 
 ### Resultado esperado
 
 PikoFilm tendrá los índices que necesita, no simplemente todos los que alguna vez se crearon. Cada índice material deberá justificar su coste con una consulta, constraint o necesidad operativa demostrable, manteniendo siempre prioridad sobre corrección y rendimiento real.
+
+
+## DB-08 — Retención selectiva de raw payloads y evidencia técnica
+
+**Estado: APROBADA**
+
+### Decisión
+
+V5 distingue entre **verdad procesada útil**, **evidencia funcional necesaria** y **payload bruto reconstruible**. PikoFilm conservará de forma estable los datos que necesita para funcionar, explicar decisiones o proteger estado vigente, pero no archivará indefinidamente cada respuesta completa de APIs externas cuando la información útil ya haya sido extraída y sea reconstruible.
+
+La regla no es “borrar JSON”: cada JSON/JSONB se clasifica según su valor funcional y el contrato DB-06.
+
+### Evidencia observada
+
+Medición de Neon del 2026-09-19:
+
+- existen 29 columnas JSON/JSONB en el esquema público;
+- `title_ratings.raw_payload`: 146.300 filas con payload, ~115 bytes de media, ~16 MB de contenido bruto aproximado;
+- `piko_quality.components`: 71.207 filas, ~459 bytes de media, ~31 MB aproximados;
+- `admin_events.payload`: 64.582 filas, ~28,2 MB aproximados;
+- `identity_validation.validation_details`: 20.868 filas, ~8,7 MB aproximados;
+- `movies.source_status`: 20.976 filas, ~7,3 MB aproximados;
+- `catalog_candidates.source_snapshot`: 13.295 payloads poblados, ~5,9 MB aproximados.
+
+Estas cifras corresponden al peso aproximado de las columnas y no equivalen directamente al almacenamiento recuperable final ni a coste facturado.
+
+### Clasificación
+
+1. **Estado funcional actual → conservar.**
+   Ejemplo: `movies.source_status` cuando gobierna frescura, perfil o comportamiento vigente.
+
+2. **Explicación/evidencia vigente → conservar.**
+   Ejemplos: `piko_quality.components` cuando explica el PikoQuality actual; `identity_validation.validation_details` cuando forma parte de una validación vigente.
+
+3. **Payload externo reconstruible → retención limitada.**
+   Cuando IMDb/TMDb/u otra fuente ya se transformó en campos estructurados suficientes, el raw completo no se conserva indefinidamente. Retención inicial de referencia: 30 días, salvo necesidad funcional documentada distinta.
+
+4. **Payload histórico/operativo → DB-01.**
+   Logs, eventos y evidencia operativa siguen la política general de 30 días salvo excepción aprobada.
+
+### Casos concretos
+
+#### `title_ratings.raw_payload`
+
+`title_ratings` ya conserva de forma estructurada fuente, rating, escala, rating normalizado, votos, proveedor, tiempos, estado y errores. El raw completo es por tanto candidato fuerte a TTL cuando se demuestre que ningún consumidor depende de campos no estructurados.
+
+No se eliminará hasta:
+
+- inventariar lectores;
+- extraer cualquier dato funcional aún oculto en el JSON;
+- probar paridad;
+- ajustar escritores para no recrear almacenamiento innecesario.
+
+#### `piko_quality.components`
+
+Se conserva. Aunque ocupe ~31 MB, representa explicabilidad funcional del resultado técnico y no se considera basura por ser JSON.
+
+#### `catalog_candidates.source_snapshot`
+
+Se conserva mientras el candidato esté activo o la evidencia sea necesaria para explicar su evaluación. Tras quedar procesado/resuelto, puede expirar el snapshot bruto después de la ventana aprobada, manteniendo el estado estructurado necesario.
+
+### Invariantes
+
+- Ninguna decisión manual se elimina mediante esta política.
+- Ningún dato requerido por frontend, cálculo, Calidad, recovery o explicación vigente puede desaparecer sin sustituto estructurado equivalente.
+- Antes de retirar un payload se buscan todos sus consumidores reales.
+- Si un campo útil vive sólo dentro del raw, primero se modela/persiste explícitamente y se valida.
+- La limpieza de histórico será progresiva/batcheada; no se ejecutarán updates/deletes masivos ciegos sobre producción.
+- Tan importante como limpiar lo antiguo es modificar escritores para no volver a guardar raw innecesario.
+- Una fuente reconstruible puede recuperar nueva evidencia futura si vuelve a necesitarse.
+- DB-08 se combina con DB-01 y DB-06: la retención depende de la clase y autoridad del dato.
+
+### Implementación futura
+
+1. inventario completo de JSON/JSONB y consumidores;
+2. clasificación con DB-06;
+3. identificación de campos funcionales ocultos;
+4. normalización de esos campos cuando proceda;
+5. tests de paridad;
+6. TTL/limpieza sólo sobre evidencia reconstruible;
+7. modificación de writers para guardar provenance mínima en lugar de payload completo cuando sea suficiente;
+8. limpieza progresiva de histórico;
+9. medición real del espacio recuperado y del crecimiento posterior.
+
+### Impacto funcional
+
+La implementación sólo se considera correcta si la experiencia y los cálculos funcionales permanecen iguales. La meta es reducir almacenamiento duplicado/reconstruible, no sacrificar trazabilidad útil.
+
+La aprobación de DB-08 **no autoriza ahora ninguna limpieza ni mutación de Neon Production**.
+
+### Resultado esperado
+
+PikoFilm conservará de forma duradera la verdad procesada, el estado actual y la evidencia que realmente necesita, pero dejará de funcionar como archivo permanente de cada respuesta completa de cada API cuando esa respuesta sea prescindible y reconstruible.
