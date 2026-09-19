@@ -541,11 +541,23 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - Los errores recuperados conservan evidencia técnica, mientras OBS-02 decide si requieren atención.
 - No se reescribe el histórico ni se autoriza ahora cambio de esquema.
 
+#### OBS-05 — Estado operativo vigente separado del historial
+
+**APROBADA.**
+
+- El histórico responde qué ocurrió; el estado vigente responde qué requiere atención ahora.
+- Cada dominio relevante expone su propia verdad actual de salud/deuda y Operaciones la consume mediante una proyección común.
+- Descartar una incidencia histórica no puede ocultar un estado físico o funcional que siga degradado.
+- Un error histórico tampoco mantiene el sistema en rojo si la condición actual ya está sana.
+- Actividad puede mostrar incidencias pasadas aunque Operaciones esté hoy en verde.
+- Se reutilizan tablas, heartbeats, breakers, planes y read models existentes; no se crea polling continuo ni un worker adicional.
+- No se autoriza ahora una nueva tabla central de health ni cambios de producción.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-05 — Estado operativo vigente separado del historial**, para que cada dominio exponga una foto actual canónica de salud/deuda y el histórico de errors/events nunca sea usado por sí solo para afirmar que un problema sigue activo.
+Presentar al usuario **OBS-06 — Procedencia estructurada de resolución y recurrencia**, para que Operaciones pueda distinguir de forma fiable entre recuperada automáticamente, descartada por el usuario, terminal conocida y supersedida, y tratar una reaparición como nueva recurrencia sin perder historial.
 
-No presentar OBS-06 hasta que OBS-05 quede persistida como APROBADA o RECHAZADA.
+No presentar OBS-07 hasta que OBS-06 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
