@@ -117,7 +117,7 @@ Foto principal observada en Neon durante la auditoría:
 - el workflow branch-first de Neon es sólido pero no existe ledger de migraciones aplicado en DB;
 - `catalog_read_model` sigue siendo VIEW dinámica y necesita contrato de canonicalidad/rebuild para su futura materialización.
 
-Fase 2 — PROPUESTAS: **ACTIVA**.
+Fase 2 — PROPUESTAS: **COMPLETADA**.
 
 Decisiones persistidas en `docs/V5_DECISIONS_03_DATABASE.md` y, desde DB-03, en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`:
 
@@ -292,11 +292,38 @@ Invariantes:
 
 **CERRADO.** Auditoría completa + 11 propuestas V5 revisadas/aprobadas + 5 innovaciones revisadas/persistidas.
 
+
+
+### Punto 4 — Procesos automáticos y Batch
+
+**ACTIVO.** Rama de trabajo: `audit/v5-04-processes`.
+
+Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_04_PROCESSES_BATCH.md`.
+
+Conclusiones principales verificadas contra código + Neon + Railway + Vercel:
+
+- El Batch Engine común está estructuralmente sano: en la foto auditada hay **0** runs activos huérfanos, **0** controls/padres desalineados, **0** items activos sin child y **0** parents terminales con items pendientes.
+- La paridad manual/Batch es una fortaleza: los dominios revisados llaman cores canónicos compartidos.
+- No existe un registro canónico único de procesos. La metadata está duplicada entre documentación, display, starters, adapters, planner y automatizaciones; `PROC-SER-007` y `PROC-LC-001` ejecutan producción pero no aparecen en el catálogo maestro.
+- El planner real de producción es **horario**. El código conserva soporte para ticks de dispatch cada 5 minutos y un anexo documental sigue describiendo `*/5`, pero Vercel ejecuta `0 * * * *` y los logs lo confirman.
+- El planner trata actualmente un parent `partial` como plan `completed`; aún no se observó un caso automático real afectado, pero el contrato permite `partial + pending` y debe gobernarse explícitamente.
+- Batch común usa una política global de máximo 3 intentos con reintentos aproximadamente a 6 h y 24 h; `process_runs.retry_count` permanece en 0 y no representa los retries reales, que viven en items/errors.
+- Se documentó un fallo real de capability drift: un Batch SAGA materializó 1.584 items para un worker sin adapter; tras corregir el despliegue, los 1.584 se procesaron correctamente.
+- Existe una recuperación ad hoc de `PROC-LC-001` para el error `Adapter API no registrado`, señal de que falta un contrato genérico worker↔proceso.
+- `PROC-PQ-002` repite cuatro poison items “sin streams” entre ejecuciones y convierte runs sucesivos en `partial`.
+- Railway redeployó API/FAST/Plex/Technical incluso por el merge documental del Punto 3; además la configuración observada no espera explícitamente el CI post-merge.
+- La gobernanza TMDb/OMDb/MDBList está funcionando: 0 rate limits en la ventana auditada y sin evidencia de presión de cuota.
+- `PROC-NOV-009` está sano tras #565: las ejecuciones recientes en Railway Plex finalizan correctamente; no reabrir el antiguo timeout de Vercel salvo nueva evidencia.
+- La selección automática de Personas aún usa la condición legacy de directores y debe quedar alineada cuando se implemente DB-02.
+- `process_run_errors` conserva errores históricos abiertos que no equivalen a fallos actuales; se profundizará en Punto 5.
+
+Fase 2 — PROPUESTAS: **ACTIVA**.
+
 ### SIGUIENTE PASO EXACTO
 
-Abrir **Punto 4 — Procesos automáticos y Batch** con Fase 1: auditoría extremadamente detallada del sistema REAL. Revisar planificación, concurrencia, colas, leases, reintentos, timeouts, huérfanos, recuperación, reparto de carga, ejecución manual/automática, Railway/Vercel/Neon, observabilidad, costes y documentación. Persistir la auditoría antes de presentar propuestas.
+Presentar al usuario **PROC-01 — Registro canónico y ejecutable de procesos**, para que código, workers, planner, Actividad y documentación compartan una única definición de cada `PROC-*` y CI detecte cualquier proceso/adaptador no registrado.
 
-No presentar propuestas del Punto 4 hasta completar y persistir su auditoría.
+No presentar PROC-02 hasta que PROC-01 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -324,6 +351,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Decisiones Punto 3 DB-03+: `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`
 - Innovaciones Punto 3: `docs/V5_INNOVATIONS_03_DATABASE.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
+- Auditoría Punto 4: `docs/V5_AUDIT_04_PROCESSES_BATCH.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-El Punto 3 queda cerrado. El siguiente bloque es el Punto 4 — Procesos automáticos y Batch; iniciar su auditoría en una única rama dirigida al bloque, sin proliferar ramas.
+El Punto 4 está activo en `audit/v5-04-processes`. Su auditoría ya está cerrada; continuar por Fase 2 y persistir cada decisión antes de presentar la siguiente.
