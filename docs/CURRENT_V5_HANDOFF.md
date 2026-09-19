@@ -519,11 +519,22 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - La regla actual de “cualquier success posterior del mismo proceso/entidad” deja de ser suficiente por sí sola.
 - No autoriza ahora migraciones ni reescritura retroactiva del histórico.
 
+#### OBS-03 — Causa efectiva agregada para parents, hijos e items
+
+**APROBADA.**
+
+- Un parent compuesto puede terminar partial/failed aunque no tenga un error directo propio.
+- La causa efectiva se deriva de children, items y errors sin copiar filas al parent.
+- Se distinguen fallo directo, fallos derivados, terminales, retries y trabajo funcional pendiente.
+- Actividad resume impacto funcional; Operaciones explica la causa técnica agregada y permite navegar al detalle.
+- Un mismo hecho no se cuenta varias veces por aparecer en distintas capas.
+- No autoriza ahora nuevas tablas, migraciones ni cambios de UI.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-03 — Causa efectiva agregada para parents, hijos e items**, para que un parent Batch/system pueda explicar correctamente por qué quedó partial/failed aunque no tenga un error directo propio, sin duplicar errores ni ocultar la causa real.
+Presentar al usuario **OBS-04 — Contrato canónico de eventos, warnings y errores**, para que `process_run_events` y `process_run_errors` dejen de usar la palabra “error” con semánticas incompatibles y las métricas no cuenten dos veces la misma señal.
 
-No presentar OBS-04 hasta que OBS-03 quede persistida como APROBADA o RECHAZADA.
+No presentar OBS-05 hasta que OBS-04 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
