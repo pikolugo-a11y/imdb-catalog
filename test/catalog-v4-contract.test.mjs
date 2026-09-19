@@ -42,6 +42,7 @@ test('Catalog V4 shows country and filters movies and series by canonical countr
   assert.match(filters,/<span>País<\/span><select value=\{country\}/);
   assert.match(filters,/countries\.map/);
   assert.match(query,/movie_countries mc JOIN countries ctry/);
+  assert.match(query,/ctry\.name_es=\$\$\{i\}/);
   assert.match(query,/getCatalogV4Countries/);
   assert.match(query,/array_agg\(ctry\.name_es ORDER BY ctry\.name_es\)/);
   assert.match(query,/regexp_split_to_array\(mv\.country/);
