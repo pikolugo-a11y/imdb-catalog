@@ -1,6 +1,6 @@
 # PikoFilm V5 — Handoff actual
 
-Fecha: 2026-09-18
+Fecha: 2026-09-19
 
 Este documento es el punto de reentrada canónico para continuar la definición de V5 sin depender del historial del chat.
 
@@ -450,22 +450,27 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 
 ### ESTADO DE FASE 3 — INNOVACIÓN
 
-**ACTIVA.** Deben revisarse al menos 5 innovaciones rompedoras, una a una. Sólo las aprobadas se incorporarán a `docs/ROADMAP_INNOVADOR.md`.
+**COMPLETADA.** 5/5 innovaciones revisadas y persistidas.
 
 Decisiones persistidas en `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`:
 
-- `INNO-PROC-01 — PikoFilm Event Fabric`: **RECHAZADA**. No se incorpora al Road Map Innovador.
-- `INNO-PROC-02 — PikoFilm Shadow Scheduler`: **APROBADA**. Incorporada a `docs/ROADMAP_INNOVADOR.md` como **INNO-03**.
-- `INNO-PROC-03 — PikoFilm Adaptive Freshness`: **APROBADA**. Incorporada a `docs/ROADMAP_INNOVADOR.md` como **INNO-04**.
-- `INNO-PROC-04 — PikoFilm Process Time Travel`: **RECHAZADA**. No se incorpora al Road Map Innovador.
+- `INNO-PROC-01 — PikoFilm Event Fabric`: **RECHAZADA**.
+- `INNO-PROC-02 — PikoFilm Shadow Scheduler`: **APROBADA** → `INNO-03`.
+- `INNO-PROC-03 — PikoFilm Adaptive Freshness`: **APROBADA** → `INNO-04`.
+- `INNO-PROC-04 — PikoFilm Process Time Travel`: **RECHAZADA**.
+- `INNO-PROC-05 — PikoFilm Self-Tuning Batch Engine`: **APROBADA** → `INNO-05`.
+
+### CIERRE DEL PUNTO 4
+
+**CERRADO.** Auditoría completa + 10 propuestas V5 revisadas/aprobadas + 5 innovaciones revisadas/persistidas.
 
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **INNO-PROC-05 — PikoFilm Self-Tuning Batch Engine**, un motor futuro que ajuste automáticamente tamaño de bloques, concurrencia y ritmo de ejecución dentro de guardrails usando telemetría real de workers y fuentes externas.
+Cerrar la rama del Punto 4 mediante PR/CI/merge y, desde `main` actualizado, abrir una única rama para **Punto 5 — Observabilidad y errores**.
 
-No cerrar el Punto 4 hasta que INNO-PROC-05 quede persistida como APROBADA o RECHAZADA.
+La Fase 1 del Punto 5 debe comenzar con una auditoría extremadamente detallada del sistema real de observabilidad: errores activos vs históricos, resolución, trazabilidad, métricas, logs, alertas, estados engañosos, coste de logging y coherencia entre Neon, Railway, Vercel, GitHub y UX.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -498,4 +503,4 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Innovaciones Punto 4: `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-El Punto 4 está activo en `audit/v5-04-processes`. Fases 1 y 2 están cerradas; continuar por Fase 3 de innovación y persistir cada decisión antes de presentar la siguiente.
+El Punto 4 queda cerrado en `audit/v5-04-processes`. El siguiente movimiento es PR/CI/merge de esta rama y después abrir el Punto 5 desde `main` actualizado.
