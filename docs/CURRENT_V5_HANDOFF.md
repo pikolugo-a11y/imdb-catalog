@@ -657,11 +657,24 @@ Conclusiones principales verificadas contra código + Railway + Neon + Vercel:
 
 Fase 2 — PROPUESTAS: **ACTIVA**.
 
+Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
+
+#### WKR-01 — Contrato canónico de presencia, versión y capacidades de worker
+
+**APROBADA.**
+
+- Presencia del worker y existencia de trabajo quedan separadas.
+- Cada runtime/pool debe declarar presencia vigente, estado, capacidad, versión/build y capacidades reales.
+- Antes de materializar trabajo, el preflight comprueba worker READY, heartbeat vigente, capability requerida y compatibilidad de versión.
+- Sin capacidad válida, la demanda queda pendiente/trazable en lugar de crear items destinados a fallar.
+- Heartbeats espaciados y orientados a presencia, no otro polling de alta frecuencia.
+- No decide todavía wake/sleep, autosuspend, réplicas ni implementación física.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **WKR-01 — Contrato canónico de presencia, versión y capacidades de worker**, para que PikoFilm pueda distinguir de forma durable entre un pool ocioso pero sano, uno no disponible y uno incompatible antes de materializar trabajo.
+Presentar al usuario **WKR-02 — Idle adaptativo sin polling agresivo**, para reducir drásticamente consultas ociosas de API/FAST/Plex mediante backoff progresivo y despertar rápido cuando exista demanda, sin comprometer recuperación ni dejar trabajo bloqueado.
 
-No presentar WKR-02 hasta que WKR-01 quede persistida como APROBADA o RECHAZADA.
+No presentar WKR-03 hasta que WKR-02 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -696,6 +709,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Decisiones Punto 5: `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`
 - Innovaciones Punto 5: `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`
 - Auditoría Punto 6: `docs/V5_AUDIT_06_WORKERS.md`
+- Decisiones Punto 6: `docs/V5_DECISIONS_06_WORKERS.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
 El Punto 6 está activo en `audit/v5-06-workers`. Su Fase 1 está cerrada; continuar por Fase 2 y persistir cada decisión antes de presentar la siguiente.
