@@ -561,6 +561,8 @@ Incluyen:
 - aceptar/revertir decisión;
 - forzar asociación excepcional.
 
+Una serie TMDb-only ya catalogada no puede volver a crear una obra nueva sólo porque Plex cambie su `rating_key`: `tmdb_id` es la clave de deduplicación canónica para esa excepción. El guardado manual y la admisión vuelven a comprobarlo antes de crear una ficha.
+
 Al guardar o confirmar una identidad desde Calidad, PikoFilm intenta re-enlazarla con Plex mediante la identidad canónica: IMDb en modo normal y TMDb en modo TMDb solo. El enlace automático sólo se aplica cuando existe una única coincidencia Plex activa del tipo correcto. El sync global conserva esa misma semántica: las Series/Miniseries TMDb-only reconstruyen su presencia Plex por TMDb, no por IMDb. Si un rating key estaba ligado a otra obra, el vínculo anterior se deja como ausente antes de activar el nuevo.
 
 Son decisiones humanas observadas y no deben masificarse automáticamente.
@@ -575,7 +577,8 @@ Son decisiones humanas observadas y no deben masificarse automáticamente.
 
 - actúa sobre huecos reales;
 - no sustituye un valor presente por discrepancia de proveedor;
-- no se ejecuta periódicamente por antigüedad.
+- no se ejecuta periódicamente por antigüedad;
+- en Series/Miniseries TMDb-only obtiene los datos estructurales desde TMDb y los persiste únicamente en el esquema canónico vigente; los ratings siguen su pipeline propio en `title_ratings`.
 
 ## 12.2 Correcciones manuales
 
