@@ -276,9 +276,15 @@ Invariantes:
 
 **COMPLETADA.** Se han revisado individualmente y persistido 11 propuestas DB-01 a DB-11, todas aprobadas.
 
+### ESTADO DE FASE 3 — INNOVACIÓN
+
+- 1/5 innovaciones mínimas revisadas.
+- `INNO-DB-01 — PikoFilm Data Twin`: **RECHAZADA** y persistida en `docs/V5_INNOVATIONS_03_DATABASE.md`.
+- No se incorpora al Road Map Innovador.
+
 ### SIGUIENTE PASO EXACTO
 
-Iniciar **Fase 3 — Road Map Innovador del Punto 3**. Presentar al usuario la primera de al menos 5 innovaciones deliberadamente rompedoras derivadas de la auditoría de Base de datos, una a una. Sólo las innovaciones expresamente aprobadas se incorporan a `docs/ROADMAP_INNOVADOR.md`.
+Presentar al usuario **INNO-DB-02**, segunda innovación rompedora del Punto 3. No pasar a INNO-DB-03 hasta persistir la decisión de INNO-DB-02.
 
 No cerrar el Punto 3 hasta revisar y persistir al menos 5 innovaciones.
 
@@ -306,6 +312,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Auditoría Punto 3: `docs/V5_AUDIT_03_DATABASE.md`
 - Decisiones Punto 3 DB-01/DB-02: `docs/V5_DECISIONS_03_DATABASE.md`
 - Decisiones Punto 3 DB-03+: `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`
+- Innovaciones Punto 3: `docs/V5_INNOVATIONS_03_DATABASE.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
