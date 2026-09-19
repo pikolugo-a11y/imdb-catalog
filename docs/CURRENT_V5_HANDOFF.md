@@ -396,13 +396,25 @@ Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
 - Si un proceso futuro necesita SLA sub-horario, se resolverá de forma específica y justificada.
 - No autoriza ahora cambios en Vercel Production.
 
+#### PROC-07 — Planificación agregada por demanda
+
+**APROBADA.**
+
+- El trabajo futuro se representa preferentemente como demanda agregada + capacidad, no como cientos de microplanes homogéneos.
+- Las ejecuciones reales se materializan cuando toca lanzarlas y siguen siendo totalmente trazables.
+- Actividad conserva previsión por día/franja, carga, fecha estimada de finalización y próximos vencimientos.
+- Se mantienen picos deliberados protegidos frente al equilibrador automático.
+- El planner reconcilia la demanda viva antes de ejecutar para evitar microplanes obsoletos.
+- Series sólo agrega unidades con la misma ventana funcional; no se pierde precisión temporal.
+- No autoriza ahora migrar los planes existentes ni cambiar elegibilidad/concurrencia.
+
 
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-07 — Planificación agregada por demanda, no por microplanes**, reduciendo la proliferación de cientos de filas futuras para el mismo proceso y conservando visibilidad, reparto de carga y capacidad de picos deliberados.
+Presentar al usuario **PROC-08 — Concurrencia por entidad para Lifecycle**, sustituyendo el bloqueo global de admisión por exclusión sólo sobre la misma entidad/dependencia, para permitir altas independientes en paralelo sin romper la consistencia funcional.
 
-No presentar PROC-08 hasta que PROC-07 quede persistida como APROBADA o RECHAZADA.
+No presentar PROC-09 hasta que PROC-08 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
