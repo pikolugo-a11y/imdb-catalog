@@ -253,3 +253,89 @@ En ese caso la evidencia histórica se conserva, pero OBS-02 decide si la incide
 ### Invariante
 
 > Los eventos cuentan la historia; los warnings señalan degradación; `process_run_errors` representa fallos técnicos reales. Nunca se usan los tres como contadores equivalentes.
+
+
+---
+
+## OBS-05 — Estado operativo vigente separado del historial
+
+**APROBADA.**
+
+### Problema
+
+El histórico de errores explica qué ocurrió, pero no siempre representa correctamente el estado actual.
+
+La auditoría confirmó ambos sentidos del problema:
+
+- puede existir un error histórico aunque el sistema ya esté sano;
+- puede haberse descartado una incidencia histórica mientras el estado actual del dominio siga degradado.
+
+PikoQuality ya demuestra esta separación: los `process_run_errors` pueden estar resueltos/descartados y, aun así, `plex_technical_state` puede conservar errores físicos vigentes.
+
+### Decisión
+
+Cada dominio con estado operativo relevante debe exponer una **fuente vigente de salud/deuda** que permita responder:
+
+> ¿Hay algo que requiere atención ahora?
+
+El histórico de runs/events/errors responde:
+
+> ¿Qué ocurrió?
+
+No se usará el histórico por sí solo para afirmar que una condición sigue activa.
+
+### Fuentes de estado vigente
+
+Cada dominio conserva su verdad actual donde corresponda. Ejemplos:
+
+- PikoQuality → estado técnico vigente de captura;
+- Batch → runs activos + control/items;
+- APIs → breaker, `blocked_until`, cuotas/leases;
+- planner → salud del planner + planes vigentes;
+- Series y otros dominios → estados/read models funcionales correspondientes.
+
+No se obliga a centralizar toda esa verdad en una nueva tabla.
+
+### Proyección común hacia Operaciones
+
+Operaciones podrá consumir una abstracción equivalente a:
+
+- dominio;
+- estado;
+- si requiere atención;
+- razón;
+- desde cuándo;
+- evidencia relevante.
+
+La implementación puede ser calculada bajo demanda o mediante agregados baratos.
+
+### Relación con OBS-02
+
+OBS-02 gobierna la vida de una incidencia concreta.
+
+OBS-05 gobierna la pregunta superior:
+
+> Aunque no exista una incidencia técnica abierta, ¿hay deuda o degradación actual conocida?
+
+Por tanto, descartar una incidencia no puede “hacer desaparecer” un estado físico/funcional que siga degradado.
+
+### Relación con Actividad
+
+Actividad puede mostrar que una ejecución pasada terminó con incidencia mientras Operaciones muestra que hoy todo está sano.
+
+No existe contradicción:
+
+- Actividad describe historia y resultado de ejecuciones;
+- Operaciones prioriza el estado actual y la atención presente.
+
+### Coste y guardrails
+
+- No se crea un nuevo worker sólo para health checks.
+- No se introduce polling continuo de todos los dominios.
+- Se reutilizan estados, heartbeats, breakers, planes y read models ya existentes.
+- La salud puede calcularse al consultar o mediante agregados de bajo coste.
+- El histórico técnico sigue disponible para diagnóstico.
+
+### Invariante
+
+> El historial responde “qué ocurrió”; el estado operativo vigente responde “qué está mal ahora”. Nunca se usa el histórico por sí solo para afirmar que un problema sigue activo.
