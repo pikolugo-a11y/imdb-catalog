@@ -613,6 +613,8 @@ Distinguir claramente:
 
 Una identidad validada no aparece como “pendiente” por edad. Los estados de revisión deben explicar la razón.
 
+La acción **Corregir identidad** permite corregir también el tipo canónico. Al elegir Serie o Miniserie debe estar disponible el modo **TMDb solo**, aunque el título estuviera previamente clasificado como Película. El formulario debe advertir antes de cambiar de tipo y mostrar que TMDb pasa a ser la fuente canónica cuando se selecciona ese modo.
+
 ## 14.4 Personas
 
 Calidad de Personas puede lanzar el refresh individual sin convertir toda Persona en una pantalla de Operaciones.

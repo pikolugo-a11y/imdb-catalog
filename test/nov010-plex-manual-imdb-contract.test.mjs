@@ -22,6 +22,15 @@ test('NOV-010 keeps IMDb manual mode and adds explicit TMDb-only series mode',()
   assert.match(action,/eligibility_status[^\n]*'eligible'/);
   assert.doesNotMatch(action,/setPlexIdentity\(ratingKey,\{imdbId:internalId\}\)/);
   assert.doesNotMatch(action,/seedPlexNewsCandidates/);
+  assert.match(action,/linkExistingPlexTitle/);
+  assert.match(action,/correctIdentityIds\(\{oldImdbId:internalId,newImdbId:internalId,tmdbId,newType:targetType,tmdbOnly:true,trace\}\)/);
+  assert.match(action,/markIdentityRefreshPending\(internalId,'manual_plex_tmdb_only'\)/);
+  assert.match(action,/plex_linked:1/);
+});
+
+test('Plex TMDb-only clears stale manual IMDb protection',()=>{
+  const identity=fs.readFileSync('lib/identity.js','utf8');
+  assert.match(identity,/else await sql\`DELETE FROM plex_manual_overrides WHERE rating_key=\$\{ratingKey\}\`/);
 });
 
 test('Novedades offers TMDb-only only on Plex series and never exposes the technical key as IMDb',()=>{

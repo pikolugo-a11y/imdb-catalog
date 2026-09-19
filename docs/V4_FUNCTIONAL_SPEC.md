@@ -555,9 +555,13 @@ Una identidad validada es estable:
 Incluyen:
 
 - corregir IDs;
+- corregir el tipo canónico entre Película, Serie y Miniserie cuando la identidad externa demuestra que el tipo actual es incorrecto;
+- configurar Series/Miniseries en modo TMDb solo, incluso cuando antes estaban mal tipadas como Película;
 - invalidar/reobtener evidencia;
 - aceptar/revertir decisión;
 - forzar asociación excepcional.
+
+Al guardar TMDb solo desde una serie Plex ya existente en Catálogo, la relación Plex ↔ Catálogo se actualiza en la misma operación y cualquier vínculo previo del mismo rating key se deja como ausente antes de activar el nuevo.
 
 Son decisiones humanas observadas y no deben masificarse automáticamente.
 

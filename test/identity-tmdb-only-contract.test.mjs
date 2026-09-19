@@ -4,9 +4,10 @@ import fs from 'node:fs';
 
 const read=p=>fs.readFileSync(new URL(`../${p}`,import.meta.url),'utf8');
 
-test('Identidad ofrece TMDb solo únicamente a series',()=>{
+test('Identidad permite corregir tipo y habilita TMDb solo según el tipo destino',()=>{
   const ui=read('components/IdentityCorrectionPanel.js');
-  assert.match(ui,/isSeries=type==='Serie'\|\|type==='Miniserie'/);
+  assert.match(ui,/name="newType"/);
+  assert.match(ui,/canUseTmdbOnly=isSeriesType\(nextType\)/);
   assert.match(ui,/TMDb solo/);
   assert.match(ui,/required=\{tmdbOnly\}/);
   assert.match(ui,/!tmdbOnly&&<label>IMDb/);
@@ -15,6 +16,10 @@ test('Identidad ofrece TMDb solo únicamente a series',()=>{
 test('backend valida y persiste la excepción TMDb-only sin exigir coincidencia IMDb',()=>{
   const code=read('lib/identity-correction.js');
   assert.match(code,/TMDb solo únicamente está disponible para series y miniseries/);
+  assert.match(code,/targetType=requestedType\|\|before\.type/);
+  assert.match(code,/targetType!==before\.type&&!newTmdb/);
+  assert.match(code,/validateTmdbIdentity\(newTmdb,targetType,newId\)/);
+  assert.match(code,/saveIdentity\(oldId,\{imdbId:newId,tmdbId:newTmdb,type:targetType\}/);
   assert.match(code,/if\(!useTmdbOnly&&!verification\.actualImdbId\)/);
   assert.match(code,/identity_mode:'tmdb_only'/);
   assert.match(code,/imdb:'not_applicable'/);
@@ -29,6 +34,7 @@ test('refresco de una serie TMDb-only no consulta IMDb y usa enriquecimiento exc
   assert.match(enrich,/imdb_rating=NULL,imdb_votes=NULL,imdb_url=NULL/);
   assert.match(enrich,/fa_id=NULL,fa_rating=NULL,fa_votes=NULL,fa_url=NULL/);
   assert.match(enrich,/metadata_source='tmdb'/);
+  assert.match(enrich,/row\.type==='Miniserie'\?'Miniserie':'Serie'/);
 });
 
 test('Identidad permite buscar series ya resueltas y corregirlas a TMDb solo',()=>{
