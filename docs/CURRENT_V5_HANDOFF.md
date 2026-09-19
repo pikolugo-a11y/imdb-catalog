@@ -278,18 +278,17 @@ Invariantes:
 
 ### ESTADO DE FASE 3 — INNOVACIÓN
 
-- 3/5 innovaciones mínimas revisadas.
+- 4/5 innovaciones mínimas revisadas.
 - `INNO-DB-01 — PikoFilm Data Twin`: **RECHAZADA**.
 - `INNO-DB-02 — PikoFilm Truth Engine`: **RECHAZADA**.
 - `INNO-DB-03 — PikoFilm Phoenix`: **RECHAZADA**.
+- `INNO-DB-04 — PikoFilm Self-Healing Data`: **RECHAZADA**.
 - Las decisiones están persistidas en `docs/V5_INNOVATIONS_03_DATABASE.md`.
 - Ninguna se incorpora al Road Map Innovador.
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **INNO-DB-04**, cuarta innovación rompedora del Punto 3. No pasar a INNO-DB-05 hasta persistir la decisión de INNO-DB-04.
-
-No cerrar el Punto 3 hasta revisar y persistir al menos 5 innovaciones.
+Presentar al usuario **INNO-DB-05**, quinta innovación rompedora del Punto 3. Tras persistir su decisión, cerrar formalmente la Fase 3 y el Punto 3 si no hay más innovaciones que revisar.
 
 ## Contexto funcional reciente ya cerrado
 
