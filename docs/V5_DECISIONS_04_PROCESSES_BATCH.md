@@ -518,3 +518,79 @@ La UX concreta se revisará en los puntos posteriores, pero la semántica nace a
 ### Resultado esperado
 
 PikoFilm deja de confundir “la ejecución acabó” con “el trabajo quedó terminado”. El planner sólo cierra lo que ya no necesita continuación funcional.
+
+
+---
+
+## PROC-06 — Planner horario único y eliminación del tick residual de 5 minutos
+
+**Estado: APROBADA.**
+
+### Problema que resuelve
+
+La implementación conserva dos modos conceptuales del planner:
+
+- ciclo completo;
+- tick intermedio de sólo dispatch cada 5 minutos.
+
+Sin embargo, la producción actual ejecuta únicamente el cron horario `0 * * * *`. Los logs de Vercel y la configuración viva lo confirman. Parte de la documentación todavía describe `*/5 * * * *`, por lo que existe una segunda arquitectura residual que ya no representa el sistema real.
+
+### Decisión
+
+V5 adopta oficialmente un **único reloj automático de mantenimiento: el ciclo horario completo**.
+
+La vía global de dispatch cada 5 minutos deja de formar parte de la arquitectura objetivo y se retirará de código, documentación y tests cuando se implemente V5.
+
+### Ciclo canónico
+
+El planner horario realiza, de forma coherente:
+
+1. reconciliación de planes/runs anteriores;
+2. replanificación de trabajo demorado;
+3. detección de demanda vigente;
+4. forecast cuando aplique;
+5. planificación;
+6. dispatch de lo vencido;
+7. housekeeping asociado mientras siga formando parte del contrato aprobado.
+
+### Procesos urgentes
+
+Una necesidad de reacción inmediata o sub-horaria no justifica reintroducir un cron global de 5 minutos.
+
+Las continuaciones urgentes deben pertenecer al proceso concreto que las necesita y usar su mecanismo durable/directo correspondiente.
+
+Ejemplos existentes:
+
+- continuaciones de Plex;
+- encadenados explícitos de procesos;
+- acciones manuales que encolan trabajo durable inmediatamente.
+
+### Alcance
+
+Se alinearán:
+
+- `vercel.json`;
+- route del planner;
+- helpers de planner;
+- documentación;
+- RUNBOOK;
+- Actividad;
+- tests y contratos.
+
+Todos deberán expresar una única cadencia automática global horaria.
+
+### Lo que no cambia
+
+- `PROC-NOV-009` y `PROC-SER-001` siguen siendo globales manuales.
+- Las continuaciones explícitas siguen pudiendo lanzarse inmediatamente.
+- No cambian bloques, prioridades ni ventanas por aprobar PROC-06.
+- No se elimina la ejecución manual.
+- No se modifica ahora Vercel Production.
+
+### Reapertura futura
+
+Si una necesidad real demuestra que un proceso concreto requiere un SLA inferior a una hora, se diseñará para ese proceso. No se conservará un scheduler global secundario “por si acaso”.
+
+### Resultado esperado
+
+Menos código muerto y menos ambigüedad: planificación, ejecución, UX y documentación comparten una sola cadencia global real y verificable.
