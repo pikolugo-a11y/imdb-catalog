@@ -152,3 +152,41 @@ La estrategia puede combinarse con Shadow Scheduler: Adaptive Freshness decide c
 **Visión:** pasar de “actualiza todo cada X días” a “actualiza cada dato cuando realmente tiene riesgo de estar obsoleto, dentro de límites explícitos”.
 
 **Horizonte orientativo:** posterior a V5 y sujeto a una evaluación futura específica; no compromete ninguna versión concreta.
+
+
+---
+
+### INNO-05 — PikoFilm Self-Tuning Batch Engine
+
+**Origen:** `INNO-PROC-05` — Punto 4, Procesos automáticos y Batch  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-19
+
+Evolucionar el Batch Engine hacia un motor que ajuste automáticamente, dentro de guardrails explícitos, el tamaño de bloque, la concurrencia y el ritmo de ejecución según el comportamiento real del sistema.
+
+La adaptación podrá usar señales como:
+
+- tiempo por item/batch;
+- backlog y deadlines;
+- latencia de fuentes externas;
+- 429, cuotas y circuit breakers;
+- errores transitorios;
+- CPU/memoria disponibles;
+- estabilidad histórica de cada proceso.
+
+Cada proceso conservará límites absolutos de seguridad —tamaño mínimo/máximo, concurrencia mínima/máxima, frecuencia permitida— y podrá declarar `adaptive=false` cuando se prefiera comportamiento fijo.
+
+El motor deberá usar ventanas de observación e histéresis para evitar oscilaciones por una ejecución puntual lenta o rápida.
+
+**Relación con otras apuestas futuras:**
+
+- Adaptive Freshness decide cuándo aparece demanda;
+- Shadow Scheduler ensaya cómo repartirla;
+- Self-Tuning Batch Engine regula la velocidad segura de ejecución;
+- PikoFilm Autopilot podría coordinar estas capacidades en una evolución posterior.
+
+**Guardrail esencial:** el sistema optimiza únicamente dentro de límites aprobados; nunca eleva por sí solo cuotas, infraestructura, concurrencia o tamaño de bloque más allá del rango permitido.
+
+**Visión:** conseguir que PikoFilm encuentre continuamente la máxima velocidad segura para cada proceso sin necesidad de fijar parámetros manuales para siempre.
+
+**Horizonte orientativo:** posterior a V5 y sujeto a una decisión futura específica; no compromete ninguna versión concreta.
