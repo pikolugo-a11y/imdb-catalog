@@ -339,3 +339,94 @@ No existe contradicción:
 ### Invariante
 
 > El historial responde “qué ocurrió”; el estado operativo vigente responde “qué está mal ahora”. Nunca se usa el histórico por sí solo para afirmar que un problema sigue activo.
+
+
+---
+
+## OBS-06 — Procedencia estructurada de resolución y recurrencia
+
+**APROBADA.**
+
+### Problema
+
+Hoy `process_run_errors` conserva `resolved_at` y un texto libre de `resolution`, pero esa información no permite distinguir de forma fiable cómo dejó una incidencia de requerir atención.
+
+Además, una reaparición posterior del mismo patrón no debe reabrir artificialmente el episodio histórico anterior.
+
+### Decisión
+
+Toda resolución deberá conservar una procedencia estructurada equivalente a:
+
+- modo de resolución;
+- razón normalizada;
+- run/evidencia que justificó el cierre cuando exista;
+- fecha/hora;
+- alcance.
+
+Modos conceptuales mínimos:
+
+- `recovered` — recuperada automáticamente con evidencia;
+- `dismissed` — descartada explícitamente por el usuario;
+- `not_applicable` — la condición ya no aplica;
+- `terminal` — terminal conocida/aceptada;
+- `superseded` — invalidada por una nueva verdad/cambio de identidad, fingerprint, configuración o referencia.
+
+La implementación futura decidirá si se expresa mediante columnas, JSON normalizado o una proyección derivada.
+
+### Recurrencias
+
+Si una condición vuelve a aparecer después de haberse cerrado:
+
+- se registra como una **nueva recurrencia/incidencia**;
+- mantiene vínculo con el mismo patrón técnico cuando proceda;
+- no se reabre el episodio anterior;
+- no se borra el histórico;
+- se conserva la capacidad de medir recurrencia y cronicidad.
+
+### Fingerprint de patrón
+
+Para agrupar recurrencias se utilizará una huella estable basada en señales equivalentes a:
+
+- `process_code`;
+- `step`;
+- `error_code/error_class`;
+- `source`;
+- causa normalizada;
+- scope relevante.
+
+El texto literal completo no debe ser la única identidad del patrón.
+
+Los identificadores específicos de entidad se conservan como evidencia/alcance, pero no siempre forman parte del fingerprint del patrón.
+
+### Ejemplo
+
+Cuatro errores:
+
+- “Snapshot técnico 73805 sin streams”;
+- “Snapshot técnico 79831 sin streams”;
+- “Snapshot técnico 127819 sin streams”;
+- “Snapshot técnico 128792 sin streams”;
+
+pueden pertenecer al mismo patrón técnico `technical_capture / no_streams` aunque afecten a entidades diferentes.
+
+### Relación con OBS-02
+
+OBS-02 define qué evidencia permite cerrar una incidencia.
+
+OBS-06 define cómo registrar de forma canónica:
+
+- por qué se cerró;
+- con qué evidencia;
+- y cómo reconocer una nueva aparición posterior del mismo patrón.
+
+### Límites
+
+- No crea ahora una plataforma separada de incident management.
+- No obliga todavía a una nueva tabla.
+- No reescribe retroactivamente resoluciones históricas.
+- No modifica estados funcionales ni reglas de negocio.
+- No autoriza migraciones ni cambios en producción.
+
+### Invariante
+
+> Cada cierre debe explicar su procedencia y cada reaparición posterior debe registrarse como una nueva recurrencia, vinculable al mismo patrón pero sin borrar ni reabrir artificialmente el episodio anterior.
