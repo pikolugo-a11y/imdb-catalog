@@ -115,3 +115,82 @@ Por tanto:
 ### Invariante
 
 > Una incidencia no se resuelve porque haya ocurrido algo después; se resuelve porque existe evidencia de que la condición original ya no requiere atención.
+
+
+---
+
+## OBS-03 — Causa efectiva agregada para parents, hijos e items
+
+**APROBADA.**
+
+### Problema
+
+La auditoría detectó ejecuciones Batch/system con `technical_status='failed'` o `partial` y `error_count=0` en el parent.
+
+Eso puede ser correcto: la causa real puede vivir en child runs, `batch_run_items` o errores asociados a esos hijos.
+
+El problema aparece cuando la UI interpreta “sin error directo en el parent” como “sin causa registrada”.
+
+### Decisión
+
+Toda ejecución compuesta debe poder exponer una **causa efectiva agregada** derivada de su jerarquía real, sin copiar errores de hijos al parent.
+
+La proyección debe poder distinguir:
+
+- fallo directo del parent;
+- fallos de child runs;
+- items fallidos;
+- items terminalizados;
+- items pendientes de retry;
+- trabajo funcional pendiente;
+- combinaciones de las anteriores.
+
+### Semántica
+
+Ejemplo:
+
+`PROC-SER-004` parent:
+- 500 items;
+- 497 correctos;
+- 3 con incidencia;
+- `error_count=0` directo.
+
+Actividad puede resumir:
+
+> Se completaron 497 de 500; 3 quedaron con incidencia.
+
+Operaciones puede explicar:
+
+> El estado parcial proviene de 3 hijos/items, no de un fallo directo del parent.
+
+Y permitir navegar a las causas concretas.
+
+### No duplicación
+
+La agregación no debe insertar copias de `process_run_errors` en el parent.
+
+La verdad permanece donde ocurrió el fallo.
+
+La causa efectiva es una proyección determinista sobre:
+
+`parent → children → items → errors`.
+
+Un mismo hecho no se cuenta varias veces por estar representado en distintas capas de la jerarquía.
+
+### Compatibilidad con PROC-05
+
+PROC-05 define la semántica canónica de estado técnico, resultado funcional y continuidad.
+
+OBS-03 añade la explicación causal de cómo una ejecución compuesta llegó a ese estado.
+
+### Límites
+
+- No autoriza migraciones.
+- No copia errores históricos.
+- No cambia todavía la UI.
+- No modifica la semántica funcional de Batch, Series ni planner.
+- La implementación futura puede ser una query/proyección/read model; no se obliga ahora a persistir una tabla nueva.
+
+### Invariante
+
+> Un parent compuesto no necesita tener un error propio para explicar un fallo; debe resumir de forma determinista las causas reales de sus hijos e items sin duplicarlas.
