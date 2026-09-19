@@ -1,6 +1,6 @@
 # PikoFilm V5 — Handoff actual
 
-Fecha: 2026-09-14
+Fecha: 2026-09-18
 
 Este documento es el punto de reentrada canónico para continuar la definición de V5 sin depender del historial del chat.
 
@@ -27,6 +27,7 @@ Reglas operativas:
 - Una única rama dirigida por corrección/bloque; evitar proliferación de ramas.
 - Cada decisión V5 aprobada o rechazada se persiste en Git ANTES de presentar la siguiente.
 - La documentación no prevalece sobre el estado real: contrastar código, Neon, Railway, Vercel y ejecución viva cuando aplique.
+- No mutar datos históricos de Neon sin autorización expresa del usuario.
 
 ## Frontera de producto fija
 
@@ -93,42 +94,224 @@ CERRADO.
 CERRADO.
 
 - Auditoría: `docs/V5_AUDIT_02_PERFORMANCE.md`.
-- Fase 2: `PERF-01` a `PERF-10` aprobadas y persistidas en `docs/V5_DECISIONS_02_PERFORMANCE.md`.
-- Fase 3: cinco innovaciones revisadas y persistidas en `docs/V5_INNOVATIONS_02_PERFORMANCE.md`.
-- Rechazadas: `INNO-PERF-01`, `INNO-PERF-02`, `INNO-PERF-03` e `INNO-PERF-05`.
-- Aprobada: `INNO-PERF-04 — PikoFilm Native / Local-First`, registrada en `docs/ROADMAP_INNOVADOR.md` como `INNO-02`.
-- Criterio reforzado: una innovación del Road Map debe ser una ruptura real de paradigma; patrones técnicos habituales o mejoras incrementales no alcanzan el listón por sí solos.
-- Límite de `INNO-02`: debe aportar valor completo con un único ordenador. No presupone NAS, granja de equipos ni infraestructura doméstica adicional.
+- Fase 2: `PERF-01` a `PERF-10` aprobadas y persistidas.
+- Fase 3: cinco innovaciones revisadas y persistidas.
+- Innovación aprobada: `INNO-02 — PikoFilm Native / Local-First`.
+- Debe aportar valor completo con un único ordenador. No presupone NAS, granja de equipos ni infraestructura doméstica adicional.
 
 ### Punto 3 — Base de datos y modelo de datos
 
-SIGUIENTE PUNTO.
+**CERRADO.** Rama de definición: `audit/v5-03-database`.
 
-El siguiente paso exacto es iniciar la **Fase 1 — auditoría extremadamente detallada** del sistema real de datos. Debe revisarse, entre otros aspectos:
+Fase 1 — AUDITORÍA: **COMPLETADA** y persistida en `docs/V5_AUDIT_03_DATABASE.md`.
 
-- esquema real de Neon y dependencias entre tablas/vistas;
-- datos canónicos frente a read models/proyecciones;
-- tablas redundantes, históricas, temporales u obsoletas;
-- tamaños, crecimiento, churn, dead tuples y bloat;
-- índices existentes, ausentes, duplicados o poco útiles;
-- claves, constraints, integridad referencial e identidades;
-- retención y limpieza, especialmente tablas operativas/logs;
-- migraciones y compatibilidad con el workflow branch-first;
-- patrones reales de escritura/lectura desde Vercel y Railway;
-- coste, escalabilidad, recuperación y riesgos de consistencia.
+Foto principal observada en Neon durante la auditoría:
 
-La auditoría debe contrastar Git con Neon vivo y persistirse en un nuevo documento del Punto 3 antes de presentar ninguna propuesta `DB-xx`.
+- `neondb` ronda 869 MB;
+- `person_filmography` es la relación más grande (~204 MB), con 549.892 filas;
+- sólo 9.563 de 144.866 personas tienen filmografía enriquecida;
+- `series_diagnostics` y `series_quality_read_model` muestran write amplification muy alta;
+- `process_run_events`, `process_runs` y `admin_events` ocupan una fracción relevante de la base;
+- existe retención de 30 días en algunos módulos pero no contrato global;
+- conviven dos modelos de géneros divergentes;
+- el workflow branch-first de Neon es sólido pero no existe ledger de migraciones aplicado en DB;
+- `catalog_read_model` sigue siendo VIEW dinámica y necesita contrato de canonicalidad/rebuild para su futura materialización.
+
+Fase 2 — PROPUESTAS: **ACTIVA**.
+
+Decisiones persistidas en `docs/V5_DECISIONS_03_DATABASE.md` y, desde DB-03, en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`:
+
+#### DB-01 — Contrato único de retención por clase de dato
+
+**APROBADA.**
+
+- Histórico operativo/técnico: 30 días por defecto.
+- Invariante obligatoria: **la foto actual vigente nunca puede desaparecer por purgar histórico**.
+- Estado vigente, datos canónicos y decisiones manuales deben persistir aparte o ser reconstruibles de forma determinista desde fuentes no sujetas a esa purga.
+- No autoriza todavía ninguna purga ni mutación de Neon.
+
+#### DB-02 — Personas canónicas: sólo profesionales consolidados y sólo películas reales con IMDb
+
+**APROBADA.** Decisión detallada y vinculante en `docs/V5_DECISIONS_03_DATABASE.md`.
+
+Invariantes funcionales:
+
+- Sólo se enriquece filmografía completa para personas consolidadas: >5 películas distintas del catálogo como actor o >5 como director.
+- Corregir la regla de directores para reconocer `credit_type='director'` además del legacy `crew + Director`; la revisión detectó 544 directores omitidos actualmente.
+- La filmografía sólo conserva películas reales útiles para PikoFilm.
+- **IMDb es obligatorio**: obra sin `imdb_id` resuelto queda fuera.
+- Fuera: cortos, conciertos, teatro filmado, ceremonias, eventos deportivos, recopilatorios, especiales/making-of/featurettes y equivalentes no cinematográficos.
+- Un género aislado (`Documental`, `Música`, `Película de TV`) no excluye una película legítima.
+- No excluir por una palabra del título; usar identidad/tipo y metadata estructurada.
+- Relaciones `Self`, `archive footage`, `host`, `presenter`, entrevistas/participantes y equivalentes se descartan.
+- Pertenecer al catálogo no salva un crédito basura.
+- **“Otros créditos” desaparece del frontal y del modelo persistido.** No habrá papelera de descartes: sólo métricas agregadas.
+- La implementación es transversal: BBDD/backfill, `PROC-PER-001`/Batch/Railway, refresco manual, frontend/UX, APIs internas, tests y observabilidad.
+- La retirada física del modelo histórico antiguo requiere rama Neon, validación completa y autorización expresa del usuario.
+
+#### DB-03 — Escrituras idempotentes y reconciliación por delta
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+- **Comprobar no equivale a cambiar**.
+- Separar semánticamente cambio funcional de comprobación operativa.
+- Preferir reconciliación por delta cuando pueda demostrarse equivalencia.
+- Series tiene salvaguarda reforzada: eficiencia nunca por encima de corrección, frescura o recuperación; mantener full rebuild/reconcile seguro y decisiones manuales prioritarias.
+
+#### DB-04 — Géneros canónicos únicos en castellano
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+- `genres` + `movie_genres_canonical` son la única verdad funcional.
+- Sólo géneros aprobados en castellano.
+- `movie_genres` es legacy sin autoridad funcional y se retirará tras migrar todos los consumidores.
+- Las fuentes externas siempre pasan por el mapeo canónico; no crean géneros de producto por sí solas.
+- `catalog_read_model` y todos los consumidores deben migrar al modelo canónico.
+
+#### DB-05 — Esquema versionado, ledger de migraciones y detección de drift
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Git conserva la historia oficial y Neon mantiene un ledger mínimo (`schema_migrations` o equivalente) de lo realmente aplicado.
+- `db/migrations/` es el único directorio válido para nuevas migraciones; `/migrations` queda como histórico a auditar y cerrar.
+- Migraciones aplicadas son inmutables; cambios posteriores requieren una migración nueva.
+- Cada migración registra checksum para detectar drift.
+- Git ↔ Neon se compara antes de migrar: pendiente, aplicada correcta o drift.
+- Producción aplicará todas las migraciones pendientes válidas en orden, no sólo las detectadas por el diff del último commit.
+- El workflow branch-first se conserva y se refuerza con ledger y detección de drift.
+- El bootstrap histórico no reejecutará SQL antiguo automáticamente: primero se contrasta el esquema real y se establece baseline.
+- **Impacto funcional para el usuario: ninguno.** Es seguridad de desarrollo/despliegue.
+- **Impacto de coste: no material/despreciable** frente al resto de Neon; no añade workers ni polling continuo.
+- El ledger representa estado estructural vigente y no se purga con la retención operativa de 30 días de DB-01.
+
+#### DB-06 — Ownership, canonicalidad y rebuildabilidad explícita
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Cada objeto persistente material debe declarar clase, owner funcional, fuente de verdad, escritores autorizados, reconstruibilidad, procedimiento de recovery y política de retención.
+- Se distinguen explícitamente: canónico PikoFilm, decisión manual canónica, snapshot externo, proyección/read model, estado operativo vigente, histórico/auditoría y legacy/transición.
+- **Toda decisión manual del usuario es no sustituible por un rebuild automático salvo regla de negocio aprobada en sentido contrario.**
+- `series_episode_overrides` y demás overrides/correcciones manuales deben sobrevivir full rebuilds.
+- Una proyección reconstruible debe tener mecanismo de rebuild probado; una tabla legacy sólo se retira cuando no conserve autoridad ni consumidores necesarios.
+- La clasificación se versionará en Git y debe acompañar a nuevos objetos persistentes relevantes.
+- DB-06 no añade procesos permanentes ni coste material y no altera la UX.
+
+#### DB-07 — Gobierno de índices basado en evidencia
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Un índice con pocos/cero scans es candidato a revisión, no candidato automático a borrado.
+- Antes de retirar: comprobar constraints, consumidores, queries reales, solapamientos, `EXPLAIN/EXPLAIN ANALYZE` y prueba en rama Neon.
+- Priorizar índices grandes, tablas con alto churn y duplicidades/solapamientos; no perseguir microahorros irrelevantes.
+- También se pueden añadir índices cuando una necesidad real y medida lo justifique.
+- Índices de tablas legacy se retiran junto con la tabla cuando corresponda.
+- Series mantiene criterio especialmente conservador: ningún ahorro de MB tiene prioridad sobre conciliación, Calidad, frescura o recovery.
+- La aprobación no autoriza ahora cambios de índices en producción.
+
+#### DB-08 — Retención selectiva de raw payloads y evidencia técnica
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- PikoFilm conserva verdad procesada, estado funcional actual y evidencia necesaria; no archiva indefinidamente payload bruto reconstruible sin utilidad demostrada.
+- JSON no se considera basura por ser JSON: se clasifica según DB-06.
+- `piko_quality.components` se conserva por explicabilidad funcional.
+- `title_ratings.raw_payload` es candidato a TTL una vez comprobados lectores y extraídos todos los campos útiles.
+- `catalog_candidates.source_snapshot` puede expirar tras quedar resuelto/procesado, conservando el estado estructurado necesario.
+- Histórico/payload operativo sigue DB-01, 30 días por defecto.
+- Antes de retirar un raw: inventario de consumidores, normalización de campos útiles, tests de paridad y cambio de writers para evitar recrearlo.
+- Limpieza futura progresiva/batcheada; no autoriza ahora mutaciones de Neon Production.
+
+#### DB-09 — Guardrails de almacenamiento y crecimiento por dominio
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Vigilar tamaño total, tamaño por tabla y cardinalidad para detectar crecimiento anómalo.
+- Una foto diaria es suficiente; detalle 30 días y agregados más largos sólo si aportan valor.
+- Los umbrales combinan crecimiento relativo y absoluto; no son techos rígidos.
+- La señal debe integrarse con Actividad/Operaciones y explicar qué creció, cuánto y, cuando sea posible, qué proceso coincide.
+- **Nunca** borrar, bloquear inserts, parar Plex/Series, ejecutar `VACUUM FULL` ni modificar datos automáticamente por superar un umbral.
+- Series mantiene prioridad funcional total; cualquier anomalía genera diagnóstico, no bloqueo.
+- El coste del propio guardrail debe ser no material.
+
+#### DB-10 — Constraints selectivas para invariantes canónicos
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- PostgreSQL protege sólo invariantes estructurales estables/universales; la lógica de negocio evolutiva permanece en código/tests.
+- Ninguna FK/CHECK/UNIQUE/NOT NULL nueva se añade por intuición: primero se auditan datos y excepciones reales.
+- No se corrigen o eliminan filas sólo para hacer encajar una constraint.
+- El caso `plex_streams` (2.933 filas sin correspondencia exacta en `plex_files`) queda como ejemplo explícito de por qué hay que entender la semántica antes de crear una FK.
+- Series mantiene protección reforzada: los overrides legítimos no se fuerzan a corresponder 1:1 con episodios oficiales.
+- El nuevo modelo de Personas DB-02 debe nacer con relaciones estructurales protegidas e IMDb obligatorio para obras aceptadas.
+- La aprobación no autoriza ahora constraints nuevas ni mutaciones de Neon Production.
+
+#### DB-11 — Inventario y retirada controlada de objetos legacy o vacíos
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Vacío no significa inútil; se clasifican objetos como ACTIVO, TRANSICIÓN, LEGACY CONFIRMADO o GESTIONADO EXTERNAMENTE.
+- Antes de retirar se demuestran ausencia de readers, writers, dependencias, recovery y función futura aprobada.
+- La retirada pasa por deprecación, eliminación de writers/readers, gate CI, prueba completa, rama Neon y migración controlada.
+- `acquisition_status`, `batch_api_source_leases` y `series_episode_availability` no se eliminan por estar a 0 filas.
+- Objetos `neon_auth` quedan fuera de la limpieza local.
+- `movie_genres` y el modelo histórico de Personas se retirarán sólo al completar sus transiciones ya aprobadas.
+- Series mantiene protección reforzada.
+- DB-11 no autoriza ahora ningún DROP destructivo en Neon Production.
+
+### ESTADO DE FASE 2
+
+**COMPLETADA.** Se han revisado individualmente y persistido 11 propuestas DB-01 a DB-11, todas aprobadas.
+
+### ESTADO DE FASE 3 — INNOVACIÓN
+
+**COMPLETADA.** 5/5 innovaciones mínimas revisadas:
+
+- `INNO-DB-01 — PikoFilm Data Twin`: **RECHAZADA**.
+- `INNO-DB-02 — PikoFilm Truth Engine`: **RECHAZADA**.
+- `INNO-DB-03 — PikoFilm Phoenix`: **RECHAZADA**.
+- `INNO-DB-04 — PikoFilm Self-Healing Data`: **RECHAZADA**.
+- `INNO-DB-05 — PikoFilm Time Machine`: **RECHAZADA**.
+- Las cinco decisiones están persistidas en `docs/V5_INNOVATIONS_03_DATABASE.md`.
+- Ninguna innovación del Punto 3 se incorpora al Road Map Innovador.
+
+### CIERRE DEL PUNTO 3
+
+**CERRADO.** Auditoría completa + 11 propuestas V5 revisadas/aprobadas + 5 innovaciones revisadas/persistidas.
+
+### SIGUIENTE PASO EXACTO
+
+Abrir **Punto 4 — Procesos automáticos y Batch** con Fase 1: auditoría extremadamente detallada del sistema REAL. Revisar planificación, concurrencia, colas, leases, reintentos, timeouts, huérfanos, recuperación, reparto de carga, ejecución manual/automática, Railway/Vercel/Neon, observabilidad, costes y documentación. Persistir la auditoría antes de presentar propuestas.
+
+No presentar propuestas del Punto 4 hasta completar y persistir su auditoría.
 
 ## Contexto funcional reciente ya cerrado
 
-Durante la revisión de Rendimiento se corrigieron problemas reales detectados usando la aplicación. No reabrirlos salvo nueva evidencia.
+Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reales detectados usando la aplicación. No reabrirlos salvo nueva evidencia.
 
 - PR #553: capítulos combinados dobles/triples.
 - PR #556: corrección doble→triple.
 - PR #557: prioridad España y perfil TMDb de Series.
 - PR #558: detalle de Calidad · Series aligerado.
-- PR #560: exclusión manual reversible de episodios oficiales en Calidad · Series mediante `series_episode_overrides.decision='unavailable'`.
-- PR #560 está desplegado en Vercel Production en el commit `bccf8ffe81d8eaeda22c547e97c7c6e9ad920132`; la migración Neon branch-first también quedó aplicada en producción.
+- PR #560: exclusión manual reversible de episodios oficiales.
+- PR #562: ordenación de Calidad · Series por faltantes y año.
+- PR #563: margen canónico de 7 días desde estreno antes de convertir una ausencia física en faltante exigible; listado, detalle y read models alineados.
+- PR #564: conciliación automática adicional de episodios combinados Plex↔TMDb mediante numeración explícita o títulos oficiales consecutivos + duración. Caso real de referencia: Shin Chan. Merge `3e34244f...`; CI verde y workers Railway desplegados.
+- PR #565: sync Plex global de Novedades movido fuera de Vercel. Vercel sólo encola `PROC-NOV-009`; Railway Plex ejecuta el sync durable y encadena `PROC-NOV-008` en Railway API. Merge `b282f9b9...`; CI verde.
+- La corrección de PR #565 ya quedó validada en producción: Vercel Production alcanzó `b282f9b9` y una ejecución real posterior de `PROC-NOV-009` terminó correctamente en Railway Plex en ~4m37s y encadenó `PROC-NOV-008` con éxito. El timeout global de 280s de Vercel queda cerrado.
 
 ## Persistencia y documentos canónicos
 
@@ -136,7 +319,11 @@ Durante la revisión de Rendimiento se corrigieron problemas reales detectados u
 - Auditoría Punto 2: `docs/V5_AUDIT_02_PERFORMANCE.md`
 - Decisiones Punto 2: `docs/V5_DECISIONS_02_PERFORMANCE.md`
 - Innovaciones Punto 2: `docs/V5_INNOVATIONS_02_PERFORMANCE.md`
+- Auditoría Punto 3: `docs/V5_AUDIT_03_DATABASE.md`
+- Decisiones Punto 3 DB-01/DB-02: `docs/V5_DECISIONS_03_DATABASE.md`
+- Decisiones Punto 3 DB-03+: `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`
+- Innovaciones Punto 3: `docs/V5_INNOVATIONS_03_DATABASE.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-Al iniciar el Punto 3, usar una única rama dirigida por bloque y mantener este handoff actualizado para que un chat nuevo pueda continuar sin pedir al usuario que repita contexto.
+El Punto 3 queda cerrado. El siguiente bloque es el Punto 4 — Procesos automáticos y Batch; iniciar su auditoría en una única rama dirigida al bloque, sin proliferar ramas.
