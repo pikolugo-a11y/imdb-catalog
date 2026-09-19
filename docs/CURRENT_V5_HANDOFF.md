@@ -564,11 +564,23 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - El texto literal completo no es la única identidad del patrón.
 - No se crea ahora una plataforma de incident management ni se autoriza migración.
 
+#### OBS-07 — Política de logging por nivel, agregación y sampling
+
+**APROBADA.**
+
+- ERROR queda reservado a fallos técnicos reales; WARN a degradación tolerada; INFO a transiciones/resúmenes; DEBUG a detalle de alta cardinalidad.
+- Heartbeat y logging quedan desacoplados: un worker puede mantener señal de vida sin imprimir el mismo estado cada ciclo.
+- Technical Snapshot no debe repetir `stopped` cada ~10 s.
+- FAST/Plex/API deben preferir progreso agregado y resumen final frente a un INFO por cada item correcto.
+- Errores, retries, terminalizaciones, breakers, crashes y transiciones críticas nunca se samplean ni suprimen.
+- Los logs externos siguen siendo complementarios; la verdad durable permanece en Neon.
+- No cambia ahora configuración de producción.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-07 — Política de logging por nivel, agregación y sampling**, para reducir ruido y coste en Railway/Vercel sin perder capacidad diagnóstica, empezando por Technical Snapshot detenido y los logs `batch_item_done` de alta cardinalidad.
+Presentar al usuario **OBS-08 — Clasificación y destino de `admin_events`**, para decidir qué parte de ese segundo stream de ~41 MB es auditoría funcional que debe conservarse, qué parte debe correlacionarse con `process_runs` y qué parte es duplicación/legacy que debe migrarse o retirarse de forma controlada.
 
-No presentar OBS-08 hasta que OBS-07 quede persistida como APROBADA o RECHAZADA.
+No presentar OBS-09 hasta que OBS-08 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
