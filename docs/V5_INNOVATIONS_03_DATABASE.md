@@ -30,3 +30,31 @@ El usuario rechaza incorporar esta idea al Road Map Innovador. Aunque podría au
 - No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
 - Se mantiene el workflow branch-first ya aprobado en DB-05 para migraciones y pruebas controladas.
 - Esta decisión no impide utilizar ramas temporales de Neon para tests/migraciones concretas cuando formen parte del trabajo normal.
+
+
+---
+
+## INNO-DB-02 — PikoFilm Truth Engine
+
+**Decisión:** RECHAZADA  
+**Fecha:** 2026-09-19
+
+### Idea evaluada
+
+Introducir una capa de evidencias estructuradas por campo y fuente para que PikoFilm pudiera conservar no sólo el valor canónico final, sino también qué fuentes sostienen valores alternativos, qué regla resolvió el conflicto y por qué un dato concreto se considera verdadero.
+
+La arquitectura propuesta era:
+
+`fuentes → claims estructurados → reglas canónicas versionadas → valor canónico`.
+
+### Motivo del rechazo
+
+El usuario no aprecia una utilidad práctica suficiente. Para el tamaño y uso actual de PikoFilm, las reglas canónicas explícitas, los procesos de Calidad y la trazabilidad ya disponible cubren adecuadamente las necesidades funcionales.
+
+La propuesta añadiría una capa de modelado y mantenimiento considerable —prácticamente una base explicativa sobre la base principal— sin aportar un beneficio proporcional en el uso real.
+
+### Consecuencia
+
+- No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
+- Se mantienen los modelos canónicos simples como fuente de verdad.
+- Cuando existan discrepancias entre fuentes, se resolverán mediante reglas de producto/datos concretas y tests, sin crear un motor general de claims/evidencias.
