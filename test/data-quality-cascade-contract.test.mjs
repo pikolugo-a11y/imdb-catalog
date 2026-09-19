@@ -29,5 +29,16 @@ test('CALIDAD clasifica una sola vez, pagina 25 e hidrata solo visibles',()=>{as
 test('Datos no crea un main anidado y respeta el ancho del shell',()=>{assert.doesNotMatch(page,/return <main className="dq-page"/);assert.match(page,/return <div className="dq-page"/);assert.match(css,/\.dq-page\{[^}]*width:100%/);assert.doesNotMatch(css,/100vw|translateX\(|margin-left:50%/)});
 test('decisión manual de datos atraviesa evaluación y Lifecycle',()=>{assert.match(dataQuality,/manualDataAccepted/);assert.match(lifecycleData,/accepted_incomplete/);assert.match(lifecycleCore,/manual_data_decision/);assert.match(lifecycle,/recomputeLifecycleWithSql/);assert.match(source,/recomputeLifecycleWithSql/);assert.match(manual,/acceptIncompleteData/)});
 test('ratings manuales y cierre fijo a 5 quedan persistentes',()=>{assert.match(manual,/saveManualRating/);assert.match(manual,/fixRatingsAtFive/);assert.match(manual,/final_rating=5/);assert.match(dataQuality,/manualRatingsFixed/);assert.match(piko,/manual_rating_decision/);assert.match(page,/DataQualityManualControls/)});
+test('TMDb-only exige datos estructurales pero no genera deuda falsa de ratings o PikoScore',()=>{
+  assert.match(dataQuality,/tmdbOnly=String\(row\.identity_mode\|\|row\.source_status\?\.identity_mode\|\|''\)==='tmdb_only'/);
+  assert.match(dataQuality,/ratingsReady:manualRatingsFixed\|\|tmdbOnly\|\|ratingsBase\.ratingsReady/);
+  assert.match(dataQuality,/pikoScoreCurrent=manualRatingsFixed\|\|tmdbOnly\|\|Boolean/);
+  assert.match(dataQuality,/nextAction=!dataReady\?'UPDATE_DATA':tmdbOnly\?'NONE'/);
+  assert.match(dataQualityPage,/f\.identity_mode='tmdb_only' OR f\.fresh_rating_count>=2/);
+  assert.match(dataQualityPage,/f\.identity_mode='tmdb_only' OR \(f\.final_rating IS NOT NULL/);
+  assert.match(page,/Ratings múltiples y PikoScore no aplican a esta identidad/);
+  assert.match(page,/r\.tmdbOnly\?\[\['TMDb'/);
+});
+
 test('la pantalla incorpora contexto Plex, mejora y exclusión existente',()=>{assert.match(dataQualityPage,/in_plex/);assert.match(page,/En Plex/);assert.match(page,/Fuera de Plex/);assert.match(page,/Mejorar datos/);assert.match(page,/IdentityExcludeButton/)});
 test('la identidad muestra accesos externos fiables y mantiene IMDb visible',()=>{assert.match(page,/providerUrl\('imdb'/);assert.match(page,/providerUrl\('tmdb'/);assert.match(page,/providerUrl\('mdblist'/);assert.match(page,/providerUrl\('trakt'/);assert.match(page,/<code>\{r\.imdb_id\}<\/code>/);assert.doesNotMatch(page,/FilmAffinity|filmaffinity|FA ↗/i)});
