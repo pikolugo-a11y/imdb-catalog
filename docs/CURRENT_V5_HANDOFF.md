@@ -623,12 +623,13 @@ Decisiones persistidas en `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`:
 
 - `INNO-OBS-01 — PikoFilm Causal X-Ray`: **RECHAZADA**. No se incorpora al Road Map Innovador.
 - `INNO-OBS-02 — PikoFilm Sentinel`: **APROBADA**. Incorporada a `docs/ROADMAP_INNOVADOR.md` como **INNO-06**.
+- `INNO-OBS-03 — PikoFilm Anomaly Radar`: **RECHAZADA**. No se incorpora al Road Map Innovador.
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **INNO-OBS-03 — PikoFilm Anomaly Radar**, una capacidad futura que aprenda el comportamiento normal de cada proceso y detecte desviaciones relevantes —duración, volumen, errores, cambios funcionales o consumo externo— antes de que crucen umbrales rígidos.
+Presentar al usuario **INNO-OBS-04 — PikoFilm Blast Shield**, una capacidad futura de contención automática que aisle sólo el proceso, fuente o dominio que demuestra estar fallando, evitando que una avería localizada contamine el resto de PikoFilm y permitiendo que el trabajo sano continúe.
 
-No presentar INNO-OBS-04 hasta que INNO-OBS-03 quede persistida como APROBADA o RECHAZADA.
+No presentar INNO-OBS-05 hasta que INNO-OBS-04 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
