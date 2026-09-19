@@ -243,13 +243,27 @@ Invariantes:
 - Series mantiene prioridad funcional total; cualquier anomalía genera diagnóstico, no bloqueo.
 - El coste del propio guardrail debe ser no material.
 
+#### DB-10 — Constraints selectivas para invariantes canónicos
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- PostgreSQL protege sólo invariantes estructurales estables/universales; la lógica de negocio evolutiva permanece en código/tests.
+- Ninguna FK/CHECK/UNIQUE/NOT NULL nueva se añade por intuición: primero se auditan datos y excepciones reales.
+- No se corrigen o eliminan filas sólo para hacer encajar una constraint.
+- El caso `plex_streams` (2.933 filas sin correspondencia exacta en `plex_files`) queda como ejemplo explícito de por qué hay que entender la semántica antes de crear una FK.
+- Series mantiene protección reforzada: los overrides legítimos no se fuerzan a corresponder 1:1 con episodios oficiales.
+- El nuevo modelo de Personas DB-02 debe nacer con relaciones estructurales protegidas e IMDb obligatorio para obras aceptadas.
+- La aprobación no autoriza ahora constraints nuevas ni mutaciones de Neon Production.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-10 — Constraints selectivas para proteger invariantes canónicos**, derivada de que el esquema vivo ya tiene FKs útiles pero parte de la integridad sigue gobernada sólo en aplicación. La propuesta debe evitar sobrerregular dominios vivos como Series y centrarse en invariantes estructurales estables.
+Presentar al usuario **DB-11 — Inventario y retirada controlada de tablas/objetos legacy o vacíos**, para dejar de arrastrar estructuras sin autoridad funcional y reducir deuda de esquema, siempre demostrando antes que no tienen consumidores ni datos necesarios.
 
-No presentar DB-11 hasta que DB-10 quede persistida como aprobada o rechazada.
+No presentar DB-12 ni pasar a innovaciones hasta que DB-11 quede persistida como aprobada o rechazada y se reevalúe si la Fase 2 queda suficientemente cerrada.
 
-Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia; DB-04 géneros; DB-05 ledger/drift; DB-06 ownership/rebuildabilidad; DB-07 índices; DB-08 raw payloads; DB-09 guardrails de crecimiento.
+Candidatos pendientes de la Fase 2: clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia; DB-04 géneros; DB-05 ledger/drift; DB-06 ownership/rebuildabilidad; DB-07 índices; DB-08 raw payloads; DB-09 guardrails; DB-10 constraints.
 
 ## Contexto funcional reciente ya cerrado
 
