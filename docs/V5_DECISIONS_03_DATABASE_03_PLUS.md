@@ -257,3 +257,96 @@ DB-05 será especialmente importante para DB-02 (nuevo modelo de filmografía y 
 ### Resultado esperado
 
 PikoFilm podrá responder de forma determinista a: **qué migraciones existen, cuáles están aplicadas, con qué contenido y si Git y Neon están alineados**. Es una mejora de seguridad del desarrollo/despliegue, invisible para el usuario final y sin coste operativo relevante.
+
+## DB-06 — Ownership, canonicalidad y rebuildabilidad explícita
+
+**Estado: APROBADA**
+
+### Decisión
+
+V5 exigirá que cada tabla, vista, proyección o conjunto de datos materialmente relevante tenga un contrato explícito que indique **quién manda, quién puede escribir, de dónde procede, si es reconstruible, cómo se reconstruye y qué política de retención/limpieza le aplica**.
+
+El objetivo no es crear burocracia ni una segunda fuente de verdad documental, sino impedir que un proceso automático, una purga o un full rebuild trate del mismo modo datos canónicos, decisiones manuales, snapshots externos, proyecciones reconstruibles e históricos operativos.
+
+### Clases mínimas
+
+Cada objeto relevante se clasificará al menos en una de estas categorías:
+
+- **Canónico de PikoFilm:** verdad funcional propiedad del producto.
+- **Decisión manual canónica:** decisión del usuario o corrección humana que no puede ser sustituida por una API ni por un rebuild.
+- **Snapshot de fuente externa:** foto importada desde Plex/TMDb/IMDb/u otra fuente; la fuente externa conserva la autoridad última sobre ese dato.
+- **Proyección/read model derivado:** representación reconstruible desde fuentes canónicas y/o snapshots.
+- **Estado operativo vigente:** estado necesario para ejecutar/coordinar procesos actuales.
+- **Histórico operativo/auditoría:** evidencia temporal con retención explícita.
+- **Legacy/transición:** objeto sin autoridad futura, conservado sólo mientras termina una migración.
+
+### Contrato mínimo por objeto
+
+Para cada objeto material se documentará:
+
+- clase;
+- dominio/owner funcional;
+- fuente de verdad;
+- escritores autorizados;
+- consumidores principales;
+- reconstruible: sí/no;
+- procedimiento de rebuild o recuperación;
+- retención;
+- si puede purgarse automáticamente;
+- dependencias manuales que deban preservarse;
+- condición de retirada si es legacy/transicional.
+
+### Invariante reforzada de decisiones manuales
+
+**Todo dato manual o decisión funcional del usuario se considera explícitamente no sustituible por una reconstrucción automática salvo que exista una regla de negocio aprobada que diga lo contrario.**
+
+Ejemplos:
+
+- `series_episode_overrides` es decisión manual canónica y no debe desaparecer en un full rebuild.
+- exclusiones/correcciones manuales del catálogo, si las hay, deben recibir la misma protección.
+- una reconstrucción de Series, Personas o Catálogo nunca puede sobrescribir silenciosamente una decisión manual válida.
+
+### Ejemplos de clasificación esperada
+
+- `movies`: canónico de catálogo PikoFilm.
+- `movie_genres_canonical` + `genres`: canónico gobernado de géneros según DB-04.
+- `series_episode_overrides`: decisión manual canónica, no reconstruible desde APIs.
+- `series_quality_read_model`: proyección derivada reconstruible, con full rebuild seguro.
+- `catalog_read_model`: derivado/read model; si se materializa en el futuro, seguirá siendo reconstruible y no se convertirá por ello en fuente primaria.
+- `plex_items`, `plex_media`, `plex_files`, `plex_streams`: snapshot importado de Plex; Plex es fuente externa.
+- `person_filmography` actual y su sustituto V5: proyección derivada/reconstruible desde fuentes externas bajo las reglas DB-02.
+- `process_runs`/eventos históricos: estado operativo/histórico según columna/uso, sujeto a DB-01.
+- `movie_genres`: legacy/transición, sin autoridad funcional y con retirada prevista por DB-04.
+
+### Relación con otras decisiones
+
+- **DB-01:** el contrato de ownership determina qué puede purgarse y qué foto vigente debe sobrevivir.
+- **DB-02:** filmografía de Personas queda explícitamente clasificada como derivada/reconstruible; las reglas de producto siguen siendo canónicas.
+- **DB-03:** sólo se aplica reconciliación/idempotencia respetando la autoridad del objeto; una proyección puede reconstruirse, una decisión manual no.
+- **DB-04:** el modelo canónico de géneros queda declarado como autoridad y el legacy como transicional.
+- **DB-05:** las migraciones podrán saber qué estructuras son fuentes, proyecciones o legacy antes de alterarlas o retirarlas.
+
+### Implementación
+
+La implementación V5 deberá producir un registro canónico versionado en Git —por ejemplo un documento/manifest de datos— y usarlo como referencia de diseño, migraciones, housekeeping y recovery.
+
+No es obligatorio almacenar este registro como tabla adicional en Neon si no aporta valor operativo. La prioridad es que el contrato sea verificable, versionado y cercano al código/migraciones.
+
+Cuando un nuevo objeto persistente relevante se añada, deberá declarar su categoría y rebuildabilidad como parte de su cambio.
+
+### Gates y protección
+
+- ningún full rebuild de un dominio puede borrar datos clasificados como manuales/canónicos de otro nivel;
+- las purgas automáticas sólo podrán tocar objetos cuya política de retención lo permita;
+- retirar una tabla legacy requiere demostrar que no conserva autoridad ni consumidores necesarios;
+- una proyección reconstruible debe tener procedimiento de rebuild probado antes de depender de su purga/recreación;
+- tests de recuperación deben verificar que los overrides/decisiones manuales sobreviven;
+- cualquier cambio que reclasifique una tabla de canónica a derivada o viceversa es una decisión explícita de arquitectura/datos, no un detalle local de implementación.
+
+### Impacto funcional y coste
+
+DB-06 es una mejora de seguridad y mantenibilidad. No debe alterar la experiencia del usuario ni añadir procesos permanentes. Su coste operativo es esencialmente nulo; el valor está en evitar pérdidas de información, rebuilds peligrosos y limpiezas incorrectas.
+
+### Resultado esperado
+
+PikoFilm podrá responder para cualquier dato importante: **quién es su dueño, cuál es su verdad, quién puede cambiarlo, si se puede regenerar, cómo se recupera y si es seguro purgarlo**. En particular, ninguna optimización o reconstrucción podrá borrar una decisión manual del usuario por confundirla con dato derivado.
