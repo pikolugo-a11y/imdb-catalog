@@ -599,11 +599,31 @@ Decisiones persistidas en `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`:
 - Actividad no se llena de infraestructura; la correlación permanece en Operaciones/diagnóstico técnico.
 - No se autoriza ahora cambio de esquema ni configuración de plataformas.
 
+#### OBS-10 — KPIs canónicos de salud actual, fiabilidad y recurrencia
+
+**APROBADA.**
+
+- La salud se separa en estado actual, fallos técnicos, recuperación, recurrencia, degradación y deuda funcional.
+- Operaciones prioriza primero lo que requiere atención ahora y después aporta tendencia histórica.
+- Los contadores brutos de errores no se usan como indicador aislado de salud.
+- Se podrán medir incidencias nuevas, recurrencias y tiempo hasta recuperación por proceso/dominio.
+- No se usará un único “health score” opaco que mezcle dimensiones heterogéneas.
+- Las métricas se derivan preferentemente de fuentes existentes y sin nueva plataforma obligatoria.
+- No autoriza ahora cambios de UI, esquema ni recalificación retroactiva.
+
+### ESTADO DE FASE 2
+
+**COMPLETADA.** OBS-01 a OBS-10 han sido revisadas individualmente, aprobadas y persistidas.
+
+### ESTADO DE FASE 3 — INNOVACIÓN
+
+**ACTIVA.** Deben revisarse al menos 5 innovaciones rompedoras, una a una. Sólo las aprobadas se incorporarán a `docs/ROADMAP_INNOVADOR.md`.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **OBS-10 — KPIs canónicos de salud actual, fiabilidad y recurrencia**, para sustituir contadores brutos de errores por métricas que separen estado actual, fallos técnicos reales, recuperación, recurrencia, degradación y deuda funcional.
+Presentar al usuario **INNO-OBS-01 — PikoFilm Causal X-Ray**, una capacidad futura para reconstruir automáticamente la cadena causal completa de cualquier cambio o incidencia —fuente externa, proceso, runtime, decisión, dato modificado y consecuencias posteriores— en una sola vista explicable.
 
-No iniciar Fase 3 hasta que OBS-10 quede persistida como APROBADA o RECHAZADA.
+No presentar INNO-OBS-02 hasta que INNO-OBS-01 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -636,6 +656,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Innovaciones Punto 4: `docs/V5_INNOVATIONS_04_PROCESSES_BATCH.md`
 - Auditoría Punto 5: `docs/V5_AUDIT_05_OBSERVABILITY_ERRORS.md`
 - Decisiones Punto 5: `docs/V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`
+- Innovaciones Punto 5: `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
-El Punto 5 está activo en `audit/v5-05-observability`. Su Fase 1 ya está cerrada; continuar por Fase 2 y persistir cada decisión antes de presentar la siguiente.
+El Punto 5 está activo en `audit/v5-05-observability`. Fases 1 y 2 están cerradas; continuar por Fase 3 de innovación y persistir cada decisión antes de presentar la siguiente.
