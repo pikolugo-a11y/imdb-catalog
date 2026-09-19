@@ -229,13 +229,27 @@ Invariantes:
 - Antes de retirar un raw: inventario de consumidores, normalización de campos útiles, tests de paridad y cambio de writers para evitar recrearlo.
 - Limpieza futura progresiva/batcheada; no autoriza ahora mutaciones de Neon Production.
 
+#### DB-09 — Guardrails de almacenamiento y crecimiento por dominio
+
+**APROBADA.** Decisión detallada en `docs/V5_DECISIONS_03_DATABASE_03_PLUS.md`.
+
+Invariantes:
+
+- Vigilar tamaño total, tamaño por tabla y cardinalidad para detectar crecimiento anómalo.
+- Una foto diaria es suficiente; detalle 30 días y agregados más largos sólo si aportan valor.
+- Los umbrales combinan crecimiento relativo y absoluto; no son techos rígidos.
+- La señal debe integrarse con Actividad/Operaciones y explicar qué creció, cuánto y, cuando sea posible, qué proceso coincide.
+- **Nunca** borrar, bloquear inserts, parar Plex/Series, ejecutar `VACUUM FULL` ni modificar datos automáticamente por superar un umbral.
+- Series mantiene prioridad funcional total; cualquier anomalía genera diagnóstico, no bloqueo.
+- El coste del propio guardrail debe ser no material.
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **DB-09 — Guardrails de almacenamiento y crecimiento por dominio**, para detectar crecimiento anómalo antes de que se convierta en coste o presión operativa, sin bloquear funcionalidad crítica ni ejecutar limpiezas destructivas automáticas.
+Presentar al usuario **DB-10 — Constraints selectivas para proteger invariantes canónicos**, derivada de que el esquema vivo ya tiene FKs útiles pero parte de la integridad sigue gobernada sólo en aplicación. La propuesta debe evitar sobrerregular dominios vivos como Series y centrarse en invariantes estructurales estables.
 
-No presentar DB-10 hasta que DB-09 quede persistida como aprobada o rechazada.
+No presentar DB-11 hasta que DB-10 quede persistida como aprobada o rechazada.
 
-Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: guardrails de almacenamiento, constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia; DB-04 géneros; DB-05 ledger/drift; DB-06 ownership/rebuildabilidad; DB-07 índices; DB-08 raw payloads/evidencia.
+Candidatos pendientes de la Fase 2, a revisar uno por uno sin saltos: constraints selectivas y clasificación/retirada de tablas legacy o vacías. DB-03 absorbe write amplification/idempotencia; DB-04 géneros; DB-05 ledger/drift; DB-06 ownership/rebuildabilidad; DB-07 índices; DB-08 raw payloads; DB-09 guardrails de crecimiento.
 
 ## Contexto funcional reciente ya cerrado
 
