@@ -82,3 +82,27 @@ El usuario no considera útil orientar el producto hacia una capacidad de recons
 - No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
 - Se mantienen backups y recovery convencionales, más rebuilds específicos donde DB-06 los declare necesarios.
 - No se perseguirá una reconstrucción integral de toda la plataforma como objetivo de producto.
+
+
+---
+
+## INNO-DB-04 — PikoFilm Self-Healing Data
+
+**Decisión:** RECHAZADA  
+**Fecha:** 2026-09-19
+
+### Idea evaluada
+
+Crear una capa autónoma de integridad capaz de detectar drift funcional, clasificar incidencias y reparar automáticamente sólo aquellas incoherencias que afecten a datos derivados, tengan una fuente canónica clara y puedan reconstruirse de forma determinista y segura.
+
+La propuesta incluía integración con Calidad/Actividad, reparación automática de read models/caches/metadata reconstruible y escalado manual de cualquier caso ambiguo o que afectase decisiones del usuario.
+
+### Motivo del rechazo
+
+El usuario rechaza incorporar esta idea al Road Map Innovador. Aunque podría reducir trabajo manual de mantenimiento, añade una capa autónoma adicional de reparación que no se considera necesaria ni prioritaria.
+
+### Consecuencia
+
+- No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
+- Se mantienen diagnósticos, rebuilds y reparaciones explícitas por dominio cuando sean necesarias.
+- Las decisiones manuales y datos no reconstruibles continúan protegidos por DB-06 sin introducir un motor general de autoreparación.
