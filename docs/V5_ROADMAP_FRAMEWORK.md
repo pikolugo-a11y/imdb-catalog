@@ -196,7 +196,7 @@ Por tanto, esta revisión V5 y cualquier roadmap futuro deben respetar estas reg
 - Punto 3 — Base de datos y modelo de datos: **CERRADO — auditoría completada; 11/11 propuestas DB-01 a DB-11 aprobadas; 5/5 innovaciones revisadas y rechazadas** (`V5_AUDIT_03_DATABASE.md`; `V5_DECISIONS_03_DATABASE.md`; `V5_DECISIONS_03_DATABASE_03_PLUS.md`; `V5_INNOVATIONS_03_DATABASE.md`)
 - Punto 4 — Procesos automáticos y Batch: **CERRADO — auditoría completada; 10/10 propuestas PROC-01 a PROC-10 aprobadas; 5/5 innovaciones revisadas; INNO-PROC-02, INNO-PROC-03 e INNO-PROC-05 aprobadas como INNO-03, INNO-04 e INNO-05** (`V5_AUDIT_04_PROCESSES_BATCH.md`; `V5_DECISIONS_04_PROCESSES_BATCH.md`; `V5_INNOVATIONS_04_PROCESSES_BATCH.md`; `ROADMAP_INNOVADOR.md`)
 - Punto 5 — Observabilidad y errores: **CERRADO — auditoría completada; 10/10 propuestas OBS-01 a OBS-10 aprobadas; 5/5 innovaciones revisadas; INNO-OBS-02 aprobada como INNO-06 y las demás rechazadas** (`V5_AUDIT_05_OBSERVABILITY_ERRORS.md`; `V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`; `V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`; `ROADMAP_INNOVADOR.md`)
-- Punto 6 — Workers y servicios persistentes: **FASE 1 CERRADA; Fase 2 ACTIVA; WKR-01 a WKR-03 aprobadas** (`V5_AUDIT_06_WORKERS.md`; `V5_DECISIONS_06_WORKERS.md`)
+- Punto 6 — Workers y servicios persistentes: **FASE 1 CERRADA; Fase 2 ACTIVA; WKR-01 a WKR-04 aprobadas** (`V5_AUDIT_06_WORKERS.md`; `V5_DECISIONS_06_WORKERS.md`)
 - Punto 7 — Integraciones externas: **PENDIENTE**
 - Punto 8 — Frontend y UX: **PENDIENTE**
 - Punto 9 — Sistema de diseño / CSS: **PENDIENTE**
