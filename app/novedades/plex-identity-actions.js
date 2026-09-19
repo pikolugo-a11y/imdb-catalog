@@ -45,31 +45,34 @@ export async function savePlexIdentityFromNewsAction(formData){
     const candidateType=typeOf(plex.item_type);
     if(!title||!candidateType)return{technicalStatus:'succeeded',functionalResult:'invalid',message:'Plex no aporta título/tipo mínimo',metrics:{rating_key:ratingKey}};
     if(identityMode==='tmdb_only'&&plex.item_type!=='show')return{technicalStatus:'succeeded',functionalResult:'invalid',message:'TMDb solo únicamente está disponible para series',metrics:{rating_key:ratingKey,identity_mode:identityMode}};
-    const [existing]=await sql`SELECT imdb_id,type FROM movies WHERE imdb_id=${internalId} LIMIT 1`;
+    const [existingByInternal]=await sql`SELECT imdb_id,type FROM movies WHERE imdb_id=${internalId} LIMIT 1`;
+    const [existingByTmdb]=identityMode==='tmdb_only'?await sql`SELECT imdb_id,type FROM movies WHERE tmdb_id=${tmdbId} AND source_status->>'identity_mode'='tmdb_only' ORDER BY synced_at ASC,imdb_id ASC LIMIT 1`:[];
+    const existing=existingByInternal||existingByTmdb||null;
+    const canonicalId=existing?.imdb_id||internalId;
     let correction=null;
     if(existing&&identityMode==='tmdb_only'){
       const targetType=existing.type==='Miniserie'?'Miniserie':'Serie';
-      correction=await correctIdentityIds({oldImdbId:internalId,newImdbId:internalId,tmdbId,newType:targetType,tmdbOnly:true,trace});
+      correction=await correctIdentityIds({oldImdbId:canonicalId,newImdbId:canonicalId,tmdbId,newType:targetType,tmdbOnly:true,trace});
     }
     await trace.event({eventType:'step',step:'protect_manual_identity',message:identityMode==='tmdb_only'?'Guardando TMDb manual como fuente principal':'Guardando y protegiendo IMDb manual',data:{identity_mode:identityMode,tmdb_id:identityMode==='tmdb_only'?tmdbId:null}});
     if(identityMode==='tmdb_only')await setPlexIdentity(ratingKey,{tmdbId});
     else await setPlexIdentity(ratingKey,{imdbId});
     if(existing){
-      if(correction?.changed)await markIdentityRefreshPending(internalId,'manual_plex_tmdb_only');
-      const link=await linkCatalogTitleToPlex(internalId,ratingKey);
+      if(correction?.changed)await markIdentityRefreshPending(canonicalId,'manual_plex_tmdb_only');
+      const link=await linkCatalogTitleToPlex(canonicalId,ratingKey);
       const displaced=link.displaced||[];
-      await recomputeLifecycleForIds([...new Set([...displaced,internalId])]);
-      await audit('identity','plex',ratingKey,identityMode==='tmdb_only'?'manual_tmdb_only_catalogued':'manual_imdb_catalogued',{imdb_id:internalId,tmdb_id:identityMode==='tmdb_only'?tmdbId:null,identity_mode:identityMode,plex_linked:true,displaced_imdb_ids:displaced});
-      return{technicalStatus:'succeeded',functionalResult:'updated',message:'Identidad manual guardada y Plex enlazado al título existente',metrics:{catalogued:1,candidate_created:0,plex_linked:1,displaced:displaced.length,identity_corrected:correction?.changed?1:0,identity_mode:identityMode}};
+      await recomputeLifecycleForIds([...new Set([...displaced,canonicalId])]);
+      await audit('identity','plex',ratingKey,identityMode==='tmdb_only'?'manual_tmdb_only_catalogued':'manual_imdb_catalogued',{imdb_id:canonicalId,tmdb_id:identityMode==='tmdb_only'?tmdbId:null,identity_mode:identityMode,plex_linked:true,displaced_imdb_ids:displaced});
+      return{technicalStatus:'succeeded',functionalResult:'updated',after:{canonical_imdb_id:canonicalId,deduplicated_by_tmdb:Boolean(existingByTmdb&&existingByTmdb.imdb_id!==internalId)},message:'Identidad manual guardada y Plex enlazado al título existente',metrics:{catalogued:1,candidate_created:0,plex_linked:1,displaced:displaced.length,identity_corrected:correction?.changed?1:0,deduplicated_by_tmdb:existingByTmdb&&existingByTmdb.imdb_id!==internalId?1:0,identity_mode:identityMode}};
     }
     await trace.event({eventType:'step',step:'route_to_news',message:'Creando candidato Plex mínimo en Novedades'});
     const snapshot={origin:'plex',origins:['plex'],matchedRule:'plex_manual_identity',manualPlexIdentity:true,manualPlexIdentityAt:new Date().toISOString(),ratingKey,plexRatingKey:ratingKey,title,discoveryVersion:'novedades-v1',identityMode,tmdbId:identityMode==='tmdb_only'?tmdbId:null,technicalIdentityKey:identityMode==='tmdb_only'};
     await sql`INSERT INTO catalog_candidates(imdb_id,candidate_type,year,eligibility_status,first_seen_at,last_seen_at,last_evaluated_at,source_snapshot,created_at,updated_at) VALUES(${internalId},${candidateType},${plex.plex_year||null},'eligible',now(),now(),now(),${JSON.stringify(snapshot)}::jsonb,now(),now()) ON CONFLICT(imdb_id) DO UPDATE SET candidate_type=EXCLUDED.candidate_type,year=COALESCE(catalog_candidates.year,EXCLUDED.year),eligibility_status='eligible',last_seen_at=now(),last_evaluated_at=now(),source_snapshot=COALESCE(catalog_candidates.source_snapshot,'{}'::jsonb)||EXCLUDED.source_snapshot,updated_at=now()`;
-    await audit('identity','plex',ratingKey,'routed_to_news',{imdb_id:internalId,tmdb_id:identityMode==='tmdb_only'?tmdbId:null,identity_mode:identityMode,direct_minimum:true,no_enrichment:true});
+    await audit('identity','plex',ratingKey,'routed_to_news',{imdb_id:canonicalId,tmdb_id:identityMode==='tmdb_only'?tmdbId:null,identity_mode:identityMode,direct_minimum:true,no_enrichment:true});
     return{technicalStatus:'succeeded',functionalResult:'updated',message:identityMode==='tmdb_only'?'TMDb manual guardado y candidato Plex listo en Novedades':'IMDb manual guardado y candidato Plex listo en Novedades',metrics:{catalogued:0,candidate_created:1,external_calls:0,identity_mode:identityMode}};
   });
-  refresh(internalId);
   const result=observed.result;
+  refresh(result?.after?.canonical_imdb_id||internalId);
   if(result?.functionalResult==='not_found')redirect('/novedades?notice=plex_identity_missing');
   if(result?.functionalResult==='invalid')redirect('/novedades?notice=plex_identity_incomplete');
   redirect(identityMode==='tmdb_only'?'/novedades?notice=plex_identity_saved':`/novedades?q=${encodeURIComponent(imdbId)}&notice=plex_identity_saved`);
