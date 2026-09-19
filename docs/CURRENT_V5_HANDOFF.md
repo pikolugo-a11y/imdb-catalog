@@ -319,11 +319,27 @@ Conclusiones principales verificadas contra código + Neon + Railway + Vercel:
 
 Fase 2 — PROPUESTAS: **ACTIVA**.
 
+Decisiones persistidas en `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`:
+
+#### PROC-01 — Registro canónico y ejecutable de procesos
+
+**APROBADA.**
+
+- Un único registro versionado en Git será la fuente técnica de verdad para la identidad y contrato de cada `PROC-*`.
+- Declarará, según el modelo de ejecución, nombre, dominio, estado, manual/Batch/automático/sistema, pool, adapter/capacidad requerida, planner, globalidad, concurrencia, core canónico y fuentes relevantes.
+- Los procesos especiales permanecen especiales de forma explícita; no se fuerzan al Batch común.
+- Planner, workers, UI técnica, labels y documentación deberán derivarse del registro o validarse contra él.
+- CI debe fallar ante process codes desconocidos, adapters/pools incompatibles, procesos no automáticos introducidos en planner o metadata contradictoria.
+- El registro no absorbe lógica funcional de Series, Personas, Novedades, PikoScore, etc.
+- No autoriza aún refactor funcional, cambios de Neon ni despliegues.
+
+
+
 ### SIGUIENTE PASO EXACTO
 
-Presentar al usuario **PROC-01 — Registro canónico y ejecutable de procesos**, para que código, workers, planner, Actividad y documentación compartan una única definición de cada `PROC-*` y CI detecte cualquier proceso/adaptador no registrado.
+Presentar al usuario **PROC-02 — Preflight de capacidades antes de encolar Batch**, para impedir materializar trabajo cuando el worker desplegado no puede ejecutar el proceso/adaptador requerido.
 
-No presentar PROC-02 hasta que PROC-01 quede persistida como APROBADA o RECHAZADA.
+No presentar PROC-03 hasta que PROC-02 quede persistida como APROBADA o RECHAZADA.
 
 ## Contexto funcional reciente ya cerrado
 
@@ -352,6 +368,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Innovaciones Punto 3: `docs/V5_INNOVATIONS_03_DATABASE.md`
 - Innovaciones aprobadas: `docs/ROADMAP_INNOVADOR.md`
 - Auditoría Punto 4: `docs/V5_AUDIT_04_PROCESSES_BATCH.md`
+- Decisiones Punto 4: `docs/V5_DECISIONS_04_PROCESSES_BATCH.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
 El Punto 4 está activo en `audit/v5-04-processes`. Su auditoría ya está cerrada; continuar por Fase 2 y persistir cada decisión antes de presentar la siguiente.
