@@ -191,3 +191,122 @@ Ambas capas son complementarias.
 ### Resultado esperado
 
 PikoFilm no volverá a crear un Batch masivo para una capacidad que el worker desplegado no puede ejecutar. Los fallos de incompatibilidad se detectan antes de crear la cola, con diagnóstico explícito y sin contaminar observabilidad con miles de errores evitables.
+
+
+---
+
+## PROC-03 — Política de reintentos por proceso y tipo de fallo
+
+**Estado: APROBADA.**
+
+### Problema que resuelve
+
+El Batch Engine común aplica hoy una política prácticamente uniforme:
+
+- máximo 3 intentos;
+- primer retry aproximadamente a las 6 horas;
+- siguientes intentos aproximadamente a las 24 horas.
+
+La auditoría confirma que esa simplicidad funciona, pero mezcla fallos con semánticas muy distintas: timeout/red, HTTP 429, cuota agotada, error permanente, estado funcional pendiente o incompatibilidad de capacidad.
+
+### Decisión
+
+V5 clasificará el motivo de fallo antes de decidir si, cuándo y cuántas veces reintentar un item Batch.
+
+El runtime común aplicará una política declarativa ligada al contrato PROC-01, con un default conservador y excepciones sólo cuando exista una necesidad real.
+
+### Clases mínimas de fallo
+
+Como base:
+
+- **TRANSIENT** — red, timeout, 5xx y equivalentes técnicamente recuperables;
+- **RATE_LIMIT** — 429 o throttling temporal;
+- **QUOTA** — cuota diaria/mensual agotada;
+- **PERMANENT** — error determinista que no mejorará repitiendo lo mismo;
+- **FUNCTIONAL_PENDING** — el proceso no puede completarse aún por una condición funcional, pero no existe fallo técnico;
+- **CAPABILITY** — worker/build incompatible; debe quedar prevenido por PROC-02 y no convertirse en retries por item.
+
+No se crearán decenas de categorías ni políticas arbitrarias.
+
+### Comportamiento esperado
+
+#### TRANSIENT
+
+Retry con backoff progresivo y acotado. El primer retry puede ser mucho más rápido que las 6 horas actuales cuando la fuente/proceso lo permita.
+
+#### RATE_LIMIT
+
+Respetar `Retry-After`, `blocked_until` y el circuit breaker ya existentes. No generar cientos de fallos/retries independientes mientras la fuente está explícitamente bloqueada.
+
+#### QUOTA
+
+Esperar hasta que la cuota vuelva a estar disponible según la gobernanza de la fuente. No consumir intentos inútilmente.
+
+#### PERMANENT
+
+No repetir automáticamente el mismo fallo hasta alcanzar un contador arbitrario. Terminar el item con diagnóstico funcional/técnico apropiado.
+
+#### FUNCTIONAL_PENDING
+
+No se trata como error técnico. La siguiente comprobación se programa por la regla de negocio del proceso.
+
+Ejemplo importante: disponibilidad/estreno de Series se vuelve a evaluar por sus reglas de frescura/margen, no mediante retries agresivos del item.
+
+#### CAPABILITY
+
+No se materializa el trabajo cuando PROC-02 detecta incompatibilidad. Un error residual de capacidad debe bloquear/escalar, no iniciar una cascada de retries.
+
+### Política por proceso
+
+PROC-01 podrá declarar ajustes sobre una política base, por ejemplo:
+
+- máximo de intentos para errores transitorios;
+- backoff;
+- ventanas de retry;
+- si una clase se transforma en revisión funcional;
+- sensibilidad especial del dominio.
+
+El objetivo no es que cada proceso tenga su propio algoritmo; los procesos comparten unas pocas políticas comunes y sólo ajustan lo necesario.
+
+### Integración con gobernanza API
+
+PROC-03 reutiliza, no sustituye:
+
+- leases de fuente;
+- límites diarios;
+- reserva manual/Batch;
+- circuit breaker;
+- `blocked_until`;
+- tratamiento de 429.
+
+La política de retry del item debe interpretar esos estados para no programar trabajo cuando la fuente ya declara que no está disponible.
+
+### Fuente canónica del intento
+
+Para Batch común, el intento pertenece al item:
+
+- `batch_run_items.attempt_count` es la fuente estructural;
+- `process_run_errors.retry_attempt` sirve de trazabilidad del error concreto.
+
+`process_runs.retry_count` no debe considerarse hoy una métrica canónica de retries Batch. Su retirada/deprecación se evaluará al implementar el modelo, sin autorizar ahora ninguna migración.
+
+### Series
+
+Series mantiene un criterio conservador:
+
+- fallo técnico recuperable → retry según política;
+- ausencia/disponibilidad aún no resoluble → siguiente comprobación funcional;
+- margen de 7 días, conciliación Plex↔TMDb y decisiones manuales no se alteran por PROC-03.
+
+### Límites
+
+- No convierte todos los fallos en retries rápidos.
+- No elimina límites de intentos.
+- No modifica reglas funcionales de dominio.
+- No sustituye el planner ni la gobernanza de APIs.
+- No autoriza cambios en producción, migraciones ni reintentos retroactivos.
+- La política final debe ser observable y explicable en Actividad/Operaciones.
+
+### Resultado esperado
+
+PikoFilm reintenta únicamente aquello que tiene sentido reintentar y espera el tiempo adecuado según la causa, reduciendo latencia de recuperación, llamadas inútiles y ruido operativo sin sacrificar seguridad.
