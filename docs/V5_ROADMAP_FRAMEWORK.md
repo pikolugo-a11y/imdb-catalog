@@ -195,7 +195,7 @@ Por tanto, esta revisión V5 y cualquier roadmap futuro deben respetar estas reg
 - Punto 2 — Rendimiento: **CERRADO — auditoría completada; 10/10 propuestas V5 aprobadas; 5 innovaciones revisadas; INNO-PERF-04 aprobada y registrada como INNO-02 — PikoFilm Native / Local-First** (`V5_AUDIT_02_PERFORMANCE.md`; `V5_DECISIONS_02_PERFORMANCE.md`; `V5_INNOVATIONS_02_PERFORMANCE.md`; `ROADMAP_INNOVADOR.md`)
 - Punto 3 — Base de datos y modelo de datos: **CERRADO — auditoría completada; 11/11 propuestas DB-01 a DB-11 aprobadas; 5/5 innovaciones revisadas y rechazadas** (`V5_AUDIT_03_DATABASE.md`; `V5_DECISIONS_03_DATABASE.md`; `V5_DECISIONS_03_DATABASE_03_PLUS.md`; `V5_INNOVATIONS_03_DATABASE.md`)
 - Punto 4 — Procesos automáticos y Batch: **CERRADO — auditoría completada; 10/10 propuestas PROC-01 a PROC-10 aprobadas; 5/5 innovaciones revisadas; INNO-PROC-02, INNO-PROC-03 e INNO-PROC-05 aprobadas como INNO-03, INNO-04 e INNO-05** (`V5_AUDIT_04_PROCESSES_BATCH.md`; `V5_DECISIONS_04_PROCESSES_BATCH.md`; `V5_INNOVATIONS_04_PROCESSES_BATCH.md`; `ROADMAP_INNOVADOR.md`)
-- Punto 5 — Observabilidad y errores: **FASE 1 CERRADA; Fase 2 CERRADA con OBS-01 a OBS-10 aprobadas; Fase 3 ACTIVA** (`V5_AUDIT_05_OBSERVABILITY_ERRORS.md`; `V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`; `V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`)
+- Punto 5 — Observabilidad y errores: **FASE 1 CERRADA; Fase 2 CERRADA con OBS-01 a OBS-10 aprobadas; Fase 3 ACTIVA; INNO-OBS-01 rechazada** (`V5_AUDIT_05_OBSERVABILITY_ERRORS.md`; `V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`; `V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`)
 - Punto 6 — Workers y servicios persistentes: **PENDIENTE**
 - Punto 7 — Integraciones externas: **PENDIENTE**
 - Punto 8 — Frontend y UX: **PENDIENTE**
