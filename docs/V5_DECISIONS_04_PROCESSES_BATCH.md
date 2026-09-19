@@ -713,3 +713,100 @@ La agregación no puede perder:
 ### Resultado esperado
 
 El planner escala por demanda significativa y no por cantidad de bloques futuros. Se mantiene la visibilidad del calendario, mejora la replanificación y se preserva la capacidad de repartir carga o provocar picos deliberados.
+
+
+---
+
+## PROC-08 — Concurrencia por entidad para Lifecycle
+
+**Estado: APROBADA.**
+
+### Problema que resuelve
+
+La auditoría detectó que la admisión/Lifecycle mantiene una protección global muy conservadora: un Lifecycle activo puede bloquear la entrada de otro título aunque ambas entidades sean independientes.
+
+La serialización protege consistencia, pero puede convertir un único título lento o problemático en cuello de botella para admisiones no relacionadas.
+
+### Decisión
+
+V5 moverá la exclusión de Lifecycle desde una serialización global por defecto hacia **exclusión por entidad o dependencia lógica real**, manteniendo locks globales únicamente donde exista una razón demostrada.
+
+La regla conceptual es:
+
+- dos ejecuciones sobre el mismo título/dependencia no compiten entre sí;
+- títulos independientes pueden avanzar en paralelo dentro de los límites seguros del pool y de las APIs.
+
+### Clave de exclusión
+
+PROC-01 podrá declarar el alcance de exclusión de cada proceso, por ejemplo:
+
+- `global`;
+- `entity`;
+- `resource` / dependencia compartida;
+- otro scope explícito que resulte necesario.
+
+Para Lifecycle, la clave natural será la identidad canónica de la entidad, normalmente `imdb_id`, siempre que la auditoría de writers confirme que es suficiente.
+
+### Garantía para la misma entidad
+
+Dos solicitudes concurrentes sobre el mismo título deben:
+
+- reutilizar el run activo;
+- adjuntarse/encadenarse a la continuación existente;
+- o devolver de forma explícita “ya en proceso”.
+
+Nunca deben crear dos pipelines funcionalmente contradictorios sobre la misma entidad.
+
+### Concurrencia controlada
+
+Aprobar PROC-08 no implica elevar indiscriminadamente la concurrencia.
+
+Siguen vigentes:
+
+- límites del pool;
+- gobernanza de APIs;
+- circuit breakers;
+- cuotas;
+- PROC-02 capability preflight;
+- locks adicionales en recursos verdaderamente compartidos.
+
+Puede haber varias entidades activas y, aun así, sólo unas pocas unidades ejecutándose simultáneamente.
+
+### Dependencias globales
+
+Antes de reducir un lock se deben revisar los writers del proceso.
+
+Si un paso concreto toca un recurso global que exige serialización, ese recurso mantiene su exclusión específica. El objetivo es bloquear la dependencia real, no toda la tubería por defecto.
+
+### Aplicación selectiva
+
+PROC-08 no se extiende automáticamente a cualquier proceso.
+
+Pueden seguir siendo globales/serializados:
+
+- sincronizaciones Plex globales;
+- rebuilds globales;
+- operaciones administrativas sobre estado compartido;
+- cualquier proceso cuyo contrato PROC-01 declare scope global.
+
+### Validación obligatoria
+
+La implementación futura requiere:
+
+- inventario de writers;
+- tests de carreras/concurrencia;
+- idempotencia;
+- pruebas en entorno seguro;
+- límites conservadores iniciales;
+- capacidad de volver temporalmente a serialización global si se detecta divergencia.
+
+### Límites
+
+- No cambia ahora la concurrencia de producción.
+- No autoriza modificaciones de Neon.
+- No elimina protecciones de identidad, Lifecycle o catálogo.
+- No asume que todas las entidades sean independientes: esa independencia debe demostrarse por proceso/dependencia.
+
+### Resultado esperado
+
+Un título lento o problemático deja de bloquear trabajos independientes. PikoFilm serializa sólo aquello que realmente comparte estado y conserva idempotencia estricta sobre la misma entidad.
