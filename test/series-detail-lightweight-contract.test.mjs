@@ -52,3 +52,19 @@ test('la ampliación doble a triple usa evidencia mínima del episodio anterior'
   assert.match(page,/Ampliar a capítulo triple/);
   assert.doesNotMatch(page,/combinedByEpisode/);
 });
+
+
+test('episodios sin fecha TMDb no son exigibles ni pendientes de disponibilidad',()=>{
+  const query=read('lib/series-detail-query.js');
+  const list=read('lib/series-quality-query.js');
+  const lifecycle=read('lib/lifecycle-recompute-core.mjs');
+  const page=read('app/calidad/series/[ratingKey]/page.js');
+  assert.match(query,/air_date IS NULL THEN 'date_pending'/);
+  assert.match(query,/air_date IS NOT NULL AND air_date<=CURRENT_DATE/);
+  assert.match(query,/air_date IS NULL OR air_date>CURRENT_DATE/);
+  assert.match(list,/episode_pending_premiere FROM series_episode_effective_status/);
+  assert.match(list,/e\.air_date IS NULL OR e\.air_date>CURRENT_DATE/);
+  assert.match(lifecycle,/e\.air_date IS NOT NULL AND e\.air_date<=CURRENT_DATE/);
+  assert.match(page,/Sin fecha de estreno/);
+  assert.match(page,/No exigible aún/);
+});
