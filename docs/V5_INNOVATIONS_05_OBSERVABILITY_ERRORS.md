@@ -104,3 +104,20 @@ Detectar automáticamente desviaciones relevantes respecto al comportamiento nor
 **RECHAZADA por el usuario.**
 
 No se añade a `docs/ROADMAP_INNOVADOR.md` y no queda como backlog implícito.
+
+
+---
+
+## INNO-OBS-04 — PikoFilm Blast Shield
+
+**Estado: RECHAZADA.**
+
+### Idea revisada
+
+Aislar automáticamente sólo el proceso, fuente, adapter, worker, build o scope concreto que demuestra estar fallando, permitiendo que el resto de PikoFilm continúe y evitando cascadas de errores repetidos.
+
+### Decisión
+
+**RECHAZADA por el usuario.**
+
+No se añade a `docs/ROADMAP_INNOVADOR.md` y no queda como backlog implícito.
