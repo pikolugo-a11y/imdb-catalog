@@ -930,6 +930,28 @@ Estado:
 - sin migraciones ni mutaciones directas de datos;
 - WKR-13 sigue **PENDIENTE DE DECISIÓN**.
 
+### CAMBIO FUNCIONAL INTERCALADO — Novedades Plex: dedupe por rating key ya catalogado
+
+Tras una sincronización Plex exitosa, `El retorno de D'Artacán` volvió a aparecer en Novedades aunque ya estaba catalogado como TMDb-only.
+
+Causa confirmada:
+- ficha canónica: `tt990049053057052052056`, TMDb `68370`, Plex rating key `159448`;
+- Plex empezó a publicar además IMDb `tt0891408` para ese mismo rating key;
+- NOV-008 sólo comprobaba si ese IMDb concreto existía en `movies`, por lo que creó candidato nuevo `tt0891408`;
+- la barrera previa por TMDb-only no aplicaba porque el nuevo candidato ya llegaba como identidad IMDb normal.
+
+Corrección:
+- PR **#576** — **MERGEADA**;
+- CI **#752 — SUCCESS**;
+- merge en `main`: `6f9f4d512d277bd02b64638b0d4bb39486f9adc9`;
+- NOV-008 excluye items Plex cuyo `rating_key` ya esté enlazado en `plex_catalog_status`;
+- intake canónico Plex deduplica también por `rating_key`;
+- Novedades oculta candidatos Plex antiguos cuyo rating key ya pertenezca al catálogo;
+- NOV-007 impide admisión duplicada por rating key aunque exista candidato viejo;
+- NOV-008 autocierra candidatos antiguos relacionados como `catalogued`, conservando trazabilidad;
+- sin migraciones ni mutaciones directas manuales de Production;
+- WKR-13 sigue **PENDIENTE DE DECISIÓN**.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-13**. WKR-12 ya está **APROBADA y persistida**.
