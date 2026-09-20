@@ -15,7 +15,7 @@ test('la revisión de nombres agrupa por serie y no baja al detalle de capítulo
 });
 
 test('el formato esperado es NOMBRE SERIE - 01x01 - NOMBRE CAPÍTULO.ext',()=>{
-  assert.match(query,/!~ '\^\.\+ - \[0-9\]\{1,2\}x\[0-9\]\{1,3\} - \.\+\\\\\.\[\^\.\]\+\$'/);
+  assert.match(query,/substring\(f\.file_path from '\^\.\+ - \[0-9\]\{1,2\}x\[0-9\]\{1,3\} - \.\+\[\.\]\[\^\.\]\+'\) IS DISTINCT FROM f\.file_path/);
   assert.match(page,/NOMBRE SERIE - 01x01 - NOMBRE CAPÍTULO\.ext/);
 });
 
