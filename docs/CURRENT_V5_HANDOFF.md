@@ -1029,7 +1029,7 @@ Protección permanente:
 - recalcula lifecycle tras la limpieza;
 - conserva plex_items históricos.
 
-WKR-13 continúa PENDIENTE DE DECISIÓN.
+WKR-13 quedó APROBADA y persistida.
 
 ### CAMBIO FUNCIONAL INTERCALADO — Advertencia de capítulos con varios archivos físicos
 
@@ -1052,7 +1052,7 @@ Datos medidos al definirlo:
 - 54.793 archivos físicos;
 - 508 episodios con 2+ archivos agrupados por Plex.
 
-WKR-13 continúa PENDIENTE DE DECISIÓN.
+WKR-13 quedó APROBADA y persistida.
 
 ### CAMBIO FUNCIONAL INTERCALADO — Advertencia de series con nombres de archivo fuera de formato
 
@@ -1078,11 +1078,26 @@ Datos medidos al definirlo:
 - 5.931 archivos fuera de formato;
 - 54.793 archivos físicos de episodios analizados.
 
-WKR-13 continúa PENDIENTE DE DECISIÓN.
+WKR-13 quedó APROBADA y persistida.
+
+### WKR-13 — Concurrencia gobernada por workload
+
+**APROBADA.**
+
+- La concurrencia efectiva se limita por proceso/workload, no sólo por slots físicos del worker.
+- Cada workload puede declarar un techo inferior según Neon, Plex, APIs externas, CPU/memoria, duración, rate limits, recovery e interferencia.
+- El runtime aplica backpressure y no libera cientos de items sólo porque exista capacidad física.
+- Operaciones podrá mostrar capacidad física, límite efectivo, slots ocupados/disponibles y cola pendiente.
+- No introduce autoscaling, réplicas nuevas ni ML; una réplica por servicio sigue siendo suficiente mientras los datos lo respalden.
+- Invariante: la capacidad física nunca autoriza por sí sola una concurrencia insegura.
+
+### ESTADO ACTUAL PUNTO 6
+
+La Fase 2 queda **COMPLETADA**: WKR-01 a WKR-13 han sido revisadas individualmente, todas APROBADAS y persistidas.
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar **WKR-13**. WKR-12 ya está **APROBADA y persistida**.
+Iniciar **Fase 3 — Road Map Innovador** del Punto 6. Presentar **INNO-WKR-01** y mantener el mismo gate: cada innovación debe quedar APROBADA o RECHAZADA y persistida antes de presentar la siguiente.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
