@@ -728,6 +728,16 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Un crash con trabajo activo sigue recuperándose mediante expiración de lease y PROC-03/Batch Engine; no se crea recovery paralelo.
 - No fija todavía números del budget ni cambia Railway Production, réplicas, retries funcionales o Neon.
 
+#### WKR-07 — Deploy selectivo real por impacto de runtime
+
+**APROBADA.**
+
+- Railway debe redeplegar sólo los runtimes realmente afectados por un cambio.
+- El impacto se basa en un mapa verificable de dependencias, no sólo en carpetas.
+- Documentación/tests sin efecto runtime no deben reiniciar workers.
+- Ante incertidumbre, comportamiento conservador: ampliar deploy antes que arriesgar incompatibilidad.
+- Se integra con PROC-10, WKR-05, WKR-06 y WKR-01.
+
 ### INCIDENCIA INTERCALADA — Plex SER-001
 
 Mientras WKR-06 estaba presentada pero todavía **sin decisión**, el usuario pidió revisar un fallo real de sincronización Plex.
@@ -766,7 +776,7 @@ Estado:
 - fuente principal: `movie_countries + countries`, con fallback de compatibilidad a `movies.country`;
 - Neon sólo se consultó en lectura; no hubo migraciones ni mutaciones;
 - Vercel Production no fue desplegado por el asistente.
-- WKR-07 sigue **PENDIENTE DE DECISIÓN**; no se aprobó ni rechazó durante este cambio.
+- WKR-07 quedó **APROBADA y persistida**; no se aprobó ni rechazó durante este cambio.
 
 ### CAMBIO FUNCIONAL INTERCALADO — Corrección de tipo + TMDb solo en Identidad
 
@@ -785,7 +795,7 @@ Estado:
 - los refrescos preservan Miniserie;
 - no hubo migraciones ni mutaciones manuales de datos;
 - Vercel Production no fue desplegado por el asistente;
-- WKR-07 sigue **PENDIENTE DE DECISIÓN**.
+- WKR-07 quedó **APROBADA y persistida**.
 
 ### CAMBIO FUNCIONAL INTERCALADO — Reparación de enlaces Plex para TMDb-only
 
@@ -803,7 +813,7 @@ Estado:
 - comprobación real read-only: Will y Grace (2017), TMDb 74321, resuelve a Plex rating_key 156955;
 - sin migraciones ni mutaciones manuales de Neon;
 - Vercel Production no fue desplegado por el asistente;
-- WKR-07 sigue **PENDIENTE DE DECISIÓN**.
+- WKR-07 quedó **APROBADA y persistida**.
 
 ### CAMBIO FUNCIONAL INTERCALADO — TMDb-only: Datos + deduplicación Plex
 
@@ -828,7 +838,7 @@ Estado:
 - verificación final: 1 sola obra TMDb-only con `tmdb_id=74321`, 0 residuos de la ficha duplicada en tablas canónicas, 1 referencia de serie activa, 52 episodios oficiales y Lifecycle `COMPLETE`;
 - sin migraciones ni mutaciones manuales de Neon;
 - Vercel Production no fue desplegado por el asistente;
-- WKR-07 sigue **PENDIENTE DE DECISIÓN**.
+- WKR-07 quedó **APROBADA y persistida**.
 
 ### CAMBIO FUNCIONAL INTERCALADO — Series sin fecha TMDb no exigibles
 
@@ -849,11 +859,11 @@ Estado:
 - validación read-only en Héroes de Guardia T2: 8 ausentes físicos, 0 exigibles, 0 pendientes España, 8 no exigibles aún;
 - sin migraciones ni mutaciones de datos;
 - Vercel Production no fue desplegado por el asistente;
-- WKR-07 sigue **PENDIENTE DE DECISIÓN**.
+- WKR-07 quedó **APROBADA y persistida**.
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar **WKR-07**. WKR-06 ya está **APROBADA y persistida**.
+Presentar **WKR-08**. WKR-07 ya está **APROBADA y persistida**.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
