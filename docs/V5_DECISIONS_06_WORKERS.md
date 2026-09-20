@@ -572,3 +572,55 @@ Esta aprobación:
 ### Invariante
 
 > Un cambio sólo debe reiniciar los runtimes que realmente puedan verse afectados; cuando el impacto no pueda demostrarse con seguridad, PikoFilm debe preferir el deploy conservador antes que dejar servicios incompatibles.
+
+---
+
+## WKR-08 — CI valida los runtimes reales de Railway
+
+**APROBADA.**
+
+### Decisión
+
+El CI de PikoFilm debe validar los runtimes reales que se despliegan en Railway, en lugar de asumir que una validación genérica en una sola versión de Node representa correctamente a todos los workers.
+
+### Alcance
+
+Para cada runtime afectado por un cambio, CI debe poder validar como mínimo:
+
+- build de su Dockerfile real;
+- versión Node efectiva;
+- imports y compatibilidad ESM/CommonJS;
+- arranque básico del worker;
+- adapters/capabilities esperadas;
+- variables de entorno obligatorias comprobables sin secretos reales;
+- errores de sintaxis o incompatibilidades específicas del runtime.
+
+### Integración con WKR-07
+
+El selective deploy y el selective validation comparten el mismo mapa de impacto:
+
+- Plex afectado → validar runtime Plex;
+- API afectada → validar runtime API;
+- FAST afectado → validar runtime FAST;
+- Technical afectado → validar runtime Technical;
+- código compartido → validar todos los runtimes consumidores;
+- documentación/tests sin efecto runtime → no construir imágenes Railway;
+- ante duda sobre impacto → ampliar validación de forma conservadora.
+
+### Objetivo
+
+Evitar estados en los que GitHub CI esté verde pero Railway falle después por diferencias reales de Node, Docker, módulos o arranque.
+
+### Límites
+
+Esta aprobación:
+
+- no obliga todavía a homogeneizar versiones Node;
+- no ejecuta procesos funcionales contra Production;
+- no requiere secretos reales en CI;
+- no sustituye tests unitarios/contratos ya existentes;
+- no define todavía la implementación final del mapa de impacto.
+
+### Invariante
+
+> El código que puede desplegarse en un runtime Railway debe validarse en CI con un entorno equivalente al runtime real que lo ejecutará.
