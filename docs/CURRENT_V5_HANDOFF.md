@@ -983,6 +983,54 @@ Resultado final validado en Neon:
 - synthetic_movie = 0;
 - lifecycle/read model = `TECH_PENDING`.
 
+### CAMBIO FUNCIONAL INTERCALADO — Blindaje SER-001 + limpieza de rating keys obsoletos
+
+Antes de ejecutar Calidad → Series → Actualizar Plex se hizo auditoría preventiva y se encontraron dos riesgos reales.
+
+1. **Timeout/lease SER-001**:
+- SER-001 conservaba 45/60/90 s para inventarios pesados;
+- existía evidencia real de ejecución parcial por timeout y otra ejecución correcta de ~370 s;
+- PR **#577** — MERGEADA;
+- CI **#754 — SUCCESS**;
+- main: `4e4469b9d9eabfb9fb424be3a432f4fc3d0bfa72`;
+- inventarios pesados pasan a 1000 s por intento;
+- requests pequeños mantienen 45/60/90 s;
+- heartbeat periódico mantiene viva la lease durante requests largos;
+- SER-001/SER-002 consumen 3 intentos seguidos sin backoff 6 h / 24 h.
+
+2. **Referencias antiguas por cambio de Plex rating_key**:
+- detectadas 3 referencias antiguas inactivas con reemplazo activo para el mismo IMDb:
+  - Colegio Abbott: 136286 → 159286;
+  - La maldición de Bly Manor: 148417 → 158814;
+  - La maldición de Hill House: 156476 → 158802;
+- limpieza de Production autorizada y ejecutada:
+  - 3 series_reference;
+  - 112 series_reference_episodes;
+  - 112 series_diagnostics;
+  - 8 series_season_availability;
+  - 0 overrides manuales;
+  - plex_items históricos se conservaron;
+- tras limpieza: 0 stale refs con reemplazo activo;
+- Hill House corrigió lifecycle SERIES_REVIEW → TECH_PENDING;
+- Bly Manor TECH_PENDING;
+- Colegio Abbott sigue SERIES_REVIEW por 85 faltantes reales.
+
+Protección permanente:
+- PR **#578** — MERGEADA;
+- CI **#756 — SUCCESS**;
+- main: `d2b6bceaa2645ab53297819ec16062473f14ab49`;
+- SER-001 retira automáticamente una referencia vieja sólo si:
+  - show viejo inactivo;
+  - 0 episodios Plex activos bajo la clave vieja;
+  - 0 overrides manuales;
+  - plex_catalog_status apunta a otro rating_key;
+  - el reemplazo está activo;
+  - existe series_reference activa del mismo IMDb;
+- recalcula lifecycle tras la limpieza;
+- conserva plex_items históricos.
+
+WKR-13 continúa PENDIENTE DE DECISIÓN.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-13**. WKR-12 ya está **APROBADA y persistida**.
