@@ -1122,9 +1122,16 @@ Validación pendiente de ejecución real:
 - comprobar que American Horror Story deja de mostrar esos 4 agrupados si Plex ya tiene un único archivo por episodio;
 - comprobar también que disminuyen automáticamente las advertencias de nombres corregidos.
 
-Fase 3 del Punto 6 sigue activa. INNO-WKR-01 está RECHAZADA y persistida. INNO-WKR-02 sigue pendiente de decisión.
+Fase 3 del Punto 6 quedó COMPLETADA. INNO-WKR-01/02/03 fueron RECHAZADAS; INNO-WKR-04 Local Core e INNO-WKR-05 Split Execution quedaron APROBADAS PARA ESTUDIAR como INNO-07 e INNO-08.
+
+### CIERRE DEL PUNTO 6
+
+**CERRADO.** Auditoría completa + WKR-01 a WKR-13 aprobadas + 5 innovaciones válidas revisadas individualmente. INNO-WKR-04 e INNO-WKR-05 se incorporaron al Road Map Innovador como INNO-07 e INNO-08.
 
 ### SIGUIENTE PASO EXACTO
+
+Abrir **Punto 7 — Integraciones externas** en una nueva rama de auditoría. Ejecutar primero la **Fase 1 — auditoría completa, profunda y extremadamente detallada** de Plex, TMDb, IMDb/fuentes externas, Watchmode, OMDb, MDBList y demás integraciones reales. Persistir la auditoría antes de presentar propuestas V5.
+
 
 Fase 3 — Road Map Innovador ACTIVA. **INNO-WKR-01, INNO-WKR-02 e INNO-WKR-03 están RECHAZADAS y persistidas**. **INNO-WKR-04 — PikoFilm Job Mode: RETIRADA por duplicada y no cuenta para las 5 innovaciones mínimas**. La nueva **INNO-WKR-04 — PikoFilm Local Core está APROBADA PARA ESTUDIAR**, incorporada al Road Map Innovador como **INNO-07**; estudia eliminar Railway y mover los workers a un único runtime local junto a Plex, sin autorizar ninguna migración. Presentar **INNO-WKR-05**. El usuario exige innovaciones estructurales realmente rompedoras, no extensiones menores de WKR-01..WKR-13.
 
