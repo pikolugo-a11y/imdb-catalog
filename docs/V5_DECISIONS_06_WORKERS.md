@@ -796,3 +796,64 @@ Esta aprobación:
 ### Invariante
 
 > El wake hint puede acelerar el trabajo, pero su pérdida nunca puede provocar pérdida, bloqueo indefinido ni inconsistencia de trabajo.
+
+---
+
+## WKR-12 — Suspensión física sólo cuando wake/recovery estén demostrados
+
+**APROBADA.**
+
+### Decisión
+
+PikoFilm preparará sus workers para poder entrar en suspensión física o scale-to-zero cuando exista beneficio material, pero no activará ese comportamiento hasta demostrar previamente wake, recovery, observabilidad y tiempos de arranque seguros.
+
+### Precondiciones
+
+Antes de suspender físicamente un pool deben estar funcionando y validadas:
+
+- WKR-01: presencia/version/capabilities vigentes;
+- WKR-02: idle/backoff adaptativo;
+- WKR-11: wake hint fiable con polling como respaldo;
+- recovery por leases y retries existente;
+- Operaciones capaz de distinguir dormido de UNAVAILABLE.
+
+### Despliegue gradual
+
+La suspensión real se evaluará pool por pool.
+
+Technical es el candidato natural para una primera prueba porque puede permanecer funcionalmente detenido durante largos periodos.
+
+API, FAST y Plex sólo se evaluarán después si los datos reales demuestran beneficio y la latencia de wake es aceptable.
+
+### Pruebas obligatorias
+
+Antes de activar suspensión real debe demostrarse al menos:
+
+- que nuevo trabajo despierta el servicio;
+- que un wake perdido sigue recuperándose;
+- que deploy/restart no pierde demanda;
+- que el arranque ocurre dentro de una latencia aceptable;
+- que no se rompen leases, drains ni retries;
+- que Operaciones representa correctamente el estado dormido.
+
+### Criterio económico
+
+No se añadirá complejidad operacional únicamente para obtener un ahorro irrelevante. El beneficio real se contrastará en el Punto 14 — Coste.
+
+### Frontera Neon
+
+Esta decisión no modifica el autosuspend de Neon. Neon Production mantiene una decisión separada de compute y coste.
+
+### Límites
+
+Esta aprobación:
+
+- no activa Railway sleep/serverless ahora;
+- no autoriza scale-to-zero en Production;
+- no cambia autosuspend de Neon;
+- no obliga a que todos los pools puedan dormir;
+- no añade una nueva plataforma.
+
+### Invariante
+
+> Ningún worker debe apagarse físicamente mientras PikoFilm no pueda demostrar que la demanda durable lo despertará o será recuperada de forma segura, observable y con latencia aceptable.
