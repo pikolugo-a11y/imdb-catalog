@@ -1031,6 +1031,29 @@ Protección permanente:
 
 WKR-13 continúa PENDIENTE DE DECISIÓN.
 
+### CAMBIO FUNCIONAL INTERCALADO — Advertencia de capítulos con varios archivos físicos
+
+El usuario pidió que Calidad → Series informe de **todos** los episodios que Plex agrupa con 2 o más archivos físicos, sin que PikoFilm filtre, clasifique ni decida cuál conservar.
+
+Implementación:
+- PR **#579** — MERGEADA;
+- CI **#758 — SUCCESS**;
+- main: `c582326e48ffb0e8469392f9f3e20b43d820daaf`;
+- nueva zona `Advertencias de organización → Capítulos agrupados por Plex`;
+- incluye todo episodio activo con `count(plex_files)>1`, sin filtrar por calidad, formato, tamaño, duración ni nombre;
+- muestra serie, Txx Exx, título y todos los archivos físicos;
+- por archivo muestra nombre, tamaño, duración y contenedor;
+- paginación de 50 casos para proteger rendimiento;
+- no ofrece borrado ni recomendación automática;
+- sin migraciones ni mutaciones de datos.
+
+Datos medidos al definirlo:
+- 54.155 episodios activos, todos con fichero conocido;
+- 54.793 archivos físicos;
+- 508 episodios con 2+ archivos agrupados por Plex.
+
+WKR-13 continúa PENDIENTE DE DECISIÓN.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-13**. WKR-12 ya está **APROBADA y persistida**.
