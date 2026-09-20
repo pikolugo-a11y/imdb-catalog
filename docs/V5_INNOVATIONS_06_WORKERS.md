@@ -74,3 +74,27 @@ El usuario la rechaza. No se incorpora al Road Map Innovador.
 ### Decisión
 
 No se añade a `docs/ROADMAP_INNOVADOR.md`.
+
+
+---
+
+## INNO-WKR-04 — PikoFilm Job Mode
+
+**RETIRADA — DUPLICADA CON V5. No cuenta para las 5 innovaciones mínimas.**
+
+### Motivo
+
+La propuesta planteaba que los workers arrancasen bajo demanda, procesasen su cola, drenasen y se apagasen al quedar ociosos.
+
+Tras contrastarla con las decisiones ya aprobadas del Punto 6, no constituye una innovación separada:
+
+- WKR-02 ya define idle adaptativo y reducción de polling;
+- WKR-05 ya define drain seguro antes de detener un worker;
+- WKR-11 ya define wake hint productor→worker;
+- WKR-12 ya prepara suspensión física/scale-to-zero por pool una vez demostrados wake, recovery, observabilidad y latencia de arranque.
+
+La diferencia de convertir ese patrón en el comportamiento por defecto de todos los pools es una decisión de implementación/alcance dentro de WKR-12, no una apuesta innovadora independiente.
+
+### Decisión
+
+Se retira de la ronda y no se incorpora a `docs/ROADMAP_INNOVADOR.md`. Debe presentarse una nueva INNO-WKR-04 realmente distinta.
