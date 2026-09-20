@@ -1054,6 +1054,32 @@ Datos medidos al definirlo:
 
 WKR-13 continúa PENDIENTE DE DECISIÓN.
 
+### CAMBIO FUNCIONAL INTERCALADO — Advertencia de series con nombres de archivo fuera de formato
+
+El usuario pidió una segunda zona de organización en Calidad → Series para detectar **qué series** tienen episodios cuyos archivos no siguen la estructura esperada, sin mostrar el detalle capítulo a capítulo.
+
+Formato esperado:
+- `NOMBRE SERIE - 01x01 - NOMBRE CAPÍTULO.ext`.
+
+Implementación:
+- PR **#580** — MERGEADA;
+- CI final **#763 — SUCCESS**;
+- main: `2eb766622aa3639c646b012553cb67759e40c14e`;
+- nueva advertencia `Series con nombres a revisar`;
+- muestra **una única fila por serie**;
+- no muestra capítulos ni nombres de fichero;
+- muestra nº de archivos fuera de formato y nº total de archivos de episodios de la serie;
+- ordena por mayor nº de archivos fuera de formato;
+- paginación de 50 series;
+- sin migraciones ni mutaciones de datos.
+
+Datos medidos al definirlo:
+- 247 series necesitan revisión;
+- 5.931 archivos fuera de formato;
+- 54.793 archivos físicos de episodios analizados.
+
+WKR-13 continúa PENDIENTE DE DECISIÓN.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-13**. WKR-12 ya está **APROBADA y persistida**.
