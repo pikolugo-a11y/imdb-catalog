@@ -624,3 +624,53 @@ Esta aprobación:
 ### Invariante
 
 > El código que puede desplegarse en un runtime Railway debe validarse en CI con un entorno equivalente al runtime real que lo ejecutará.
+
+---
+
+## WKR-09 — Contrato único de runtime Node y módulos ESM
+
+**APROBADA.**
+
+### Decisión
+
+PikoFilm debe declarar explícitamente el runtime Node y el modelo de módulos esperado por cada worker, reduciendo diversidad cuando no aporte valor técnico y eliminando ambigüedades ESM/CommonJS.
+
+### Runtime Node
+
+- se definirá una versión Node objetivo común para los workers compatibles;
+- una versión distinta sólo se mantendrá cuando exista una razón técnica real y documentada;
+- los upgrades de Node serán explícitos, versionados y validados antes de producción;
+- ningún cambio de imagen Docker podrá alterar accidentalmente la versión Node efectiva.
+
+### Módulos
+
+Cada runtime debe tener un contrato claro y coherente de módulos:
+
+- package.json;
+- extensiones .mjs/.cjs cuando correspondan;
+- imports/exports;
+- loaders o flags sólo cuando sean realmente necesarios;
+- ausencia de ambigüedad que provoque MODULE_TYPELESS_PACKAGE_JSON.
+
+Los warnings estructurales de módulos no deben aceptarse como ruido normal si Railway los clasifica como errores.
+
+### Integración con WKR-08
+
+CI debe comprobar el runtime declarado de cada servicio afectado y detectar incompatibilidades de Node, imports, ESM/CommonJS o arranque antes del merge.
+
+### Objetivo
+
+Reducir diferencias de comportamiento entre API, FAST, Plex y Technical y evitar fallos que sólo aparecen porque el mismo código se ejecuta bajo versiones Node o reglas de módulos distintas.
+
+### Límites
+
+Esta aprobación:
+
+- no obliga a que los cuatro servicios terminen necesariamente en la misma versión Node;
+- no fija todavía cuál será la versión objetivo;
+- no autoriza cambios inmediatos de imágenes Docker en Production;
+- no sustituye las validaciones específicas de cada runtime.
+
+### Invariante
+
+> Cada worker debe ejecutar sobre un runtime Node y un modelo de módulos explícitos, versionados y reproducibles; la diversidad sólo se conserva cuando existe una razón técnica demostrable.
