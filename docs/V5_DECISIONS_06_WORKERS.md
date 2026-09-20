@@ -674,3 +674,66 @@ Esta aprobación:
 ### Invariante
 
 > Cada worker debe ejecutar sobre un runtime Node y un modelo de módulos explícitos, versionados y reproducibles; la diversidad sólo se conserva cuando existe una razón técnica demostrable.
+
+---
+
+## WKR-10 — Estado real de workers visible en Operaciones
+
+**APROBADA.**
+
+### Decisión
+
+Operaciones debe ser la superficie canónica de PikoFilm para entender el estado funcional de los workers, apoyándose en el contrato durable de presencia de WKR-01 y sin duplicar innecesariamente la observabilidad propia de Railway.
+
+### Información mínima por worker/pool
+
+- estado operativo: STARTING / READY / BUSY / DRAINING / UNAVAILABLE;
+- versión/build desplegado;
+- heartbeat o última señal vigente;
+- capacidad y concurrencia declaradas;
+- adapters/procesos/capabilities disponibles;
+- trabajo activo actual;
+- demanda/cola pendiente para ese pool;
+- estado de idle/backoff cuando aplique;
+- drain activo y motivo;
+- último restart/crash relevante;
+- incompatibilidad de versión/capability si existe.
+
+### Separación fundamental
+
+Operaciones debe distinguir estado del worker y estado del trabajo.
+
+Ejemplo:
+
+- READY + 0 trabajos = estado sano;
+- trabajo pendiente + 0 workers READY = incidencia operativa;
+- Technical stopped funcionalmente + runtime READY = estado sano, no error.
+
+### Frontera con Railway
+
+PikoFilm no intentará replicar todo Railway.
+
+CPU, memoria, build logs completos, métricas de infraestructura y administración del servicio siguen perteneciendo a Railway.
+
+Operaciones muestra únicamente el estado funcional necesario para administrar PikoFilm y explicar por qué el trabajo puede o no ejecutarse.
+
+### Integración
+
+- WKR-01 aporta presencia/version/capabilities;
+- WKR-05 aporta DRAINING y motivo;
+- WKR-06 aporta restart/fallo fatal y UNAVAILABLE;
+- WKR-02 aporta idle/backoff;
+- OBS-01/OBS-07 aportan semántica de señal útil sin ruido.
+
+### Límites
+
+Esta aprobación:
+
+- no convierte Operaciones en una copia de Railway;
+- no exige replicar logs completos de infraestructura;
+- no define todavía el diseño visual final;
+- no modifica número de workers ni topología.
+
+### Invariante
+
+> PikoFilm debe poder explicar desde Operaciones si cada worker está disponible para ejecutar trabajo y por qué, sin inferirlo a partir de la existencia de runs ni obligar al usuario a correlacionar manualmente Neon y Railway.
