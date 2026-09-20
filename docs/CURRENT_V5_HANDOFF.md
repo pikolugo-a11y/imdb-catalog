@@ -952,6 +952,37 @@ Corrección:
 - sin migraciones ni mutaciones directas manuales de Production;
 - WKR-13 sigue **PENDIENTE DE DECISIÓN**.
 
+### LIMPIEZA CONTROLADA — Upgrade de identidad TMDb-only a IMDb real · El retorno de D'Artacán
+
+Tras el fix de dedupe por rating key, se autorizó una limpieza transaccional de Production para fusionar las dos fichas existentes del mismo título.
+
+Canónica final:
+- IMDb real: `tt0891408`;
+- TMDb: `68370`;
+- Plex rating key: `159448`;
+- tipo: Serie;
+- conserva ratings/PikoScore de la ficha real;
+- conserva referencia oficial TMDb/TVDb y los 26 episodios de la ficha TMDb-only;
+- créditos consolidados: 17;
+- Plex enlazado una sola vez;
+- lifecycle final: `TECH_PENDING`, coherente con 26 episodios pendientes de PikoQuality.
+
+Ficha sintética retirada:
+- antiguo ID técnico: `tt990049053057052052056`;
+- eliminada de `movies` y dependencias operativas;
+- sólo permanece un registro en `catalog_candidates` como trazabilidad, marcado `catalogued`, `deduplicatedTo=tt0891408` y `deduplicatedBy=identity_upgrade_real_imdb`;
+- auditoría global de todas las tablas base con `imdb_id`: ningún otro residuo del ID sintético.
+
+Resultado final validado en Neon:
+- `movies` para TMDb 68370 = 1;
+- ratings = 3;
+- créditos = 17;
+- series_reference = 1;
+- episodios oficiales = 26;
+- plex_link = 1;
+- synthetic_movie = 0;
+- lifecycle/read model = `TECH_PENDING`.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-13**. WKR-12 ya está **APROBADA y persistida**.
