@@ -29,3 +29,31 @@ No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
 ### Invariante derivada
 
 > Una innovación de infraestructura sólo merece entrar en el Road Map Innovador cuando ofrece una mejora comprensible y material para PikoFilm, no únicamente una arquitectura más genérica.
+
+
+---
+
+## INNO-WKR-02 — PikoFilm Burst Mode
+
+**RECHAZADA.**
+
+### Motivo
+
+La propuesta planteaba aumentar temporalmente el número de workers ante picos extraordinarios de backlog y volver después a una sola réplica.
+
+Se rechaza porque PikoFilm es una aplicación personal con un catálogo de unas 20.000 películas y el volumen real esperado no justifica diseñar autoescalado para escenarios artificiales de miles o decenas de miles de trabajos simultáneos.
+
+En este contexto:
+
+- una réplica por servicio tiene capacidad suficiente según la auditoría real;
+- WKR-13 ya gobierna correctamente la concurrencia segura;
+- añadir autoescalado introduce complejidad operacional y potencial coste sin una necesidad demostrada;
+- un sistema personal debe priorizar simplicidad, fiabilidad y eficiencia sobre elasticidad pensada para plataformas multiusuario.
+
+### Decisión
+
+No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
+
+### Invariante derivada
+
+> Las innovaciones de infraestructura deben dimensionarse para el producto real: PikoFilm es una aplicación personal y no debe diseñarse como una plataforma SaaS masiva sin una necesidad concreta.
