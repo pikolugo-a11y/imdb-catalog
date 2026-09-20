@@ -38,8 +38,8 @@ test('SER-001 conserva un único core funcional para el worker',()=>{
 
 test('SER-001 conserva altas cambios bajas de series e invalidación segura',()=>{assert.match(sync,/item_type='show'/);assert.match(sync,/plex_invalidated_at=now\(\)/);assert.match(sync,/show_fingerprint_changed/);assert.match(sync,/active=false/);assert.doesNotMatch(sync,/syncPlexSeriesDetail\(.*syncPlexSeriesFastCore/s);assert.doesNotMatch(sync,/refreshSeriesUnitary|confirmSeriesEsAvailability/)});
 
-test('inventario global ligero pagina Plex con concurrencia acotada',()=>{
-  assert.match(sync,/type=4&includeGuids=0&includeMedia=0/);
+test('inventario global pagina Plex con media física y concurrencia acotada',()=>{
+  assert.match(sync,/type=4&includeGuids=0&includeMedia=1/);
   assert.match(sync,/EPISODE_PAGE_SIZE=5000/);
   assert.match(sync,/EPISODE_PAGE_CONCURRENCY=.*\|\|3,6/);
   assert.match(sync,/starts\.slice\(pos,pos\+EPISODE_PAGE_CONCURRENCY\)/);
@@ -48,7 +48,7 @@ test('inventario global ligero pagina Plex con concurrencia acotada',()=>{
   assert.match(sync,/planEpisodeInventoryDiff/);
 });
 
-test('SER-001 obtiene media sólo para episodios nuevos o modificados y limpia bajas',()=>{assert.match(sync,/detailKeys=diff\.upserts\.map/);assert.match(sync,/refreshChangedEpisodeMedia/);assert.match(sync,/episodeKeys:detailKeys/);assert.match(sync,/removedKeys/);assert.match(sync,/DELETE FROM plex_media WHERE rating_key=ANY/);assert.match(sync,/DELETE FROM plex_files WHERE rating_key=ANY/)});
+test('SER-001 reconcilia media física aunque updatedAt no cambie y limpia bajas',()=>{assert.match(sync,/physicalChangedRows=incoming\.filter/);assert.match(sync,/physicalFileSignature/);assert.match(sync,/bulkDetailed=physicalChangedRows\.map/);assert.match(sync,/replaceEpisodeMedia/);assert.match(sync,/removedKeys/);assert.match(sync,/DELETE FROM plex_media WHERE rating_key=ANY/);assert.match(sync,/DELETE FROM plex_files WHERE rating_key=ANY/)});
 
 test('inventario de episodios falla cerrado y no provoca bajas en biblioteca incompleta',()=>{assert.match(sync,/Inventario de episodios incompleto/);assert.match(sync,/se omiten bajas de capítulos por seguridad/);assert.match(sync,/episodeFailed\.push/);assert.match(sync,/successfulSectionIds:sectionIds/)});
 
