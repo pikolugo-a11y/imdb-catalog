@@ -748,6 +748,16 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Ante duda, se amplía la validación de forma conservadora.
 - No obliga todavía a homogeneizar versiones Node.
 
+#### WKR-09 — Contrato único de runtime Node y módulos ESM
+
+**APROBADA.**
+
+- Cada worker declara versión Node y modelo de módulos explícitos.
+- Se reduce diversidad cuando no aporta valor técnico.
+- Las excepciones requieren justificación documentada.
+- Se eliminan warnings MODULE_TYPELESS_PACKAGE_JSON y ambigüedades ESM/CommonJS.
+- WKR-08 valida el contrato real de runtime en CI.
+
 ### INCIDENCIA INTERCALADA — Plex SER-001
 
 Mientras WKR-06 estaba presentada pero todavía **sin decisión**, el usuario pidió revisar un fallo real de sincronización Plex.
@@ -873,7 +883,7 @@ Estado:
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar **WKR-09**. WKR-08 ya está **APROBADA y persistida**.
+Presentar **WKR-10**. WKR-09 ya está **APROBADA y persistida**.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
