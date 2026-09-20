@@ -1095,6 +1095,35 @@ WKR-13 quedó APROBADA y persistida.
 
 La Fase 2 queda **COMPLETADA**: WKR-01 a WKR-13 han sido revisadas individualmente, todas APROBADAS y persistidas.
 
+### CAMBIO FUNCIONAL INTERCALADO — SER-001 reconcilia archivos físicos aunque Plex no cambie updatedAt
+
+Incidente real:
+- el usuario limpió duplicados físicos de American Horror Story y ejecutó `Actualizar Plex`;
+- la serie seguía apareciendo en `Capítulos agrupados por Plex`;
+- Production conservaba 4 snapshots antiguos: 4x10, 5x01, 5x07 y 5x12;
+- los 132 episodios de la serie no habían sido re-leídos físicamente en la última SER-001;
+- esos `plex_files` seguían con `synced_at` del 31/08;
+- causa: SER-001 inventariaba los 54k+ episodios con `includeMedia=0` y sólo reconsultaba `Media/Part` para episodios cuyo metadata lógico/updatedAt cambiaba.
+
+Corrección:
+- PR **#581** — MERGEADA;
+- CI final **#766 — SUCCESS**;
+- main: `634cd04fda1a076b3d5ccd89ad1c42f585129078`;
+- el inventario paginado de episodios usa `includeMedia=1`;
+- compara `Media/Part` masivamente con `plex_files` por nombre, tamaño, duración, contenedor, índices y Plex part id;
+- un cambio físico se reconcilia aunque `updatedAt` no cambie;
+- reemplaza sólo `plex_media/plex_files` de episodios realmente distintos;
+- llamada individual `/library/metadata/{episode}` queda como fallback sólo si Plex omite `Media`;
+- nueva métrica `episode_files_changed`;
+- sin migraciones ni mutación manual de datos.
+
+Validación pendiente de ejecución real:
+- tras Railway SUCCESS, el usuario debe volver a lanzar `Actualizar Plex`;
+- comprobar que American Horror Story deja de mostrar esos 4 agrupados si Plex ya tiene un único archivo por episodio;
+- comprobar también que disminuyen automáticamente las advertencias de nombres corregidos.
+
+Fase 3 del Punto 6 sigue activa. INNO-WKR-01 está RECHAZADA y persistida. INNO-WKR-02 sigue pendiente de decisión.
+
 ### SIGUIENTE PASO EXACTO
 
 Fase 3 — Road Map Innovador ACTIVA. **INNO-WKR-01 — PikoFilm Runtime Fabric: RECHAZADA y persistida** por no aportar una mejora material clara frente a la complejidad añadida. Presentar **INNO-WKR-02** y mantener el mismo gate: cada innovación debe quedar APROBADA o RECHAZADA y persistida antes de presentar la siguiente.
