@@ -1126,7 +1126,7 @@ Fase 3 del Punto 6 sigue activa. INNO-WKR-01 está RECHAZADA y persistida. INNO-
 
 ### SIGUIENTE PASO EXACTO
 
-Fase 3 — Road Map Innovador ACTIVA. **INNO-WKR-01, INNO-WKR-02 e INNO-WKR-03 están RECHAZADAS y persistidas**. **INNO-WKR-04 — PikoFilm Job Mode: RETIRADA por duplicar WKR-02/WKR-05/WKR-11/WKR-12 y no cuenta para las 5 innovaciones mínimas**. Presentar una nueva **INNO-WKR-04** realmente distinta. El usuario fijó un criterio reforzado de innovación realmente rompedor: explorar cambios estructurales como sustituir Railway, eliminar plataformas o mover ejecución cloud↔local; no presentar extensiones menores de WKR-01..WKR-13.
+Fase 3 — Road Map Innovador ACTIVA. **INNO-WKR-01, INNO-WKR-02 e INNO-WKR-03 están RECHAZADAS y persistidas**. **INNO-WKR-04 — PikoFilm Job Mode: RETIRADA por duplicada y no cuenta para las 5 innovaciones mínimas**. La nueva **INNO-WKR-04 — PikoFilm Local Core está APROBADA PARA ESTUDIAR**, incorporada al Road Map Innovador como **INNO-07**; estudia eliminar Railway y mover los workers a un único runtime local junto a Plex, sin autorizar ninguna migración. Presentar **INNO-WKR-05**. El usuario exige innovaciones estructurales realmente rompedoras, no extensiones menores de WKR-01..WKR-13.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
