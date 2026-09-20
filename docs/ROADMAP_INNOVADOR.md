@@ -259,3 +259,33 @@ El Local Core podría además habilitar capacidades que Railway no tiene de form
 **Visión:** acercar la ejecución de PikoFilm a Plex y eliminar una plataforma cloud completa si hacerlo resulta realmente más simple, fiable y económico.
 
 **Horizonte orientativo:** investigación/prototipo futuro; no compromete V5/V6/V7.
+
+
+---
+
+### INNO-08 — PikoFilm Split Execution
+
+**Origen:** `INNO-WKR-05` — Punto 6, Workers y servicios persistentes  
+**Estado:** APROBADA PARA ESTUDIAR  
+**Fecha:** 2026-09-20
+
+Estudiar una arquitectura futura que **elimine Railway** dividiendo la ejecución según la ubicación natural de cada workload.
+
+Los procesos que sólo requieren Internet y Neon se ejecutarían como **jobs cloud efímeros bajo demanda**, sin workers permanentes. En paralelo, un **PikoFilm Local Agent** mínimo junto a Plex ejecutaría únicamente lo que necesita acceso a Plex, LAN o filesystem.
+
+Arquitectura conceptual:
+
+- Vercel + Neon mantienen la aplicación y control central;
+- jobs cloud efímeros ejecutan TMDb, fuentes externas, PikoScore, Personas, enriquecimientos y reconstrucciones;
+- Local Agent ejecuta Plex, Technical e inspecciones físicas;
+- Railway desaparece completamente.
+
+Esta alternativa debe compararse con la arquitectura Railway actual, **INNO-07 — PikoFilm Local Core** y **INNO-02 — PikoFilm Native / Local-First**.
+
+**Estudio obligatorio:** coste, latencia, disponibilidad, recovery, seguridad, mantenimiento, despliegue, credenciales, Batch Engine y experiencia operativa. También deberá estudiarse qué plataforma de durable/container jobs encajaría mejor, sin elegir proveedor de antemano.
+
+**Guardrail esencial:** esta aprobación no autoriza ninguna migración ni selección de proveedor. Sólo incorpora la arquitectura como alternativa futura a evaluar.
+
+**Visión:** mantener local sólo lo inevitablemente local y convertir el resto del procesamiento en ejecución efímera cloud, eliminando una plataforma de workers permanentes.
+
+**Horizonte orientativo:** investigación/prototipo futuro; no compromete V5/V6/V7.
