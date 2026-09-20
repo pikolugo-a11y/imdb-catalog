@@ -738,6 +738,16 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Ante incertidumbre, comportamiento conservador: ampliar deploy antes que arriesgar incompatibilidad.
 - Se integra con PROC-10, WKR-05, WKR-06 y WKR-01.
 
+#### WKR-08 — CI valida los runtimes reales de Railway
+
+**APROBADA.**
+
+- CI debe validar los Dockerfiles/runtimes reales de los workers afectados.
+- La validación cubre versión Node, build, imports/ESM, startup básico y capabilities/adapters.
+- Se reutiliza el mapa de impacto de WKR-07 para no construir imágenes innecesarias.
+- Ante duda, se amplía la validación de forma conservadora.
+- No obliga todavía a homogeneizar versiones Node.
+
 ### INCIDENCIA INTERCALADA — Plex SER-001
 
 Mientras WKR-06 estaba presentada pero todavía **sin decisión**, el usuario pidió revisar un fallo real de sincronización Plex.
@@ -863,7 +873,7 @@ Estado:
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar **WKR-08**. WKR-07 ya está **APROBADA y persistida**.
+Presentar **WKR-09**. WKR-08 ya está **APROBADA y persistida**.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
