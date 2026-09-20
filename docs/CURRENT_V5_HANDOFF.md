@@ -768,6 +768,16 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Technical stopped funcionalmente puede coexistir con runtime READY.
 - CPU/memoria/build logs completos siguen en Railway.
 
+#### WKR-11 — Wake hint ligero productor → worker
+
+**APROBADA.**
+
+- El trabajo sigue persistido y durable en Neon.
+- Un wake hint ligero saca al worker de idle/backoff cuando aparece demanda.
+- Wake perdido o duplicado debe ser inocuo.
+- El polling adaptativo sigue siendo la red de seguridad.
+- No introduce broker/plataforma nueva ni activa Railway sleep.
+
 ### INCIDENCIA INTERCALADA — Plex SER-001
 
 Mientras WKR-06 estaba presentada pero todavía **sin decisión**, el usuario pidió revisar un fallo real de sincronización Plex.
@@ -893,7 +903,7 @@ Estado:
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar **WKR-11**. WKR-10 ya está **APROBADA y persistida**.
+Presentar **WKR-12**. WKR-11 ya está **APROBADA y persistida**.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
