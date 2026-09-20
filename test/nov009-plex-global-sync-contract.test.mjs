@@ -57,8 +57,8 @@ test('Novedades observa el estado durable sin considerar caducada una ejecución
   assert.doesNotMatch(client,/submitting/);
 });
 
-test('el timeout de 280 segundos ya no limita la ejecución completa; sólo sigue existiendo el timeout de requests Plex',()=>{
-  assert.match(plexSync,/const PLEX_REQUEST_TIMEOUT_MS=280000;/);
+test('el timeout global no limita la ejecución completa; cada request Plex puede esperar hasta 1000 segundos',()=>{
+  assert.match(plexSync,/const PLEX_REQUEST_TIMEOUT_MS=1000000;/);
   assert.match(plexSync,/AbortSignal\.timeout\(PLEX_REQUEST_TIMEOUT_MS\)/);
   assert.doesNotMatch(action,/280000/);
   assert.doesNotMatch(action,/plexDeadline/);
