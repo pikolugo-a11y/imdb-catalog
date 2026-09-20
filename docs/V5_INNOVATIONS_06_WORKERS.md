@@ -98,3 +98,28 @@ La diferencia de convertir ese patrón en el comportamiento por defecto de todos
 ### Decisión
 
 Se retira de la ronda y no se incorpora a `docs/ROADMAP_INNOVADOR.md`. Debe presentarse una nueva INNO-WKR-04 realmente distinta.
+
+
+---
+
+## Criterio reforzado de innovación
+
+Tras revisar las primeras propuestas, el usuario exige que las innovaciones del Punto 6 sean **realmente rompedoras** y no extensiones menores de decisiones V5 ya aprobadas.
+
+A partir de este punto, una innovación válida debe explorar cambios estructurales como, por ejemplo:
+
+- sustituir Railway por otra plataforma o modelo de ejecución;
+- eliminar una capa tecnológica completa;
+- mover workers de cloud a local o viceversa;
+- cambiar radicalmente el modelo de ejecución persistente;
+- replantear la frontera entre infraestructura local y cloud.
+
+No deben presentarse como innovación ideas que sean simplemente:
+
+- más autoscaling;
+- más observabilidad;
+- más backoff;
+- más concurrencia;
+- más variantes de wake/sleep ya cubiertas por WKR-01..WKR-13.
+
+Este criterio se aplica a las innovaciones restantes del Punto 6.
