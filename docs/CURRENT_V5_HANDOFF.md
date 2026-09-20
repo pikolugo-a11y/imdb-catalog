@@ -911,6 +911,25 @@ Estado:
 - Vercel Production no fue desplegado por el asistente;
 - WKR-07 quedó **APROBADA y persistida**.
 
+### CAMBIO FUNCIONAL INTERCALADO — Plex global: timeout 1000 s + retries inmediatos
+
+El usuario pidió corregir la última ejecución fallida de `PROC-NOV-009`, que agotó el timeout mientras Plex estaba ocupado.
+
+Estado:
+- causa confirmada: revisión previa de identidades en `lib/plex-sync.js` conservaba un timeout único de 280.000 ms;
+- última ejecución afectada: sección Plex 3 (Películas, ~10.982 títulos), fallo a ~280,9 s;
+- el error era retryable, pero Batch aplicaba la espera global de 6 h / 24 h;
+- rama funcional: `fix/plex-global-long-timeout-immediate-retries`;
+- PR **#575** — **MERGEADA**;
+- CI inicial #748 falló únicamente por un contrato de test aún fijado a 280 s; test actualizado;
+- CI final **#749 — SUCCESS** incluido build;
+- merge en `main`: `488779fe0a5eea0136bf0c8d75cbde8f1b98b667`;
+- timeout de requests de `PROC-NOV-009`: **1000 s**;
+- los 3 intentos Batch de `PROC-NOV-009` son consecutivos, sin backoff de 6 h / 24 h;
+- la excepción no altera la política de retry del resto de procesos;
+- sin migraciones ni mutaciones directas de datos;
+- WKR-13 sigue **PENDIENTE DE DECISIÓN**.
+
 ### SIGUIENTE PASO EXACTO
 
 Presentar **WKR-13**. WKR-12 ya está **APROBADA y persistida**.
