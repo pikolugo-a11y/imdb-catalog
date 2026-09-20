@@ -758,6 +758,16 @@ Decisiones persistidas en `docs/V5_DECISIONS_06_WORKERS.md`:
 - Se eliminan warnings MODULE_TYPELESS_PACKAGE_JSON y ambigüedades ESM/CommonJS.
 - WKR-08 valida el contrato real de runtime en CI.
 
+#### WKR-10 — Estado real de workers visible en Operaciones
+
+**APROBADA.**
+
+- Operaciones será la superficie canónica para estado funcional de workers.
+- Debe mostrar READY/BUSY/DRAINING/UNAVAILABLE, build, heartbeat, capacidad, capabilities, trabajo activo y demanda pendiente.
+- READY + 0 trabajos es sano.
+- Technical stopped funcionalmente puede coexistir con runtime READY.
+- CPU/memoria/build logs completos siguen en Railway.
+
 ### INCIDENCIA INTERCALADA — Plex SER-001
 
 Mientras WKR-06 estaba presentada pero todavía **sin decisión**, el usuario pidió revisar un fallo real de sincronización Plex.
@@ -883,7 +893,7 @@ Estado:
 
 ### SIGUIENTE PASO EXACTO
 
-Presentar **WKR-10**. WKR-09 ya está **APROBADA y persistida**.
+Presentar **WKR-11**. WKR-10 ya está **APROBADA y persistida**.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
