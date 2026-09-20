@@ -123,3 +123,59 @@ No deben presentarse como innovación ideas que sean simplemente:
 - más variantes de wake/sleep ya cubiertas por WKR-01..WKR-13.
 
 Este criterio se aplica a las innovaciones restantes del Punto 6.
+
+
+---
+
+## INNO-WKR-04 — PikoFilm Local Core
+
+**APROBADA PARA ESTUDIAR.**
+
+### Visión
+
+Estudiar una arquitectura futura en la que **Railway desaparezca por completo de PikoFilm** y la ejecución persistente pase a un único runtime local situado junto a Plex o dentro de la misma red local.
+
+Arquitectura conceptual:
+
+- Vercel → interfaz web;
+- Neon → BBDD central;
+- PikoFilm Local Core → ejecución de API/FAST/Plex/Technical;
+- Plex → servidor/local media;
+- Railway → eliminado.
+
+### Valor potencial
+
+- eliminar cuatro servicios Railway persistentes y su coordinación;
+- eliminar diferencias de Docker/Node/restart entre pools cloud;
+- reducir latencia y dependencia de red en operaciones Plex;
+- permitir acceso local directo a filesystem cuando aporte valor;
+- habilitar detección local de cambios físicos de biblioteca;
+- simplificar la arquitectura para una aplicación personal, si el runtime local demuestra suficiente disponibilidad y seguridad.
+
+### Qué debe estudiarse antes de cualquier adopción
+
+- disponibilidad real de la máquina que hospede Local Core;
+- comportamiento cuando esa máquina esté apagada o aislada;
+- actualizaciones y rollback del runtime local;
+- autenticación y seguridad de la conexión con Neon;
+- exposición mínima de credenciales;
+- recovery y trabajo pendiente durante periodos offline;
+- compatibilidad con acceso remoto a PikoFilm;
+- comparación objetiva de coste, fiabilidad, latencia y mantenimiento frente a Railway;
+- relación y posible solapamiento con INNO-02 — PikoFilm Native / Local-First.
+
+### Alcance de la aprobación
+
+La aprobación significa **incorporar la alternativa al Road Map Innovador para estudio**.
+
+No autoriza:
+
+- migrar fuera de Railway;
+- instalar todavía software local;
+- retirar ningún worker;
+- modificar Production;
+- asignarla a V5/V6/V7.
+
+### Invariante
+
+> Railway sólo debe eliminarse si una arquitectura local demuestra de forma objetiva que simplifica PikoFilm sin degradar disponibilidad, recovery, seguridad ni acceso remoto.
