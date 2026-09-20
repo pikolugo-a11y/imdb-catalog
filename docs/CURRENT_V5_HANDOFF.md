@@ -1097,7 +1097,7 @@ La Fase 2 queda **COMPLETADA**: WKR-01 a WKR-13 han sido revisadas individualmen
 
 ### SIGUIENTE PASO EXACTO
 
-Iniciar **Fase 3 — Road Map Innovador** del Punto 6. Presentar **INNO-WKR-01** y mantener el mismo gate: cada innovación debe quedar APROBADA o RECHAZADA y persistida antes de presentar la siguiente.
+Fase 3 — Road Map Innovador ACTIVA. **INNO-WKR-01 — PikoFilm Runtime Fabric: RECHAZADA y persistida** por no aportar una mejora material clara frente a la complejidad añadida. Presentar **INNO-WKR-02** y mantener el mismo gate: cada innovación debe quedar APROBADA o RECHAZADA y persistida antes de presentar la siguiente.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
@@ -1149,6 +1149,7 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 - Innovaciones Punto 5: `docs/V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`
 - Auditoría Punto 6: `docs/V5_AUDIT_06_WORKERS.md`
 - Decisiones Punto 6: `docs/V5_DECISIONS_06_WORKERS.md`
+- Innovaciones Punto 6: `docs/V5_INNOVATIONS_06_WORKERS.md`
 - Punto de reentrada de chat: `docs/CURRENT_V5_HANDOFF.md`
 
 El Punto 6 está activo en `audit/v5-06-workers`. Su Fase 1 está cerrada; continuar por Fase 2 y persistir cada decisión antes de presentar la siguiente.
