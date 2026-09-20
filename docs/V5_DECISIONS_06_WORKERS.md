@@ -857,3 +857,72 @@ Esta aprobación:
 ### Invariante
 
 > Ningún worker debe apagarse físicamente mientras PikoFilm no pueda demostrar que la demanda durable lo despertará o será recuperada de forma segura, observable y con latencia aceptable.
+
+
+---
+
+## WKR-13 — Concurrencia gobernada por workload
+
+**APROBADA.**
+
+### Decisión
+
+La concurrencia efectiva de PikoFilm no se gobernará únicamente por la capacidad física del worker o del contenedor. Cada proceso/workload deberá declarar un límite operativo seguro acorde con su coste y características reales.
+
+### Contrato
+
+El límite de concurrencia por proceso podrá considerar, según aplique:
+
+- consumo de Neon;
+- llamadas y límites de APIs externas;
+- presión sobre Plex;
+- CPU y memoria;
+- duración típica y variabilidad;
+- capacidad real de paralelismo;
+- coste de recuperación ante fallo;
+- interferencia con otros procesos del mismo pool;
+- riesgo de saturación o rate limit.
+
+La capacidad física del worker actúa como techo global, pero cada proceso puede imponer un límite inferior.
+
+Ejemplo: un worker FAST puede disponer de 8 slots físicos y, aun así, un workload pesado quedar limitado a 2 o 3 mientras otro más ligero puede utilizar una concurrencia mayor.
+
+### Backpressure
+
+La existencia de cientos de items pendientes no autoriza a lanzarlos todos de inmediato.
+
+El runtime debe aplicar backpressure según el contrato del workload y liberar trabajo al ritmo seguro, preservando estabilidad de Neon, Plex y fuentes externas.
+
+### Observabilidad
+
+Operaciones deberá poder mostrar, cuando resulte útil:
+
+- capacidad física total del worker/pool;
+- límite efectivo del workload actual;
+- slots ocupados y disponibles;
+- cola pendiente;
+- motivo de una limitación especial de concurrencia cuando exista.
+
+Los cambios materiales de concurrencia deben ser versionados y observables.
+
+### Integración
+
+- PROC-04/PROC-06 aportan gobierno de concurrencia y planificación de Batch;
+- WKR-01 aporta capacidad/capabilities reales del runtime;
+- WKR-10 expone el estado efectivo en Operaciones;
+- WKR-02/WKR-11 gobiernan idle/wake sin alterar el límite seguro de ejecución.
+
+### Límites
+
+Esta aprobación:
+
+- no activa autoscaling horizontal;
+- no añade réplicas;
+- no introduce ML ni algoritmos adaptativos complejos;
+- no obliga a usar toda la capacidad física disponible;
+- no permite saltarse rate limits ni límites seguros de Plex/Neon;
+- mantiene una réplica por servicio mientras los datos no demuestren necesidad distinta.
+
+### Invariante
+
+> La capacidad física disponible nunca autoriza por sí sola más concurrencia de la que el workload puede soportar de forma segura.
