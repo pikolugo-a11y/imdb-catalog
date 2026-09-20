@@ -514,3 +514,61 @@ Esta aprobación:
 ### Invariante
 
 > Un worker se reinicia de acuerdo con la naturaleza y recurrencia del fallo, no por una cifra histórica arbitraria asociada al servicio; y un proceso reiniciado sólo vuelve a `READY` cuando demuestra de nuevo que está realmente preparado.
+
+---
+
+## WKR-07 — Deploy selectivo real por impacto de runtime
+
+**APROBADA.**
+
+### Decisión
+
+Los despliegues Railway de PikoFilm deben determinar qué runtimes están realmente afectados por cada cambio y redeplegar únicamente esos servicios cuando el impacto pueda demostrarse de forma segura.
+
+### Regla general
+
+- cambio exclusivo de Plex → despliega Plex;
+- cambio exclusivo de FAST → despliega FAST;
+- cambio exclusivo de Technical → despliega Technical;
+- cambio exclusivo de API → despliega API;
+- cambios en módulos compartidos → despliegan sólo los runtimes que realmente consumen esos módulos;
+- documentación, tests o cambios sin efecto runtime → no provocan redeploy Railway;
+- cambios de infraestructura verdaderamente común → despliegan los servicios afectados;
+- si el sistema no puede demostrar con seguridad el conjunto de runtimes afectados, se usa comportamiento conservador y se amplía el deploy antes que arriesgar incompatibilidad.
+
+### Contrato de impacto
+
+El selective deploy no puede depender sólo de rutas o nombres de carpetas. Debe existir un mapa verificable de dependencias/impacto entre código compartido, procesos y runtimes.
+
+CI debe poder validar ese mapa y detectar incoherencias entre:
+
+- archivos cambiados;
+- módulos compartidos;
+- adapters/procesos;
+- runtimes Railway;
+- Dockerfiles/builds afectados.
+
+### Integración con decisiones previas
+
+- PROC-10 decide qué runtime necesita deploy;
+- WKR-05 define el drain seguro antes de detenerlo;
+- WKR-06 gobierna restart y fallo fatal;
+- WKR-01 valida que la nueva instancia esté realmente READY, con build y capabilities compatibles.
+
+### Objetivo
+
+Reducir reinicios, builds y riesgo operativo innecesarios sin sacrificar seguridad ni coherencia de despliegue.
+
+### Límites
+
+Esta aprobación:
+
+- no añade réplicas;
+- no introduce blue/green;
+- no cambia la política de deploy de Vercel Production;
+- no permite omitir un deploy cuando exista duda razonable sobre compatibilidad;
+- no implementa todavía el mapa concreto de dependencias ni la automatización final.
+
+### Invariante
+
+> Un cambio sólo debe reiniciar los runtimes que realmente puedan verse afectados; cuando el impacto no pueda demostrarse con seguridad, PikoFilm debe preferir el deploy conservador antes que dejar servicios incompatibles.
