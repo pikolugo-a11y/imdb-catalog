@@ -57,3 +57,20 @@ No se incorpora a `docs/ROADMAP_INNOVADOR.md`.
 ### Invariante derivada
 
 > Las innovaciones de infraestructura deben dimensionarse para el producto real: PikoFilm es una aplicación personal y no debe diseñarse como una plataforma SaaS masiva sin una necesidad concreta.
+
+
+---
+
+## INNO-WKR-03 — Shadow Worker
+
+**RECHAZADA.**
+
+### Motivo
+
+La propuesta consistía en ejecutar temporalmente una versión nueva de un worker en modo sombra, con los mismos inputs reales pero sin efectos funcionales, para comparar sus resultados con la versión vigente antes de desplegar.
+
+El usuario la rechaza. No se incorpora al Road Map Innovador.
+
+### Decisión
+
+No se añade a `docs/ROADMAP_INNOVADOR.md`.
