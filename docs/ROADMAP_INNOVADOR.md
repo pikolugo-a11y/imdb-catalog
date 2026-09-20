@@ -228,3 +228,34 @@ Un Sentinel fallido puede impedir que PikoFilm materialice miles de items destin
 **Visión:** hacer que PikoFilm pruebe el camino antes de mandar trabajo real por él.
 
 **Horizonte orientativo:** posterior a V5 y sujeto a decisión futura específica; no compromete ninguna versión concreta.
+
+
+---
+
+### INNO-07 — PikoFilm Local Core
+
+**Origen:** `INNO-WKR-04` — Punto 6, Workers y servicios persistentes  
+**Estado:** APROBADA PARA ESTUDIAR  
+**Fecha:** 2026-09-20
+
+Estudiar una arquitectura futura en la que **Railway desaparezca completamente de PikoFilm** y toda la ejecución persistente se concentre en un único runtime local situado junto a Plex o dentro de la misma red local.
+
+Arquitectura conceptual:
+
+- Vercel mantiene la interfaz web y acceso remoto mientras siga aportando valor;
+- Neon mantiene la BBDD central;
+- un **PikoFilm Local Core** ejecuta los actuales workloads API, FAST, Plex y Technical;
+- Plex y sus archivos quedan próximos al runtime que los procesa;
+- Railway deja de formar parte de la arquitectura.
+
+El objetivo es explorar si una aplicación personal como PikoFilm puede simplificar su infraestructura eliminando cuatro servicios cloud persistentes y acercando la ejecución al recurso físico que más condiciona el sistema: Plex y su biblioteca.
+
+El Local Core podría además habilitar capacidades que Railway no tiene de forma natural: acceso directo al filesystem, detección de cambios locales, validación de nombres/rutas/hashes y comunicación LAN con Plex.
+
+**Estudio obligatorio antes de cualquier promoción:** disponibilidad de la máquina local, periodos offline, actualizaciones/rollback, seguridad y credenciales Neon, recovery, acceso remoto, coste, latencia, mantenimiento y comparación objetiva frente a Railway. También debe contrastarse su relación con **INNO-02 — PikoFilm Native / Local-First** para evitar duplicar arquitecturas futuras.
+
+**Guardrail esencial:** esta aprobación no autoriza migrar ni retirar Railway. Sólo incorpora la alternativa al Road Map Innovador para estudio. Cualquier adopción requerirá una decisión futura específica basada en pruebas.
+
+**Visión:** acercar la ejecución de PikoFilm a Plex y eliminar una plataforma cloud completa si hacerlo resulta realmente más simple, fiable y económico.
+
+**Horizonte orientativo:** investigación/prototipo futuro; no compromete V5/V6/V7.
