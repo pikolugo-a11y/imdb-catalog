@@ -1126,7 +1126,7 @@ Fase 3 del Punto 6 sigue activa. INNO-WKR-01 está RECHAZADA y persistida. INNO-
 
 ### SIGUIENTE PASO EXACTO
 
-Fase 3 — Road Map Innovador ACTIVA. **INNO-WKR-01 — PikoFilm Runtime Fabric: RECHAZADA y persistida** por no aportar una mejora material clara frente a la complejidad añadida. Presentar **INNO-WKR-02** y mantener el mismo gate: cada innovación debe quedar APROBADA o RECHAZADA y persistida antes de presentar la siguiente.
+Fase 3 — Road Map Innovador ACTIVA. **INNO-WKR-01 — PikoFilm Runtime Fabric: RECHAZADA**. **INNO-WKR-02 — PikoFilm Burst Mode: RECHAZADA** por estar sobredimensionada para una aplicación personal de unas 20.000 películas y añadir complejidad sin necesidad real. Ambas decisiones están persistidas. Presentar **INNO-WKR-03** y mantener el mismo gate.
 
 La rama `audit/v5-06-workers` ya fue sincronizada de forma segura con `main` tras el merge #569 y quedó 0 commits por detrás antes de persistir WKR-06.
 
