@@ -179,3 +179,87 @@ No autoriza:
 ### Invariante
 
 > Railway sólo debe eliminarse si una arquitectura local demuestra de forma objetiva que simplifica PikoFilm sin degradar disponibilidad, recovery, seguridad ni acceso remoto.
+
+
+---
+
+## INNO-WKR-05 — PikoFilm Split Execution
+
+**APROBADA PARA ESTUDIAR.**
+
+### Visión
+
+Estudiar una arquitectura futura que **elimine Railway** separando la ejecución según dónde tenga sentido físico y operativo que viva cada workload.
+
+Arquitectura conceptual:
+
+- Vercel + Neon mantienen aplicación y control central;
+- los procesos que sólo necesitan Internet/Neon se ejecutan como **jobs cloud efímeros bajo demanda**;
+- un **PikoFilm Local Agent** mínimo, situado junto a Plex, ejecuta únicamente workloads que requieren Plex, filesystem o recursos locales;
+- desaparecen los cuatro workers Railway persistentes actuales.
+
+### Cloud jobs candidatos
+
+- TMDb y otras fuentes públicas;
+- IMDb/fuentes externas;
+- PikoScore;
+- Personas;
+- enriquecimientos;
+- reconstrucciones/read models;
+- procesos de calidad que no necesiten Plex local.
+
+### Local Agent candidatos
+
+- Plex;
+- inventario físico de biblioteca;
+- nombres/rutas/hashes;
+- Technical;
+- futuras inspecciones directas del filesystem.
+
+### Valor potencial
+
+- eliminar Railway como plataforma persistente;
+- no mantener workers cloud encendidos sin trabajo;
+- mantener local únicamente la parte que realmente necesita acceso LAN/filesystem;
+- desacoplar la infraestructura de Plex del procesamiento puramente cloud;
+- comparar proveedores/modelos de durable jobs o container jobs efímeros sin comprometer todavía uno concreto.
+
+### Estudio obligatorio
+
+Debe compararse objetivamente con:
+
+1. arquitectura Railway actual;
+2. INNO-07 — PikoFilm Local Core;
+3. INNO-02 — PikoFilm Native / Local-First.
+
+El estudio debe incluir coste, latencia, disponibilidad, recovery, seguridad, complejidad, despliegue, mantenimiento, credenciales, acceso remoto y compatibilidad con el Batch Engine.
+
+### Alcance de la aprobación
+
+La aprobación significa **incorporar esta arquitectura como alternativa futura para estudiar**.
+
+No autoriza:
+
+- eliminar Railway ahora;
+- elegir proveedor de jobs cloud;
+- instalar un agente local;
+- modificar Production;
+- asignar el cambio a V5/V6/V7.
+
+### Invariante
+
+> La división cloud/local sólo merece sustituir Railway si reduce de forma demostrable la complejidad y coste sin perder durabilidad, recovery ni simplicidad operativa.
+
+---
+
+## Cierre Fase 3 — Punto 6
+
+**COMPLETADA.** Se han revisado individualmente cinco innovaciones válidas del Punto 6:
+
+- INNO-WKR-01 — Runtime Fabric: **RECHAZADA**;
+- INNO-WKR-02 — Burst Mode: **RECHAZADA**;
+- INNO-WKR-03 — Shadow Worker: **RECHAZADA**;
+- INNO-WKR-04 — Local Core: **APROBADA PARA ESTUDIAR** → ROADMAP INNO-07;
+- INNO-WKR-05 — Split Execution: **APROBADA PARA ESTUDIAR** → ROADMAP INNO-08.
+
+La propuesta intermedia Job Mode fue retirada por duplicar decisiones V5 y no cuenta dentro de las cinco.
