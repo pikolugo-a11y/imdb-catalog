@@ -737,3 +737,62 @@ Esta aprobación:
 ### Invariante
 
 > PikoFilm debe poder explicar desde Operaciones si cada worker está disponible para ejecutar trabajo y por qué, sin inferirlo a partir de la existencia de runs ni obligar al usuario a correlacionar manualmente Neon y Railway.
+
+---
+
+## WKR-11 — Wake hint ligero productor → worker
+
+**APROBADA.**
+
+### Decisión
+
+PikoFilm incorporará un mecanismo ligero de wake hint para reducir la latencia de detección de trabajo nuevo cuando los workers estén en backoff/idle, sin convertir esa señal en fuente de verdad ni dependencia crítica.
+
+### Contrato
+
+Cuando se cree trabajo para un pool:
+
+- el trabajo se persiste normalmente en Neon;
+- además puede emitirse una señal ligera de wake para ese pool;
+- el worker sale de idle/backoff y vuelve a consultar la cola;
+- si la señal se pierde, el trabajo sigue seguro y será detectado por polling adaptativo;
+- señales duplicadas son inocuas;
+- múltiples trabajos próximos pueden coalescerse en una sola señal.
+
+### Fuente de verdad
+
+Neon y el Batch Engine siguen siendo la fuente durable de trabajo.
+
+El wake hint únicamente acelera la detección. No crea, modifica ni confirma trabajo funcional.
+
+### Fallos seguros
+
+- wake perdido → seguro;
+- wake duplicado → seguro;
+- worker no disponible → la demanda permanece pendiente;
+- señal recibida sin trabajo → vuelve a idle sin efecto funcional.
+
+### Integración
+
+- WKR-02 aporta idle/backoff adaptativo;
+- WKR-01 confirma presencia y transición READY/BUSY;
+- WKR-10 permite ver demanda pendiente aunque no exista consumidor disponible.
+
+### Infraestructura
+
+La implementación debe buscar primero el mecanismo más pequeño compatible con la arquitectura actual.
+
+No se introduce Redis, RabbitMQ, Kafka u otra plataforma salvo necesidad demostrada posteriormente.
+
+### Límites
+
+Esta aprobación:
+
+- no activa Railway sleep/serverless;
+- no permite depender exclusivamente del wake;
+- no sustituye el polling adaptativo como red de seguridad;
+- no cambia la durabilidad ni semántica de la cola.
+
+### Invariante
+
+> El wake hint puede acelerar el trabajo, pero su pérdida nunca puede provocar pérdida, bloqueo indefinido ni inconsistencia de trabajo.
