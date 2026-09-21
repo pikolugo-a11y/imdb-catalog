@@ -145,6 +145,10 @@ La acción manual de `/calidad/series` no ejecuta ya el core pesado dentro del r
 
 Comparten core con Batch. Railway y wrapper individual reconstruyen el read model al terminar. La diferencia es de guard/postprocesado controlado, no de receta. **PARCIAL controlada**.
 
+### SER-005
+
+Es una decisión humana observada y sin Batch. Las decisiones `special` / `not_needed` se persisten en `series_episode_overrides` con la `rating_key` Plex y un fingerprint de evidencia. La **vigencia funcional** se decide por identidad estable: misma serie/posición y misma `rating_key` Plex. El fingerprint sirve para auditoría y para detectar que cambió metadata, pero un cambio de `updatedAt`/fingerprint no puede reabrir por sí solo una decisión manual. Si la identidad Plex cambia, el elemento desaparece o deja de ocupar la misma posición, la decisión sí vuelve a revisión. `reopen` sigue siendo la vía explícita para retirar la decisión.
+
 ### SAGA-001
 
 La unidad canónica es **una colección**:
