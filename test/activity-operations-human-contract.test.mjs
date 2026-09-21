@@ -75,6 +75,20 @@ test('Operaciones deja historial técnico en diagnóstico avanzado y prioriza at
   assert.match(page,/entity\|\|proc\.name/);
 });
 
+test('Operaciones permite detener PikoQuality desde la lista y desde el detalle',()=>{
+  const page=read('app/admin/page.js');
+  const detail=read('app/admin/runs/[id]/page.js');
+  const actions=read('app/admin/actions.js');
+  const query=read('lib/operations-queries.js');
+  assert.match(query,/controllable_technical/);
+  assert.match(page,/r\.controllable_technical/);
+  assert.match(page,/Detener/);
+  assert.match(detail,/Detener PikoQuality/);
+  assert.match(actions,/run\.process_code==='PROC-PQ-002'/);
+  assert.match(actions,/setTechnicalRequestedState\(sql,'stopped'\)/);
+  assert.match(actions,/technicalStatus:'cancelled'/);
+});
+
 test('búsqueda técnica de Operaciones también resuelve y busca series por nombre',()=>{
   const source=read('lib/operations-queries.js');
   assert.match(source,/series_reference sr/);

@@ -40,7 +40,7 @@ function RunRow({r,active=false,technical=false}){
       {technical?<small>{r.process_code}{r.entity_id?` · entidad ${r.entity_id}`:''} · {duration(r.duration_ms)}</small>:active?<small>En marcha desde hace {age(r.started_at||r.requested_at)}</small>:<small>{resultLabel[r.functional_result]||'Proceso terminado'} · {duration(r.duration_ms)}</small>}
     </div>
     <div className="ops-run-meta"><span className={`ops-badge ${stale?'bad':tone(r.technical_status)}`}>{stale?'Atascada':statusLabel[r.technical_status]||r.technical_status}</span>{r.functional_result&&<b>{resultLabel[r.functional_result]||r.functional_result}</b>}</div>
-    <div className="ops-run-actions"><Link href={`/admin/runs/${r.run_id}`}>{technical?'Detalle técnico':'Ver detalle'}</Link>{active&&(stale||r.controllable_batch)&&<ActionButton action={cancelRunAction} fields={{runId:r.run_id}} label={r.controllable_batch?'Cancelar':'Cerrar como cancelada'} pendingLabel="Cancelando…" className="button ghost"/>}</div>
+    <div className="ops-run-actions"><Link href={`/admin/runs/${r.run_id}`}>{technical?'Detalle técnico':'Ver detalle'}</Link>{active&&(stale||r.controllable_batch||r.controllable_technical)&&<ActionButton action={cancelRunAction} fields={{runId:r.run_id}} label={r.controllable_technical?'Detener':r.controllable_batch?'Cancelar':'Cerrar como cancelada'} pendingLabel="Cancelando…" className="button ghost"/>}</div>
   </div>;
 }
 

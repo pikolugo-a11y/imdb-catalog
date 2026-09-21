@@ -3,6 +3,8 @@ import {notFound} from 'next/navigation';
 import {getRunDetail} from '@/lib/operations-queries';
 import {processDisplay,kindDisplay,entityDisplay,triggerDisplay,executorDisplay} from '@/lib/process-display';
 import {formatMadridDateTime} from '@/lib/format-madrid';
+import ActionButton from '@/components/ActionButton';
+import {cancelRunAction} from '@/app/admin/actions';
 export const dynamic='force-dynamic';
 
 const dt=v=>formatMadridDateTime(v,{fallback:'—',second:'2-digit'});
@@ -22,8 +24,10 @@ export default async function RunDetail({params,searchParams}){
   if(!/^[0-9a-f-]{36}$/i.test(id))notFound();
   const paging={eventPage:sp.eventPage,errorPage:sp.errorPage,childPage:sp.childPage,itemPage:sp.itemPage},d=await getRunDetail(id,paging),r=d.run;if(!r)notFound();
   const proc=processDisplay(r.process_code),subject=`${entityDisplay(r.entity_type)}${r.entity_id?` ${r.entity_id}`:''}`,pg=d.pagination||{};
+  const staleActive=['queued','running'].includes(r.technical_status)&&new Date(r.last_heartbeat_at||r.started_at||r.requested_at).getTime()<Date.now()-15*60*1000;
+  const cancelable=['queued','running'].includes(r.technical_status)&&(r.controllable_batch||r.process_code==='PROC-PQ-002'||staleActive);
   return <div className="ops-shell">
-    <div className="ops-detail-nav"><Link className="ops-back" href="/admin">← Operaciones</Link><Link className="ops-back" href={`/actividad?run=${encodeURIComponent(r.run_id)}`}>Ver en Actividad →</Link></div>
+    <div className="ops-detail-nav"><Link className="ops-back" href="/admin">← Operaciones</Link><Link className="ops-back" href={`/actividad?run=${encodeURIComponent(r.run_id)}`}>Ver en Actividad →</Link>{cancelable&&<ActionButton action={cancelRunAction} fields={{runId:r.run_id}} label={r.process_code==='PROC-PQ-002'?'Detener PikoQuality':r.controllable_batch?'Cancelar Batch':'Cerrar como cancelada'} pendingLabel="Cancelando…" className="button ghost"/>}</div>
     <header className="ops-detail-hero"><div><div className="ops-kicker">Ejecución · {proc.code}</div><h1>{proc.name}</h1><p>{subject}</p></div><div className="ops-detail-state"><span className={`ops-badge ${tone(r.technical_status)}`}>{labels[r.technical_status]||r.technical_status}</span>{r.functional_result&&<strong>{results[r.functional_result]||r.functional_result}</strong>}</div></header>
 
     <section className="ops-summary-card"><span className="ops-label">Qué pasó</span><h2>{completion(r.technical_status)}</h2><p><strong>{proc.name}</strong> actuó sobre {subject.toLowerCase()}. Se inició desde {triggerDisplay(r.trigger_source).toLowerCase()} y {r.technical_status==='running'?'todavía no ha terminado':`terminó como “${labels[r.technical_status]||r.technical_status}”${r.functional_result?` con resultado “${results[r.functional_result]||r.functional_result}”`:''}`}.</p><div className="ops-summary-grid"><div><span>Se hizo</span><strong>{proc.name}</strong></div><div><span>Completado</span><strong>{completedLabel(r.technical_status)}</strong></div><div><span>Resultado</span><strong>{r.functional_result?results[r.functional_result]||r.functional_result:'Sin resultado funcional'}</strong></div><div><span>Estado final</span><strong>{finalState(r,d)}</strong></div></div></section>
