@@ -136,7 +136,9 @@ La sincronización Plex global de Novedades usa el Batch común como **frontera 
 5. tras éxito de NOV-009 se crea `PROC-NOV-008` como otra unidad `global`, esta vez en el pool `api`;
 6. Railway API ejecuta `seedPlexNewsCandidates`, donde viven las credenciales/API necesarias para preparar Novedades;
 7. NOV-008 es una continuación automática del NOV-009 manual, no un productor autónomo ni una autorización de polling Plex;
-8. la UI consulta estados `queued/running` reales y no expira artificialmente una ejecución porque supere cinco minutos.
+8. la UI consulta estados `queued/running` reales y no expira artificialmente una ejecución porque supere cinco minutos;
+9. un fallo transitorio de red/Plex (`TypeError: fetch failed`, timeout, HTTP 429 o 5xx) es retryable;
+10. NOV-009 permite **5 reintentos después del intento inicial** —6 intentos totales como máximo— con **1 minuto de espera entre reintentos**; sólo tras agotarlos termina en fallo. Los 4xx no transitorios y errores permanentes no consumen reintentos inútiles.
 
 El snapshot histórico de Inicio conserva su cron diario canónico; no se introduce una dependencia de `next/cache` dentro del worker Plex. **Paridad EXACTA**.
 
