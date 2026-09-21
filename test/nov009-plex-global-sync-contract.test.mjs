@@ -64,11 +64,12 @@ test('el timeout global no limita la ejecución completa; cada request Plex pued
   assert.doesNotMatch(action,/plexDeadline/);
 });
 
-test('el estado Plex se reconstruye por IMDb en modo normal y por TMDb en series TMDb-only',()=>{
+test('el estado Plex usa IMDb normal y TMDb prioritario con fallback IMDb exacto en series TMDb-only',()=>{
   assert.match(plexSyncCore,/source_status->>'identity_mode'/);
-  assert.match(plexSyncCore,/e\.provider='imdb'/);
-  assert.match(plexSyncCore,/e\.provider='tmdb'/);
-  assert.match(plexSyncCore,/e\.external_id=m\.tmdb_id::text/);
+  assert.match(plexSyncCore,/e\.provider='tmdb' AND e\.external_id=m\.tmdb_id::text/);
+  assert.match(plexSyncCore,/COALESCE\(m\.source_status->>'identity_mode','normal'\)='tmdb_only'[\s\S]*?e\.provider='imdb' AND e\.external_id=m\.imdb_id/);
+  assert.match(plexSyncCore,/2::int match_priority/);
+  assert.match(plexSyncCore,/ORDER BY imdb_id,active DESC,match_priority,last_seen_at DESC/);
   assert.match(plexSyncCore,/m\.type IN\('Serie','Miniserie'\) AND p\.item_type='show'/);
 });
 
