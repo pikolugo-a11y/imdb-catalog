@@ -10,13 +10,16 @@ test('la sincronización Plex global permite hasta 1000 s por petición interna'
   assert.match(plexSync,/AbortSignal\.timeout\(PLEX_REQUEST_TIMEOUT_MS\)/);
 });
 
-test('los tres intentos Batch de PROC-NOV-009 son consecutivos',()=>{
-  assert.match(batchRuntime,/r\.process_code='PROC-NOV-009'/);
-  assert.match(batchRuntime,/MAX_ATTEMPTS=3/);
-  assert.match(batchRuntime,/bi\.attempt_count=1 AND bi\.updated_at<=now\(\)-interval '6 hours'/);
-  assert.match(batchRuntime,/bi\.attempt_count>=2 AND bi\.updated_at<=now\(\)-interval '24 hours'/);
+test('PROC-NOV-009 permite cinco reintentos, con un minuto entre ellos',()=>{
+  assert.match(batchRuntime,/const NOV009_RETRIES=5/);
+  assert.match(batchRuntime,/const NOV009_MAX_ATTEMPTS=1\+NOV009_RETRIES/);
+  assert.match(batchRuntime,/const NOV009_RETRY_DELAY_MINUTES=1/);
+  assert.match(batchRuntime,/maxAttemptsFor\(item\.process_code\)/);
+  assert.match(batchRuntime,/r\.process_code='PROC-NOV-009' AND bi\.updated_at<=now\(\)-\(\$\{NOV009_RETRY_DELAY_MINUTES\}\|\|' minutes'\)::interval/);
 });
 
-test('el timeout Plex global sigue siendo retryable para consumir los tres intentos inmediatos',()=>{
+test('timeout y fallos de red Plex global son retryable; 429 y 5xx también',()=>{
   assert.match(plexSync,/createPlexTimeoutError\(error,\{path,attempt:0\}\)/);
+  assert.match(plexSync,/error\.retryable==null&&error\.name==='TypeError'\)error\.retryable=true/);
+  assert.match(plexSync,/retryable:r\.status===429\|\|r\.status>=500/);
 });
