@@ -138,7 +138,8 @@ La sincronización Plex global de Novedades usa el Batch común como **frontera 
 7. NOV-008 es una continuación automática del NOV-009 manual, no un productor autónomo ni una autorización de polling Plex;
 8. la UI consulta estados `queued/running` reales y no expira artificialmente una ejecución porque supere cinco minutos;
 9. un fallo transitorio de red/Plex (`TypeError: fetch failed`, timeout, HTTP 429 o 5xx) es retryable;
-10. NOV-009 permite **5 reintentos después del intento inicial** —6 intentos totales como máximo— con **1 minuto de espera entre reintentos**; sólo tras agotarlos termina en fallo. Los 4xx no transitorios y errores permanentes no consumen reintentos inútiles.
+10. NOV-009 permite **5 reintentos después del intento inicial** —6 intentos totales como máximo— con **1 minuto de espera entre reintentos**; sólo tras agotarlos termina en fallo. Los 4xx no transitorios y errores permanentes no consumen reintentos inútiles;
+11. si no existe `PLEX_URL`/ `PLEX_BASE_URL`, el worker consulta `plex.tv`, ordena las conexiones remotas publicadas, **prueba realmente cada candidata contra `/library/sections`** y cae a relay cuando la conexión directa no responde. La conexión validada se reutiliza durante toda la ejecución NOV-009, evitando dos descubrimientos distintos en un mismo run.
 
 El snapshot histórico de Inicio conserva su cron diario canónico; no se introduce una dependencia de `next/cache` dentro del worker Plex. **Paridad EXACTA**.
 
