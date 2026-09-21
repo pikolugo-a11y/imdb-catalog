@@ -60,7 +60,8 @@ Su reaparición como dependencia de aplicación constituye una regresión arquit
 - ejecución y clasificación del resultado;
 - retry/requeue/backoff;
 - finalización;
-- reconciliación de trabajo interrumpido.
+- reconciliación de trabajo interrumpido;
+- prioridad de cancelación: `cancel_requested` impide cualquier requeue posterior, convierte items `queued` en `cancelled` y permite cerrar el parent aunque un lease expire durante la cancelación.
 
 Los adapters de worker no deben reimplementar estas responsabilidades ni contener una receta funcional alternativa.
 
