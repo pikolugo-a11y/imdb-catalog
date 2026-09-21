@@ -712,7 +712,7 @@ Manual cuando hay varias interpretaciones razonables. No se adivina.
 
 Una decisión manual persiste mientras siga siendo la misma entidad física/funcional que la sustenta. En anomalías SER-005 de episodios extra, la identidad estable se vincula a la posición de episodio y a la `rating_key` Plex; cambios de metadata, `updatedAt` o del fingerprint derivado no reabren por sí solos una decisión ya tomada. La decisión vuelve a revisión si desaparece el elemento, cambia su identidad Plex o deja de corresponder a la misma posición. El fingerprint se conserva como evidencia histórica/auditable, no como llave de validez. Debe poder reabrirse o volver a automático.
 
-Una exclusión manual de episodio (`unavailable`) lo saca de los contadores y filtros funcionales de exigibilidad, incluyendo `Exigibles ahora`, `Pendientes España` y `No exigibles aún`. La ausencia física puede seguir contándose como `Faltan físicamente`, porque Plex continúa siendo la verdad física; esa cifra no implica atención ni necesidad funcional.
+Una exclusión manual de episodio (`unavailable`) lo saca de todos los contadores y filtros funcionales de calidad, incluyendo `Faltan sin excluir`, `Exigibles ahora`, `Pendientes España` y `No exigibles aún`. La ausencia física bruta puede seguir mostrándose como dato secundario de inventario (`Ausentes físicamente`), porque Plex continúa siendo la verdad física; esa cifra no es un KPI de incidencias ni una necesidad funcional.
 
 ## 14.10 Estados
 
