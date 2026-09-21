@@ -585,6 +585,7 @@ origen manual/Plex/Discovery/Saga/Persona
 usuario pulsa Sincronizar Plex
   -> PROC-NOV-009
   -> snapshot/diff Plex
+  -> reconstrucción de presencia: IMDb en modo normal; TMDb prioritario en Series/Miniseries TMDb-only con fallback a IMDb exacto sólo cuando Plex no expone GUID TMDb
   -> PROC-NOV-008 si aparecen candidatos
   -> invalidaciones físicas
   -> MOV-001 / SER-002 según tipo y evidencia
