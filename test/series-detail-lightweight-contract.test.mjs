@@ -63,7 +63,9 @@ test('episodios sin fecha TMDb no son exigibles ni pendientes de disponibilidad'
   assert.match(query,/air_date IS NOT NULL AND air_date<=CURRENT_DATE/);
   assert.match(query,/air_date IS NULL OR air_date>CURRENT_DATE/);
   assert.match(list,/episode_pending_premiere FROM series_episode_effective_status/);
-  assert.match(list,/e\.air_date IS NULL OR e\.air_date>CURRENT_DATE/);
+  assert.match(list,/e\.effective_status<>'present'.*e\.air_date IS NULL OR e\.air_date>CURRENT_DATE/);
+  assert.match(query,/e\.effective_status<>'present'.*e\.air_date IS NULL OR e\.air_date>CURRENT_DATE/);
+  assert.match(query,/effective_status<>'present'.*air_date IS NULL OR air_date>CURRENT_DATE/);
   assert.match(lifecycle,/e\.air_date IS NOT NULL AND e\.air_date<=CURRENT_DATE/);
   assert.match(page,/Sin fecha de estreno/);
   assert.match(page,/No exigible aún/);
