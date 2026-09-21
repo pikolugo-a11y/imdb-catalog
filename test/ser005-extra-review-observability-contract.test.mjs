@@ -13,6 +13,8 @@ test('la aceptación se liga a la identidad Plex estable y no caduca por cambios
   assert.match(actions,/plex_rating_key:String\(p\.rating_key\)/);
   assert.match(actions,/plex_fingerprint:String\(p\.fingerprint/);
   assert.match(query,/override_evidence_changed/);
+  assert.match(query,/plex_rating_key'=p\.rating_key/);
+  assert.doesNotMatch(query,/plex_rating_key'=p\.rating_key\s+AND\s+COALESCE\(o\.note::jsonb->>'plex_fingerprint'/);
   const note=JSON.stringify({ser005:1,plex_rating_key:'11976',plex_fingerprint:'old'});
   assert.deepEqual(evaluateSeriesExtraOverride({decision:'not_needed',note,ratingKey:'11976',fingerprint:'new'}),{
     current:true,stale:false,evidenceChanged:true,note:null,
@@ -21,5 +23,5 @@ test('la aceptación se liga a la identidad Plex estable y no caduca por cambios
   assert.equal(evaluateSeriesExtraOverride({decision:'not_needed',note,ratingKey:'99999',fingerprint:'new'}).stale,true);
 });
 test('si la referencia TMDb ya contiene el episodio no se puede aceptar como extra',()=>{assert.match(actions,/LEFT JOIN series_reference_episodes/);assert.match(actions,/r\.show_rating_key IS NULL/)});
-test('el frontal separa pendientes y decisiones manuales en paneles bajo demanda y permite reabrir',()=>{assert.match(page,/Pendientes de decisión/);assert.match(page,/Decisiones manuales/);assert.match(page,/panel:'pending'/);assert.match(page,/panel:'manual'/);assert.match(page,/decision="reopen"/);assert.match(page,/La decisión anterior caducó/);assert.match(page,/sólo se cargan al abrir esta ventana/);assert.match(query,/getSeriesAnomalyPanel/);assert.match(query,/SERIES_ANOMALY_PAGE_SIZE=50/)});
+test('el frontal separa pendientes y decisiones manuales en paneles bajo demanda y permite reabrir',()=>{assert.match(page,/Pendientes de decisión/);assert.match(page,/Decisiones manuales/);assert.match(page,/panel:'pending'/);assert.match(page,/panel:'manual'/);assert.match(page,/decision="reopen"/);assert.match(page,/La decisión anterior ya no coincide con el elemento Plex actual/);assert.match(page,/sólo se cargan al abrir esta ventana/);assert.match(query,/getSeriesAnomalyPanel/);assert.match(query,/SERIES_ANOMALY_PAGE_SIZE=50/)});
 test('Operaciones muestra nombre humano SER-005',()=>{assert.match(display,/'PROC-SER-005':\{name:'Revisar episodio extra \/ anómalo'\}/)});
