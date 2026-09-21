@@ -79,6 +79,8 @@ Un proceso usa Batch común cuando una operación individual canónica puede rep
 
 La cancelación es terminal: una vez `batch_run_control.desired_state='cancel_requested'`, ningún fallo, lease vencida ni reconciliación puede devolver una unidad a `queued`. Las unidades pendientes pasan a `cancelled` y el parent se cierra cuando no quedan unidades activas.
 
+`PROC-PQ-002` no usa `batch_run_control`; su cancelación canónica consiste en solicitar `plex_technical_control.requested_state='stopped'` y cerrar su `process_run` como `cancelled`. Operaciones debe exponer `Detener` desde la lista activa y desde el detalle desde el primer momento, sin esperar el umbral genérico de 15 minutos.
+
 Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
 
 `PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En ambos casos el Batch es sólo la frontera durable de una única unidad global; no autoriza polling ni ejecución automática. `PROC-NOV-008` sólo nace como continuación durable de un NOV-009 iniciado manualmente.
