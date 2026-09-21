@@ -77,6 +77,8 @@ Estados de paridad:
 
 Un proceso usa Batch común cuando una operación individual canónica puede repetirse sobre una selección de entidades sin cambiar su semántica. El Batch Engine persiste el padre en `process_runs`, gobierna la ejecución en `batch_run_control`, materializa unidades en `batch_run_items` y crea un child `process_run` por intento.
 
+La cancelación es terminal: una vez `batch_run_control.desired_state='cancel_requested'`, ningún fallo, lease vencida ni reconciliación puede devolver una unidad a `queued`. Las unidades pendientes pasan a `cancelled` y el parent se cierra cuando no quedan unidades activas.
+
 Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
 
 `PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En ambos casos el Batch es sólo la frontera durable de una única unidad global; no autoriza polling ni ejecución automática. `PROC-NOV-008` sólo nace como continuación durable de un NOV-009 iniciado manualmente.
