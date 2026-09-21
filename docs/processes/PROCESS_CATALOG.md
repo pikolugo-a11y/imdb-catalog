@@ -85,6 +85,8 @@ En `PROC-NOV-009`, la reconstrucción de `plex_catalog_status` resuelve modo nor
 
 Política de retry de `PROC-NOV-009`: el intento inicial puede ir seguido de **hasta 5 reintentos**, cada uno elegible **1 minuto** después del fallo anterior. Se consideran transitorios los timeouts, `TypeError: fetch failed`, HTTP 429 y 5xx. Errores permanentes/4xx no transitorios terminan sin reintento.
 
+Descubrimiento Plex de `PROC-NOV-009`: cuando no hay URL fija configurada, `plex.tv` sólo aporta candidatos. PikoFilm debe validar cada conexión remota antes de usarla, preferir directa HTTPS y caer a relay si la directa no responde. La conexión elegida se reutiliza durante el run completo.
+
 ## Procesos con Batch común
 
 ### ID-001
