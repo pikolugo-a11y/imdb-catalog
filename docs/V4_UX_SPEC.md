@@ -583,7 +583,7 @@ Próximos episodios se muestran como información y visualmente no se confunden 
 
 ## 13.6 Overrides
 
-Una decisión manual debe indicar que está activa y ofrecer `Volver a automático` o reapertura cuando corresponda. En anomalías de episodios extra, un refresco Plex que cambie sólo metadata o `updatedAt` no debe devolver una decisión humana a `Pendientes`; sólo un cambio real de identidad/posición del elemento puede marcarla como no vigente.
+Una decisión manual debe indicar que está activa y ofrecer `Volver a automático` o reapertura cuando corresponda. En anomalías de episodios extra, un refresco Plex que cambie sólo metadata o `updatedAt` no debe devolver una decisión humana a `Pendientes`; sólo un cambio real de identidad/posición del elemento puede marcarla como no vigente. Los episodios excluidos manualmente no aparecen en filtros funcionales como `No exigibles aún`, aunque puedan seguir sumando en la métrica puramente física `Faltan físicamente`.
 
 ---
 
