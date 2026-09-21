@@ -64,6 +64,13 @@ test('el timeout global no limita la ejecución completa; cada request Plex pued
   assert.doesNotMatch(action,/plexDeadline/);
 });
 
+test('NOV-009 reutiliza una sola conexión Plex validada durante toda la ejecución',()=>{
+  assert.match(plexSync,/const baseUrl=await discoverPlexUrlCore\(token,configuredBase\)/);
+  assert.match(plexSync,/reviewIdentitiesSince\(sql,token,baseUrl,cutoff\.toISOString\(\)\)/);
+  assert.match(plexSync,/syncPlexFastCore\(\{sql,token,baseUrl\}\)/);
+  assert.doesNotMatch(plexSync,/reviewIdentitiesSince\(sql,token,baseUrl,reviewFrom\)\{\s*const base=await discoverPlexUrlCore/);
+});
+
 test('el estado Plex usa IMDb normal y TMDb prioritario con fallback IMDb exacto en series TMDb-only',()=>{
   assert.match(plexSyncCore,/source_status->>'identity_mode'/);
   assert.match(plexSyncCore,/e\.provider='tmdb' AND e\.external_id=m\.tmdb_id::text/);
