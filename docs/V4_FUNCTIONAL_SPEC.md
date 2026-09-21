@@ -710,7 +710,7 @@ Manual cuando hay varias interpretaciones razonables. No se adivina.
 
 ## 14.9 Overrides
 
-Una decisión manual persiste mientras no cambie la evidencia que la sustenta. Debe poder reabrirse o volver a automático.
+Una decisión manual persiste mientras siga siendo la misma entidad física/funcional que la sustenta. En anomalías SER-005 de episodios extra, la identidad estable se vincula a la posición de episodio y a la `rating_key` Plex; cambios de metadata, `updatedAt` o del fingerprint derivado no reabren por sí solos una decisión ya tomada. La decisión vuelve a revisión si desaparece el elemento, cambia su identidad Plex o deja de corresponder a la misma posición. El fingerprint se conserva como evidencia histórica/auditable, no como llave de validez. Debe poder reabrirse o volver a automático.
 
 ## 14.10 Estados
 
