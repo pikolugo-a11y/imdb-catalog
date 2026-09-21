@@ -7,6 +7,8 @@ const actions=read('../app/calidad/series/actions.js');
 const query=read('../lib/series-detail-query.js');
 const page=read('../app/calidad/series/[ratingKey]/page.js');
 const display=read('../lib/process-display.js');
+const readModel=read('../lib/series-quality-read-model-core.mjs');
+const qualityQuery=read('../lib/series-quality-query.js');
 
 test('SER-005 es una decisión manual observada por episodio',()=>{assert.match(actions,/processCode:'PROC-SER-005'/);assert.match(actions,/eventType:'manual_decision'/);assert.match(actions,/entityType:'episode'/);assert.match(actions,/calidad_series_manual/)});
 test('la aceptación se liga a la identidad Plex estable y no caduca por cambios de metadata',()=>{
@@ -15,6 +17,10 @@ test('la aceptación se liga a la identidad Plex estable y no caduca por cambios
   assert.match(query,/override_evidence_changed/);
   assert.match(query,/plex_rating_key'=p\.rating_key/);
   assert.doesNotMatch(query,/plex_rating_key'=p\.rating_key\s+AND\s+COALESCE\(o\.note::jsonb->>'plex_fingerprint'/);
+  assert.match(readModel,/plex_rating_key/);
+  assert.doesNotMatch(readModel,/plex_fingerprint/);
+  assert.match(qualityQuery,/plex_rating_key/);
+  assert.doesNotMatch(qualityQuery,/plex_fingerprint/);
   const note=JSON.stringify({ser005:1,plex_rating_key:'11976',plex_fingerprint:'old'});
   assert.deepEqual(evaluateSeriesExtraOverride({decision:'not_needed',note,ratingKey:'11976',fingerprint:'new'}),{
     current:true,stale:false,evidenceChanged:true,note:null,
