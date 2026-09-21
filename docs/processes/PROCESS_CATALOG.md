@@ -83,6 +83,8 @@ Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen mod
 
 En `PROC-NOV-009`, la reconstrucción de `plex_catalog_status` resuelve modo normal por IMDb. Para Series/Miniseries `tmdb_only`, TMDb es la coincidencia prioritaria; si el ítem Plex carece de GUID TMDb pero expone un IMDb exacto igual al de la ficha, ese IMDb se admite como fallback de presencia física. Este fallback no cambia `identity_mode`, no convierte IMDb en autoridad canónica y no altera la deduplicación TMDb-only.
 
+Política de retry de `PROC-NOV-009`: el intento inicial puede ir seguido de **hasta 5 reintentos**, cada uno elegible **1 minuto** después del fallo anterior. Se consideran transitorios los timeouts, `TypeError: fetch failed`, HTTP 429 y 5xx. Errores permanentes/4xx no transitorios terminan sin reintento.
+
 ## Procesos con Batch común
 
 ### ID-001
