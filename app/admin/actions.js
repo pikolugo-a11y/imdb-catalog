@@ -1,7 +1,8 @@
 'use server';
 import {revalidatePath} from 'next/cache';
 import {db} from '@/lib/db';
-import {executeObservedProcess} from '@/lib/process-runtime';
+import {executeObservedProcess,addProcessEvent,finishProcessRun} from '@/lib/process-runtime';
+import {setTechnicalRequestedState} from '@/lib/plex-technical-control.mjs';
 import {resetTitleToNews} from '@/lib/title-reset';
 import {cancelBatch} from '@/lib/batch-engine';
 
@@ -41,6 +42,13 @@ export async function cancelRunAction(_prev,formData){
       await cancelBatch(runId);
       revalidatePath('/admin');revalidatePath(`/admin/runs/${runId}`);
       return{ok:true,message:'Cancelación solicitada al Batch. Los items ya iniciados terminarán de forma segura.'};
+    }
+    if(run.process_code==='PROC-PQ-002'){
+      await setTechnicalRequestedState(sql,'stopped');
+      await addProcessEvent(runId,{eventType:'run_cancelled',step:'technical_control',entityType:run.entity_type,entityId:run.entity_id,message:'Captura técnica detenida por el usuario desde Operaciones'});
+      await finishProcessRun(runId,{technicalStatus:'cancelled',functionalResult:'pending',message:'Captura técnica detenida'});
+      revalidatePath('/admin');revalidatePath(`/admin/runs/${runId}`);revalidatePath('/admin/pikoquality');revalidatePath('/calidad/pikoquality');
+      return{ok:true,message:'PikoQuality detenido. La ejecución se ha cerrado como cancelada.'};
     }
     const rows=await sql`UPDATE process_runs SET technical_status='cancelled',finished_at=now(),
       duration_ms=GREATEST(0,(extract(epoch FROM (now()-COALESCE(started_at,requested_at)))*1000)::bigint),updated_at=now()
