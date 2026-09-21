@@ -81,6 +81,8 @@ Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen mod
 
 `PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En ambos casos el Batch es sólo la frontera durable de una única unidad global; no autoriza polling ni ejecución automática. `PROC-NOV-008` sólo nace como continuación durable de un NOV-009 iniciado manualmente.
 
+En `PROC-NOV-009`, la reconstrucción de `plex_catalog_status` resuelve modo normal por IMDb. Para Series/Miniseries `tmdb_only`, TMDb es la coincidencia prioritaria; si el ítem Plex carece de GUID TMDb pero expone un IMDb exacto igual al de la ficha, ese IMDb se admite como fallback de presencia física. Este fallback no cambia `identity_mode`, no convierte IMDb en autoridad canónica y no altera la deduplicación TMDb-only.
+
 ## Procesos con Batch común
 
 ### ID-001
