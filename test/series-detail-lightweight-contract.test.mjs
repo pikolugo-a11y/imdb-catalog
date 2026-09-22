@@ -70,3 +70,9 @@ test('episodios sin fecha TMDb no son exigibles ni pendientes de disponibilidad'
   assert.match(page,/Sin fecha de estreno/);
   assert.match(page,/No exigible aún/);
 });
+
+test('Pendientes España contiene sólo disponibilidad aún desconocida',()=>{
+  const list=read('lib/series-quality-query.js');
+  assert.match(list,/e\.effective_status='availability_unknown'\)\:\:int episode_pending_spain/);
+  assert.doesNotMatch(list,/e\.effective_status IN\('availability_unknown','not_available_es'\)\)\:\:int episode_pending_spain/);
+});
