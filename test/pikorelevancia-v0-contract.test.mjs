@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs,sleepWithHeartbeat,awaitWithHeartbeat,MEDIACLOUD_MIN_INTERVAL_MS,MEDIACLOUD_ES_COLLECTION_ID,buildMediaCloudQuery} from '../lib/pikorelevance-core.mjs';
+import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs,sleepWithHeartbeat,awaitWithHeartbeat,MEDIACLOUD_MIN_INTERVAL_MS,MEDIACLOUD_ES_COLLECTION_ID,buildMediaCloudQuery,parseMediaCloudCount} from '../lib/pikorelevance-core.mjs';
 
 const strong={
   internal:{final_rating:8.8,imdb_rating:8.6,imdb_votes:80000},
@@ -105,4 +105,11 @@ test('legacy gdelt weight is ignored after Media Cloud migration',()=>{
   assert.equal(result.total_weight,100);
   assert.ok(result.factors.some(x=>x.key==='mediacloud_es'));
   assert.ok(!result.factors.some(x=>x.key==='gdelt_es'));
+});
+
+
+test('Media Cloud count parser uses relevant matches and preserves total corpus',()=>{
+  assert.deepEqual(parseMediaCloudCount({count:{relevant:12,total:3456}}),{relevant:12,total:3456});
+  assert.deepEqual(parseMediaCloudCount({count:7}),{relevant:7,total:null});
+  assert.equal(parseMediaCloudCount({count:{relevant:'bad',total:3}}),null);
 });
