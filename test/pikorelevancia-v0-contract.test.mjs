@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs,sleepWithHeartbeat,awaitWithHeartbeat,MEDIACLOUD_MIN_INTERVAL_MS,MEDIACLOUD_ES_COLLECTION_ID,buildMediaCloudQuery,parseMediaCloudCount} from '../lib/pikorelevance-core.mjs';
+import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs,sleepWithHeartbeat,awaitWithHeartbeat,MEDIACLOUD_MIN_INTERVAL_MS,MEDIACLOUD_ES_COLLECTION_ID,buildMediaCloudQuery,parseMediaCloudCount,pikoRelevanceReviewDays,nextPikoRelevanceReviewAt} from '../lib/pikorelevance-core.mjs';
 
 const strong={
   internal:{final_rating:8.8,imdb_rating:8.6,imdb_votes:80000},
@@ -113,4 +113,33 @@ test('Media Cloud count parser uses relevant matches and preserves total corpus'
   assert.deepEqual(parseMediaCloudCount({count:{relevant:12,total:3456}}),{relevant:12,total:3456});
   assert.deepEqual(parseMediaCloudCount({count:7}),{relevant:7,total:null});
   assert.equal(parseMediaCloudCount({count:{relevant:'bad',total:3}}),null);
+});
+
+
+test('formula 0.3 evita duplicar la españolidad y pesa 100',()=>{
+  assert.equal(PIKORELEVANCE_VERSION,'0.3.0');
+  const result=scorePikoRelevanceV0(strong);
+  assert.equal(result.total_weight,100);
+  assert.ok(result.factors.some(x=>x.key==='spanish_accessibility'&&x.weight===9));
+  assert.ok(result.factors.some(x=>x.key==='origin_es'&&x.weight===2));
+  assert.ok(!result.factors.some(x=>x.key==='language_es'||x.key==='spanish_translation'));
+});
+
+test('una traducción española obtiene la misma accesibilidad que idioma original español',()=>{
+  const original=scorePikoRelevanceV0(strong);
+  const translated=scorePikoRelevanceV0({...strong,tmdb:{...strong.tmdb,origin_country:['US'],original_language:'en',spanish_translation:true}});
+  const a=original.factors.find(x=>x.key==='spanish_accessibility');
+  const b=translated.factors.find(x=>x.key==='spanish_accessibility');
+  assert.equal(a.points,b.points);
+  assert.equal(a.points,9);
+});
+
+test('cadencia PikoRelevancia se ralentiza con edad y se apaga tras 30 años estables',()=>{
+  const now=new Date('2026-09-23T00:00:00Z');
+  assert.equal(pikoRelevanceReviewDays({year:2026,status:'Returning Series',now}),30);
+  assert.equal(pikoRelevanceReviewDays({year:2025,status:'Ended',now}),30);
+  assert.equal(pikoRelevanceReviewDays({year:2018,status:'Ended',now}),180);
+  assert.equal(pikoRelevanceReviewDays({year:1999,status:'Ended',now}),730);
+  assert.equal(pikoRelevanceReviewDays({year:1980,status:'Ended',now}),null);
+  assert.equal(nextPikoRelevanceReviewAt({year:1980,status:'Ended',now}),null);
 });
