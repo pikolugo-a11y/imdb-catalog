@@ -21,6 +21,7 @@ const qualityPrimaryItems=[
   ['/calidad/centro','Centro de Calidad'],
   ['/calidad/peliculas','Películas'],
   ['/calidad/series','Series'],
+  ['/calidad/relevancia','PikoRelevancia'],
 ];
 const qualitySectionLabels=[
   ['/calidad/centro','Centro de Calidad'],
@@ -32,6 +33,7 @@ const qualitySectionLabels=[
   ['/calidad/sin-estado','Centro · Integridad Lifecycle'],
   ['/calidad/peliculas','Películas'],
   ['/calidad/series','Series'],
+  ['/calidad/relevancia','PikoRelevancia'],
 ];
 
 function sectionLabel(path){
