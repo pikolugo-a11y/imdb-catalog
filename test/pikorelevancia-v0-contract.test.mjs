@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs,sleepWithHeartbeat} from '../lib/pikorelevance-core.mjs';
+import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs,sleepWithHeartbeat,GDELT_MIN_INTERVAL_MS,GDELT_RETRY_BASE_MS} from '../lib/pikorelevance-core.mjs';
 
 const strong={
   internal:{final_rating:8.8,imdb_rating:8.6,imdb_votes:80000},
@@ -74,4 +74,10 @@ test('long retry waits heartbeat often enough to preserve a 120s lease',async()=
   await sleepWithHeartbeat(25000,{heartbeat:async()=>{heartbeats++}},async ms=>{chunks.push(ms)});
   assert.deepEqual(chunks,[10000,10000,5000]);
   assert.equal(heartbeats,3);
+});
+
+
+test('GDELT policy keeps conservative spacing after observed 429 throttling',()=>{
+  assert.ok(GDELT_MIN_INTERVAL_MS>=15000);
+  assert.ok(GDELT_RETRY_BASE_MS>=30000);
 });
