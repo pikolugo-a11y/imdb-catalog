@@ -49,6 +49,7 @@ Estados de paridad:
 | PROC-SER-004 | Series | Disponibilidad España | individual | sí | `confirmSeriesEsAvailabilityCanonical` | Vercel / Railway API | PARCIAL controlada |
 | PROC-SER-005 | Series | Resolver anomalía de episodio | manual | no | acción observada + override | Vercel | NO APLICA |
 | PROC-SER-006 | Series | Retirar override de disponibilidad | manual | no | acción observada + refresh | Vercel | NO APLICA |
+| PROC-REL-001 | Relevancia | Calcular PikoRelevancia V0 por IMDb | individual durable experimental | sí (1 unidad) | `computePikoRelevanceCanonical` | Railway API | EXACTA / experimental |
 | PROC-NOV-001 | Novedades | Discovery IMDb global | global manual | no | GitHub Actions `imdb-discovery.yml` | GitHub Actions | SIN BATCH |
 | PROC-NOV-002 | Novedades | Alta manual IMDb | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-003 | Novedades | Reintento candidato manual | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
@@ -82,6 +83,8 @@ La cancelación es terminal: una vez `batch_run_control.desired_state='cancel_re
 `PROC-PQ-002` no usa `batch_run_control`; su cancelación canónica consiste en solicitar `plex_technical_control.requested_state='stopped'` y cerrar su `process_run` como `cancelled`. Operaciones debe exponer `Detener` desde la lista activa y desde el detalle desde el primer momento, sin esperar el umbral genérico de 15 minutos.
 
 Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
+
+`PROC-REL-001` es experimental y no modifica Lifecycle ni `catalog_read_model`. Se ejecuta en Railway API sobre una unidad IMDb y persiste `series_relevance_assessments`. Para fuentes públicas: Wikidata/Wikimedia usan retry tolerante a latencia sólo en este proceso; GDELT se serializa con intervalo mínimo de 5 s por defecto y respeta `Retry-After`/backoff ante 429 o 5xx. Un fallo agotado reduce confianza y no equivale a evidencia negativa.
 
 `PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En ambos casos el Batch es sólo la frontera durable de una única unidad global; no autoriza polling ni ejecución automática. `PROC-NOV-008` sólo nace como continuación durable de un NOV-009 iniciado manualmente.
 
