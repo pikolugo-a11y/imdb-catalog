@@ -1453,3 +1453,11 @@ En Series, un episodio ausente sin fecha de estreno en TMDb se muestra como **Si
 - `docs/operations/RUNBOOK.md` — operación técnica.
 
 Los mockups y documentos UX históricos pueden seguir existiendo en historial Git como evidencia de diseño, pero no tienen autoridad frente a esta especificación y al código vivo.
+
+## PikoRelevancia · UX productiva
+
+- Catálogo · Series añade columna `PikoRelevancia`, sortable, y la usa como orden inicial descendente; los valores pendientes quedan al final.
+- Calidad incorpora la página especializada `/calidad/relevancia`, accesible desde la portada y subnavegación.
+- La página muestra backlog manual, PikoScore, año, estado de cola y selección múltiple; 50 filas por página y PikoScore descendente.
+- La selección múltiple comunica explícitamente que el cálculo es secuencial (concurrencia 1).
+- El backlog inicial no pinta Calidad global en rojo: es una cola editorial voluntaria. El mantenimiento de valoraciones ya existentes sí se muestra como automatización en Actividad.
