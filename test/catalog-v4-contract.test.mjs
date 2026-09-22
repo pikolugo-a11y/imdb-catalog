@@ -56,3 +56,13 @@ test('Excluidas V4 is a simple searchable reversible history',()=>{
   assert.doesNotMatch(excluded,/<th>IMDb<\/th>/);
   assert.match(excluded,/No hay títulos excluidos que coincidan con esta búsqueda/);
 });
+
+
+test('Catalogo Series integra PikoRelevancia como orden principal',()=>{
+  assert.match(query,/SORTS=new Set\(\['score','relevance','spain','year','title'\]\)/);
+  assert.match(query,/scope==='series'\?'relevance':'score'/);
+  assert.match(query,/series_relevance_assessments sra/);
+  assert.match(query,/sra\.score pikorelevancia/);
+  assert.match(page,/PikoRelevancia/);
+  assert.match(page,/scoreSortHref\(s,'relevance'\)/);
+});
