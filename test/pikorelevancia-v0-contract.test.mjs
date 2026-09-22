@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION} from '../lib/pikorelevance-core.mjs';
+import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs} from '../lib/pikorelevance-core.mjs';
 
 const strong={
   internal:{final_rating:8.8,imdb_rating:8.6,imdb_votes:80000},
@@ -56,4 +56,13 @@ test('low evidence returns datos_insuficientes even with a high partial score',(
   const result=scorePikoRelevanceV0(input);
   assert.equal(result.recommendation,'datos_insuficientes');
   assert.ok(result.confidence<60);
+});
+
+
+test('source retry policy respects Retry-After and exponential backoff',()=>{
+  assert.equal(parseRetryAfterMs('5',{now:0}),5000);
+  assert.equal(parseRetryAfterMs('invalid',{now:0}),null);
+  assert.equal(retryDelayMs({attempt:0,baseBackoffMs:5000,maxBackoffMs:120000}),5000);
+  assert.equal(retryDelayMs({attempt:1,baseBackoffMs:5000,maxBackoffMs:120000}),10000);
+  assert.equal(retryDelayMs({attempt:0,retryAfter:'30',baseBackoffMs:5000,maxBackoffMs:120000}),30000);
 });

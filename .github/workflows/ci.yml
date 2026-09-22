@@ -37,6 +37,8 @@ jobs:
         run: node scripts/pikoscore-v3-selfcheck.mjs
       - name: Validar Calidad global
         run: npm run test:quality
+      - name: Validar PikoRelevancia
+        run: node --test test/pikorelevancia-v0-contract.test.mjs
       - name: Validar navegación sin prefetch masivo
         run: node --test test/no-prefetch-navigation-contract.test.mjs
       - name: Validar lectura acotada de Personas
