@@ -44,6 +44,13 @@ Estos umbrales son experimentales y configurables mediante `app_settings.key='pi
 `PROC-REL-001` vive en el worker API de Railway y acepta un `entity_id` IMDb (`tt...`).
 Cada fuente es tolerante a fallos. La ejecución sólo debe fallar por IMDb ID inválido o por un fallo interno no recuperable.
 
+### Fiabilidad de fuentes externas
+- Wikidata SPARQL conserva la política histórica para otros callers, pero PikoRelevancia usa hasta 3 intentos, timeout de 30 s por intento y backoff.
+- Wikidata EntityData y Wikimedia Pageviews usan hasta 3 intentos y timeout de 20 s por intento.
+- GDELT se serializa dentro del worker con una separación mínima configurable (`PIKORELEVANCE_GDELT_MIN_INTERVAL_MS`, 5 s por defecto).
+- HTTP 429 y 5xx se reintentan con backoff exponencial; `Retry-After`, cuando existe, tiene prioridad.
+- Una fuente agotada sigue reduciendo `confidence`; nunca se transforma en evidencia negativa.
+
 ## Siguiente fase
 Después de validar la fórmula con una muestra de series elegidas por el usuario:
 1. ajustar pesos y umbrales;
