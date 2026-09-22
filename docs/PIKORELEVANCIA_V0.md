@@ -49,7 +49,7 @@ Cada fuente es tolerante a fallos. La ejecución sólo debe fallar por IMDb ID i
 ### Fiabilidad de fuentes externas
 - Wikidata SPARQL conserva la política histórica para otros callers, pero PikoRelevancia usa hasta 3 intentos, timeout de 30 s por intento y backoff.
 - Wikidata EntityData y Wikimedia Pageviews usan hasta 3 intentos y timeout de 20 s por intento.
-- Media Cloud se consulta con una sola petición `search/total-count` por serie, sobre los últimos 90 días. Requiere `MEDIACLOUD_API_KEY`; la colección española es configurable mediante `MEDIACLOUD_ES_COLLECTION_ID` y vale `34412356` por defecto.
+- Media Cloud se consulta con una sola petición `search/total-count` por serie, sobre los últimos 90 días. Toda búsqueda exige además el término `serie` para reducir falsos positivos de títulos ambiguos (por ejemplo, `"Élite" AND serie AND language:es`). Requiere `MEDIACLOUD_API_KEY`; la colección española es configurable mediante `MEDIACLOUD_ES_COLLECTION_ID` y vale `34412356` por defecto.
 - Media Cloud se serializa dentro del worker con una separación mínima configurable (`PIKORELEVANCE_MEDIACLOUD_MIN_INTERVAL_MS`, 31 s por defecto), coherente con el límite público de 2 peticiones/minuto.
 - HTTP 429 y 5xx se reintentan con backoff exponencial; `Retry-After`, cuando existe, tiene prioridad.
 - Una fuente agotada sigue reduciendo `confidence`; nunca se transforma en evidencia negativa.
