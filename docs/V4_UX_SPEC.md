@@ -585,6 +585,8 @@ Próximos episodios se muestran como información y visualmente no se confunden 
 
 Una decisión manual debe indicar que está activa y ofrecer `Volver a automático` o reapertura cuando corresponda. En anomalías de episodios extra, un refresco Plex que cambie sólo metadata o `updatedAt` no debe devolver una decisión humana a `Pendientes`; sólo un cambio real de identidad/posición del elemento puede marcarla como no vigente. Los episodios excluidos manualmente no aparecen en filtros funcionales como `Faltan sin excluir` o `No exigibles aún`. La ausencia física bruta puede mostrarse sólo como contexto secundario de inventario, nunca como total principal de incidencias.
 
+Las decisiones `not_available_es` disponen de un bloque separado **Revisión futura** con acceso `No disponibles ES`. Debe leerse como archivo de decisiones resueltas, no como alerta ni cola de trabajo. Al entrar, cada serie muestra cuántos episodios están en ese estado.
+
 ---
 
 # 14. Calidad — Datos/Identidad/Personas/PikoQuality

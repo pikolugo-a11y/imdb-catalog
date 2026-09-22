@@ -76,3 +76,15 @@ test('Pendientes España contiene sólo disponibilidad aún desconocida',()=>{
   assert.match(list,/e\.effective_status='availability_unknown'\)\:\:int episode_pending_spain/);
   assert.doesNotMatch(list,/e\.effective_status IN\('availability_unknown','not_available_es'\)\)\:\:int episode_pending_spain/);
 });
+
+test('No disponibles ES queda revisable sin volver a ser incidencia',()=>{
+  const list=read('lib/series-quality-query.js');
+  const page=read('app/calidad/series/page.js');
+  assert.match(list,/episodeAllowed=new Set\(\['all','missing','actionable','spain','noes','premiere'\]\)/);
+  assert.match(list,/noes:'episode_pending_noes'/);
+  assert.match(list,/episodes\.noes\+=n\(r\.episode_pending_noes\)/);
+  assert.match(page,/REVISIÓN FUTURA/);
+  assert.match(page,/No disponibles ES/);
+  assert.match(page,/episode:'noes'/);
+  assert.match(page,/no disponibles ES/);
+});

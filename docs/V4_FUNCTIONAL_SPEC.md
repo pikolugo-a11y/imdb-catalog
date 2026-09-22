@@ -716,6 +716,8 @@ Una exclusión manual de episodio (`unavailable`) lo saca de todos los contadore
 
 `Pendientes España` significa exclusivamente disponibilidad todavía **desconocida** para un episodio ausente de Plex que ya superó el margen de estreno. `not_available_es` es una decisión/evidencia ya resuelta y nunca entra en ese contador o filtro. Si el episodio está presente en Plex, su estado efectivo es `present` aunque las fuentes externas de disponibilidad sigan en `unknown`.
 
+Los episodios `not_available_es` siguen siendo consultables en una vista separada **Revisión futura · No disponibles ES**. Esa vista es informativa/revisable: no suma en Atención, no incrementa Pendientes España y no convierte una decisión resuelta en trabajo pendiente.
+
 ## 14.10 Estados
 
 - Atención = necesita humano;
