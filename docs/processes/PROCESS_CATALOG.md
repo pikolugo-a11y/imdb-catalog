@@ -153,6 +153,10 @@ La acción manual y el mantenimiento automático comparten `syncPlexSeriesDetail
 
 La acción manual de `/calidad/series` no ejecuta ya el core pesado dentro del request de Vercel: valida la serie y crea/reutiliza un Batch SER-002 dirigido a ese `ratingKey`. Railway Plex ejecuta la unidad y crea el child `process_run` real. Esto mantiene el control individual bajo demanda sin exponerlo al límite HTTP de Vercel. El selector automático sigue limitado a detalle nunca refrescado o invalidado; el selector explícito manual puede forzar una serie concreta aunque esté fresca. El planner sólo continúa invalidaciones existentes; no inicia un sync Plex global.
 
+### SER-002
+
+Tras completar el detalle Plex de una serie, el worker debe reconstruir inmediatamente su fila en `series_quality_read_model` mediante `rebuildSeriesQualityReadModelForRatingKey`. Esto aplica también a series recién incorporadas: completar episodios/diagnóstico sin materializar la fila visible en Calidad no se considera cierre correcto del item.
+
 ### SER-003 / SER-004
 
 Comparten core con Batch. Railway y wrapper individual reconstruyen el read model al terminar. La diferencia es de guard/postprocesado controlado, no de receta. **PARCIAL controlada**.
