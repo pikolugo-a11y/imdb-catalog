@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs} from '../lib/pikorelevance-core.mjs';
+import {scorePikoRelevanceV0,PIKORELEVANCE_VERSION,parseRetryAfterMs,retryDelayMs,sleepWithHeartbeat} from '../lib/pikorelevance-core.mjs';
 
 const strong={
   internal:{final_rating:8.8,imdb_rating:8.6,imdb_votes:80000},
@@ -65,4 +65,13 @@ test('source retry policy respects Retry-After and exponential backoff',()=>{
   assert.equal(retryDelayMs({attempt:0,baseBackoffMs:5000,maxBackoffMs:120000}),5000);
   assert.equal(retryDelayMs({attempt:1,baseBackoffMs:5000,maxBackoffMs:120000}),10000);
   assert.equal(retryDelayMs({attempt:0,retryAfter:'30',baseBackoffMs:5000,maxBackoffMs:120000}),30000);
+});
+
+
+test('long retry waits heartbeat often enough to preserve a 120s lease',async()=>{
+  const chunks=[];
+  let heartbeats=0;
+  await sleepWithHeartbeat(25000,{heartbeat:async()=>{heartbeats++}},async ms=>{chunks.push(ms)});
+  assert.deepEqual(chunks,[10000,10000,5000]);
+  assert.equal(heartbeats,3);
 });
