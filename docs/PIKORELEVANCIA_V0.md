@@ -47,7 +47,7 @@ Cada fuente es tolerante a fallos. La ejecución sólo debe fallar por IMDb ID i
 ### Fiabilidad de fuentes externas
 - Wikidata SPARQL conserva la política histórica para otros callers, pero PikoRelevancia usa hasta 3 intentos, timeout de 30 s por intento y backoff.
 - Wikidata EntityData y Wikimedia Pageviews usan hasta 3 intentos y timeout de 20 s por intento.
-- GDELT se serializa dentro del worker con una separación mínima configurable (`PIKORELEVANCE_GDELT_MIN_INTERVAL_MS`, 5 s por defecto).
+- GDELT se serializa dentro del worker con una separación mínima configurable (`PIKORELEVANCE_GDELT_MIN_INTERVAL_MS`, 15 s por defecto); tras un fallo transitorio usa backoff 30/60 s salvo `Retry-After` más específico.
 - HTTP 429 y 5xx se reintentan con backoff exponencial; `Retry-After`, cuando existe, tiene prioridad.
 - Una fuente agotada sigue reduciendo `confidence`; nunca se transforma en evidencia negativa.
 
