@@ -327,3 +327,9 @@ CI debe detectar, según aplique:
 - regresiones específicas de cada proceso, incluida la paridad SAGA-001 individual/global.
 
 La matriz completa de procesos, incluidos manuales y sin Batch, vive en `PROCESS_CATALOG.md`. La arquitectura global vive en `docs/V4_ARCHITECTURE.md`.
+
+### PROC-REL-001 — PikoRelevancia
+
+PikoRelevancia usa el Batch Engine común en el pool API y la misma operación canónica `computePikoRelevanceCanonical` tanto para una serie como para una selección múltiple. La concurrencia solicitada es siempre **1** porque Media Cloud tiene pacing propio y cuota limitada. Seleccionar varias series sólo crea una cola; nunca paraleliza llamadas a Media Cloud.
+
+La deuda histórica sin PikoRelevancia no es elegible por el planner: el usuario la absorbe desde `/calidad/relevancia`, paginada y ordenada por PikoScore. Tras el primer cálculo, `next_review_at` entra en `PROC-PLAN-002` y los recálculos sí son automáticos, con cadencia adaptativa y sin revisión automática para series estables de más de 30 años.
