@@ -8,7 +8,7 @@ const strong={
   tmdb:{status:'ok',es:{any:true,streaming:true,providers:['Netflix']},provider_countries:30,popularity:70,series_status:'Returning Series',first_air_date:'2025-01-01',origin_country:['ES'],original_language:'es',spanish_translation:true},
   watchmode:{status:'ok',any:true,streaming:true,providers:['Netflix']},
   wikimedia:{status:'ok',eswiki:true,title:'Serie',pageviews_status:'ok',pageviews_90d:50000},
-  mediacloud:{status:'ok',mentions:12,collection_id:'34412356',query:'"Serie" AND language:es'},
+  mediacloud:{status:'ok',mentions:12,collection_id:'34412356',query:'"Serie" AND serie AND language:es'},
 };
 
 test('PikoRelevancia v0 stays deterministic and bounded',()=>{
@@ -80,7 +80,8 @@ test('long retry waits heartbeat often enough to preserve a 120s lease',async()=
 test('Media Cloud policy respects its public API pacing and Spain collection',()=>{
   assert.ok(MEDIACLOUD_MIN_INTERVAL_MS>=30000);
   assert.equal(MEDIACLOUD_ES_COLLECTION_ID,'34412356');
-  assert.equal(buildMediaCloudQuery('Hora de aventuras','Adventure Time'),'("Hora de aventuras" OR "Adventure Time") AND language:es');
+  assert.equal(buildMediaCloudQuery('Hora de aventuras','Adventure Time'),'("Hora de aventuras" OR "Adventure Time") AND serie AND language:es');
+  assert.equal(buildMediaCloudQuery('Élite','Élite'),'"Élite" AND serie AND language:es');
 });
 
 
