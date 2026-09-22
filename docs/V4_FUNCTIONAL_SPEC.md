@@ -714,6 +714,8 @@ Una decisión manual persiste mientras siga siendo la misma entidad física/func
 
 Una exclusión manual de episodio (`unavailable`) lo saca de todos los contadores y filtros funcionales de calidad, incluyendo `Faltan sin excluir`, `Exigibles ahora`, `Pendientes España` y `No exigibles aún`. La ausencia física bruta puede seguir mostrándose como dato secundario de inventario (`Ausentes físicamente`), porque Plex continúa siendo la verdad física; esa cifra no es un KPI de incidencias ni una necesidad funcional.
 
+`Pendientes España` significa exclusivamente disponibilidad todavía **desconocida** para un episodio ausente de Plex que ya superó el margen de estreno. `not_available_es` es una decisión/evidencia ya resuelta y nunca entra en ese contador o filtro. Si el episodio está presente en Plex, su estado efectivo es `present` aunque las fuentes externas de disponibilidad sigan en `unknown`.
+
 ## 14.10 Estados
 
 - Atención = necesita humano;
