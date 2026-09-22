@@ -84,7 +84,7 @@ La cancelación es terminal: una vez `batch_run_control.desired_state='cancel_re
 
 Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
 
-`PROC-REL-001` es experimental y no modifica Lifecycle ni `catalog_read_model`. Se ejecuta en Railway API sobre una unidad IMDb y persiste `series_relevance_assessments`. Para fuentes públicas: Wikidata/Wikimedia usan retry tolerante a latencia sólo en este proceso; GDELT se serializa con intervalo mínimo de 5 s por defecto y respeta `Retry-After`/backoff ante 429 o 5xx. Un fallo agotado reduce confianza y no equivale a evidencia negativa.
+`PROC-REL-001` es experimental y no modifica Lifecycle ni `catalog_read_model`. Se ejecuta en Railway API sobre una unidad IMDb y persiste `series_relevance_assessments`. Para fuentes públicas: Wikidata/Wikimedia usan retry tolerante a latencia sólo en este proceso; GDELT se serializa con intervalo mínimo de 15 s por defecto y, ante 429/5xx, respeta `Retry-After` o aplica backoff 30/60 s. Un fallo agotado reduce confianza y no equivale a evidencia negativa.
 
 `PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En ambos casos el Batch es sólo la frontera durable de una única unidad global; no autoriza polling ni ejecución automática. `PROC-NOV-008` sólo nace como continuación durable de un NOV-009 iniciado manualmente.
 
