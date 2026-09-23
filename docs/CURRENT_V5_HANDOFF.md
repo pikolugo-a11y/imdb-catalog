@@ -802,3 +802,12 @@ Contrato: acciones simples siguen siendo inmediatas; filtros compuestos se confi
 Contrato: Novedades y PikoRelevancia dispondrán de representación móvil compacta sin scroll horizontal obligatorio; PikoRelevancia añade naming accesible por checkbox.
 
 **Siguiente paso exacto:** presentar únicamente **UX-03**. Persistir su decisión antes de UX-04.
+
+
+### DECISIÓN PUNTO 8 — UX-03
+
+**APROBADA** el 2026-09-24 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: toda navegación lista → detalle debe restaurar exactamente el contexto URL al volver; Sagas debe adoptar `returnTo` validado con fallback a `/sagas`.
+
+**Siguiente paso exacto:** presentar únicamente **UX-04**. Persistir su decisión antes de UX-05.
