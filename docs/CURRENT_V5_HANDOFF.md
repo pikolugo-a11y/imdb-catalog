@@ -717,3 +717,15 @@ El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento
 - Corrección: el helper de scope construye explícitamente el placeholder parametrizado y se añade contrato de regresión.
 - No afecta a PikoRelevancia ni a sus datos; es exclusivamente construcción SQL del filtro de tipo Series.
 
+
+
+### Hotfix urgente de coste Neon · workers wake-driven
+
+- Motivo: el consumo de Neon estaba dominado por compute (~99% del gasto) y las CU-h indicaban un compute mínimo prácticamente despierto 24/7.
+- Causa confirmada en código: los workers Railway `api`, `fast` y `plex` consultaban la cola cada ~1 s y el worker técnico consultaba control/cola cada ~10 s aun sin trabajo.
+- Solución: convertir los cuatro workers persistentes a modelo `enqueue -> authenticated wake -> drain -> idle`, sin polling Neon en reposo.
+- Los endpoints wake usan HMAC derivado de la credencial PostgreSQL ya compartida; no se añade un secreto nuevo al repositorio.
+- Railway Serverless debe habilitarse en los cuatro servicios.
+- El planner horario actúa como recovery wake sólo si encuentra trabajo activo.
+- Punto de reentrada V5 tras validar esta optimización: **Punto 7 · Fase 3 · INNO-INT-02**.
+
