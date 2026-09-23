@@ -35,16 +35,19 @@ test('Catalog V4 supports multi-genre OR and AND filtering on canonical genre sc
   assert.match(page,/className="more">\+\{more\}/);
 });
 
-test('Catalog V4 shows country and filters movies and series by canonical country',()=>{
-  assert.match(page,/<th>País<\/th>/);
+test('Catalog V4 supports multi-country filtering like genres',()=>{
+  assert.match(page,/País/);
   assert.match(page,/countryPreview\(r\.countries\)/);
   assert.match(page,/getCatalogV4Countries/);
-  assert.match(filters,/<span>País<\/span><select value=\{country\}/);
+  assert.match(filters,/selectedCountries/);
+  assert.match(filters,/countryMode/);
+  assert.match(filters,/toggleCountry/);
   assert.match(filters,/countries\.map/);
+  assert.match(query,/countryMode==='all'/);
+  assert.match(query,/@>|&&/);
   assert.match(query,/movie_countries mc JOIN countries ctry/);
-  assert.match(query,/ctry\.name_es=\$\$\{i\}/);
   assert.match(query,/getCatalogV4Countries/);
-  assert.match(query,/array_agg\(ctry\.name_es ORDER BY ctry\.name_es\)/);
+  assert.match(query,/array_agg\(DISTINCT ctry\.name_es ORDER BY ctry\.name_es\)/);
   assert.match(query,/regexp_split_to_array\(mv\.country/);
 });
 
@@ -59,10 +62,42 @@ test('Excluidas V4 is a simple searchable reversible history',()=>{
 
 
 test('Catalogo Series integra PikoRelevancia como orden principal',()=>{
-  assert.match(query,/SORTS=new Set\(\['score','relevance','spain','year','title'\]\)/);
+  assert.match(query,/SORTS=new Set\(\['score','relevance','quality','spain','year','title'\]\)/);
   assert.match(query,/scope==='series'\?'relevance':'score'/);
   assert.match(query,/series_relevance_assessments sra/);
   assert.match(query,/sra\.score pikorelevancia/);
   assert.match(page,/PikoRelevancia/);
   assert.match(page,/scoreSortHref\(s,'relevance'\)/);
+});
+
+
+test('Catalogo usa los contadores Plex como filtro y elimina combos redundantes',()=>{
+  assert.match(page,/aria-label="Filtrar por presencia en Plex"/);
+  assert.match(page,/plex:'in_plex'/);
+  assert.match(page,/plex:'without_plex'/);
+  assert.doesNotMatch(filters,/<span>Plex<\/span>/);
+  assert.doesNotMatch(filters,/<span>Orden<\/span>/);
+  assert.doesNotMatch(page,/<th>Plex<\/th>/);
+});
+
+test('la ordenación por cabeceras es global, server-side y vuelve a página uno',()=>{
+  assert.match(page,/scoreSortHref\(s,'title'\)/);
+  assert.match(page,/scoreSortHref\(s,'year'\)/);
+  assert.match(page,/scoreSortHref\(s,'score'\)/);
+  assert.match(page,/scoreSortHref\(s,'quality'\)/);
+  assert.match(page,/scoreSortHref\(s,'relevance'\)/);
+  assert.match(page,/sort:key,dir,page:1/);
+  assert.match(query,/ORDER BY \$\{order\} LIMIT \$\{CATALOG_V4_PAGE_SIZE\} OFFSET \$\{offset\}/);
+});
+
+test('Tipo sólo se muestra como columna cuando el alcance es Todo',()=>{
+  assert.match(page,/s\.scope==='all'&&<th className="col-type">Tipo<\/th>/);
+  assert.match(page,/s\.scope==='all'&&<td>\{typeLabel\(r\.type\)\}<\/td>/);
+});
+
+test('PikoRelevancia usa escala visual de muy alta a muy baja',()=>{
+  assert.match(page,/Number\(v\)>=80\?'very-high'/);
+  assert.match(page,/Number\(v\)>=65\?'high'/);
+  assert.match(page,/Number\(v\)>=50\?'medium'/);
+  assert.match(page,/Number\(v\)>=35\?'low':'very-low'/);
 });
