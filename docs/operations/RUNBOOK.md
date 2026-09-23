@@ -142,3 +142,30 @@ Un incidente no queda cerrado sólo porque el error desaparezca: debe verificars
 - `/calidad/relevancia` es el mecanismo manual para la deuda histórica; no habilitar el planner sobre filas sin assessment.
 - Los recálculos automáticos sí aparecen en Actividad/Calendario cuando `next_review_at` vence.
 - Una serie estable de más de 30 años puede tener `next_review_at = NULL`; no es una incidencia.
+
+
+## Verificación de scale-to-zero de workers / Neon
+
+### Señales esperadas en Railway
+Cada worker debe registrar:
+- `worker_wake_server_ready` al arrancar;
+- `worker_wake_received` cuando llega trabajo;
+- `worker_drain_started` al comenzar a drenar;
+- `worker_drain_idle` cuando deja de consultar Neon.
+
+En reposo no deben aparecer consultas periódicas, reconciliaciones ni heartbeats de pool.
+
+Los cuatro servicios Railway deben tener Serverless / sleep mode habilitado. Tras unos 10 minutos sin actividad saliente pueden dormir; una petición `/wake` los vuelve a iniciar.
+
+### Prueba manual
+1. Elegir un momento alejado del cron horario de Actividad.
+2. Dejar PikoFilm sin procesos activos.
+3. Esperar al menos 6 minutos: Neon debe poder mostrar el compute como idle/suspended.
+4. Esperar unos 10-12 minutos: Railway debe mostrar los workers como dormidos/serverless cuando no haya trabajo.
+5. Lanzar una acción manual de Calidad o PikoRelevancia.
+6. Comprobar en logs del pool: `worker_wake_received` -> `worker_drain_started` -> items procesados -> `worker_drain_idle`.
+7. Confirmar que, terminada la cola, cesa de nuevo toda actividad contra Neon.
+
+### Billing
+El efecto no se valida por el total mensual acumulado (no baja), sino por la pendiente de consumo futura. Tras varias horas de reposo, las CU-h deben crecer mucho más despacio que antes. El almacenamiento no forma parte de esta optimización.
+

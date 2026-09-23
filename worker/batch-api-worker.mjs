@@ -14,7 +14,8 @@ import {refreshSagaCollectionCanonical} from '../lib/saga-refresh-core.mjs';
 import {createApiGate} from '../lib/batch-api-governance.mjs';
 import {executeNov008} from '../lib/plex-news-worker.mjs';
 import {computePikoRelevanceCanonical} from '../lib/pikorelevance-core.mjs';
-const POOL='api',CAPACITY=Math.max(1,Math.min(Number(process.env.BATCH_API_CAPACITY)||3,16)),POLL=Math.max(250,Number(process.env.BATCH_POLL_MS)||1000),workerId=`batch-api:${process.env.RAILWAY_REPLICA_ID||process.pid}`;
+import {startWakeServer} from '../lib/worker-wake-server.mjs';
+const POOL='api',CAPACITY=Math.max(1,Math.min(Number(process.env.BATCH_API_CAPACITY)||3,16)),HEARTBEAT_MS=Math.max(5000,Math.min(Number(process.env.BATCH_HEARTBEAT_MS)||15000,60000)),workerId=`batch-api:${process.env.RAILWAY_REPLICA_ID||process.pid}`;
 async function recomputeIdentityLifecycle(id,sql){const[row]=await sql`SELECT cl.lifecycle_state,m.tmdb_id FROM catalog_lifecycle cl JOIN movies m USING(imdb_id) WHERE cl.imdb_id=${id}`;if(!row)return null;const next=row.tmdb_id?'IDENTITY_VALIDATION':'IDENTITY_PENDING';await sql`UPDATE catalog_lifecycle SET previous_state=CASE WHEN lifecycle_state<>${next} THEN lifecycle_state ELSE previous_state END,lifecycle_state=${next},blocking_reason=CASE WHEN ${next}='IDENTITY_PENDING' THEN 'Falta identidad: TMDb' ELSE 'Identidad pendiente de validación' END,state_changed_at=CASE WHEN lifecycle_state<>${next} THEN now() ELSE state_changed_at END,computed_at=now() WHERE imdb_id=${id}`;return{state:next}}
 async function executeIv001(sql,id,{trace,item}){const[cl]=await sql`SELECT lifecycle_state FROM catalog_lifecycle WHERE imdb_id=${id}`;if(!cl||cl.lifecycle_state!=='IDENTITY_VALIDATION')throw Object.assign(new Error('El título ya no está pendiente de evidencia en Validación'),{permanent:true});const r=await refreshIdentityEvidenceCanonical(sql,id,{trace,lane:'batch',apiGate:createApiGate(sql,{batchRunId:item.batch_run_id})});const lifecycle=await recomputeLifecycleWithSql(sql,[id]),next=lifecycle.get(id)?.label||null;return{...r,technicalStatus:'succeeded',functionalResult:r.complete?'updated':'pending',after:{...r.after,lifecycle:next},metrics:{evidence_complete:r.complete,duration_ms:r.durationMs},message:r.complete?'Evidencia preparada para validar':'Evidencia actualizada; sigue incompleta'}}
 async function executeData001(sql,id,{trace,item}){const[cl]=await sql`SELECT lifecycle_state FROM catalog_lifecycle WHERE imdb_id=${id}`;if(!cl||cl.lifecycle_state!=='DATA_INCOMPLETE')throw Object.assign(new Error('El título ya no está pendiente de datos estructurales'),{permanent:true});return executeData001Canonical(sql,id,{trace,lane:'batch',apiGate:createApiGate(sql,{batchRunId:item.batch_run_id})})}
@@ -53,4 +54,56 @@ async function executeLifecycleContinuation(sql,id,{trace,item}){
 }
 const adapters={'PROC-NOV-008':executeNov008,'PROC-ID-001':async(sql,id,{trace,item})=>executeId001Canonical(sql,id,{trace,lane:'batch',apiGate:createApiGate(sql,{batchRunId:item.batch_run_id}),recomputeLifecycle:recomputeIdentityLifecycle}),'PROC-IV-001':executeIv001,'PROC-DATA-001':executeData001,'PROC-DATA-002':executeData002,'PROC-SER-003':executeSer003,'PROC-SER-004':executeSer004,'PROC-SER-007':executeSer007,'PROC-PER-001':executePer001,'PROC-SAGA-001':executeSaga001,'PROC-REL-001':executeRel001,'PROC-LC-001':executeLifecycleContinuation};
 async function recoverLifecycleAdapterMismatch(){const rows=await batchSql`UPDATE batch_run_items bi SET status='queued',lease_owner=NULL,lease_until=NULL,finished_at=NULL,updated_at=now() FROM batch_run_control c,process_runs pr WHERE bi.batch_run_id=c.run_id AND pr.run_id=c.run_id AND c.worker_pool='api' AND c.process_code='PROC-LC-001' AND c.closed_at IS NULL AND pr.technical_status='running' AND bi.status='failed' AND bi.last_error='Adapter API no registrado' AND bi.attempt_count<3 RETURNING bi.item_id,bi.batch_run_id`;return rows.length}
-const active=new Set();let stopping=false;const nap=ms=>new Promise(r=>setTimeout(r,ms));async function work(){while(!stopping){if(active.size>=CAPACITY){await nap(50);continue}const item=await claimBatchItem({pool:POOL,workerId});if(!item){await nap(POLL);continue}const execute=adapters[item.process_code];if(!execute){await batchSql`UPDATE batch_run_items SET status='failed',lease_owner=NULL,lease_until=NULL,last_error='Adapter API no registrado',finished_at=now(),updated_at=now() WHERE item_id=${item.item_id}`;await refreshParent(item.batch_run_id);continue}const task=executeClaimedItem(item,{workerId,executor:'railway_batch_api',errorSource:'batch_api_worker',execute:(sql,id,ctx)=>execute(sql,id,{...ctx,item})}).catch(error=>console.error(JSON.stringify({type:'batch_item_unhandled',pool:POOL,item_id:item.item_id,error:String(error?.message||error)}))).finally(()=>active.delete(task));active.add(task)}}async function maintenance(){while(!stopping){try{const recovered=await recoverLifecycleAdapterMismatch();if(recovered)console.log(JSON.stringify({type:'lifecycle_adapter_recovered',count:recovered}));await reconcileExpiredLeases({pool:POOL});await heartbeatPool(POOL)}catch(error){console.error(JSON.stringify({type:'batch_api_maintenance_error',error:String(error?.message||error)}))}await nap(15000)}}process.on('SIGTERM',()=>{stopping=true});process.on('SIGINT',()=>{stopping=true});console.log(JSON.stringify({type:'batch_worker_started',pool:POOL,worker_id:workerId,capacity:CAPACITY,adapters:Object.keys(adapters)}));await Promise.all([work(),maintenance()]);
+const active=new Set();let stopping=false;
+const nap=ms=>new Promise(r=>setTimeout(r,ms));
+async function launch(item){
+  const execute=adapters[item.process_code];
+  if(!execute){
+    await batchSql`UPDATE batch_run_items SET status='failed',lease_owner=NULL,lease_until=NULL,last_error='Adapter API no registrado',finished_at=now(),updated_at=now() WHERE item_id=${item.item_id}`;
+    await refreshParent(item.batch_run_id);
+    return null;
+  }
+  const task=executeClaimedItem(item,{workerId,executor:'railway_batch_api',errorSource:'batch_api_worker',execute:(sql,id,ctx)=>execute(sql,id,{...ctx,item})})
+    .catch(error=>console.error(JSON.stringify({type:'batch_item_unhandled',pool:POOL,item_id:item.item_id,error:String(error?.message||error)})))
+    .finally(()=>active.delete(task));
+  active.add(task);
+  return task;
+}
+async function fill(){
+  let claimed=0;
+  while(!stopping&&active.size<CAPACITY){
+    const item=await claimBatchItem({pool:POOL,workerId});
+    if(!item)break;
+    claimed++;
+    await launch(item);
+  }
+  return claimed;
+}
+async function maintenance(){
+  const recovered=await recoverLifecycleAdapterMismatch();
+  if(recovered)console.log(JSON.stringify({type:'lifecycle_adapter_recovered',count:recovered}));
+  const reconciled=await reconcileExpiredLeases({pool:POOL});
+  if(reconciled.checked)console.log(JSON.stringify({type:'batch_reconcile',pool:POOL,...reconciled}));
+  await heartbeatPool(POOL);
+}
+async function drain(){
+  let lastMaintenance=0;
+  while(!stopping){
+    const now=Date.now();
+    if(now-lastMaintenance>=HEARTBEAT_MS){
+      try{await maintenance()}catch(error){console.error(JSON.stringify({type:'batch_api_maintenance_error',error:String(error?.message||error)}))}
+      lastMaintenance=Date.now();
+    }
+    const claimed=await fill();
+    if(active.size===0){
+      if(claimed===0)break;
+      continue;
+    }
+    await Promise.race([nap(HEARTBEAT_MS),...active]);
+  }
+  await Promise.allSettled([...active]);
+}
+const wake=startWakeServer({pool:POOL,onWake:drain});
+process.on('SIGTERM',()=>{stopping=true;wake.close()});
+process.on('SIGINT',()=>{stopping=true;wake.close()});
+console.log(JSON.stringify({type:'batch_worker_started',mode:'wake_driven',pool:POOL,worker_id:workerId,capacity:CAPACITY,adapters:Object.keys(adapters)}));

@@ -6,6 +6,7 @@ import {captureTechnicalRatingKey} from '../lib/plex-technical-capture.mjs';
 import {scorePikoQualityRatingKeys} from '../lib/pikoquality-c6-runtime.mjs';
 import {getTechnicalControl,heartbeatTechnicalWorker} from '../lib/plex-technical-control.mjs';
 import {getActiveTechnicalProcessRun,addTechnicalProcessEvent,mergeTechnicalProcessContext,addTechnicalCaptureCounters,recordTechnicalProcessError,finishTechnicalProcessRun} from '../lib/pikoquality-technical-observability.mjs';
+import {startWakeServer} from '../lib/worker-wake-server.mjs';
 
 const connectionString=process.env.DATABASE_URL||process.env.NEON_DATABASE_URL;
 if(!connectionString)throw new Error('Falta DATABASE_URL/NEON_DATABASE_URL');
@@ -16,7 +17,6 @@ const sql=neon(connectionString);
 
 const batchSize=Math.max(1,Math.min(100,Number(process.env.TECHNICAL_SNAPSHOT_BATCH_SIZE)||25));
 const concurrency=Math.max(1,Math.min(64,Number(process.env.TECHNICAL_SNAPSHOT_CONCURRENCY)||8));
-const idleMs=Math.max(5000,Number(process.env.TECHNICAL_SNAPSHOT_IDLE_MS)||10000);
 const scanEveryMs=Math.max(60000,Number(process.env.TECHNICAL_SNAPSHOT_SCAN_MS)||900000);
 const workerId=`technical-${process.pid}-${randomUUID().slice(0,8)}`;
 
@@ -120,19 +120,23 @@ async function cycle(){
   return{scan,claimed:result.attempted,ok:result.ok,failed:result.failed,scored:result.scored};
 }
 
-console.log(`[technical-snapshot-worker] controller started id=${workerId} batch=${batchSize} concurrency=${concurrency} scanEveryMs=${scanEveryMs}`);
-
-for(;;){
-  const started=Date.now();
-  try{
-    const result=await cycle();
-    console.log('[technical-snapshot-worker]',JSON.stringify({...result,elapsed_ms:Date.now()-started,total_claimed:totalClaimed,total_ok:totalOk,total_failed:totalFailed,total_scored:totalScored}));
-    if(['disarmed','paused','stopped','missing_process_run'].includes(result.control)||result.claimed===0)await sleep(idleMs);
-  }catch(error){
-    console.error('[technical-snapshot-worker] cycle failed',error);
-    const active=await getActiveTechnicalProcessRun(sql).catch(()=>null);
-    if(active?.run_id)await recordTechnicalProcessError(sql,String(active.run_id),{error,step:'technical_worker_cycle',retryable:true}).catch(()=>{});
-    await heartbeatTechnicalWorker(sql,{workerId,actualState:'error',lastError:String(error?.message||error)}).catch(()=>{});
-    await sleep(idleMs);
+async function drainTechnical(){
+  for(;;){
+    const started=Date.now();
+    try{
+      const result=await cycle();
+      console.log('[technical-snapshot-worker]',JSON.stringify({...result,elapsed_ms:Date.now()-started,total_claimed:totalClaimed,total_ok:totalOk,total_failed:totalFailed,total_scored:totalScored}));
+      if(['disarmed','paused','stopped','missing_process_run'].includes(result.control)||result.claimed===0)break;
+    }catch(error){
+      console.error('[technical-snapshot-worker] cycle failed',error);
+      const active=await getActiveTechnicalProcessRun(sql).catch(()=>null);
+      if(active?.run_id)await recordTechnicalProcessError(sql,String(active.run_id),{error,step:'technical_worker_cycle',retryable:true}).catch(()=>{});
+      await heartbeatTechnicalWorker(sql,{workerId,actualState:'error',lastError:String(error?.message||error)}).catch(()=>{});
+      break;
+    }
   }
 }
+
+console.log(`[technical-snapshot-worker] controller started mode=wake_driven id=${workerId} batch=${batchSize} concurrency=${concurrency} scanEveryMs=${scanEveryMs}`);
+const wake=startWakeServer({pool:'technical',databaseUrl:connectionString,onWake:drainTechnical});
+for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>wake.close());

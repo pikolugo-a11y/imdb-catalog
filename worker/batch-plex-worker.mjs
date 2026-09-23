@@ -4,10 +4,10 @@ import {rebuildSeriesQualityReadModel} from '../lib/series-quality-query.js';
 import {rebuildSeriesQualityReadModelForRatingKey} from '../lib/series-quality-read-model-core.mjs';
 import {startSeriesBatch} from '../lib/series-batch.js';
 import {executeNov009} from '../lib/plex-global-worker.mjs';
+import {startWakeServer} from '../lib/worker-wake-server.mjs';
 
 const POOL='plex';
 const CAPACITY=Math.max(1,Math.min(Number(process.env.BATCH_PLEX_CAPACITY)||1,4));
-const IDLE_MS=Math.max(250,Math.min(Number(process.env.BATCH_IDLE_MS)||1000,10000));
 const HEARTBEAT_MS=Math.max(5000,Math.min(Number(process.env.BATCH_HEARTBEAT_MS)||20000,60000));
 const workerId=`batch-plex:${process.env.RAILWAY_REPLICA_ID||process.env.HOSTNAME||process.pid}`;
 const episodeCode=x=>`T${Number(x.season_number)}E${Number(x.episode_number)}`;
@@ -39,9 +39,46 @@ function humanSeriesSummary({diff,result}){const parts=[];if(diff.becamePresent.
 async function executeSer002(sql,id,{trace}){const beforeDiagnostics=await diagnosticSnapshot(sql,id);const result=await syncPlexSeriesDetailCore(id,{trace});await rebuildSeriesQualityReadModelForRatingKey(sql,id);const afterDiagnostics=await diagnosticSnapshot(sql,id),diff=diagnosticDiff(beforeDiagnostics,afterDiagnostics),[series]=await sql`SELECT r.title,r.imdb_id FROM series_reference r WHERE r.show_rating_key=${id} LIMIT 1`,activitySummary=humanSeriesSummary({diff,result}),activity={imdb_id:result.imdbId||series?.imdb_id||null,entity_label:series?.title||null,activity_summary:activitySummary,activity_changes:{became_present:diff.becamePresent.map(x=>({season:Number(x.season_number),episode:Number(x.episode_number),name:x.expected_name||null})),became_missing:diff.becameMissing.map(x=>({season:Number(x.season_number),episode:Number(x.episode_number),name:x.expected_name||null})),plex_added:Number(result.added||0),plex_removed:Number(result.removed||0)}};await trace.event({eventType:'functional_change',step:'series_result',message:activitySummary,data:activity.activity_changes});const[child]=await sql`SELECT parent_run_id FROM process_runs WHERE run_id=${trace.runId}::uuid LIMIT 1`;if(child?.parent_run_id)await sql`UPDATE process_runs SET after_compact=COALESCE(after_compact,'{}'::jsonb)||${JSON.stringify(activity)}::jsonb,updated_at=now() WHERE run_id=${child.parent_run_id}::uuid`;const changed=diff.becamePresent.length>0||diff.becameMissing.length>0||Number(result.added||0)>0||Number(result.removed||0)>0;return{...result,technicalStatus:'succeeded',functionalResult:changed?'updated':'no_change',metrics:{seasons:result.seasons,episodes:result.episodes,added:result.added,removed:result.removed,media_rows:result.mediaRows,file_rows:result.fileRows,diagnostics_matched:result.diagnostics?.matched||0,diagnostics_combined:result.diagnostics?.combined||0,diagnostics_became_present:diff.becamePresent.length,diagnostics_became_missing:diff.becameMissing.length},after:{...activity,lifecycle:result.lifecycle||null},message:activitySummary}}
 
 const adapters=new Map([['PROC-NOV-009',{execute:executeNov009}],['PROC-SER-001',{execute:executeSer001}],['PROC-SER-002',{execute:executeSer002}]]);
-let stopping=false;const active=new Set(),sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function launch(item){const adapter=adapters.get(item.process_code);if(!adapter)return executeClaimedItem(item,{workerId,executor:'railway_batch_plex',execute:async()=>{throw Object.assign(new Error(`No hay adapter para ${item.process_code}`),{permanent:true,retryable:false})}});return executeClaimedItem(item,{workerId,executor:'railway_batch_plex',execute:adapter.execute})}
-async function fill(){while(!stopping&&active.size<CAPACITY){const item=await claimBatchItem({pool:POOL,workerId});if(!item)break;const promise=launch(item).then(result=>console.log(JSON.stringify({type:'batch_item_done',process_code:item.process_code,item_id:item.item_id,entity_id:item.entity_id,ok:result.ok,requeued:Boolean(result.requeued),child_run_id:result.childRunId}))).catch(error=>console.error(JSON.stringify({type:'batch_item_unhandled',item_id:item.item_id,error:String(error?.message||error)}))).finally(()=>active.delete(promise));active.add(promise)}}
-async function main(){console.log(JSON.stringify({type:'batch_worker_started',pool:POOL,worker_id:workerId,capacity:CAPACITY,adapters:[...adapters.keys()]}));let lastHeartbeat=0,lastReconcile=0;while(!stopping){const now=Date.now();if(now-lastReconcile>=HEARTBEAT_MS){const r=await reconcileExpiredLeases({pool:POOL});if(r.checked)console.log(JSON.stringify({type:'batch_reconcile',...r}));lastReconcile=now}if(now-lastHeartbeat>=HEARTBEAT_MS){await heartbeatPool(POOL);lastHeartbeat=now}await fill();if(active.size===0)await sleep(IDLE_MS);else await Promise.race([sleep(250),...active])}await Promise.allSettled([...active]);console.log(JSON.stringify({type:'batch_worker_stopped',pool:POOL,worker_id:workerId}))}
-for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>{stopping=true;console.log(JSON.stringify({type:'batch_worker_stopping',signal,active:active.size}))});
-main().catch(error=>{console.error(JSON.stringify({type:'batch_worker_fatal',error:String(error?.stack||error)}));process.exitCode=1});
+let stopping=false;
+const active=new Set(),sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function launch(item){
+  const adapter=adapters.get(item.process_code);
+  if(!adapter)return executeClaimedItem(item,{workerId,executor:'railway_batch_plex',execute:async()=>{throw Object.assign(new Error(`No hay adapter para ${item.process_code}`),{permanent:true,retryable:false})}});
+  return executeClaimedItem(item,{workerId,executor:'railway_batch_plex',execute:adapter.execute});
+}
+async function fill(){
+  let claimed=0;
+  while(!stopping&&active.size<CAPACITY){
+    const item=await claimBatchItem({pool:POOL,workerId});
+    if(!item)break;
+    claimed++;
+    const promise=launch(item)
+      .then(result=>console.log(JSON.stringify({type:'batch_item_done',process_code:item.process_code,item_id:item.item_id,entity_id:item.entity_id,ok:result.ok,requeued:Boolean(result.requeued),child_run_id:result.childRunId})))
+      .catch(error=>console.error(JSON.stringify({type:'batch_item_unhandled',item_id:item.item_id,error:String(error?.message||error)})))
+      .finally(()=>active.delete(promise));
+    active.add(promise);
+  }
+  return claimed;
+}
+async function maintenance(){
+  const r=await reconcileExpiredLeases({pool:POOL});
+  if(r.checked)console.log(JSON.stringify({type:'batch_reconcile',pool:POOL,...r}));
+  await heartbeatPool(POOL);
+}
+async function drain(){
+  let lastMaintenance=0;
+  while(!stopping){
+    const now=Date.now();
+    if(now-lastMaintenance>=HEARTBEAT_MS){await maintenance();lastMaintenance=Date.now();}
+    const claimed=await fill();
+    if(active.size===0){
+      if(claimed===0)break;
+      continue;
+    }
+    await Promise.race([sleep(HEARTBEAT_MS),...active]);
+  }
+  await Promise.allSettled([...active]);
+}
+const wake=startWakeServer({pool:POOL,onWake:drain});
+for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>{stopping=true;wake.close();console.log(JSON.stringify({type:'batch_worker_stopping',signal,active:active.size}))});
+console.log(JSON.stringify({type:'batch_worker_started',mode:'wake_driven',pool:POOL,worker_id:workerId,capacity:CAPACITY,adapters:[...adapters.keys()]}));
