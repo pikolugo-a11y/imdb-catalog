@@ -1,6 +1,6 @@
 # PikoFilm V5 — Decisiones Punto 8 · Frontend y UX
 
-Estado: **Fase 2 COMPLETADA — Fase 3 pendiente/activa**.
+Estado: **Fase 2 EXTENDIDA — se añaden propuestas UX visibles antes de Fase 3**.
 
 Rama: `audit/v5-08-frontend-ux`.
 
@@ -472,10 +472,8 @@ UX-10 define comportamiento y jerarquía. La componentización, tokens, primitiv
 
 Hacer que el aprendizaje de una lista o tabla de PikoFilm sea transferible al resto de superficies, manteniendo la especialización funcional de cada dominio.
 
-## Cierre de Fase 2
+## Estado de Fase 2 tras UX-10
 
-**Fase 2 — Propuestas V5: COMPLETADA.**
+Se han revisado individualmente y persistido **10 propuestas UX-01 a UX-10**, todas **APROBADAS**.
 
-Se han revisado individualmente y persistido **10/10 propuestas UX-01 a UX-10**, todas **APROBADAS**.
-
-El siguiente paso es la **Fase 3 — Road Map Innovador**, con un mínimo de 5 innovaciones revisadas una a una.
+Tras revisión crítica del alcance, la Fase 2 se **EXTIENDE**: el mínimo metodológico de 10 propuestas no se usa como techo. Antes de entrar en Fase 3 se añadirán propuestas con impacto visual claramente perceptible para el usuario final, manteniendo revisión y persistencia una a una.
