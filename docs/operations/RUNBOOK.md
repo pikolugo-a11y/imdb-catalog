@@ -134,3 +134,11 @@ Prioridad:
 ## Criterio de cierre
 
 Un incidente no queda cerrado sólo porque el error desaparezca: debe verificarse el comportamiento esperado, las regresiones razonables y la coherencia documental/arquitectónica.
+
+## Operación PikoRelevancia
+
+- `PROC-REL-001` pertenece al pool Railway API y debe ejecutar una sola unidad simultánea por Batch.
+- Media Cloud mantiene separación mínima de 31 s; no elevar la concurrencia para acelerar un backlog.
+- `/calidad/relevancia` es el mecanismo manual para la deuda histórica; no habilitar el planner sobre filas sin assessment.
+- Los recálculos automáticos sí aparecen en Actividad/Calendario cuando `next_review_at` vence.
+- Una serie estable de más de 30 años puede tener `next_review_at = NULL`; no es una incidencia.

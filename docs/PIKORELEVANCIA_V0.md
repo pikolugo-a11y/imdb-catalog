@@ -1,8 +1,36 @@
 # PikoRelevancia V0
 
-Fórmula viva: `0.2.0` (Media Cloud sustituye a GDELT).
+Fórmula viva objetivo: `0.3.0` (productización aprobada tras la muestra real de series).
 
 Objetivo: evaluar series por IMDb ID antes de integrar el resultado en el Lifecycle de admisión.
+
+## Decisión de producto aprobada · 23-09-2026
+- PikoRelevancia deja de ser un experimento aislado y pasa a ser una señal permanente de Series.
+- No crea un Lifecycle nuevo: vive fuera del ciclo editorial principal, igual que otras superficies de Calidad especializadas.
+- Catálogo · Series mostrará PikoRelevancia y la usará como orden principal descendente.
+- Calidad tendrá una página específica para las Series/Miniseries sin PikoRelevancia vigente; la deuda inicial es manual, paginada y ordenada por PikoScore descendente.
+- El cálculo manual admite selección múltiple pero el PROC-REL-001 mantiene concurrencia efectiva 1; varias selecciones se encolan para respetar Media Cloud.
+- Sólo las series que ya tengan PikoRelevancia entran en mantenimiento automático; las miles de series históricas sin cálculo no se lanzan de golpe automáticamente.
+- Los recálculos posteriores usan cadencia adaptativa por edad/estado y aparecen en Actividad/Calendario mediante PROC-PLAN-002.
+- Las series extremadamente antiguas y estables pueden quedar sin siguiente revisión automática.
+- La fórmula 0.3.0 evita premiar por duplicado la españolidad: origen España queda como corrección pequeña de mercado; idioma original español y traducción se unifican en una sola señal de accesibilidad en español. Una serie traducida obtiene el mismo valor de accesibilidad que una serie originalmente en español.
+
+### Pesos 0.3.0
+- PikoScore: 18
+- IMDb rating: 6
+- IMDb votos: 6
+- disponibilidad España TMDb: 8
+- disponibilidad España Watchmode: 7
+- Wikipedia ES: 5
+- Pageviews Wikipedia ES: 8
+- Media Cloud España: 10
+- alcance internacional: 8
+- popularidad TMDb: 6
+- momentum: 7
+- origen España: 2
+- accesibilidad en español (original o traducción): 9
+
+Total: 100. El origen español aporta sólo 2 puntos de ventaja estructural; no se acumulan ya `language_es` y `spanish_translation` como premios separados.
 
 ## Principios
 - Cero IA.
@@ -54,9 +82,5 @@ Cada fuente es tolerante a fallos. La ejecución sólo debe fallar por IMDb ID i
 - HTTP 429 y 5xx se reintentan con backoff exponencial; `Retry-After`, cuando existe, tiene prioridad.
 - Una fuente agotada sigue reduciendo `confidence`; nunca se transforma en evidencia negativa.
 
-## Siguiente fase
-Después de validar la fórmula con una muestra de series elegidas por el usuario:
-1. ajustar pesos y umbrales;
-2. introducir estado de admisión de series;
-3. impedir que series nuevas de Discovery entren en `catalog_read_model` hasta decisión de admisión;
-4. programar reevaluación de títulos en remojo.
+## Integración productiva
+La fase experimental queda cerrada. No se introduce un flujo de admisión nuevo. PikoRelevancia se integra como dato de priorización de Series, con backlog manual inicial y mantenimiento automático adaptativo posterior.

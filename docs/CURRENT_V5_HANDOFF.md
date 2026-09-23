@@ -673,10 +673,15 @@ Durante la revisión de Rendimiento/Base de datos se corrigieron problemas reale
 
 El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento es PR/CI/merge de esta rama y después abrir el Punto 6 desde `main` actualizado.
 
-## Pausa PikoRelevancia V0 — Media Cloud
-- PROC-REL-001 sigue siendo experimental y aislado de Lifecycle/Catálogo.
-- Tras las pruebas reales de fuente, GDELT se retira por throttling/inestabilidad y se sustituye por Media Cloud en fórmula 0.2.0.
+## PikoRelevancia — integración productiva aprobada
+- PROC-REL-001 deja de ser experimental: sigue fuera del Lifecycle, pero se integra en Catálogo · Series, Calidad y Actividad.
+- Tras las pruebas reales de fuente, GDELT se retira por throttling/inestabilidad y se sustituye por Media Cloud; la fórmula productiva pasa a 0.3.0.
 - Media Cloud usa una única consulta por serie, últimos 90 días, colección Spain - National (34412356), idioma español y pacing conservador de 31 s.
 - Requiere MEDIACLOUD_API_KEY en Railway; MEDIACLOUD_ES_COLLECTION_ID queda configurable.
 - No lanzar una nueva serie de prueba hasta que el usuario proporcione el IMDb elegido.
-- Tras cerrar las pruebas de PikoRelevancia, reanudar exactamente en V5 · Point 7 · Phase 3 · INNO-INT-02.
+- Catálogo · Series muestra PikoRelevancia y ordena por defecto descendente; pendientes al final.
+- `/calidad/relevancia` absorbe manualmente la deuda histórica, 50 por página y PikoScore descendente.
+- Las selecciones múltiples se encolan con concurrencia 1.
+- Sólo assessments ya existentes entran en mantenimiento automático adaptativo mediante PROC-PLAN-002.
+- La españolidad queda desduplicada: origen ES = corrección pequeña; idioma español original o traducción satisfacen una única señal de accesibilidad.
+- Tras cerrar y validar esta integración, reanudar exactamente en **V5 · Point 7 · Phase 3 · INNO-INT-02**.

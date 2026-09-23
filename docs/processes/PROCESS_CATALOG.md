@@ -49,7 +49,7 @@ Estados de paridad:
 | PROC-SER-004 | Series | Disponibilidad España | individual | sí | `confirmSeriesEsAvailabilityCanonical` | Vercel / Railway API | PARCIAL controlada |
 | PROC-SER-005 | Series | Resolver anomalía de episodio | manual | no | acción observada + override | Vercel | NO APLICA |
 | PROC-SER-006 | Series | Retirar override de disponibilidad | manual | no | acción observada + refresh | Vercel | NO APLICA |
-| PROC-REL-001 | Relevancia | Calcular PikoRelevancia V0 por IMDb | individual durable experimental | sí (1 unidad) | `computePikoRelevanceCanonical` | Railway API | EXACTA / experimental |
+| PROC-REL-001 | Relevancia | Calcular / mantener PikoRelevancia de Series | individual + Batch durable | sí, concurrencia 1 | `computePikoRelevanceCanonical` | Railway API | EXACTA |
 | PROC-NOV-001 | Novedades | Discovery IMDb global | global manual | no | GitHub Actions `imdb-discovery.yml` | GitHub Actions | SIN BATCH |
 | PROC-NOV-002 | Novedades | Alta manual IMDb | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-003 | Novedades | Reintento candidato manual | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
@@ -84,7 +84,7 @@ La cancelación es terminal: una vez `batch_run_control.desired_state='cancel_re
 
 Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
 
-`PROC-REL-001` es experimental y no modifica Lifecycle ni `catalog_read_model`. Se ejecuta en Railway API sobre una unidad IMDb y persiste `series_relevance_assessments`. Para fuentes públicas: Wikidata/Wikimedia usan retry tolerante a latencia sólo en este proceso; Media Cloud sustituye a GDELT para cobertura en prensa española, usa la colección `Spain - National` (`34412356`) y una única consulta por serie, serializada a 31 s por defecto para respetar el límite público de 2 peticiones/minuto. Un fallo agotado reduce confianza y no equivale a evidencia negativa.
+`PROC-REL-001` es productivo pero permanece fuera del Lifecycle y no modifica `catalog_read_model`. Se ejecuta en Railway API sobre unidades IMDb y persiste `series_relevance_assessments`. La deuda histórica sin valoración se dispara sólo desde `/calidad/relevancia`; una selección múltiple se materializa como cola durable y se consume con concurrencia 1. Una vez existe valoración vigente, `next_review_at` gobierna mantenimiento automático adaptativo y `PROC-PLAN-002` lo representa en Actividad/Calendario. Para fuentes públicas: Wikidata/Wikimedia usan retry tolerante a latencia sólo en este proceso; Media Cloud sustituye a GDELT para cobertura en prensa española, usa la colección `Spain - National` (`34412356`) y una única consulta por serie, serializada a 31 s por defecto para respetar el límite público de 2 peticiones/minuto. Un fallo agotado reduce confianza y no equivale a evidencia negativa.
 
 `PROC-PLAN-002` puede iniciar únicamente Batch rutinarios declarados seguros en la especificación funcional/arquitectónica. **PROC-NOV-009 y PROC-SER-001 permanecen globales manuales y nunca forman parte del planificador automático.** En ambos casos el Batch es sólo la frontera durable de una única unidad global; no autoriza polling ni ejecución automática. `PROC-NOV-008` sólo nace como continuación durable de un NOV-009 iniciado manualmente.
 

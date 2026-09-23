@@ -4,12 +4,13 @@ import fs from 'node:fs';
 
 const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
-test('Calidad V4 usa navegación híbrida de tres superficies',()=>{
+test('Calidad V4 usa navegación híbrida con superficies especializadas',()=>{
   const nav=read('components/Nav.js');
   assert.match(nav,/qualityPrimaryItems/);
   assert.match(nav,/\/calidad\/centro','Centro de Calidad'/);
   assert.match(nav,/\/calidad\/peliculas','Películas'/);
   assert.match(nav,/\/calidad\/series','Series'/);
+  assert.match(nav,/\/calidad\/relevancia','PikoRelevancia'/);
   assert.match(nav,/Centro · Identidad/);
 });
 
@@ -68,4 +69,16 @@ test('home model conserva Centro común y especialización de Películas y Serie
   assert.match(source,/QUALITY_CENTER_STAGE_IDS=.*identity.*validation.*data.*people.*pikoquality.*recovery/);
   assert.match(source,/QUALITY_SPECIALIZED_STAGE_IDS=.*movies.*series/);
   assert.match(source,/En seguimiento automático/);
+});
+
+
+test('Calidad expone backlog manual de PikoRelevancia fuera del Lifecycle',()=>{
+  const page=read('app/calidad/relevancia/page.js');
+  const query=read('lib/pikorelevancia-quality.js');
+  const batch=read('lib/pikorelevancia-batch.js');
+  assert.match(page,/La cola inicial es manual/);
+  assert.match(page,/ordenadas por PikoScore/);
+  assert.match(query,/ORDER BY c\.final_rating DESC NULLS LAST/);
+  assert.match(batch,/requested_concurrency:1/);
+  assert.match(batch,/selectPikoRelevanceDueEligibleIds/);
 });

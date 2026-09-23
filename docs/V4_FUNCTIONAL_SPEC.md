@@ -1455,3 +1455,16 @@ Este documento es la autoridad funcional global. Para ejecución exacta:
 - `docs/operations/RUNBOOK.md` — procedimientos operativos.
 
 Los antiguos contratos V4 por vertical quedan reemplazados por este documento y permanecen disponibles en el historial Git.
+
+# PikoRelevancia de Series
+
+PikoRelevancia es una señal editorial de priorización **fuera del Lifecycle**. No bloquea admisión ni completitud.
+
+- La vista Catálogo · Series muestra la puntuación vigente y ordena por ella de mayor a menor.
+- Una valoración de fórmula antigua se trata como pendiente de la versión vigente.
+- `/calidad/relevancia` presenta la deuda inicial paginada (50) y ordenada por PikoScore descendente.
+- La deuda inicial no se dispara automáticamente: el usuario elige una o varias series.
+- Varias selecciones se encolan; `PROC-REL-001` procesa una sola serie a la vez.
+- Tras el primer cálculo, el mantenimiento es automático y visible en Actividad/Calendario.
+- Cadencia base: activa/nueva 30 días; 2–3 años 60; 4–5 años 120; 6–10 años 180; 11–20 años 365; 21–30 años 730; más de 30 años estable, sin revisión automática.
+- El idioma original español no suma aparte de la traducción: ambos satisfacen la misma señal de accesibilidad en español. El origen España sólo aporta una corrección pequeña de mercado.

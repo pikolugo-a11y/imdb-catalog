@@ -771,3 +771,9 @@ Este documento es la autoridad arquitectónica global. Para detalle ejecutable s
 - `docs/PROJECT_RULES.md` y `docs/AI_DEVELOPMENT_GUIDE.md` — reglas de desarrollo.
 
 Los documentos anteriores de arquitectura V3/PRE-V4 y contratos V4 por vertical quedan sustituidos por esta tríada consolidada y permanecen recuperables en el historial Git.
+
+## PikoRelevancia productiva
+
+`series_relevance_assessments` es la fuente canónica de PikoRelevancia. Catálogo la consume por `imdb_id` y `formula_version`; no se copia la puntuación al read model editorial. `PROC-REL-001` corre en Railway API mediante Batch Engine, reutilizando `computePikoRelevanceCanonical` y `requested_concurrency=1`. Media Cloud conserva pacing mínimo de 31 s.
+
+`PROC-PLAN-002` sólo considera automáticamente valoraciones ya existentes cuyo `next_review_at` haya vencido. Las series nunca evaluadas quedan fuera del productor automático y se encolan desde Calidad. Esto evita una tormenta inicial de miles de llamadas y mantiene la cuota externa bajo control.

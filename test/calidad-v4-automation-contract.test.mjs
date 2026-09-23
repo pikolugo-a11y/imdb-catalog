@@ -16,6 +16,7 @@ test('scheduler de Calidad mantiene dominios vencidos sin hacer polling Plex',()
   assert.match(planner,/startData002Batch\(\{limit:n,concurrency:2,triggerSource:'quality_scheduler'\}\)/);
   assert.match(planner,/startPeopleBatch\(\{limit:n,concurrency:2,triggerSource:'quality_scheduler'\}\)/);
   assert.match(planner,/processC6Batch\(n\)/);
+  assert.match(planner,/startPikoRelevanceBatch\(\{limit:n,triggerSource:'quality_scheduler'\}\)/);
   assert.match(cron,/executeAutomaticPlanningCycle/);
   assert.match(cycle,/runActivityPlanner/);
   assert.doesNotMatch(planner,/syncPlexFastCore|syncPlexFast\(|scanPlexTechnicalLibrary|triggerTechnicalSnapshot/);
@@ -74,4 +75,16 @@ test('captura técnica recalcula PikoQuality sobre el fingerprint nuevo y termin
   assert.match(worker,/pikoquality_recalculate/);
   assert.match(worker,/actualState:'completed'/);
   assert.match(worker,/queue_empty:true/);
+});
+
+
+test('PikoRelevancia automatiza solo recálculos ya existentes y respeta concurrencia uno',()=>{
+  const planner=read('lib/process-planning.js');
+  const batch=read('lib/pikorelevancia-batch.js');
+  const settings=read('lib/activity-automation-settings.js');
+  assert.match(planner,/PROC-REL-001/);
+  assert.match(settings,/PikoRelevancia/);
+  assert.match(batch,/JOIN series_relevance_assessments a/);
+  assert.match(batch,/a\.next_review_at IS NOT NULL AND a\.next_review_at<=now\(\)/);
+  assert.match(batch,/requested_concurrency:1/);
 });
