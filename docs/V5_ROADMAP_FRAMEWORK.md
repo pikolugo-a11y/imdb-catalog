@@ -198,7 +198,7 @@ Por tanto, esta revisión V5 y cualquier roadmap futuro deben respetar estas reg
 - Punto 5 — Observabilidad y errores: **CERRADO — auditoría completada; 10/10 propuestas OBS-01 a OBS-10 aprobadas; 5/5 innovaciones revisadas; INNO-OBS-02 aprobada como INNO-06 y las demás rechazadas** (`V5_AUDIT_05_OBSERVABILITY_ERRORS.md`; `V5_DECISIONS_05_OBSERVABILITY_ERRORS.md`; `V5_INNOVATIONS_05_OBSERVABILITY_ERRORS.md`; `ROADMAP_INNOVADOR.md`)
 - Punto 6 — Workers y servicios persistentes: **CERRADO — auditoría completada; WKR-01 a WKR-13 aprobadas; 5 innovaciones válidas revisadas; INNO-WKR-04 e INNO-WKR-05 aprobadas para estudiar como INNO-07 e INNO-08** (`V5_AUDIT_06_WORKERS.md`; `V5_DECISIONS_06_WORKERS.md`; `V5_INNOVATIONS_06_WORKERS.md`; `ROADMAP_INNOVADOR.md`)
 - Punto 7 — Integraciones externas: **CERRADO — auditoría completada; INT-01 a INT-10 aprobadas; 5/5 innovaciones revisadas; INNO-INT-02, INNO-INT-03 e INNO-INT-05 aprobadas como INNO-09, INNO-10 e INNO-11** (`V5_AUDIT_07_INTEGRATIONS.md`; `V5_DECISIONS_07_INTEGRATIONS.md`; `V5_INNOVATIONS_07_INTEGRATIONS.md`; `ROADMAP_INNOVADOR.md`)
-- Punto 8 — Frontend y UX: **SIGUIENTE — iniciar Fase 1 tras cerrar Punto 7**
+- Punto 8 — Frontend y UX: **FASE 1 CERRADA — auditoría completada; Fase 2 siguiente con UX-01** (`V5_AUDIT_08_FRONTEND_UX.md`)
 - Punto 9 — Sistema de diseño / CSS: **PENDIENTE**
 - Punto 10 — Código legacy y deuda técnica: **PENDIENTE**
 - Punto 11 — Tests: **PENDIENTE**
