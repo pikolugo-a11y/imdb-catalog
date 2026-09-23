@@ -784,3 +784,12 @@ Este bloque prevalece sobre cualquier estado histórico contradictorio anterior 
 ### SIGUIENTE PASO EXACTO
 
 Presentar únicamente **UX-01**. Persistir APROBACIÓN/RECHAZO antes de presentar UX-02.
+
+
+### DECISIÓN PUNTO 8 — UX-01
+
+**APROBADA** el 2026-09-24 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: acciones simples siguen siendo inmediatas; filtros compuestos se confirman una sola vez antes de consultar; URL y retorno exacto se conservan.
+
+**Siguiente paso exacto:** presentar únicamente **UX-02**. Persistir su decisión antes de UX-03.
