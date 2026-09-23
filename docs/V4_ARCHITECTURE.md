@@ -777,3 +777,18 @@ Los documentos anteriores de arquitectura V3/PRE-V4 y contratos V4 por vertical 
 `series_relevance_assessments` es la fuente canónica de PikoRelevancia. Catálogo la consume por `imdb_id` y `formula_version`; no se copia la puntuación al read model editorial. `PROC-REL-001` corre en Railway API mediante Batch Engine, reutilizando `computePikoRelevanceCanonical` y `requested_concurrency=1`. Media Cloud conserva pacing mínimo de 31 s.
 
 `PROC-PLAN-002` sólo considera automáticamente valoraciones ya existentes cuyo `next_review_at` haya vencido. Las series nunca evaluadas quedan fuera del productor automático y se encolan desde Calidad. Esto evita una tormenta inicial de miles de llamadas y mantiene la cuota externa bajo control.
+
+
+## Workers wake-driven y scale-to-zero de Neon
+
+Los cuatro workers persistentes de Railway (`api`, `fast`, `plex`, `technical`) no realizan polling periódico de Neon cuando están inactivos.
+
+Flujo canónico:
+1. la UI, el planner o una continuación escriben primero el trabajo durable en Neon;
+2. el evento durable `batch_queued`, `batch_items_appended` o `batch_resumed` despierta el pool correspondiente mediante HTTPS;
+3. la petición `/wake` se firma con HMAC derivado de la credencial PostgreSQL ya compartida por Vercel y Railway; no existe un secreto wake adicional persistido;
+4. Railway despierta el servicio, el worker drena la cola y deja de consultar Neon cuando no queda trabajo;
+5. Neon puede autosuspender el compute tras su ventana de inactividad y Railway puede dormir el contenedor en modo Serverless tras su propia ventana de inactividad.
+
+El planner horario sólo despierta pools que tengan un Batch activo, actuando como mecanismo de recuperación si se perdió una petición wake. No despierta pools vacíos.
+
