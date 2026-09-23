@@ -1,6 +1,6 @@
 # PikoFilm V5 — Decisiones Punto 8 · Frontend y UX
 
-Estado: **Fase 2 ACTIVA**.
+Estado: **Fase 2 COMPLETADA — Fase 3 pendiente/activa**.
 
 Rama: `audit/v5-08-frontend-ux`.
 
@@ -427,3 +427,55 @@ UX-09 define ergonomía y usabilidad. Los tokens exactos de altura, padding, hit
 ### Objetivo
 
 Conservar la densidad de PikoFilm y, al mismo tiempo, hacer que las acciones frecuentes sean más cómodas y menos propensas a pulsaciones accidentales en iPhone.
+
+
+## UX-10 — Contrato transversal de interacción para tablas y listas
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+PikoFilm dispone de múltiples superficies densas —Catálogo, Personas, Sagas, Novedades, PikoRelevancia y Calidad— que resuelven patrones similares con pequeñas diferencias de interacción: navegación de fila, ubicación de acciones, representación de nulos, jerarquía móvil y conservación de contexto.
+
+La diversidad funcional es necesaria; la inconsistencia de interacción no.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato aprobado
+
+- En escritorio se usa tabla densa cuando comparar columnas sea útil.
+- En móvil se usa lista compacta equivalente cuando una tabla horizontal perjudique la interacción.
+- Cada elemento conserva:
+  1. identidad clara;
+  2. dato o estado protagonista;
+  3. metadatos secundarios;
+  4. acciones.
+- Una fila sólo es completamente clicable cuando existe un único destino inequívoco.
+- Si existen varias acciones, navegación y botones quedan claramente separados.
+- Los valores ausentes se representan de forma coherente según su significado; nunca se confunde cero con dato no calculado.
+- Paginación, filtros y orden conservan URL y contexto de retorno según UX-03.
+- Las acciones por fila respetan UX-08: iniciado/encolado no equivale a completado.
+- Loading/error/empty siguen UX-04.
+- Responsive y ergonomía táctil siguen UX-02 y UX-09.
+- La información técnica que no ayuda a decidir queda fuera de la vista principal.
+
+### Guardrail
+
+No se crea ahora un componente universal tipo `MegaTable` ni se obliga a todas las superficies a compartir exactamente el mismo markup.
+
+UX-10 define comportamiento y jerarquía. La componentización, tokens, primitives y consolidación CSS pertenecen al Punto 9 — Sistema de diseño / CSS.
+
+### Objetivo
+
+Hacer que el aprendizaje de una lista o tabla de PikoFilm sea transferible al resto de superficies, manteniendo la especialización funcional de cada dominio.
+
+## Cierre de Fase 2
+
+**Fase 2 — Propuestas V5: COMPLETADA.**
+
+Se han revisado individualmente y persistido **10/10 propuestas UX-01 a UX-10**, todas **APROBADAS**.
+
+El siguiente paso es la **Fase 3 — Road Map Innovador**, con un mínimo de 5 innovaciones revisadas una a una.
