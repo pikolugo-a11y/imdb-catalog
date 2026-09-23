@@ -336,3 +336,55 @@ UX-07 define arquitectura de información y orientación. No obliga a rediseñar
 ### Objetivo
 
 Reducir carga cognitiva y hacer más evidente dónde está el usuario y cómo moverse entre áreas de Calidad, especialmente en móvil, sin sacrificar profundidad funcional.
+
+
+## UX-08 — Contrato universal de feedback de acciones y mutaciones
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+PikoFilm mezcla acciones con semánticas técnicas distintas:
+
+- operaciones que terminan dentro del request;
+- operaciones que sólo encolan trabajo durable;
+- mutaciones inmediatas que desencadenan procesamiento posterior;
+- acciones que pueden terminar sin cambios, parcialmente o requiriendo atención.
+
+Sin un contrato común, la interfaz puede comunicar éxito de forma demasiado genérica y dar a entender que una operación terminó cuando sólo fue iniciada.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato aprobado
+
+- Toda mutación ofrece feedback inmediato de que la acción fue recibida.
+- La acción se deshabilita mientras se envía cuando sea seguro hacerlo.
+- La UI distingue explícitamente entre:
+  - completado;
+  - iniciado/encolado;
+  - sin cambios;
+  - requiere atención;
+  - fallido.
+- Nunca se afirma que ocurrió un resultado funcional si sólo se creó una ejecución, un Batch o trabajo en cola.
+- Cuando exista `run_id` o ejecución observable, la interfaz puede enlazar de forma natural a Actividad y, cuando corresponda, a Operaciones.
+- Los toasts o mensajes transitorios no deben ser la única fuente de verdad para acciones importantes; el estado de la superficie se actualiza de forma coherente.
+- Si una acción falla, el elemento afectado no desaparece ni adopta un falso estado optimista.
+- El frontend protege contra doble click cuando proceda, pero la idempotencia backend continúa siendo la garantía real.
+- Las acciones destructivas mantienen confirmación proporcional al riesgo.
+- El feedback debe ser discreto y no convertir cada operación en una pantalla de seguimiento.
+
+### Microcopy
+
+La redacción debe reflejar el estado real, por ejemplo:
+
+- `Actualización iniciada` cuando sólo se ha encolado trabajo.
+- `Actualizado` cuando el resultado funcional ya se confirmó.
+- `Sin cambios` cuando la ejecución terminó sin mutación.
+- `Necesita revisión` cuando el resultado requiere intervención.
+
+### Objetivo
+
+Permitir distinguir siempre entre intención recibida, trabajo en curso y resultado real, evitando falsos éxitos y manteniendo la interfaz rápida y comprensible.
