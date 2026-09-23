@@ -1473,3 +1473,17 @@ Los mockups y documentos UX históricos pueden seguir existiendo en historial Gi
 - PikoRelevancia usa una escala cromática discreta: verde muy alta, verde/lima alta, amarillo media, naranja baja y rojo muy baja; pendiente queda neutro.
 - Los controles de actualización de datos de Series no viven en la franja de Catálogo: la atención y ejecución manual corresponden a Calidad.
 
+
+
+## Catálogo · refinamiento visual posterior
+
+- La cabecera de la tabla permanece visible al hacer scroll.
+- La columna de orden activa se destaca visualmente y las cabeceras ordenables muestran affordance incluso cuando no están activas.
+- Las columnas no predeterminadas siguen ciclo descendente/ascendente/restaurar orden base; la columna predeterminada alterna dirección.
+- Los filtros activos se muestran como chips retirables individualmente.
+- País y Géneros incorporan búsqueda interna dentro de sus multiselectores.
+- La franja de resultados diferencia el subconjunto filtrado del universo del alcance actual.
+- PikoRelevancia muestra explícitamente su escala 0–100, usa coma decimal española y representa la ausencia como `Pendiente`, no como cero.
+- En móvil, Series prioriza PikoRelevancia, después PikoScore y después PikoQuality.
+- Entrar en una ficha y volver conserva página, filtros, vista y orden mediante el `returnTo` canónico.
+
