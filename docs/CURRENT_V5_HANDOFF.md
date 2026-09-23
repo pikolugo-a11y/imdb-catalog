@@ -829,3 +829,12 @@ Contrato: las superficies principales deben distinguir loading, error, filtros s
 Contrato: las cabeceras sticky respetan el offset del shell fijo y las columnas ordenables exponen semántica `aria-sort` equivalente al estado visual.
 
 **Siguiente paso exacto:** presentar únicamente **UX-06**. Persistir su decisión antes de UX-07.
+
+
+### DECISIÓN PUNTO 8 — UX-06
+
+**APROBADA** el 2026-09-24 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: navegación móvil y popovers adoptan gestión coherente del foco; `Más` mueve el foco al abrir, evita navegación accidental por el fondo y restaura foco al cerrar; País/Géneros aplican exclusión mutua y los overlays conservan accesibilidad de teclado y móvil.
+
+**Siguiente paso exacto:** presentar únicamente **UX-07**. Persistir su decisión antes de UX-08.
