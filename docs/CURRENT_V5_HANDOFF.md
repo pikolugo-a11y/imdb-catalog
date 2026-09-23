@@ -856,3 +856,12 @@ Contrato: Calidad adopta una jerarquía perceptible única; las superficies espe
 Contrato: todas las mutaciones distinguen intención recibida, ejecución iniciada/encolada y resultado final real; se evitan falsos éxitos, se preserva el elemento ante fallo y se enlaza a Actividad/Operaciones cuando existe ejecución observable.
 
 **Siguiente paso exacto:** presentar únicamente **UX-09**. Persistir su decisión antes de UX-10.
+
+
+### DECISIÓN PUNTO 8 — UX-09
+
+**APROBADA** el 2026-09-24 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: los controles principales en móvil adoptan áreas táctiles cómodas sin inflar innecesariamente la interfaz; se priorizan acciones frecuentes, navegación, paginación y selección, manteniendo alta densidad en escritorio.
+
+**Siguiente paso exacto:** presentar únicamente **UX-10**. Persistir su decisión antes de iniciar la Fase 3 de innovaciones del Punto 8.
