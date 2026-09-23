@@ -865,3 +865,19 @@ Contrato: todas las mutaciones distinguen intención recibida, ejecución inicia
 Contrato: los controles principales en móvil adoptan áreas táctiles cómodas sin inflar innecesariamente la interfaz; se priorizan acciones frecuentes, navegación, paginación y selección, manteniendo alta densidad en escritorio.
 
 **Siguiente paso exacto:** presentar únicamente **UX-10**. Persistir su decisión antes de iniciar la Fase 3 de innovaciones del Punto 8.
+
+
+### DECISIÓN PUNTO 8 — UX-10
+
+**APROBADA** el 2026-09-24 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: las tablas y listas comparten reglas de interacción, navegación, acciones, nulos, responsive, feedback y conservación de contexto, sin imponer todavía un componente universal.
+
+### ESTADO PUNTO 8 TRAS UX-10
+
+- Fase 1 — Auditoría: **COMPLETADA**.
+- Fase 2 — Propuestas V5: **COMPLETADA**.
+- UX-01 a UX-10: **10/10 APROBADAS y persistidas**.
+- Fase 3 — Road Map Innovador: **ACTIVA**.
+
+**Siguiente paso exacto:** presentar únicamente **INNO-UX-01**. Persistir su decisión antes de INNO-UX-02.
