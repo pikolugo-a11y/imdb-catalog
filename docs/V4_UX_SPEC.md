@@ -1461,3 +1461,15 @@ Los mockups y documentos UX históricos pueden seguir existiendo en historial Gi
 - La página muestra backlog manual, PikoScore, año, estado de cola y selección múltiple; 50 filas por página y PikoScore descendente.
 - La selección múltiple comunica explícitamente que el cálculo es secuencial (concurrencia 1).
 - El backlog inicial no pinta Calidad global en rojo: es una cola editorial voluntaria. El mantenimiento de valoraciones ya existentes sí se muestra como automatización en Actividad.
+
+
+## Catálogo · simplificación de filtros y orden
+
+- Plex deja de ser un combo. Los KPIs `Total / En Plex / Sin Plex` son filtros clicables, conservan el resto de filtros y muestran claramente el estado activo.
+- El combo `Orden` desaparece. Título, Año, PikoScore, PikoQuality y PikoRelevancia (Series) ordenan desde la cabecera y siempre contra el conjunto completo en servidor, nunca sólo la página visible.
+- País pasa a multiselección con el mismo patrón de Géneros y permite semántica `Cualquiera` / `Todos`.
+- La columna `Tipo` sólo se muestra en `Todo`; se oculta en Películas y Series por redundante.
+- El estado Plex desaparece como columna de tabla; su control y lectura principal quedan concentrados en los KPIs superiores.
+- PikoRelevancia usa una escala cromática discreta: verde muy alta, verde/lima alta, amarillo media, naranja baja y rojo muy baja; pendiente queda neutro.
+- Los controles de actualización de datos de Series no viven en la franja de Catálogo: la atención y ejecución manual corresponden a Calidad.
+
