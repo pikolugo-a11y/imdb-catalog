@@ -1477,3 +1477,12 @@ PikoRelevancia es una señal editorial de priorización **fuera del Lifecycle**.
 - Los contadores Plex se calculan sobre el conjunto filtrado excluyendo únicamente el filtro Plex actual, para permitir cambiar entre `Total / En Plex / Sin Plex` sin perder búsqueda, país, género o año.
 - País admite selección múltiple: `any` exige al menos un país seleccionado y `all` exige todos los seleccionados.
 
+
+
+## Catálogo · contexto y persistencia de navegación
+
+- `getCatalogV4` devuelve tanto el total filtrado como el universo del alcance (`Todo`, `Películas` o `Series`) para contextualizar resultados sin consultas de cliente.
+- Los chips de filtros son representación del estado URL, no un estado paralelo; retirar un chip modifica la URL canónica y reinicia la página.
+- El buscador interno de País/Géneros sólo filtra las opciones visibles del selector y no altera el catálogo hasta marcar/desmarcar valores.
+- El enlace a ficha conserva el URL completo de retorno, incluido orden, página y filtros múltiples.
+
