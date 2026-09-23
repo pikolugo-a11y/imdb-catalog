@@ -45,3 +45,64 @@ V5 distinguirá entre:
 ### Objetivo
 
 Reducir renders intermedios, trabajo Vercel/Neon evitable y sensación de interfaz nerviosa sin perder rapidez en decisiones simples.
+
+
+## UX-02 — Responsive móvil real para Novedades y PikoRelevancia
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+Novedades y PikoRelevancia mantienen tablas horizontales en móvil, a diferencia de Catálogo, Personas y Sagas, que ya disponen de representación compacta específica.
+
+Esto contradice el principio V4 de responsive sin pérdida funcional y sin scroll horizontal obligatorio para las superficies principales.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato aprobado
+
+#### Novedades
+
+En escritorio se mantiene la tabla densa actual.
+
+En móvil, cada candidato se representa como lista compacta con jerarquía equivalente:
+
+- título y año;
+- tipo e identidad IMDb/TMDb;
+- origen y contexto;
+- estado funcional;
+- fecha detectada;
+- acciones disponibles.
+
+Cuando un candidato necesite resolver identidad, los controles IMDb/TMDb se presentan dentro del propio bloque móvil, sin obligar a recorrer una tabla horizontal.
+
+#### PikoRelevancia
+
+En escritorio se mantiene la tabla actual.
+
+En móvil, cada serie se presenta como fila/tarjeta compacta con:
+
+- selección;
+- título y año;
+- PikoScore;
+- estado Pendiente / En cola / Calculando;
+- acción Calcular.
+
+Se conserva:
+
+- selección múltiple;
+- Seleccionar página;
+- procesamiento secuencial;
+- paginación;
+- estados actuales de cola.
+
+### Accesibilidad asociada
+
+Cada checkbox individual de PikoRelevancia debe tener nombre accesible ligado a su serie, por ejemplo `Seleccionar Breaking Bad`.
+
+### Guardrail
+
+La adaptación móvil no elimina información funcional ni convierte estas superficies en tarjetas editoriales grandes. Debe seguir siendo una UX densa y operativa.
