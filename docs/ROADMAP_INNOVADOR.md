@@ -228,3 +228,54 @@ Un Sentinel fallido puede impedir que PikoFilm materialice miles de items destin
 **Visión:** hacer que PikoFilm pruebe el camino antes de mandar trabajo real por él.
 
 **Horizonte orientativo:** posterior a V5 y sujeto a decisión futura específica; no compromete ninguna versión concreta.
+
+
+---
+
+### INNO-09 — PikoFilm Shadow Sources
+
+**Origen:** `INNO-INT-02` — Punto 7, Integraciones externas  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-24
+
+Permitir que PikoFilm pruebe temporalmente una fuente externa candidata en paralelo con la fuente oficial vigente, sin que esa fuente sombra tenga autoridad funcional ni capacidad para modificar datos canónicos.
+
+El sistema podrá comparar coincidencia y discrepancias, cobertura, latencia, errores, frescura, cuota/coste y calidad por tipo de dato.
+
+**Guardrails esenciales:** la fuente sombra nunca escribe verdad canónica, no participa en Lifecycle/Calidad/catálogo/fallbacks, los experimentos estarán acotados por muestra/duración/cuota y cualquier promoción requerirá una decisión posterior explícita.
+
+**Visión:** ensayar cambios de proveedor con evidencia real y sin riesgo funcional.
+
+**Horizonte orientativo:** capacidad futura posterior a V5.
+
+---
+
+### INNO-10 — PikoFilm Source Trust Ledger
+
+**Origen:** `INNO-INT-03` — Punto 7, Integraciones externas  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-24
+
+Construir una memoria histórica objetiva de fiabilidad por proveedor y por tipo de dato, usando coincidencias/discrepancias, correcciones posteriores, estabilidad, errores, rate limits y evidencia posteriormente confirmada.
+
+**Guardrails esenciales:** INT-06 continúa definiendo la autoridad; el ledger no cambia automáticamente qué fuente es canónica; coincidir con otras fuentes no equivale a tener razón; cualquier adaptación automática futura requiere una decisión posterior explícita.
+
+**Visión:** recordar qué proveedores han sido realmente fiables para cada clase de dato sin entregarles autoridad automática.
+
+**Horizonte orientativo:** capacidad futura posterior a V5.
+
+---
+
+### INNO-11 — PikoFilm Adaptive Source Router
+
+**Origen:** `INNO-INT-05` — Punto 7, Integraciones externas  
+**Estado:** APROBADA  
+**Fecha:** 2026-09-24
+
+Permitir que PikoFilm seleccione dinámicamente qué fuente autorizada consultar primero cuando existan varias rutas válidas, considerando health, cuota, latencia, confianza histórica, frescura, coste y disponibilidad de fallback.
+
+**Guardrails esenciales:** INT-06 mantiene la autoridad funcional por dato; el router no puede saltarse una fuente obligatoria; las decisiones deben ser explicables; no puede elevar cuotas, concurrencia o coste fuera de límites aprobados.
+
+**Visión:** consultar las fuentes correctas en el momento correcto, evitando trabajo, cuota y fallos innecesarios.
+
+**Horizonte orientativo:** capacidad futura posterior a V5.
