@@ -754,3 +754,33 @@ Este bloque prevalece sobre cualquier estado histórico contradictorio anterior 
 **Punto 8 — Frontend y UX · Fase 1 — Auditoría extremadamente detallada del sistema real.**
 
 Antes de presentar propuestas UX, auditar código, rutas, componentes, navegación, estados loading/error/empty, tablas, filtros, móvil/responsive, accesibilidad, rendimiento percibido, densidad, coherencia entre superficies y comportamiento real de producción. Persistir primero la auditoría en Git.
+
+
+## REENTRADA CANÓNICA — 2026-09-24 · PUNTO 8 FRONTEND Y UX
+
+Este bloque prevalece sobre cualquier estado histórico contradictorio anterior dentro de este handoff.
+
+- Rama activa: `audit/v5-08-frontend-ux`.
+- Punto 7 — Integraciones externas: **CERRADO** en `main` mediante PR #609, merge `739b0bf2ddcfdf5d61725f6f0b9d2a5564449883`.
+- Punto 8 — Frontend y UX: **ACTIVO**.
+- Fase 1 — Auditoría: **COMPLETADA** y persistida en `docs/V5_AUDIT_08_FRONTEND_UX.md`.
+- Fase 2 — Propuestas: **PENDIENTE DE INICIAR**.
+- No se implementó ninguna modificación funcional durante la auditoría.
+- No se mutó Neon y no se desplegó Vercel Production.
+
+### Hallazgos de reentrada
+
+- Catálogo tiene un patrón de filtros demasiado reactivo para una página server-side dinámica: búsqueda 260 ms, años 320 ms y cada selección múltiple provoca `router.replace`.
+- Los logs recientes de producción muestran ráfagas de `GET /catalogo` durante uso real.
+- Novedades y PikoRelevancia conservan tablas horizontales en móvil, a diferencia de Catálogo/Personas/Sagas.
+- Sagas pierde filtros/orden/página al entrar en detalle y volver.
+- Catálogo tiene sticky header con `top:0` debajo de un header global fijo de 64 px.
+- Falta `aria-sort` en ordenaciones y naming accesible en checkboxes por fila de PikoRelevancia.
+- Loading/error/empty no siguen un contrato uniforme entre superficies.
+- Calidad mantiene buena separación funcional, aunque su navegación interna tiene dos niveles de orientación.
+- Actividad y Operaciones mantienen correctamente la separación funcional/técnica.
+- La coexistencia de múltiples generaciones CSS afecta la coherencia pero su consolidación profunda pertenece al Punto 9.
+
+### SIGUIENTE PASO EXACTO
+
+Presentar únicamente **UX-01**. Persistir APROBACIÓN/RECHAZO antes de presentar UX-02.
