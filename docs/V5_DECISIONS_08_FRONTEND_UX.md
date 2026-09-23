@@ -258,3 +258,43 @@ UX-05 corrige comportamiento y accesibilidad. No obliga todavía a crear un comp
 ### Objetivo
 
 Mantener la cabecera útil y legible durante scroll y hacer que la ordenación tenga semántica equivalente para usuarios visuales y tecnología asistiva.
+
+
+## UX-06 — Gestión coherente y accesible del foco en navegación móvil y popovers
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+La navegación móvil y varios controles desplegables funcionan visualmente, pero no comparten un contrato completo de foco y cierre:
+
+- el menú móvil `Más` usa semántica `menu/menuitem`, pero al abrir no mueve el foco al primer destino;
+- mientras el overlay está abierto, el contenido situado detrás sigue siendo alcanzable por teclado;
+- `Escape` devuelve correctamente el foco, pero falta completar el ciclo de interacción;
+- multiselectores como País y Géneros pueden permanecer abiertos simultáneamente;
+- los popovers móviles deben seguir siendo utilizables con viewport reducido y teclado virtual.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato aprobado
+
+- Al abrir el menú móvil `Más`, el foco entra en el menú y queda en un destino utilizable.
+- Mientras un overlay/modal-menu esté abierto, la navegación por teclado no debe escapar accidentalmente al contenido oculto de detrás.
+- `Escape` cierra y devuelve el foco al control que abrió el overlay.
+- Seleccionar un destino cierra correctamente el menú de forma coordinada con la navegación.
+- Click/tap exterior cierra los popovers cuando el patrón lo permita.
+- Los multiselectores País/Géneros deben aplicar exclusión mutua: abrir uno cierra el otro.
+- El foco visible y la navegación por teclado deben conservarse.
+- En móvil, los popovers deben mantenerse accesibles ante cambios de viewport y teclado virtual.
+- No se introduce una dependencia pesada únicamente para resolver este comportamiento.
+
+### Guardrail
+
+UX-06 define comportamiento y accesibilidad. No obliga a crear todavía un sistema universal de componentes ni a consolidar generaciones CSS; esa normalización pertenece al Punto 9 — Sistema de diseño / CSS.
+
+### Objetivo
+
+Hacer que navegación móvil, menús y popovers se comporten de forma predecible y equivalente para interacción táctil, teclado y tecnologías asistivas.
