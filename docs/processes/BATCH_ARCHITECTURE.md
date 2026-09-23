@@ -333,3 +333,16 @@ La matriz completa de procesos, incluidos manuales y sin Batch, vive en `PROCESS
 PikoRelevancia usa el Batch Engine común en el pool API y la misma operación canónica `computePikoRelevanceCanonical` tanto para una serie como para una selección múltiple. La concurrencia solicitada es siempre **1** porque Media Cloud tiene pacing propio y cuota limitada. Seleccionar varias series sólo crea una cola; nunca paraleliza llamadas a Media Cloud.
 
 La deuda histórica sin PikoRelevancia no es elegible por el planner: el usuario la absorbe desde `/calidad/relevancia`, paginada y ordenada por PikoScore. Tras el primer cálculo, `next_review_at` entra en `PROC-PLAN-002` y los recálculos sí son automáticos, con cadencia adaptativa y sin revisión automática para series estables de más de 30 años.
+
+
+### Ejecución wake-driven
+
+Los pools `api`, `fast` y `plex` son event-driven. No existe polling de cola durante reposo.
+
+- `process-runtime.addProcessEvent` despierta el pool al persistir `batch_queued`, `batch_items_appended` o `batch_resumed`.
+- El endpoint HTTP del worker sólo activa el drenado; nunca recibe IDs de negocio ni modifica por sí solo la cola.
+- La cola durable de Neon sigue siendo la única fuente de verdad. Si el wake falla, el trabajo no se pierde.
+- `PROC-PLAN-002` revisa pools con Batch activo una vez por ciclo y emite un wake de recuperación.
+- Durante trabajo activo se conservan leases, heartbeats, retries, observabilidad y concurrencia existentes.
+- Cuando la cola queda vacía, el worker no vuelve a consultar Neon hasta un nuevo wake o un arranque de recuperación.
+
