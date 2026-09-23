@@ -388,3 +388,42 @@ La redacción debe reflejar el estado real, por ejemplo:
 ### Objetivo
 
 Permitir distinguir siempre entre intención recibida, trabajo en curso y resultado real, evitando falsos éxitos y manteniendo la interfaz rápida y comprensible.
+
+
+## UX-09 — Ergonomía táctil consistente para controles móviles
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+La auditoría detectó controles interactivos compactos, en torno a 30–36 px de alto, en varias superficies. La densidad es útil en escritorio, pero en móvil puede aumentar pulsaciones imprecisas, acciones vecinas demasiado próximas y menor comodidad de uso.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato aprobado
+
+- Los controles principales en móvil deben disponer de un área táctil cómoda aunque su apariencia siga siendo compacta.
+- Cuando sea posible, se amplía la zona interactiva mediante padding o hit-area sin inflar innecesariamente el diseño.
+- Se evita colocar acciones críticas demasiado juntas.
+- Tienen prioridad de revisión:
+  - acciones primarias;
+  - paginación;
+  - navegación;
+  - checkboxes;
+  - controles de uso frecuente.
+- Chips o elementos secundarios pueden seguir siendo visualmente compactos si su área pulsable es suficiente.
+- En escritorio se conserva la densidad alta de tablas y listas.
+- Se revisarán especialmente Novedades, PikoRelevancia, Calidad Series, Catálogo y navegación inferior móvil.
+- Los controles mantienen foco visible y feedback claro al tocar/pulsar.
+- No se impone un tamaño rígido indiscriminado cuando perjudique una tabla densa o un control secundario.
+
+### Guardrail
+
+UX-09 define ergonomía y usabilidad. Los tokens exactos de altura, padding, hit-area y componentes compartidos se resolverán en el Punto 9 — Sistema de diseño / CSS.
+
+### Objetivo
+
+Conservar la densidad de PikoFilm y, al mismo tiempo, hacer que las acciones frecuentes sean más cómodas y menos propensas a pulsaciones accidentales en iPhone.
