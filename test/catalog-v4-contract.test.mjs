@@ -168,6 +168,7 @@ test('volver desde una ficha conserva el estado completo del Catálogo',()=>{
 
 
 test('scope Series genera placeholder SQL parametrizado y nunca castea el índice entero',()=>{
-  assert.match(query,/const i=params\.push\(SERIES_TYPES\);w\.push\('c\.type=ANY\(\$'\+i\+'::text\[\]\)'\)/);
+  assert.match(query,/const i=params\.push\(SERIES_TYPES\)/);
+  assert.match(query,/String\.fromCharCode\(36\)\+i\+'::text\[\]\)'/);
   assert.doesNotMatch(query,/c\.type=ANY\(\$\{params\.push\(SERIES_TYPES\)\}::text\[\]\)/);
 });
