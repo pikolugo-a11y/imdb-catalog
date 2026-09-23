@@ -43,7 +43,7 @@ test('Catalog V4 supports multi-country filtering like genres',()=>{
   assert.match(filters,/selectedCountries/);
   assert.match(filters,/countryMode/);
   assert.match(filters,/toggleCountry/);
-  assert.match(filters,/countries\.map/);
+  assert.match(filters,/visibleCountries\.map/);
   assert.match(query,/countryMode==='all'/);
   assert.match(query,/@>|&&/);
   assert.match(query,/movie_countries mc JOIN countries ctry/);
@@ -87,7 +87,8 @@ test('la ordenación por cabeceras es global, server-side y vuelve a página uno
   assert.match(page,/scoreSortHref\(s,'score'\)/);
   assert.match(page,/scoreSortHref\(s,'quality'\)/);
   assert.match(page,/scoreSortHref\(s,'relevance'\)/);
-  assert.match(page,/sort:key,dir,page:1/);
+  assert.match(page,/sort:key,dir:initialDir,page:1/);
+  assert.match(page,/page:1/);
   assert.match(query,/ORDER BY \$\{order\} LIMIT \$\{CATALOG_V4_PAGE_SIZE\} OFFSET \$\{offset\}/);
 });
 
