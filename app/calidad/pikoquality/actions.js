@@ -5,6 +5,7 @@ import {db} from '@/lib/db';
 import {processC6Batch,C6_BATCH_SIZE,getC6BatchState} from '@/lib/pikoquality-c6-batch';
 import {scorePikoQualityRatingKeys} from '@/lib/pikoquality-c6-runtime.mjs';
 import {getTechnicalControl,setTechnicalArmed,setTechnicalRequestedState} from '@/lib/plex-technical-control.mjs';
+import {wakeWorkerPool} from '@/lib/worker-wake-client';
 import {startProcessRun,addProcessEvent,recordProcessError,finishProcessRun} from '@/lib/process-runtime';
 import {getActiveTechnicalProcessRun} from '@/lib/pikoquality-technical-observability.mjs';
 
@@ -104,6 +105,7 @@ export async function startTechnicalSnapshotAction(){
     await setTechnicalArmed(sql,true);
     await setTechnicalRequestedState(sql,'running');
     await addProcessEvent(active.run_id,{eventType:'run_resumed',step:'technical_control',entityType:TECH_ENTITY_TYPE,entityId:TECH_ENTITY_ID,message:'Captura técnica reanudada desde Operaciones'});
+    await wakeWorkerPool('technical',{reason:'technical_resumed'}).catch(error=>console.error('[worker-wake] technical',String(error?.message||error)));
     revalidateTechnical();
     return;
   }
@@ -115,6 +117,7 @@ export async function startTechnicalSnapshotAction(){
   try{
     await setTechnicalArmed(sql,true);
     await setTechnicalRequestedState(sql,'running');
+    await wakeWorkerPool('technical',{reason:'technical_started'}).catch(error=>console.error('[worker-wake] technical',String(error?.message||error)));
   }catch(error){
     await recordProcessError(active.run_id,{error,step:'technical_control',source:'vercel',retryable:false}).catch(()=>{});
     await finishProcessRun(active.run_id,{technicalStatus:'failed',message:'No se pudo iniciar la captura técnica'}).catch(()=>{});
