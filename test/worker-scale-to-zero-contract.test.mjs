@@ -12,7 +12,7 @@ test('wake HMAC autentica el pool y caduca',()=>{
   assert.equal(verifyWorkerWakeAuth(db,'api',{...auth,now:now+30_000}),true);
   assert.equal(verifyWorkerWakeAuth(db,'fast',{...auth,now:now+30_000}),false);
   assert.equal(verifyWorkerWakeAuth(db,'api',{...auth,now:now+180_000}),false);
-  assert.equal(verifyWorkerWakeAuth(db+'x','api',{...auth,now:now+30_000}),false);
+  assert.equal(verifyWorkerWakeAuth('postgresql://user:other@example.test/db','api',{...auth,now:now+30_000}),false);
 });
 
 test('los cuatro workers persistentes son wake-driven y no hacen polling idle',()=>{
@@ -24,7 +24,7 @@ test('los cuatro workers persistentes son wake-driven y no hacen polling idle',(
   assert.doesNotMatch(read('worker/batch-api-worker.mjs'),/BATCH_POLL_MS/);
   assert.doesNotMatch(read('worker/batch-fast-worker.mjs'),/BATCH_IDLE_MS/);
   assert.doesNotMatch(read('worker/batch-plex-worker.mjs'),/BATCH_IDLE_MS/);
-  assert.doesNotMatch(read('worker/technical-snapshot-worker.mjs'),/for\s*\(;;\)/);
+  assert.doesNotMatch(read('worker/technical-snapshot-worker.mjs'),/TECHNICAL_SNAPSHOT_IDLE_MS|await sleep\(idleMs\)/);
 });
 
 test('encolar, ampliar o reanudar una cola despierta su pool',()=>{
