@@ -820,3 +820,12 @@ Contrato: toda navegación lista → detalle debe restaurar exactamente el conte
 Contrato: las superficies principales deben distinguir loading, error, filtros sin resultados, ausencia real de datos y estado sano sin trabajo; errores secundarios aislables no derriban toda la página.
 
 **Siguiente paso exacto:** presentar únicamente **UX-05**. Persistir su decisión antes de UX-06.
+
+
+### DECISIÓN PUNTO 8 — UX-05
+
+**APROBADA** el 2026-09-24 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: las cabeceras sticky respetan el offset del shell fijo y las columnas ordenables exponen semántica `aria-sort` equivalente al estado visual.
+
+**Siguiente paso exacto:** presentar únicamente **UX-06**. Persistir su decisión antes de UX-07.
