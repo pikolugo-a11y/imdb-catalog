@@ -1468,3 +1468,12 @@ PikoRelevancia es una señal editorial de priorización **fuera del Lifecycle**.
 - Tras el primer cálculo, el mantenimiento es automático y visible en Actividad/Calendario.
 - Cadencia base: activa/nueva 30 días; 2–3 años 60; 4–5 años 120; 6–10 años 180; 11–20 años 365; 21–30 años 730; más de 30 años estable, sin revisión automática.
 - El idioma original español no suma aparte de la traducción: ambos satisfacen la misma señal de accesibilidad en español. El origen España sólo aporta una corrección pequeña de mercado.
+
+
+## Catálogo · contrato de filtrado y orden
+
+- La paginación permanece server-side a 50 elementos.
+- La ordenación activada desde cabeceras se aplica en SQL antes de `LIMIT/OFFSET`, por lo que ordena el universo filtrado completo.
+- Los contadores Plex se calculan sobre el conjunto filtrado excluyendo únicamente el filtro Plex actual, para permitir cambiar entre `Total / En Plex / Sin Plex` sin perder búsqueda, país, género o año.
+- País admite selección múltiple: `any` exige al menos un país seleccionado y `all` exige todos los seleccionados.
+

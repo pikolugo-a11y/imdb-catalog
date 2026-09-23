@@ -15,7 +15,7 @@ const rescueSettings=fs.readFileSync('lib/news-discovery-settings.mjs','utf8');
 const criteria=fs.readFileSync('app/novedades/criterios/page.js','utf8');
 const display=fs.readFileSync('lib/process-display.js','utf8');
 
-test('Series usan PikoRelevancia por defecto y conservan Prioridad España como orden alternativo',()=>{
+test('Series usan PikoRelevancia por defecto y la prioridad España queda fuera del control principal',()=>{
   assert.match(query,/scope==='series'\?'relevance':'score'/);
   assert.match(query,/if\(p\.sort==='relevance'\)return `sra\.score/);
   assert.match(query,/percent_rank\(\) OVER\(PARTITION BY mc\.country_code/);
@@ -23,9 +23,9 @@ test('Series usan PikoRelevancia por defecto y conservan Prioridad España como 
   assert.match(query,/country_code='ES'/);
   assert.match(query,/original_language='es'/);
   assert.match(query,/series_profile,spain,streaming/);
-  assert.match(filters,/Prioridad España/);
-  assert.match(filters,/PikoScore/);
-  assert.match(page,/PikoRelevancia activa/);
+  assert.doesNotMatch(filters,/Prioridad España/);
+  assert.doesNotMatch(filters,/<span>Orden<\/span>/);
+  assert.match(page,/PikoRelevancia/);
 });
 
 test('el perfil TMDb de catálogo guarda tamaño y señal de streaming España',()=>{

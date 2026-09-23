@@ -685,3 +685,17 @@ El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento
 - Sólo assessments ya existentes entran en mantenimiento automático adaptativo mediante PROC-PLAN-002.
 - La españolidad queda desduplicada: origen ES = corrección pequeña; idioma español original o traducción satisfacen una única señal de accesibilidad.
 - Tras cerrar y validar esta integración, reanudar exactamente en **V5 · Point 7 · Phase 3 · INNO-INT-02**.
+
+
+### Ajuste UX de Catálogo tras validación visual de PikoRelevancia
+
+- Rama de trabajo: `ux/catalogo-filtros-orden`.
+- Decisión aprobada por validación visual: simplificar Catálogo eliminando combos redundantes de Plex y Orden.
+- `Total / En Plex / Sin Plex` pasan a ser filtros directos.
+- La ordenación pasa a cabeceras y debe ser global/server-side.
+- País pasa a multiselección equivalente a Géneros.
+- `Tipo` sólo se muestra en `Todo`.
+- Plex deja de mostrarse como columna en la tabla.
+- PikoRelevancia añade escala visual verde→rojo según relevancia.
+- El botón de actualización de Series se retira del Catálogo; la acción corresponde a Calidad.
+
