@@ -298,3 +298,41 @@ UX-06 define comportamiento y accesibilidad. No obliga a crear todavía un siste
 ### Objetivo
 
 Hacer que navegación móvil, menús y popovers se comporten de forma predecible y equivalente para interacción táctil, teclado y tecnologías asistivas.
+
+
+## UX-07 — Jerarquía y orientación unificadas dentro de Calidad
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+Calidad tiene una arquitectura funcional sólida, pero conviven dos niveles de navegación:
+
+- navegación principal del dominio Calidad;
+- `QualityHybridNav` para subsecciones internas del Centro.
+
+La combinación es funcional, pero especialmente en móvil puede percibirse como dos jerarquías paralelas y dificultar saber dónde está el usuario y cómo cambiar de área.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato aprobado
+
+- Calidad mantiene una única jerarquía perceptible.
+- Películas, Series y PikoRelevancia conservan sus superficies especializadas.
+- Identidad, Datos, Personas, PikoQuality e Integridad se presentan como subsecciones coherentes del Centro, sin sensación de una segunda aplicación dentro de Calidad.
+- La orientación debe expresar con claridad `Calidad → sección actual`.
+- En móvil, la navegación debe ser compacta y permitir cambiar de área sin consumir una parte desproporcionada de la pantalla.
+- Se conservarán deep links y URLs existentes cuando sea razonable.
+- No se fusionan dominios funcionales ni se oculta información.
+- Operaciones permanece separada; no se trasladan controles técnicos a Calidad.
+
+### Guardrail
+
+UX-07 define arquitectura de información y orientación. No obliga a rediseñar componentes, tokens, colores, tabs o CSS comunes; esa consolidación corresponde al Punto 9 — Sistema de diseño / CSS.
+
+### Objetivo
+
+Reducir carga cognitiva y hacer más evidente dónde está el usuario y cómo moverse entre áreas de Calidad, especialmente en móvil, sin sacrificar profundidad funcional.
