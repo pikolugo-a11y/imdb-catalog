@@ -106,3 +106,59 @@ Cada checkbox individual de PikoRelevancia debe tener nombre accesible ligado a 
 ### Guardrail
 
 La adaptación móvil no elimina información funcional ni convierte estas superficies en tarjetas editoriales grandes. Debe seguir siendo una UX densa y operativa.
+
+
+## UX-03 — Contrato universal lista → detalle → volver conservando contexto
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+Sagas conserva búsqueda, filtros, orden y página en la URL del listado, pero al abrir una saga:
+
+- el enlace al detalle no transporta `returnTo`;
+- la ficha no lee contexto de retorno;
+- breadcrumb y footer vuelven siempre a `/sagas`.
+
+Esto hace perder el estado de navegación al regresar.
+
+Catálogo y Personas ya resuelven correctamente el patrón mediante `from` / `returnTo`.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato general
+
+Siempre que el usuario entre en un detalle desde una lista cuyo estado navegable esté representado en URL, la acción Volver debe restaurar exactamente esa lista.
+
+El contrato incluye:
+
+- búsqueda;
+- filtros;
+- orden;
+- scope/vista;
+- página;
+- cualquier otro estado de navegación aprobado y representado en URL.
+
+La URL continúa siendo la fuente principal de verdad; no se introduce memoria oculta como mecanismo canónico.
+
+### Aplicación mínima obligatoria
+
+- Catálogo → Ficha: conservar el comportamiento existente.
+- Personas → Persona detalle: conservar el comportamiento existente.
+- Calidad Series → detalle: preservar su retorno contextual actual.
+- Sagas → Saga detalle: corregir el hueco detectado.
+
+### Contrato específico para Sagas
+
+1. La lista construye el enlace al detalle incluyendo `returnTo` con la URL completa vigente.
+2. La ficha valida y consume ese `returnTo`.
+3. Breadcrumb y acción “Volver a Sagas” usan esa URL.
+4. Entrada directa/favorito sin contexto usa fallback limpio a `/sagas`.
+5. No se permite un `returnTo` arbitrario fuera del ámbito esperado.
+
+### Objetivo
+
+Evitar que abrir un detalle obligue a reconstruir manualmente el contexto de trabajo al volver.
