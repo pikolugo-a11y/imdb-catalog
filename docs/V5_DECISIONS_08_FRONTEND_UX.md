@@ -219,3 +219,42 @@ Revisar como mínimo Catálogo, Novedades, Personas, Sagas, Calidad, Actividad y
 ### Objetivo
 
 Aumentar sensación de estabilidad y reducir ambigüedad sobre si una superficie está sana, vacía, filtrada o fallando.
+
+
+## UX-05 — Cabeceras sticky coordinadas con el shell y ordenación accesible
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+El shell global usa cabecera fija y algunas tablas densas usan encabezados `sticky` sin respetar su offset. En Catálogo:
+
+- header global fijo: `--v4-header` (64 px en escritorio);
+- cabecera de tabla: `position: sticky; top: 0`.
+
+Esto puede hacer que el encabezado de columnas quede parcialmente oculto bajo el shell.
+
+Además, las columnas ordenables comunican dirección visualmente mediante flechas y estado activo, pero no exponen semántica estándar mediante `aria-sort`.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato aprobado
+
+- Toda cabecera sticky dentro del contenido debe respetar el offset real del shell fijo.
+- El offset debe derivarse de variables/layout compartido cuando sea posible, no de números mágicos duplicados.
+- En breakpoints donde cambie la altura del header, la posición sticky debe seguir siendo correcta.
+- Las columnas ordenables deben exponer `aria-sort="ascending"` o `aria-sort="descending"` en la columna activa.
+- Las columnas no activas no deben anunciar un orden falso.
+- El comportamiento visual de flechas/estado activo puede conservarse.
+- Foco, navegación y links de cabecera deben permanecer utilizables durante scroll.
+
+### Alcance
+
+UX-05 corrige comportamiento y accesibilidad. No obliga todavía a crear un componente universal de tabla ni a consolidar CSS; esa normalización profunda pertenece al Punto 9.
+
+### Objetivo
+
+Mantener la cabecera útil y legible durante scroll y hacer que la ordenación tenga semántica equivalente para usuarios visuales y tecnología asistiva.
