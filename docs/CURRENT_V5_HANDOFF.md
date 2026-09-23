@@ -699,3 +699,12 @@ El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento
 - PikoRelevancia añade escala visual verde→rojo según relevancia.
 - El botón de actualización de Series se retira del Catálogo; la acción corresponde a Calidad.
 
+
+
+### Refinamiento UX adicional de Catálogo · 23-09-2026
+
+- Rama: `ux/catalogo-refinements`.
+- Aprobado implementar cabecera sticky, estado de orden visible, ciclo de orden por cabeceras, chips de filtros activos, total filtrado frente a universo, escala visible de PikoRelevancia 0–100, coma decimal española, `Pendiente` explícito, búsqueda interna en País/Géneros y prioridad móvil PikoRelevancia → PikoScore → PikoQuality.
+- Debe conservarse el contexto exacto al entrar/salir de una ficha.
+- Tras merge/validación de este ajuste, el punto de reentrada V5 sigue siendo **Punto 7 · Fase 3 · INNO-INT-02**.
+
