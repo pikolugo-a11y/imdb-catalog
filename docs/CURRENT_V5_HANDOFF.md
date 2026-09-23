@@ -729,3 +729,28 @@ El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento
 - El planner horario actúa como recovery wake sólo si encuentra trabajo activo.
 - Punto de reentrada V5 tras validar esta optimización: **Punto 7 · Fase 3 · INNO-INT-02**.
 
+
+
+## REENTRADA CANÓNICA — 2026-09-24 · PUNTO 7 CERRADO
+
+Este bloque prevalece sobre cualquier estado histórico contradictorio anterior dentro de este handoff.
+
+- Rama de definición: `audit/v5-07-integrations`.
+- Punto 6 — Workers y servicios persistentes: **CERRADO**; documentación canónica en `docs/V5_AUDIT_06_WORKERS.md`, `docs/V5_DECISIONS_06_WORKERS.md` y `docs/V5_INNOVATIONS_06_WORKERS.md`.
+- Punto 7 — Integraciones externas: **CERRADO**.
+- Fase 1 — Auditoría: **COMPLETADA** en `docs/V5_AUDIT_07_INTEGRATIONS.md`.
+- Fase 2 — Propuestas: **COMPLETADA**; INT-01 a INT-10 revisadas individualmente y **APROBADAS** en `docs/V5_DECISIONS_07_INTEGRATIONS.md`.
+- Fase 3 — Innovaciones: **COMPLETADA** en `docs/V5_INNOVATIONS_07_INTEGRATIONS.md`:
+  - INNO-INT-01 Integration Fabric: **RECHAZADA**.
+  - INNO-INT-02 Shadow Sources: **APROBADA** → Road Map Innovador `INNO-09`.
+  - INNO-INT-03 Source Trust Ledger: **APROBADA** → Road Map Innovador `INNO-10`.
+  - INNO-INT-04 Source Replay Lab: **RECHAZADA**.
+  - INNO-INT-05 Adaptive Source Router: **APROBADA** → Road Map Innovador `INNO-11`.
+- Los hotfixes posteriores de Catálogo/PikoRelevancia/scale-to-zero permanecen vigentes y no se reabren por este cierre.
+- El asistente no despliega Vercel Production.
+
+### SIGUIENTE PASO EXACTO
+
+**Punto 8 — Frontend y UX · Fase 1 — Auditoría extremadamente detallada del sistema real.**
+
+Antes de presentar propuestas UX, auditar código, rutas, componentes, navegación, estados loading/error/empty, tablas, filtros, móvil/responsive, accesibilidad, rendimiento percibido, densidad, coherencia entre superficies y comportamiento real de producción. Persistir primero la auditoría en Git.
