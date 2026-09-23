@@ -162,3 +162,60 @@ La URL continúa siendo la fuente principal de verdad; no se introduce memoria o
 ### Objetivo
 
 Evitar que abrir un detalle obligue a reconstruir manualmente el contexto de trabajo al volver.
+
+
+## UX-04 — Contrato coherente de loading, error y empty states por superficie
+
+**Estado: APROBADA**  
+**Fecha: 2026-09-24**
+
+### Problema observado
+
+La cobertura de estados intermedios y excepcionales no es uniforme:
+
+- Calidad tiene loading/error específicos;
+- Catálogo tiene error específico pero no loading propio;
+- Identidad tiene loading específico;
+- Novedades, Personas, Sagas, Actividad y Operaciones dependen en mayor medida del fallback global;
+- los empty states no siempre distinguen entre ausencia real de datos, filtros sin coincidencias o estado sano sin trabajo pendiente.
+
+### Decisión
+
+**APROBADA.**
+
+### Contrato aprobado
+
+Cada superficie principal debe distinguir explícitamente:
+
+1. **Loading**
+   - conservar la estructura mental de la página;
+   - evitar sustituir innecesariamente una navegación contextual por un loader genérico;
+   - no crear esqueletos complejos si no aportan valor.
+
+2. **Error**
+   - explicar qué superficie o bloque no pudo cargarse;
+   - ofrecer reintento;
+   - conservar URL/filtros/contexto siempre que sea posible;
+   - un fallo secundario aislable no debe derribar toda la página.
+
+3. **Empty**
+   - diferenciar al menos:
+     - ausencia real de datos;
+     - filtros/búsqueda sin resultados;
+     - ausencia de trabajo porque el sistema está sano;
+     - estado todavía no disponible o no calculado, cuando aplique.
+
+### Aplicación esperada
+
+Revisar como mínimo Catálogo, Novedades, Personas, Sagas, Calidad, Actividad y Operaciones para que el lenguaje y la jerarquía indiquen claramente si la pantalla está cargando, vacía, filtrada o fallando.
+
+### Guardrails
+
+- No convertir esta decisión en una proliferación de loaders decorativos.
+- Reutilizar patrones ligeros cuando sea posible.
+- La consolidación visual/tokens profunda pertenece al Punto 9.
+- No ocultar errores técnicos reales; la UX funcional puede resumirlos y enlazar a Operaciones cuando corresponda.
+
+### Objetivo
+
+Aumentar sensación de estabilidad y reducir ambigüedad sobre si una superficie está sana, vacía, filtrada o fallando.
