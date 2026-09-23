@@ -838,3 +838,12 @@ Contrato: las cabeceras sticky respetan el offset del shell fijo y las columnas 
 Contrato: navegación móvil y popovers adoptan gestión coherente del foco; `Más` mueve el foco al abrir, evita navegación accidental por el fondo y restaura foco al cerrar; País/Géneros aplican exclusión mutua y los overlays conservan accesibilidad de teclado y móvil.
 
 **Siguiente paso exacto:** presentar únicamente **UX-07**. Persistir su decisión antes de UX-08.
+
+
+### DECISIÓN PUNTO 8 — UX-07
+
+**APROBADA** el 2026-09-24 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: Calidad adopta una jerarquía perceptible única; las superficies especializadas se conservan y las subsecciones del Centro se presentan bajo una orientación clara `Calidad → sección actual`, con navegación móvil compacta y sin mezclar Operaciones.
+
+**Siguiente paso exacto:** presentar únicamente **UX-08**. Persistir su decisión antes de UX-09.
