@@ -708,3 +708,12 @@ El Punto 5 queda cerrado en `audit/v5-05-observability`. El siguiente movimiento
 - Debe conservarse el contexto exacto al entrar/salir de una ficha.
 - Tras merge/validación de este ajuste, el punto de reentrada V5 sigue siendo **Punto 7 · Fase 3 · INNO-INT-02**.
 
+
+
+### Hotfix Catálogo · Series · 23-09-2026
+
+- Detectado en producción tras PR #605: `scope=series` generaba `ANY(3::text[])` en vez de un placeholder PostgreSQL `ANY($3::text[])`.
+- Síntoma: `NeonDbError 42846 cannot cast type integer to text[]` al cargar Catálogo · Series.
+- Corrección: el helper de scope construye explícitamente el placeholder parametrizado y se añade contrato de regresión.
+- No afecta a PikoRelevancia ni a sus datos; es exclusivamente construcción SQL del filtro de tipo Series.
+
