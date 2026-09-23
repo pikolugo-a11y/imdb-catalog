@@ -793,3 +793,12 @@ Presentar únicamente **UX-01**. Persistir APROBACIÓN/RECHAZO antes de presenta
 Contrato: acciones simples siguen siendo inmediatas; filtros compuestos se confirman una sola vez antes de consultar; URL y retorno exacto se conservan.
 
 **Siguiente paso exacto:** presentar únicamente **UX-02**. Persistir su decisión antes de UX-03.
+
+
+### DECISIÓN PUNTO 8 — UX-02
+
+**APROBADA** el 2026-09-24 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: Novedades y PikoRelevancia dispondrán de representación móvil compacta sin scroll horizontal obligatorio; PikoRelevancia añade naming accesible por checkbox.
+
+**Siguiente paso exacto:** presentar únicamente **UX-03**. Persistir su decisión antes de UX-04.
