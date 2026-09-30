@@ -342,6 +342,7 @@ La deuda histórica sin PikoRelevancia no es elegible por el planner: el usuario
 Los pools `api`, `fast` y `plex` son event-driven. No existe polling de cola durante reposo.
 
 - `process-runtime.addProcessEvent` despierta el pool al persistir `batch_queued`, `batch_items_appended` o `batch_resumed`.
+- Todo starter que cree trabajo durable nuevo debe emitir uno de esos eventos canónicos después de materializar la cola; Lifecycle Continuation usa también `batch_queued` y no un evento privado que omita el wake.
 - El endpoint HTTP del worker sólo activa el drenado; nunca recibe IDs de negocio ni modifica por sí solo la cola.
 - La cola durable de Neon sigue siendo la única fuente de verdad. Si el wake falla, el trabajo no se pierde.
 - `PROC-PLAN-002` revisa pools con Batch activo una vez por ciclo y emite un wake de recuperación.

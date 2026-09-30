@@ -80,3 +80,11 @@ test('el pool API llena su capacidad sin serializar Batch independientes',()=>{
   assert.match(fill,/launch\(item\);/);
   assert.doesNotMatch(fill,/await\s+launch\(item\)/);
 });
+
+
+test('Lifecycle Continuation emite batch_queued y despierta el pool API',()=>{
+  const src=read('lib/lifecycle-continuation.js');
+  assert.match(src,/eventType:'batch_queued'/);
+  assert.doesNotMatch(src,/eventType:'continuation_queued'/);
+  assert.match(src,/worker_pool:'api'/);
+});
