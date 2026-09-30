@@ -381,6 +381,8 @@ SER-002 usa además el Batch común como frontera durable para el control manual
 - reintentos son acotados y espaciados;
 - la concurrencia interna no evita los límites de fuente.
 
+El pool `api` usa capacidad base **8**; ese valor limita trabajo simultáneo dentro del proceso Node, pero no sustituye ni rebaja API governance. Los límites efectivos de fuentes externas siguen siendo los configurados en `batch_api_source_limits` y los hard caps del código.
+
 La capacidad de un pool Railway es global al worker y se reparte entre Batch elegibles. `requested_concurrency` limita únicamente cuántas unidades simultáneas puede aportar un Batch concreto. El drenado debe llenar las plazas libres del pool sin esperar a que termine una unidad antes de reclamar otra; un Batch serial de larga duración no puede bloquear otros Batch independientes del mismo pool.
 
 Todo Batch durable recién materializado debe emitir un evento de wake canónico (`batch_queued`, `batch_items_appended` o `batch_resumed`) una vez persistida la cola. Esto incluye `PROC-LC-001`: el recovery horario sólo cubre fallos de wake y no sustituye el arranque inmediato del worker.
