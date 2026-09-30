@@ -68,3 +68,15 @@ test('el endpoint health de worker no toca Neon',()=>{
   assert.ok(start>=0&&end>start);
   assert.doesNotMatch(health,/DATABASE_URL|batchSql|fetch\(/);
 });
+
+
+test('el pool API llena su capacidad sin serializar Batch independientes',()=>{
+  const src=read('worker/batch-api-worker.mjs');
+  const start=src.indexOf('async function fill()');
+  const end=src.indexOf('async function maintenance()');
+  const fill=src.slice(start,end);
+  assert.ok(start>=0&&end>start);
+  assert.match(fill,/active\.size<CAPACITY/);
+  assert.match(fill,/launch\(item\);/);
+  assert.doesNotMatch(fill,/await\s+launch\(item\)/);
+});
