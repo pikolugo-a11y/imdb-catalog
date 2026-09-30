@@ -88,3 +88,10 @@ test('Lifecycle Continuation emite batch_queued y despierta el pool API',()=>{
   assert.doesNotMatch(src,/eventType:'continuation_queued'/);
   assert.match(src,/worker_pool:'api'/);
 });
+
+
+test('el pool API usa capacidad base 8 y deja los límites reales a API governance',()=>{
+  const src=read('worker/batch-api-worker.mjs');
+  assert.match(src,/BATCH_API_CAPACITY\)\|\|8/);
+  assert.match(src,/Math\.min\([^\n]*,16\)/);
+});
