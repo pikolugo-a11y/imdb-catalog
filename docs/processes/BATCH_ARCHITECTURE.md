@@ -249,6 +249,7 @@ Reglas:
 - la concurrencia del worker no sustituye la concurrencia de fuente;
 - la capacidad del pool y la concurrencia de cada Batch son límites distintos: el worker debe reclamar trabajo de varios Batch elegibles hasta llenar la capacidad del pool, mientras `requested_concurrency` limita cada Batch individual;
 - un Batch deliberadamente serial —por ejemplo `PROC-REL-001` con concurrencia 1 por el pacing de Media Cloud— no puede serializar ni bloquear otros procesos independientes del mismo pool mientras existan plazas libres.
+- la restricción “un Batch abierto por `process_code`” se mantiene por defecto, pero `PROC-LC-001` es una excepción deliberada: cada admisión conserva un Batch de una sola entidad y varios Lifecycle de IMDb distintos pueden coexistir; la deduplicación se hace por entidad.
 - un Batch no puede saltarse cuota/breaker/rate limit;
 - si falta el gate para una fuente gobernada, el core falla cerrado antes del fetch;
 - 429/gobernanza no se convierten en `not_found` ni activan fallbacks incorrectos.

@@ -467,14 +467,15 @@ Al admitir:
 5. inicia la continuación automática del Lifecycle de forma durable;
 6. el usuario permanece en Novedades.
 
-## 9.10 Un Lifecycle automático ordinario a la vez
+## 9.10 Lifecycle automáticos concurrentes y acotados
 
-Antes de admitir un nuevo título debe comprobarse que no existe otra continuación de Lifecycle incompatible ya `queued/running` según el contrato vigente. Si existe:
+La admisión de un título no se bloquea porque exista otro `PROC-LC-001` de una entidad distinta ya `queued/running`.
 
-- no se crea la película;
-- el candidato sigue en Lista;
-- se informa del bloqueo funcional;
-- el usuario reintenta cuando el anterior termine.
+Cada admisión crea su propia continuación durable de Lifecycle, conservando correlación con el `PROC-NOV-007` que la originó. Pueden coexistir varias continuaciones activas y Railway las consume dentro de la capacidad global del pool `api` y de los límites efectivos de las fuentes externas.
+
+La deduplicación permanece **por entidad**: si el mismo IMDb ya tiene una continuación `queued/leased/running`, se reutiliza en vez de crear otra.
+
+La concurrencia nunca permite saltarse API governance, leases, retry, idempotencia ni decisiones humanas.
 
 ## 9.11 Continuación automática
 
