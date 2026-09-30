@@ -56,14 +56,15 @@ const adapters={'PROC-NOV-008':executeNov008,'PROC-ID-001':async(sql,id,{trace,i
 async function recoverLifecycleAdapterMismatch(){const rows=await batchSql`UPDATE batch_run_items bi SET status='queued',lease_owner=NULL,lease_until=NULL,finished_at=NULL,updated_at=now() FROM batch_run_control c,process_runs pr WHERE bi.batch_run_id=c.run_id AND pr.run_id=c.run_id AND c.worker_pool='api' AND c.process_code='PROC-LC-001' AND c.closed_at IS NULL AND pr.technical_status='running' AND bi.status='failed' AND bi.last_error='Adapter API no registrado' AND bi.attempt_count<3 RETURNING bi.item_id,bi.batch_run_id`;return rows.length}
 const active=new Set();let stopping=false;
 const nap=ms=>new Promise(r=>setTimeout(r,ms));
-async function launch(item){
+function launch(item){
   const execute=adapters[item.process_code];
-  if(!execute){
-    await batchSql`UPDATE batch_run_items SET status='failed',lease_owner=NULL,lease_until=NULL,last_error='Adapter API no registrado',finished_at=now(),updated_at=now() WHERE item_id=${item.item_id}`;
-    await refreshParent(item.batch_run_id);
-    return null;
-  }
-  const task=executeClaimedItem(item,{workerId,executor:'railway_batch_api',errorSource:'batch_api_worker',execute:(sql,id,ctx)=>execute(sql,id,{...ctx,item})})
+  const task=(execute
+    ? executeClaimedItem(item,{workerId,executor:'railway_batch_api',errorSource:'batch_api_worker',execute:(sql,id,ctx)=>execute(sql,id,{...ctx,item})})
+    : (async()=>{
+        await batchSql`UPDATE batch_run_items SET status='failed',lease_owner=NULL,lease_until=NULL,last_error='Adapter API no registrado',finished_at=now(),updated_at=now() WHERE item_id=${item.item_id}`;
+        await refreshParent(item.batch_run_id);
+        return null;
+      })())
     .catch(error=>console.error(JSON.stringify({type:'batch_item_unhandled',pool:POOL,item_id:item.item_id,error:String(error?.message||error)})))
     .finally(()=>active.delete(task));
   active.add(task);
@@ -75,7 +76,7 @@ async function fill(){
     const item=await claimBatchItem({pool:POOL,workerId});
     if(!item)break;
     claimed++;
-    await launch(item);
+    launch(item);
   }
   return claimed;
 }
