@@ -381,6 +381,8 @@ SER-002 usa además el Batch común como frontera durable para el control manual
 - reintentos son acotados y espaciados;
 - la concurrencia interna no evita los límites de fuente.
 
+La capacidad de un pool Railway es global al worker y se reparte entre Batch elegibles. `requested_concurrency` limita únicamente cuántas unidades simultáneas puede aportar un Batch concreto. El drenado debe llenar las plazas libres del pool sin esperar a que termine una unidad antes de reclamar otra; un Batch serial de larga duración no puede bloquear otros Batch independientes del mismo pool.
+
 ---
 
 ## 9. Gobierno de APIs externas
