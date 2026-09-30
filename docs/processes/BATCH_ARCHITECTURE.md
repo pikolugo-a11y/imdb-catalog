@@ -342,6 +342,8 @@ La deuda histórica sin PikoRelevancia no es elegible por el planner: el usuario
 
 Los pools `api`, `fast` y `plex` son event-driven. No existe polling de cola durante reposo.
 
+La capacidad base del worker `api` es **8**. Es un techo técnico del ejecutor, no una cuota de negocio: TMDb, OMDb, MDBList y cualquier otra fuente gobernada siguen limitándose mediante API governance, y procesos con restricciones propias como PikoRelevancia mantienen su concurrencia/pacing específico. El pool no debe introducir un cuello artificial inferior a la gobernanza efectiva de las fuentes.
+
 - `process-runtime.addProcessEvent` despierta el pool al persistir `batch_queued`, `batch_items_appended` o `batch_resumed`.
 - Todo starter que cree trabajo durable nuevo debe emitir uno de esos eventos canónicos después de materializar la cola; Lifecycle Continuation usa también `batch_queued` y no un evento privado que omita el wake.
 - El endpoint HTTP del worker sólo activa el drenado; nunca recibe IDs de negocio ni modifica por sí solo la cola.
