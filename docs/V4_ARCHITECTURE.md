@@ -385,6 +385,8 @@ La capacidad de un pool Railway es global al worker y se reparte entre Batch ele
 
 Todo Batch durable recién materializado debe emitir un evento de wake canónico (`batch_queued`, `batch_items_appended` o `batch_resumed`) una vez persistida la cola. Esto incluye `PROC-LC-001`: el recovery horario sólo cubre fallos de wake y no sustituye el arranque inmediato del worker.
 
+La regla física de un único Batch abierto por `process_code` tiene una excepción explícita para `PROC-LC-001`. Lifecycle Continuation es una ejecución durable por admisión/título, conserva su propio parent de observabilidad y puede coexistir con otras continuaciones Lifecycle de entidades distintas. Cada Batch LC mantiene `requested_concurrency=1`; la concurrencia efectiva entre títulos la limita la capacidad global del pool `api` y API governance.
+
 ---
 
 ## 9. Gobierno de APIs externas
