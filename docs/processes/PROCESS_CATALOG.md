@@ -50,6 +50,7 @@ Estados de paridad:
 | PROC-SER-005 | Series | Resolver anomalía de episodio | manual | no | acción observada + override | Vercel | NO APLICA |
 | PROC-SER-006 | Series | Retirar override de disponibilidad | manual | no | acción observada + refresh | Vercel | NO APLICA |
 | PROC-REL-001 | Relevancia | Calcular / mantener PikoRelevancia de Series | individual + Batch durable | sí, concurrencia 1 | `computePikoRelevanceCanonical` | Railway API | EXACTA |
+| PROC-LC-001 | Lifecycle | Continuar automáticamente un título admitido hasta bloqueo humano/funcional o COMPLETE | Batch durable de 1 entidad | sí, concurrencia 1 | `executeLifecycleContinuation` orquestando cores canónicos | Railway API | MODELO ORQUESTADOR |
 | PROC-NOV-001 | Novedades | Discovery IMDb global | global manual | no | GitHub Actions `imdb-discovery.yml` | GitHub Actions | SIN BATCH |
 | PROC-NOV-002 | Novedades | Alta manual IMDb | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-003 | Novedades | Reintento candidato manual | manual | no | `manual-candidate-actions.js` | Vercel | NO APLICA |
@@ -83,6 +84,8 @@ La cancelación es terminal: una vez `batch_run_control.desired_state='cancel_re
 `PROC-PQ-002` no usa `batch_run_control`; su cancelación canónica consiste en solicitar `plex_technical_control.requested_state='stopped'` y cerrar su `process_run` como `cancelled`. Operaciones debe exponer `Detener` desde la lista activa y desde el detalle desde el primer momento, sin esperar el umbral genérico de 15 minutos.
 
 Pools vigentes: `api`, `fast`, `plex`. Technical Snapshot y PQ-001 mantienen modelos especializados.
+
+`PROC-LC-001` (Lifecycle Continuation) materializa una unidad durable en el pool `api` tras la admisión de un título. Después de crear `batch_run_control` y `batch_run_items`, emite el evento canónico `batch_queued`, que despierta el worker API incluso si está dormido. El recovery horario sigue siendo red de seguridad, no mecanismo normal de arranque.
 
 `PROC-REL-001` es productivo pero permanece fuera del Lifecycle y no modifica `catalog_read_model`. Se ejecuta en Railway API sobre unidades IMDb y persiste `series_relevance_assessments`. La deuda histórica sin valoración se dispara sólo desde `/calidad/relevancia`; una selección múltiple se materializa como cola durable y se consume con concurrencia 1. **Ese límite es por Batch, no por pool**: una unidad de PikoRelevancia puede ocupar una plaza del worker API mientras otras plazas procesan Batch independientes, incluido Lifecycle; su pacing no debe monopolizar el pool. Una vez existe valoración vigente, `next_review_at` gobierna mantenimiento automático adaptativo y `PROC-PLAN-002` lo representa en Actividad/Calendario. Para fuentes públicas: Wikidata/Wikimedia usan retry tolerante a latencia sólo en este proceso; Media Cloud sustituye a GDELT para cobertura en prensa española, usa la colección `Spain - National` (`34412356`) y una única consulta por serie, serializada a 31 s por defecto para respetar el límite público de 2 peticiones/minuto. Un fallo agotado reduce confianza y no equivale a evidencia negativa.
 
