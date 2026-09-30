@@ -51,7 +51,7 @@ test('temporadas y episodios se ven en listado y ficha aunque la serie no esté 
 });
 
 test('el backfill de perfiles es durable en Railway API y visible en Operaciones',()=>{
-  assert.match(batch,/'PROC-SER-007':\{pool:'api',concurrency:2/);
+  assert.match(batch,/'PROC-SER-007':\{pool:'api',concurrency:8/);
   assert.match(worker,/'PROC-SER-007':executeSer007/);
   assert.match(worker,/refreshCatalogSeriesProfileCanonical/);
   assert.match(display,/'PROC-SER-007':\{name:'Actualizar perfil de catálogo de Series'\}/);

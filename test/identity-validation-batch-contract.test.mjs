@@ -11,7 +11,7 @@ const lifecycle=read('../lib/lifecycle.js');
 const lifecycleCore=read('../lib/lifecycle-recompute-core.mjs');
 const layout=read('../app/calidad/validacion-identidad/layout.js');
 const panel=read('../components/IdentityValidationBatchPanel.js');
-test('IV-001 Batch usa pool API y sólo selecciona evidencia pendiente',()=>{assert.match(orchestration,/'PROC-IV-001':\{pool:'api',concurrency:2/);assert.match(orchestration,/m\.tmdb_id IS NOT NULL AND NOT \(v\.tmdb_id=m\.tmdb_id/);assert.match(orchestration,/lifecycle_state='IDENTITY_VALIDATION'/)});
+test('IV-001 Batch usa pool API y sólo selecciona evidencia pendiente',()=>{assert.match(orchestration,/'PROC-IV-001':\{pool:'api',concurrency:8/);assert.match(orchestration,/m\.tmdb_id IS NOT NULL AND NOT \(v\.tmdb_id=m\.tmdb_id/);assert.match(orchestration,/lifecycle_state='IDENTITY_VALIDATION'/)});
 test('IV-002 Batch usa pool FAST y sólo selecciona evidencia lista',()=>{assert.match(orchestration,/'PROC-IV-002':\{pool:'fast',concurrency:8/);assert.match(orchestration,/JOIN identity_validation v/);assert.match(orchestration,/AND v\.tmdb_id=m\.tmdb_id AND \(\(v\.imdb_original_title IS NOT NULL/)});
 test('elegibilidad IV usa SQL ejecutable y no intenta interpolar un query result como fragmento',()=>{assert.doesNotMatch(orchestration,/readySql|\$\{ready\}/)});
 test('Batch IV nunca se inicia automáticamente',()=>{assert.doesNotMatch(orchestration,/setInterval|cron|schedule/i);assert.match(panel,/Nunca|sólo arranca cuando lo ordenas/i);assert.match(panel,/startIv001BatchAction/);assert.match(panel,/startIv002BatchAction/)});

@@ -800,3 +800,6 @@ Flujo canónico:
 
 El planner horario sólo despierta pools que tengan un Batch activo, actuando como mecanismo de recuperación si se perdió una petición wake. No despierta pools vacíos.
 
+
+
+Los starters API no deben duplicar límites de fuente con topes 2/3 heredados cuando sus llamadas externas pasan por API governance. El pool API tiene capacidad base 8 y los procesos gobernados se alinean a 8. Las excepciones sólo se mantienen cuando una fuente externa impone un contrato distinto (Media Cloud, Watchmode), cuando el Batch contiene una única entidad pero puede coexistir con otros Batch (Lifecycle), o cuando el dominio requiere serialización específica (Plex).
