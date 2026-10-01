@@ -56,3 +56,14 @@ test('la ficha de Persona conserva el retorno a Calidad cuando procede',()=>{
   assert.match(detail,/href=\{backTo\}>← \{backLabel\}/);
   assert.match(detail,/returnTo=\$\{encodeURIComponent\(backTo\)\}/);
 });
+
+test('Personas abre en visión informativa y no convierte mantenimiento automático en cola manual',()=>{
+  const quality=read('app/calidad/personas/page.js');
+  const query=read('lib/people-quality.js');
+  const home=read('lib/quality-home.js');
+  assert.match(query,/:\'all\';/);
+  assert.match(quality,/\['all','Todas',data\.summary\.total\]/);
+  assert.doesNotMatch(quality,/\['pending','Pendientes'/);
+  assert.match(quality,/<select name="status"/);
+  assert.match(home,/people:0/);
+});
