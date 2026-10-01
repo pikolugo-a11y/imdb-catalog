@@ -1046,6 +1046,10 @@ Se presenta como carga baja/media/alta y volumen funcional, no CPU/workers.
 
 PikoFilm puede mover automáticamente trabajo rutinario flexible dentro de una **ventana funcional segura**.
 
+La ventana segura se aplica sólo a trabajo **futuro**. Cuando una unidad ya está vencida y es elegible para mantenimiento automático, pasa a deuda actual: el planner la promueve al ciclo vigente y la drena automáticamente respetando capacidad, API governance, locks y procesos activos. No se pospone una deuda ya vencida varios días sólo para equilibrar calendario.
+
+La deuda de mantenimiento automático no se presenta en Calidad como una tarea manual pendiente. Las superficies funcionales pueden permitir inspeccionarla, pero el frontal principal sólo eleva aquello que requiere decisión o acción humana.
+
 Nunca mueve automáticamente:
 
 - fecha límite funcional;
