@@ -88,3 +88,14 @@ test('PikoRelevancia automatiza solo recálculos ya existentes y respeta concurr
   assert.match(batch,/a\.next_review_at IS NOT NULL AND a\.next_review_at<=now\(\)/);
   assert.match(batch,/requested_concurrency:1/);
 });
+
+
+test('la deuda vencida se promueve al ciclo actual y no se reparte por la ventana futura',()=>{
+  const planner=read('lib/process-planning.js');
+  assert.match(planner,/async function promoteDueDebt\(sql\)/);
+  assert.match(planner,/planned_at=now\(\)/);
+  assert.match(planner,/auto_promoted_overdue/);
+  assert.match(planner,/forecast_due_at'\) IS NULL/);
+  assert.match(planner,/forecast_due_at'\)\:\:timestamptz<=now\(\)/);
+  assert.match(planner,/const overdueDrain=await promoteDueDebt\(sql\)/);
+});
