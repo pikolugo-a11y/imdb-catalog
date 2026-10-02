@@ -477,3 +477,60 @@ Hacer que el aprendizaje de una lista o tabla de PikoFilm sea transferible al re
 Se han revisado individualmente y persistido **10 propuestas UX-01 a UX-10**, todas **APROBADAS**.
 
 Tras revisión crítica del alcance, la Fase 2 se **EXTIENDE**: el mínimo metodológico de 10 propuestas no se usa como techo. Antes de entrar en Fase 3 se añadirán propuestas con impacto visual claramente perceptible para el usuario final, manteniendo revisión y persistencia una a una.
+
+
+## UX-11 — PikoFilm V5 Workbench / shell data-first
+
+**Estado: APROBADA**  
+**Fecha: 2026-10-02**
+
+### Problema observado
+
+La V4 tiene un shell funcional y estable, pero mantiene el patrón clásico de navegación + cabecera + pantalla independiente. En superficies densas eso consume altura útil, rebaja la visibilidad de la búsqueda global y obliga a demasiados cambios de contexto para consultar información relacionada.
+
+La revisión visual de producción confirmó además que el problema no es falta de identidad: el negro/dorado, las tablas densas, PikoScore y la estructura de datos ya dan personalidad a PikoFilm. El salto V5 debe conservar esa esencia y cambiar la forma de trabajar.
+
+### Decisión
+
+**APROBADA.**
+
+V5 adopta un **shell tipo Workbench**, orientado al trabajo y a los datos, no a la presentación editorial.
+
+### Contrato aprobado
+
+- **Búsqueda universal protagonista**, siempre visible, rápida y claramente reconocible mediante el acento visual de PikoFilm.
+- **Shell data-first**: se reduce al mínimo la cabecera ornamental y se maximiza la superficie útil desde el primer viewport.
+- **Navegación lateral compacta** en escritorio, conservando las áreas principales y la identidad oscura/dorada.
+- **Área central protagonista**, dedicada al contenido y no a hero headers.
+- **Inspector contextual lateral disponible en escritorio** para consultar y actuar sobre una entidad sin perder necesariamente la vista de origen.
+- **Bottom-sheet/panel contextual en móvil** como equivalente nativo del inspector, evitando replicar el escritorio a menor escala.
+- Se reduce el patrón obligatorio lista → ficha → volver cuando la tarea pueda resolverse en contexto.
+- El shell debe sentirse como una herramienta persistente de trabajo, no como una sucesión de páginas aisladas.
+- La experiencia móvil se diseña como flujo propio: búsqueda → lista/contexto → panel/acción, con navegación inferior compacta cuando corresponda.
+
+### Guardrails
+
+- UX-11 define **el shell y la dirección de interacción**, no el diseño definitivo de Catálogo, Calidad, Personas, Actividad u Operaciones.
+- La tabla, columnas, tabs, acciones y contenido concreto representados en la referencia visual no quedan aprobados por esta decisión.
+- El inspector es una capacidad del shell, no una obligación de abrir todas las fichas lateralmente.
+- No se sacrifica densidad útil por tarjetas decorativas ni por grandes titulares.
+- La componentización, tokens, medidas exactas y consolidación CSS pertenecen principalmente al Punto 9.
+- Se conserva la identidad PikoFilm oscura/dorada; V5 no se convierte en una interfaz genérica azul.
+
+### Referencia visual aprobada
+
+La siguiente imagen queda versionada como **referencia conceptual de UX-11**:
+
+![UX-11 — PikoFilm V5 Workbench / Shell data-first](assets/v5/ux-11-shell-workbench.jpg)
+
+La imagen fija la dirección de shell/workbench, búsqueda universal protagonista, navegación compacta, inspector contextual y tratamiento móvil. **No es un mockup final de Catálogo ni aprueba sus datos de ejemplo.**
+
+### Objetivo
+
+Conseguir un salto perceptible respecto a V4: **más contexto, más datos visibles, menos navegación innecesaria y una experiencia de trabajo más rápida**, manteniendo la identidad y la densidad que ya funcionan.
+
+## Estado de Fase 2 tras UX-11
+
+UX-01 a UX-11 están **APROBADAS y persistidas**.
+
+La Fase 2 continúa **EXTENDIDA**. El siguiente paso es diseñar y revisar únicamente **UX-12**, ya sobre una superficie real dentro del shell aprobado, antes de decidir si existen suficientes cambios visibles para cerrar Fase 2.
