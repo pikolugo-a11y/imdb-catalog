@@ -882,3 +882,16 @@ Contrato: las tablas y listas comparten reglas de interacción, navegación, acc
 - Fase 3 — Road Map Innovador: **NO INICIADA**.
 
 **Siguiente paso exacto:** presentar únicamente **UX-11**. Persistir su decisión antes de UX-12.
+
+
+### DECISIÓN PUNTO 8 — UX-11
+
+**APROBADA** el 2026-10-02 y persistida en `docs/V5_DECISIONS_08_FRONTEND_UX.md`.
+
+Contrato: PikoFilm V5 adopta un shell **Workbench data-first** con búsqueda universal protagonista, navegación compacta, máxima superficie útil e inspector contextual lateral en escritorio / bottom-sheet en móvil. Se conserva la identidad oscura/dorada y la densidad útil de V4; la decisión no fija todavía el detalle de cada superficie.
+
+Referencia visual versionada: `docs/assets/v5/ux-11-shell-workbench.jpg`.
+
+- Fase 2 sigue **EXTENDIDA**.
+- Fase 3 — innovaciones: **NO INICIADA**.
+- **Siguiente paso exacto:** presentar únicamente **UX-12** y persistir su decisión antes de UX-13 o del cierre formal de Fase 2.
