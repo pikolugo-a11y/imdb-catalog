@@ -806,3 +806,10 @@ Los starters API no deben duplicar límites de fuente con topes 2/3 heredados cu
 
 
 La deuda automática vencida no usa la ventana de balanceo como aplazamiento. `process_planning` diferencia demanda futura de deuda actual: los planes automáticos cuya elegibilidad ya ha vencido se promueven al ciclo presente y se despachan contra la selección viva del proceso. El balanceo por franjas se conserva para forecast futuro, picos deliberados y trabajo protegido. Calidad no debe exponer esta deuda rutinaria como una cola manual de atención.
+
+
+El pool API aplica **fair scheduling entre Batch activos**: prioriza el menor número de unidades activas por Batch antes de desempatar por antigüedad. El backpressure de una fuente por concurrencia se espera dentro del gate y no consume reintentos funcionales.
+
+`PER-001` mantiene una sola Persona activa por Batch porque una Persona ya paraleliza internamente TMDb hasta el límite de 8. Esto evita multiplicar 8×8 llamadas potenciales sin reducir el límite real de la fuente.
+
+El wake de Railway usa varios reintentos espaciados para cubrir servicios dormidos; el recovery del planner sigue siendo la red de seguridad final.
