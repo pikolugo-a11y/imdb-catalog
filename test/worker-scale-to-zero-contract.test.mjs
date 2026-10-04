@@ -121,3 +121,12 @@ test('el wake tolera cold start de Railway con reintentos espaciados',()=>{
   assert.match(client,/\[0,1200,2500,5000\]/);
   assert.match(client,/setTimeout\(\(\)=>controller\.abort\(\),5000\)/);
 });
+
+
+test('el backpressure renueva la lease mientras espera una fuente',()=>{
+  const gate=read('lib/batch-api-governance.mjs');
+  const worker=read('worker/batch-api-worker.mjs');
+  assert.match(gate,/onWait=null/);
+  assert.match(gate,/typeof onWait==='function'/);
+  assert.match(worker,/onWait:\(\)=>trace\?\.heartbeat\?\.\(\)/);
+});
