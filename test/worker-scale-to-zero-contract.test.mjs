@@ -130,3 +130,17 @@ test('el backpressure renueva la lease mientras espera una fuente',()=>{
   assert.match(gate,/typeof onWait==='function'/);
   assert.match(worker,/onWait:\(\)=>trace\?\.heartbeat\?\.\(\)/);
 });
+
+
+test('los Batch PER-001 antiguos quedan limitados efectivamente a una unidad aunque persistan con requested_concurrency 8',()=>{
+  const src=read('lib/batch-worker-runtime.mjs');
+  const start=src.indexOf('export async function claimBatchItem');
+  const end=src.indexOf('export async function executeClaimedItem',start);
+  const claim=src.slice(start,end);
+  assert.match(claim,/CASE WHEN c\.process_code='PROC-PER-001' THEN LEAST\(c\.requested_concurrency,1\)/);
+});
+
+test('los items antiguos fallidos sólo por concurrencia TMDb vuelven a ser elegibles inmediatamente',()=>{
+  const src=read('lib/batch-worker-runtime.mjs');
+  assert.match(src,/last_error LIKE 'Fuente % ocupada: concurrencia agotada'/);
+});
