@@ -14,7 +14,7 @@ test('scheduler de Calidad mantiene dominios vencidos sin hacer polling Plex',()
   assert.match(planner,/startSeriesBatch\('PROC-SER-003',\{limit:n,triggerSource:'quality_scheduler'\}\)/);
   assert.match(planner,/startSeriesBatch\('PROC-SER-004',\{limit:n,triggerSource:'quality_scheduler'\}\)/);
   assert.match(planner,/startData002Batch\(\{limit:n,concurrency:8,triggerSource:'quality_scheduler'\}\)/);
-  assert.match(planner,/startPeopleBatch\(\{limit:n,concurrency:8,triggerSource:'quality_scheduler'\}\)/);
+  assert.match(planner,/startPeopleBatch\(\{limit:n,concurrency:1,triggerSource:'quality_scheduler'\}\)/);
   assert.match(planner,/processC6Batch\(n\)/);
   assert.match(planner,/startPikoRelevanceBatch\(\{limit:n,triggerSource:'quality_scheduler'\}\)/);
   assert.match(cron,/executeAutomaticPlanningCycle/);

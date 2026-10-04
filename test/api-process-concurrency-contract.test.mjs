@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const read=path=>fs.readFileSync(path,'utf8');
 
-test('procesos API gobernados usan capacidad 8 sin topes heredados 2 o 3',()=>{
+test('procesos API gobernados usan la concurrencia segura de cada unidad sin topes heredados arbitrarios',()=>{
   const data1=read('lib/data001-batch.js');
   const data2=read('lib/data002-batch.js');
   const id=read('lib/id001-batch.js');
@@ -24,8 +24,8 @@ test('procesos API gobernados usan capacidad 8 sin topes heredados 2 o 3',()=>{
   assert.match(id,/Math\.min\(Number\(concurrency\)\|\|8,8\)/);
 
   assert.match(iv,/'PROC-IV-001':\{pool:'api',concurrency:8/);
-  assert.match(people,/startPeopleBatch\(\{limit=null,concurrency=8/);
-  assert.match(people,/Math\.min\(Number\(concurrency\)\|\|8,8\)/);
+  assert.match(people,/startPeopleBatch\(\{limit=null,concurrency=1/);
+  assert.match(people,/Math\.min\(Number\(concurrency\)\|\|1,1\)/);
   assert.match(saga,/startSagaFullRefreshBatch\(\{concurrency=8\}/);
   assert.match(series,/'PROC-SER-003':\{pool:'api',concurrency:8/);
   assert.match(series,/'PROC-SER-007':\{pool:'api',concurrency:8/);
@@ -43,4 +43,13 @@ test('límites externos deliberados permanecen donde la API realmente los exige'
   assert.match(relevance,/requested_concurrency:1/);
   assert.match(relevance,/VALUES\([^\n]*'api','running',1\)/);
   assert.match(plex,/BATCH_PLEX_CAPACITY\)\|\|1/);
+});
+
+
+test('PER-001 limita unidades a 1 porque cada persona ya ocupa el gate TMDb internamente',()=>{
+  const people=read('lib/people-batch.js');
+  const core=read('lib/people-refresh-core.mjs');
+  assert.match(people,/startPeopleBatch\(\{limit=null,concurrency=1/);
+  assert.match(core,/pool\(entries,8/);
+  assert.match(core,/Promise\.all\(\[tmdb\(/);
 });

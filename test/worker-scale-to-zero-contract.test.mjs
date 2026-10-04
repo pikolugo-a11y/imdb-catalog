@@ -95,3 +95,38 @@ test('el pool API usa capacidad base 8 y deja los límites reales a API governan
   assert.match(src,/BATCH_API_CAPACITY\)\|\|8/);
   assert.match(src,/Math\.min\([^\n]*,16\)/);
 });
+
+
+test('el scheduler de Batch reparte plazas por carga activa antes de volver al Batch más antiguo',()=>{
+  const src=read('lib/batch-worker-runtime.mjs');
+  const start=src.indexOf('export async function claimBatchItem');
+  const end=src.indexOf('export async function executeClaimedItem',start);
+  const claim=src.slice(start,end);
+  assert.match(claim,/AS active_count/);
+  assert.match(claim,/ORDER BY active_count ASC,activity_at ASC,c\.created_at ASC/);
+  assert.match(claim,/ORDER BY r\.active_count ASC,r\.activity_at ASC,r\.created_at ASC,i\.item_id ASC/);
+  assert.doesNotMatch(claim,/ORDER BY i\.item_id LIMIT 1/);
+});
+
+test('la concurrencia ocupada en API governance espera y no se convierte en fallo funcional',()=>{
+  const gate=read('lib/batch-api-governance.mjs');
+  assert.match(gate,/for\(let attempt=0;;attempt\+\+\)/);
+  assert.match(gate,/permit\?\.reason==='concurrency'/);
+  assert.match(gate,/await wait\(Math\.min\(1000,250\+attempt\*50\)\)/);
+  assert.doesNotMatch(gate,/concurrencia agotada/);
+});
+
+test('el wake tolera cold start de Railway con reintentos espaciados',()=>{
+  const client=read('lib/worker-wake-client.js');
+  assert.match(client,/\[0,1200,2500,5000\]/);
+  assert.match(client,/setTimeout\(\(\)=>controller\.abort\(\),5000\)/);
+});
+
+
+test('el backpressure renueva la lease mientras espera una fuente',()=>{
+  const gate=read('lib/batch-api-governance.mjs');
+  const worker=read('worker/batch-api-worker.mjs');
+  assert.match(gate,/onWait=null/);
+  assert.match(gate,/typeof onWait==='function'/);
+  assert.match(worker,/onWait:\(\)=>trace\?\.heartbeat\?\.\(\)/);
+});

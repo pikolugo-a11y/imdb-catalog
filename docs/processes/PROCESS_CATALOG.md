@@ -64,7 +64,7 @@ Estados de paridad:
 | PROC-NOV-011 | Sagas/Novedades | Enviar miembro de Saga a Novedades | manual | no | `saga-news-actions.js` | Vercel | NO APLICA |
 | PROC-NOV-016 | Excluidas | Restaurar exclusión | manual | no | `app/catalogo/excluidas/actions.js` | Vercel | NO APLICA |
 | PROC-SAGA-001 | Sagas | Refrescar colección TMDb / refresco global completo | individual + global | sí | `refreshSagaCollectionCanonical` + `lib/saga-batch.js` | Vercel / Railway API | EXACTA por colección |
-| PROC-PER-001 | Personas | Refrescar perfil y filmografía | individual | sí | `refreshPersonFilmographyCanonical` | Vercel / Railway API | EXACTA |
+| PROC-PER-001 | Personas | Refrescar perfil y filmografía | individual + Batch durable | sí; 1 Persona Batch simultánea con fan-out TMDb interno hasta 8 | `refreshPersonFilmographyCanonical` | Vercel / Railway API | EXACTA |
 | PROC-PQ-001 | PikoQuality | Calcular C6 | global por chunks | frontend batch | `processC6Batch` + `scorePikoQualityC6` | Vercel | MODELO ESPECIAL canónico |
 | PROC-PQ-002 | PikoQuality | Captura técnica Plex | global persistente | control especializado | Technical Snapshot worker | Vercel / Railway Technical | MODELO ESPECIAL |
 | PROC-HOME-001 | Home | Snapshot histórico diario del Dashboard | global automático pasivo | no | `/api/cron/dashboard-snapshot` → `captureDashboardSnapshot` | Vercel Cron | SIN BATCH |
@@ -262,7 +262,8 @@ La historia de auditorías PRE-V4/P5/P7 permanece en Git. Este documento describ
 
 ### Concurrencia API alineada con governance
 
-- DATA-001, DATA-002, ID-001, IV-001, PER-001, SAGA-001, SER-003 y SER-007 usan concurrencia objetivo **8**; el límite efectivo lo decide API governance.
+- DATA-001, DATA-002, ID-001, IV-001, SAGA-001, SER-003 y SER-007 usan concurrencia objetivo **8**; el límite efectivo lo decide API governance.
+- PER-001: 1 unidad Batch simultánea; cada Persona ya usa paralelismo interno TMDb hasta 8 y comparte el gate central.
 - SER-004 conserva **2** por Watchmode + TMDb; Watchmode no está integrado en el gate central.
 - REL-001 conserva **1** por Media Cloud/pacing.
 - PROC-LC-001 usa Batch de una entidad con concurrencia 1, pero varios Lifecycle distintos pueden coexistir y compartir el pool API.
