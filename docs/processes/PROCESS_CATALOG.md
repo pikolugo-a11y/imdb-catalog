@@ -262,7 +262,7 @@ La historia de auditorías PRE-V4/P5/P7 permanece en Git. Este documento describ
 
 ### Concurrencia API alineada con governance
 
-- DATA-001, DATA-002, ID-001, IV-001, PER-001, SAGA-001, SER-003 y SER-007 usan concurrencia objetivo **8**; el límite efectivo lo decide API governance.
+- DATA-001, DATA-002, ID-001, IV-001, SAGA-001, SER-003 y SER-007 usan concurrencia objetivo **8**; el límite efectivo lo decide API governance.
 - SER-004 conserva **2** por Watchmode + TMDb; Watchmode no está integrado en el gate central.
 - REL-001 conserva **1** por Media Cloud/pacing.
 - PROC-LC-001 usa Batch de una entidad con concurrencia 1, pero varios Lifecycle distintos pueden coexistir y compartir el pool API.
