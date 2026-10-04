@@ -370,3 +370,10 @@ La saturación temporal de `max_concurrency` en una fuente gobernada es **backpr
 `PROC-PER-001` usa `requested_concurrency=1`: cada Persona ya hace dos consultas iniciales TMDb y resuelve su filmografía con paralelismo interno hasta 8, por lo que varias Personas simultáneas multiplicarían artificialmente el fan-out. El límite real sigue siendo el gate TMDb=8.
 
 Los wake HTTP reintentan con margen suficiente para cold-start de Railway antes de delegar en el recovery periódico.
+
+
+### Compatibilidad operativa de recuperación
+
+Los Batch `PROC-PER-001` creados antes de la corrección de concurrencia pueden conservar `requested_concurrency=8` en su fila histórica. El runtime aplica un límite efectivo de **1** a esos Batch sin reescribir su historial.
+
+Los items `queued` cuyo último error sea el antiguo `Fuente … ocupada: concurrencia agotada` son elegibles inmediatamente. Ese error pertenece al modelo de backpressure retirado y no debe obligar a esperar 6/24 horas para recuperarlos.
