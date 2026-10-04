@@ -356,7 +356,7 @@ La capacidad base del worker `api` es **8**. Es un techo técnico del ejecutor, 
 
 ### Política de concurrencia de procesos API
 
-Los procesos del pool `api` que usan exclusivamente fuentes cubiertas por API governance no deben imponer un tope propio inferior al límite efectivo del gate. Con la configuración vigente, DATA-001, DATA-002, ID-001, IV-001, PER-001, SAGA-001, SER-003 y SER-007 usan concurrencia objetivo **8** y la autoridad real sigue siendo `batch_api_source_limits`.
+Los procesos del pool `api` que usan exclusivamente fuentes cubiertas por API governance no deben imponer topes arbitrarios inferiores al límite efectivo del gate. Con la configuración vigente, DATA-001, DATA-002, ID-001, IV-001, SAGA-001, SER-003 y SER-007 usan concurrencia objetivo **8**. `PER-001` usa **1 unidad Batch simultánea** porque cada Persona ya paraleliza internamente TMDb hasta 8; en todos los casos la autoridad real de fuente sigue siendo `batch_api_source_limits`.
 
 Excepciones deliberadas por fuente externa: `PROC-REL-001` mantiene concurrencia **1** por el pacing de Media Cloud; `PROC-SER-004` mantiene **2** porque usa Watchmode además de TMDb y Watchmode todavía no está integrado en el gate central. Plex conserva su serialización propia.
 
