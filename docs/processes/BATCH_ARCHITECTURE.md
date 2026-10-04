@@ -359,3 +359,14 @@ La capacidad base del worker `api` es **8**. Es un techo técnico del ejecutor, 
 Los procesos del pool `api` que usan exclusivamente fuentes cubiertas por API governance no deben imponer un tope propio inferior al límite efectivo del gate. Con la configuración vigente, DATA-001, DATA-002, ID-001, IV-001, PER-001, SAGA-001, SER-003 y SER-007 usan concurrencia objetivo **8** y la autoridad real sigue siendo `batch_api_source_limits`.
 
 Excepciones deliberadas por fuente externa: `PROC-REL-001` mantiene concurrencia **1** por el pacing de Media Cloud; `PROC-SER-004` mantiene **2** porque usa Watchmode además de TMDb y Watchmode todavía no está integrado en el gate central. Plex conserva su serialización propia.
+
+
+### Fair scheduling y backpressure de fuentes
+
+El pool no prioriza indefinidamente el Batch con el `item_id` más antiguo. Al reclamar trabajo se elige primero el Batch elegible con **menos unidades activas**, y sólo después se usan antigüedad/posición como desempate. Así un Batch grande no puede monopolizar todas las plazas mientras existan otros Batch listos.
+
+La saturación temporal de `max_concurrency` en una fuente gobernada es **backpressure normal**, no un fallo funcional. `apiGate.acquire()` espera a que se libere una lease en lugar de consumir intentos del item.
+
+`PROC-PER-001` usa `requested_concurrency=1`: cada Persona ya hace dos consultas iniciales TMDb y resuelve su filmografía con paralelismo interno hasta 8, por lo que varias Personas simultáneas multiplicarían artificialmente el fan-out. El límite real sigue siendo el gate TMDb=8.
+
+Los wake HTTP reintentan con margen suficiente para cold-start de Railway antes de delegar en el recovery periódico.
