@@ -69,7 +69,7 @@ test('Global Sagas refresh exposes real progress and safe pause resume cancel co
 test('Railway API worker owns one saga collection per durable batch item',()=>{
   assert.match(worker,/refreshSagaCollectionCanonical/);
   assert.match(worker,/'PROC-SAGA-001':executeSaga001/);
-  assert.match(worker,/createApiGate\(sql,\{batchRunId:item\.batch_run_id\}\)/);
+  assert.match(worker,/createApiGate\(sql,\{batchRunId:item\.batch_run_id,onWait:\(\)=>trace\?\.heartbeat\?\.\(\)\}\)/);
   assert.match(sagaCore,/refreshSagaCollectionCanonical/);
   assert.match(sagaCore,/\/collection\/\$\{id\}\?language=es-ES/);
   assert.match(sagaCore,/\/movie\/\$\{tmdbId\}\/external_ids/);
